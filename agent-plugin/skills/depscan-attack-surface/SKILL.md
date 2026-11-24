@@ -66,9 +66,11 @@ atom-tools attack-surface \
 
 Read the document in this order:
 
-- `summary.headline` and `summary.anonymousReach` give the answer in one
-  line ("0 of 2 anonymous entry points reach at least one high-risk
-  sink"), with `byTier` and `byEngine` counts.
+- `summary.anonymousReach` gives the answer in one line: its
+  `anonymousEntryPoints` and `reachingHighSeveritySink` counts ("0 of 2
+  anonymous entry points reach at least one high-risk sink" is the two
+  read together), and `computed` false means reach was not computed at
+  all. `byTier` and `byEngine` carry the counts.
 - `tiers[]`, in `tierOrder` from `anonymous-http` down to `unknown-auth`,
   each with its `Exposure`, `EntryPointCount` and `EntryPoints` (`Route`,
   `HttpMethod`, `File`, `LineNumber`, `Engine` and a `Reach` object).
@@ -87,8 +89,17 @@ by default) and `EntryPoints`.
 ## Step 3: join to the vulnerable packages
 
 Read the dep-scan scan directory of the same project
-(`depscan report <scan-dir> --format json`), then answer the question that
-matters: which anonymous entry points reach which vulnerable purls. An
+(`depscan report <scan-dir> --format json`). When no scan of the project
+exists yet, make one before the join: load `depscan-scan` first (its own
+rule is to be loaded before writing any depscan command); its core form
+is:
+
+```bash
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
+```
+
+Then answer the question that matters: which anonymous entry points reach
+which vulnerable purls. An
 entry point's `Reach.purls` lists the packages its reach touches; where it
 is empty because reach was not computed, the join is `not_assessed` for
 that entry point. To see the flows themselves across engines, `atom-tools

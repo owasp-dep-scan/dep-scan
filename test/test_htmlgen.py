@@ -270,3 +270,89 @@ def test_parse_and_generate_report_go_reachable_flows(tmp_path):
     assert "pkg:golang/github.com/jackc/pgx/v4@v4.18.1" in rendered
     # The vulnerability id must appear
     assert "CVE-2024-PGX" in rendered
+
+
+def test_parse_and_generate_report_renders_the_binary_hardening_section(tmp_path):
+    """A binary scan's console carries the hardening table, its count
+    caption and the coverage line; the HTML report keeps all three instead
+    of dropping the section it does not know."""
+    report = "\n".join(
+        [
+            "Binary Hardening Results",
+            "╔══════════════════╤═══════════════════╤═════════════╤══════════════════════════╗",
+            "║ Binary           │ Check             │ Severity    │ Title                    ║",
+            "╟──────────────────┼───────────────────┼─────────────┼──────────────────────────╢",
+            "║ demo-tool        │ CHECK_CANARY      │ MEDIUM      │ Missing Canary Protection ║",
+            "╚══════════════════╧═══════════════════╧═════════════╧══════════════════════════╝",
+            "Binary hardening findings count: 1",
+            "Binary hardening checks completed: 1 attempted, 1 succeeded, 0 failed, 0 skipped units.",
+        ]
+    )
+    input_html = tmp_path / "rich-binary-report.html"
+    output_html = tmp_path / "depscan-binary.html"
+    input_html.write_text(RICH_HTML_WRAPPER.format(report=report), encoding="utf-8")
+
+    generator = ReportGenerator(
+        input_rich_html_path=str(input_html),
+        report_output_path=str(output_html),
+        raw_content=False,
+    )
+
+    generator.parse_and_generate_report()
+
+    rendered_report = output_html.read_text(encoding="utf-8")
+
+    assert "<h3" in rendered_report and "Binary Hardening Results" in rendered_report
+    assert "Binary hardening findings count: 1" in rendered_report
+    assert "CHECK_CANARY" in rendered_report
+    assert "Missing Canary Protection" in rendered_report
+    assert (
+        "Binary hardening checks completed: 1 attempted, 1 succeeded, 0 failed, "
+        "0 skipped units." in rendered_report
+    )
+    assert "╔" not in rendered_report
+    assert "<tbody>" in rendered_report and "<tr>" in rendered_report
+
+
+def test_binary_hardening_section_escapes_cells_and_keeps_a_separator_in_the_title(tmp_path):
+    """The binary-hardening table is built from finding text, so the HTML
+    report escapes every cell, and a box-drawing separator inside the last
+    (title) column stays in that cell instead of shifting the columns."""
+    from rich.markup import escape
+    from rich.table import Table
+    from rich import box
+    from rich.terminal_theme import DEFAULT_TERMINAL_THEME
+
+    console = Console(record=True, width=150, force_terminal=True)
+    table = Table(
+        title="Binary Hardening Results",
+        box=box.DOUBLE_EDGE,
+        caption="Binary hardening findings count: 1",
+        min_width=150,
+    )
+    for header in ("Binary", "Check", "Severity", "Title"):
+        table.add_column(header)
+    table.add_row(
+        escape("<script>alert(2)</script>.exe"),
+        "CHECK_X",
+        "LOW",
+        escape('<img src=x onerror=alert(1)> a │ b "q" & y'),
+    )
+    console.print(table)
+    console.print("Binary hardening checks completed: 1 attempted, 1 succeeded, 0 failed, 0 skipped units.")
+    input_html = tmp_path / "rich.html"
+    output_html = tmp_path / "depscan.html"
+    console.save_html(str(input_html), theme=DEFAULT_TERMINAL_THEME)
+
+    ReportGenerator(
+        input_rich_html_path=str(input_html),
+        report_output_path=str(output_html),
+        raw_content=False,
+    ).parse_and_generate_report()
+
+    html = output_html.read_text(encoding="utf-8")
+    assert "<script>alert" not in html
+    assert "<img src=x" not in html
+    assert "&lt;script&gt;alert(2)&lt;/script&gt;.exe" in html
+    assert "a │ b" in html
+    assert "<td>CHECK_X" in html.replace("<td> CHECK_X", "<td>CHECK_X")

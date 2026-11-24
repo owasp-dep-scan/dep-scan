@@ -244,7 +244,7 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 | `reachability` | keeps the reachability analyzers on | `reachability` |
 | `license` | appends the `license` pseudo type, which triggers the license analysis | `license` |
 | `supply-chain` | the package risk audit | `supply-chain` |
-| `binary` | adds the `binary-analysis` technique, which scans through blint | `binary` (needs the blint package) |
+| `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, and any other target keeps its cdxgen inventory with blint's security review running beside it | `binary` (needs the blint package) |
 | `memory-safety` | not implemented in this version | exits 4 when named explicitly |
 | `mobile` | not implemented in this version | exits 4 when named explicitly |
 | `code` | not implemented in this version | exits 4 when named explicitly |
@@ -253,6 +253,22 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 An explicit `--checks` list defines the whole optional set: checks not named are off, so `--checks vulnerabilities` turns reachability off (the v6 equivalent was `--reachability-analyzer off`). The `vulnerabilities` check always runs, named or not. A check named explicitly whose capability cannot run on the machine stops the scan with exit 4 before any work, printing the doctor's reason on stderr. `--checks all` selects every check whose capability is available, turns the unavailable ones off, and records each of them in the manifest as a `check-<name>` stage with status `not-assessed` and the doctor's reason. A scan whose every target is a BOM file or BOM directory produces no BOM, so neither the gate nor `all` holds a missing cdxgen or language plugin (golem, rusi, dosai, kosi, and the Go and .NET runtimes) against it: reachability reads the slices beside the BOMs, and an analyzer with no slices there is recorded as not assessed.
 
 Without `--checks` and without `--profile` the set is `vulnerabilities,reachability`, the v6 default, and it is never gated.
+
+The binary check on a source scan never replaces the scan's own inventory: the cdxgen BOM keeps every source component and its vulnerability findings, and blint's review reports land under `analysis/blint/` with each review result in `depscan.findings.json` as a `binary-hardening` finding. A review that fails is recorded as a failed `binary-review` stage on the manifest, with blint's reason.
+
+## Excluding trees from a scan
+
+A source scan reads the whole tree it is given, test fixtures and build material included, so a tree such as `test/` can add components and findings that are not part of the product. Name the trees to leave out with `--exclude` patterns in `--cdxgen-args` (or the `CDXGEN_ARGS` environment variable):
+
+```bash
+depscan scan /absolute/path/to/project --cdxgen-args "--exclude 'test/**' --exclude 'ci/**'" -o /absolute/path/to/reports
+```
+
+The patterns follow cdxgen's rules. They are globs anchored at the scanned path, never at the working directory, and `*` matches one path segment. `test/**` leaves out the `test` directory at the scanned root only; a leading `**/` is needed only to reach same-named directories nested below the root. Quote each pattern so the shell does not expand it, and give one `--exclude` per tree.
+
+dep-scan reads the same patterns once and applies them to every walk it starts itself, so a tree that is excluded for cdxgen is excluded everywhere: the targets of blint's binary review and of the post-build BOM, and the targets of the golem, rusi, kosi and dosai runs dep-scan makes when cdxgen left no report. dosai, and a blint that accepts an exclusion parameter, receive the patterns. blint is always handed only the directories and files the patterns keep. golem, rusi and kosi analyse one project directory per run and take no exclusion argument, so dep-scan starts each on the one project root the patterns leave (a scan path that is itself a project stays the target). When the patterns remove every project of that language, or remove some of several projects so that more than one remains, no run starts: the tool's reachability is reported as not assessed with that reason, and the fix is to scan one project directory or to exclude none of them. A scan whose patterns leave blint nothing to inventory fails with a reason saying so. No separate option exists for this. Excluding `test/**` from a scan of a tree that keeps `.nupkg` fixtures there removes their NuGet components, the vulnerability findings on them and the binary-hardening findings blint reported for them.
+
+A source scan of a tree that holds Dockerfiles or compose files also reads every image those files name. cdxgen pulls the images the local daemon lacks and extracts their layers, whatever the scan type, so a tree whose container files are build or CI material turns a scan into a long image-pulling run whose result depends on the daemon's state. Look for container files before scanning a large tree, and exclude the folders that hold CI or build images (for example `--exclude 'ci/**' --exclude 'contrib/**'`) when they are not product content. Container files under an excluded tree add no image pulls. A scan that outruns cdxgen's time budget fails with a reason naming the budget; `CDXGEN_TIMEOUT_MS` raises it (see [the environment variables](env-var)).
 
 ## The profiles
 

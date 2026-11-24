@@ -286,6 +286,18 @@ def _run_stages(
                 },
             ):
                 continue
+            # A requested blint review that failed ran during the inventory;
+            # its failure is a stage of its own beside the inventory that
+            # kept going, so a review problem never leaves only a warning.
+            for reason in tscan.review_not_assessed:
+                if ctx.scan_dir is not None:
+                    ctx.scan_dir.record_stage(
+                        "binary-review",
+                        "failed",
+                        project_type=project_type,
+                        reason=reason,
+                        capabilities=["binary"],
+                    )
             ctx.scans.append(tscan)
             _stage(
                 ctx,
@@ -296,6 +308,11 @@ def _run_stages(
                 project_type=project_type,
                 capabilities=["license"],
                 skipped_reason="license analysis was not requested",
+                record_extra=lambda: {
+                    "notAssessed": [tscan.license_not_assessed]
+                    if tscan.license_not_assessed
+                    else []
+                },
             )
             _stage(
                 ctx,
@@ -330,6 +347,7 @@ def _run_stages(
                 tscan,
                 project_type=project_type,
                 capabilities=["vulnerabilities"],
+                record_extra=lambda: {"notAssessed": _matching_not_assessed(tscan)},
             )
             _stage(
                 ctx,
@@ -350,6 +368,11 @@ def _run_stages(
                     project_type=project_type,
                     skipped=bool(not options.explain),
                     skipped_reason="the explanation was not requested",
+                    record_extra=lambda: {
+                        "notAssessed": [tscan.explain_not_assessed]
+                        if tscan.explain_not_assessed
+                        else []
+                    },
                 )
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
@@ -474,6 +497,27 @@ def _analyzer_entries(ctx, tscan):
     )
 
 
+def _matching_not_assessed(tscan):
+    """The not-assessed lines the matching stage's manifest entry carries.
+
+    The usage records whose components the scan did not load graded
+    nothing, and the database rows that name no component are left out of
+    the VDR and the findings; the counts say so on the entry, so neither is
+    dropped silently."""
+    lines = []
+    if tscan.ungraded_usage_records:
+        lines.append(
+            f"{tscan.ungraded_usage_records} cdxgen usage records grade nothing: "
+            "their components are not in the loaded package list"
+        )
+    rows = getattr(tscan.vdr_result, "rows_without_component", 0) or 0
+    if rows:
+        lines.append(
+            f"{rows} vulnerability rows named no component and are not in the VDR or the findings"
+        )
+    return lines
+
+
 def _inventory_capabilities(options, project_type: str) -> List[str]:
     """The capabilities the inventory stage's analyzer runs consult.
 
@@ -516,8 +560,24 @@ def _relative_output(ctx, path):
 
 
 def _inventory_outputs(ctx, tscan):
-    """The BOM document a type's inventory stage settled on, as a stage
-    output, when it lives in the scan directory."""
+    """The BOM documents a type's inventory stage produced, as stage outputs.
+
+    A scan that generated its documents lists every one the generator wrote
+    inside the scan directory, a lifecycle run's per-stage documents
+    included, so the outputs name what actually landed on disk. A scan
+    handed its BOMs as input (a BOM file or BOM directory target) names only
+    the single document it settled on, and only when that lives in the scan
+    directory: its other documents are inputs, not outputs.
+    """
+    args = ctx.args
+    generated = not (
+        getattr(args, "search_purl", None) or getattr(args, "bom", None) or ctx.bom_dir_mode
+    )
+    if generated:
+        outputs = []
+        for path in tscan.bom_files or []:
+            outputs.extend(_relative_output(ctx, path))
+        return outputs
     return _relative_output(ctx, tscan.bom_file)
 
 

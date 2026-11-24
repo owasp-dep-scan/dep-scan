@@ -43,9 +43,10 @@ Five kinds of evidence become records:
    purls are the ``subjects`` entries that are purls; a bom-audit
    annotation subjects the BOM serial number, which is not a purl, so its
    record keeps empty purls while the attributes keep the subjects, the
-   annotator and the text as given (cdxgen renders its ``cdx:audit:*``
-   facts into the text; a properties array is kept too). The annotation
-   timestamp is dropped from the record.
+   annotator and the text as given, a subject that is the BOM's own serial
+   number spelled ``<bom>`` (cdxgen renders its ``cdx:audit:*`` facts into
+   the text; a properties array is kept too). The annotation timestamp is
+   dropped from the record.
 4. One ``introspection`` record per introspection report: the
    ``overall``, ``ledger``, ``ecosystems``, ``coverageGaps``,
    ``remediation`` and ``observations`` blocks as given, gated on the
@@ -113,7 +114,9 @@ directory or by another user gives the same ids. An annotation's id
 leaves out what changes when the same BOM is generated again: the
 timestamp, a subject that is the BOM's own serial number, and the
 creation date the SaaSBOM note writes into its text; a bom-audit
-annotation is identified by its ``cdx:audit:*`` facts and subjects.
+annotation is identified by its ``cdx:audit:*`` facts and subjects. The
+annotation's attributes spell that serial-number subject ``<bom>`` as
+well, so the record content, not only its id, survives a regenerated BOM.
 """
 
 from __future__ import annotations
@@ -512,6 +515,15 @@ def _introspection_record(
 # ---------------------------------------------------------------------------
 
 
+def _spelled_subjects(subjects: Any, serial: Optional[str]) -> List[Any]:
+    """The subjects of an annotation with the BOM's own serial number
+    spelled ``<bom>``: cdxgen writes a fresh ``urn:uuid`` serial on every
+    run, so a subject equal to it is a per-run value, not evidence, while
+    every other subject (another document's serial, a purl) is kept as
+    given. A subjects value that is not an array has no entries to spell."""
+    return ["<bom>" if serial and subject == serial else subject for subject in as_list(subjects)]
+
+
 def _annotation_identity(annotation: dict, serial: Optional[str]) -> Any:
     """What an annotation's id hashes: its content without the parts that
     change when the same BOM is generated again.
@@ -522,10 +534,7 @@ def _annotation_identity(annotation: dict, serial: Optional[str]) -> Any:
     properties array), its subjects and its annotator; any other
     annotation is its content with the creation date and timestamps in its
     text spelled ``<date>``."""
-    subjects = [
-        "<bom>" if serial and subject == serial else subject
-        for subject in as_list(annotation.get("subjects"))
-    ]
+    subjects = _spelled_subjects(annotation.get("subjects"), serial)
     text = annotation.get("text")
     audit: Dict[str, Any] = {}
     if isinstance(text, str):
@@ -879,7 +888,15 @@ def _annotation_record(
     if annotator is not None:
         attributes["annotator"] = paths.redact(annotator)
     if "subjects" in annotation:
-        attributes["subjects"] = paths.redact(raw_subjects)
+        # The attributes spell the BOM's own serial number <bom>, the way
+        # the record's id does, so a regenerated BOM (a fresh urn:uuid every
+        # cdxgen run) writes the same record content; every other subject is
+        # kept as given, and so is a subjects value that is not an array.
+        attributes["subjects"] = paths.redact(
+            _spelled_subjects(raw_subjects, serial)
+            if isinstance(raw_subjects, list)
+            else raw_subjects
+        )
     properties = annotation.get("properties")
     if properties is not None and not isinstance(properties, list):
         skipped.add("annotation properties values are not arrays and name no property")

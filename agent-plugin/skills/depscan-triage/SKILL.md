@@ -42,7 +42,8 @@ The explanation is rendered for the whole scan in this version; read it as
 the scan's context around each finding, not as a per-finding text. It is
 built from the slices and OpenAPI files in the scan directory, so a scan
 that ran without reachability (`--profile quick`, a skipped or failed
-reachability stage) has nothing to explain, and the output says so.
+reachability stage) has nothing to explain and no explanation appears;
+report the explanation as not assessed, not as an all-clear.
 
 ## The MCP server
 
@@ -85,13 +86,28 @@ is never "nothing is reachable".
    `coverage.state`: `assessed` means the matcher evaluated it against the
    database; anything else was not evaluated.
 3. Rank what to fix first by severity, reachability state where the scan
-   recorded one, and whether a fixed version exists. Say what each ranking
-   rests on.
+   recorded one, and whether a fixed version exists: each finding's
+   `fix.fixed_versions` carries it, and the VDR the scan wrote
+   (`<bom>.vdr.json`, such as `sbom-docker.vdr.json`) repeats it in each
+   vulnerability's `recommendation` string. The VDR's `ratings` arrays can
+   hold empty objects, so read severities from the findings document. Say
+   what each ranking rests on.
 4. Answer reachability questions with what the scan records (the
    reachability slices and the explanation with `--explain`). Absence of a
    reachability entry is not evidence of "not reachable"; say the scan did
    not assess it.
-5. Never mark a finding `not_affected`, never record a decision, and never
+5. Attribute every "fix this" item to where the component really comes
+   from before calling it the user's own: a universal or container scan
+   mixes the project's manifest-born components with image-born ones, and
+   the SBOM's `internal:SrcFile` property is a weak guide (a stamp such as
+   `pnpm-lock.yaml` can land on an image RPM). Confirm attribution by
+   finding the exact version in the project's own manifest or lockfile
+   (the purl and version must both match); a version the lockfile does not
+   pin came from an image or fixture, and a lockfile bump will not clear
+   it. Count the noise bucket from the findings themselves, not from a
+   category name, and re-check every count and total you state against a
+   query you can show.
+6. Never mark a finding `not_affected`, never record a decision, and never
    quote a secret the findings or BOM carry. Name the component instead.
 
 ## What this proves and what it does not

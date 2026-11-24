@@ -1,6 +1,6 @@
 [project]
 name = "ds-server-lib"
-version = "7.0.0a2"
+version = "7.0.0a3"
 description = "Server library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -10,7 +10,7 @@ dependencies = [
     "custom-json-diff~=2.1.6",
     "quart~=0.20",
     "rich~=15.0.0",
-    "ds-analysis-lib~=7.0.0a2"
+    "ds-analysis-lib~=7.0.0a3"
 ]
 
 requires-python = ">=3.11"

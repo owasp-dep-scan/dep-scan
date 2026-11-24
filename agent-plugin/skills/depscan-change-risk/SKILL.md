@@ -32,13 +32,25 @@ diff_scans(old_scan_dir=<old>, new_scan_dir=<new>)
 Without the MCP server, produce two scans and compare the documents:
 
 ```bash
-depscan scan /absolute/path/to/old-revision --format json -o /tmp/old-reports
-depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/old-revision --format json -o /tmp/old-reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
 ```
+
+Bound both sides the same way before launching. When a tree holds container
+files, fixture corpora or other non-product trees, pass the same
+`--cdxgen-args "--exclude ..."` set to both scans (patterns anchor at each
+scanned root), and name that scope before the first command runs: two
+inventories of different material answer a different question than the one
+asked, and a source scan reads and pulls every image its Dockerfiles name
+(see [reference/safety.md](../../reference/safety.md)).
 
 Read both manifests' `stages` first: a stage that is anything but
 `completed` on one side makes the delta for its categories not assessed.
-Then diff the findings by id: added ids are new findings, missing ids are
+Then check what each side's inventory covered: compare the two BOMs'
+component counts and purl-type mix and the introspection summary beside
+each BOM (its `overall` names the tier reached). A verdict such as
+"better" or "unchanged" says which components it covers, not only which
+directories were excluded. Then diff the findings by id: added ids are new findings, missing ids are
 fixed ones, and shared ids with a changed severity or coverage changed
 state.
 

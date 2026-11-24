@@ -64,8 +64,9 @@ with the user's consent, and never pass `--allow-scans`.
 | `--explain` | Add the explanation of the analysis to the report and stderr. |
 | `--csaf` | Export a CSAF VEX document next to the BOM (`<bom-base>.csaf.json`). |
 | `--csaf-version {2.0,2.1}` | The CSAF version; default 2.1. |
-| `--cdxgen-args "<args>"` | Extra arguments for the cdxgen run a scan performs. |
+| `--cdxgen-args "<args>"` | Extra arguments for the cdxgen run a scan performs, shell-quoted as one string. `--exclude 'trees/**'` entries reach cdxgen's own walk (one `--exclude` per tree, patterns anchored at the scanned root) and keep non-product trees out of the BOM, and dep-scan applies them to its own binary-review and language-tool walks too; container files under an excluded tree add no image pulls. |
 | `CDXGEN_CMD` | Environment variable naming the cdxgen command; dep-scan needs cdxgen 13.8.0 or newer. |
+| `CDXGEN_TIMEOUT_MS` | Environment variable for cdxgen's own time budget; 30 minutes by default. A cdxgen failure names the budget that was in effect, and a scan whose inventory is slow (an image-pulling tree, for example) raises it rather than cutting the tree. |
 | `VDB_HOME` | Environment variable naming the vulnerability database directory. |
 
 Exit codes: 0 success, 1 could not run, 2 usage error, 4 capability

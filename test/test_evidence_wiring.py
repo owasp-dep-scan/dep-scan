@@ -132,24 +132,26 @@ DEJACODE_USAGE_EVIDENCE = {
 }
 
 # The presence values a BOM-directory scan of the dejacode fixture gives with
-# the usage evidence above attached and reachability off. The aggregated
-# loader keeps only the identity evidences of each component, so usage
-# never proves presence on such a scan: the values are likely or unlikely
-# only, and proven comes from reach alone. They are pinned as literals, not
-# recomputed by the code under test, so a regression in what the wiring
-# feeds the axis cannot redefine them.
+# the usage evidence above attached and reachability off. The scan reads the
+# BOM's usage records and grades presence from them on this scan type too:
+# the four components with evidence attached (occurrences or a callstack)
+# are proven, and the components without evidence keep the value their
+# scope gives, likely or unlikely. The map was recorded from a run of this
+# scan and then checked by hand against those rules; it is pinned as
+# literals, not recomputed by the code under test, so a regression in what
+# the wiring feeds the axis cannot redefine it.
 BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF = {
-    "pkg:pypi/defusedxml@0.7.1": "likely",
-    "pkg:pypi/django-axes@8.3.1": "unlikely",
+    "pkg:pypi/defusedxml@0.7.1": "proven",
+    "pkg:pypi/django-axes@8.3.1": "proven",
     "pkg:pypi/django-crispy-forms@2.7": "unlikely",
     "pkg:pypi/django-guardian@3.5.2": "unlikely",
     "pkg:pypi/django-otp@1.7.5": "likely",
-    "pkg:pypi/django-registration@5.2.1": "likely",
+    "pkg:pypi/django-registration@5.2.1": "proven",
     "pkg:pypi/django@6.1.2": "likely",
     "pkg:pypi/license-expression@30.4.4": "likely",
     "pkg:pypi/odfdo@3.27.3": "likely",
     "pkg:pypi/qrcode@8.2": "likely",
-    "pkg:pypi/requests@2.34.2": "likely",
+    "pkg:pypi/requests@2.34.2": "proven",
 }
 
 # The three binary-hardening findings the committed blint recording's checks
@@ -401,6 +403,16 @@ def _manifest_of(reports_dir):
 
 def _enrichment_stage(manifest):
     return next(stage for stage in manifest["stages"] if stage["name"] == "enrichment")
+
+
+def _matching_stage(manifest, project_type):
+    """A project type's matching stage entry, the one whose not-assessed
+    lines count the usage records that graded nothing."""
+    return next(
+        stage
+        for stage in manifest["stages"]
+        if stage["name"] == "matching" and stage.get("projectType") == project_type
+    )
 
 
 def _dejacode_with_evidence(tmp_path, name="dejacode"):
@@ -756,7 +768,7 @@ def test_the_finding_joins_its_evidence_and_names_a_witness(scan_stubs, tmp_path
     assert finding["components"] == [STUB_FINDING_PURL]
     reports = Path(result.reports_dir)
     index = json.loads((reports / "evidence.index.json").read_text())
-    joined = index["byFinding"][finding["id"]]
+    joined = index["byFinding"][f"{finding['id']} {finding['components'][0]}"]
     assert joined, "the index joins the finding to the records of its package"
     records = {
         record["id"]: record
@@ -1056,20 +1068,22 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
     }
     assert occurrence_ids, "the store holds the cdxgen occurrence records of the finding's package"
     index = json.loads((bom_dir / "evidence.index.json").read_text())
-    assert occurrence_ids <= set(index["byFinding"][finding["id"]]), (
+    assert occurrence_ids <= set(
+        index["byFinding"][f"{finding['id']} {finding['components'][0]}"]
+    ), (
         "the join must reach the specific occurrence records of the component"
     )
 
 
-def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_path, monkeypatch):
+def test_bom_dir_presence_grades_the_read_boms_usage_records(scan_stubs, tmp_path, monkeypatch):
     """A BOM-directory scan of the dejacode fixture with usage evidence
     attached gives every component the values pinned in
-    BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF: the aggregated package list
-    keeps only the identity evidences, so usage proves nothing there and
-    presence is likely or unlikely, with proven reserved for reach. The
-    BOM's usage records still reach the store (they are additive); only the
-    grading skips them, so a wiring that fed them to the axis cannot pass
-    this test, and neither can one that skipped the cdxgen adapter."""
+    BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF, which were recorded under this
+    rule: the scan reads the BOM's usage records, and the components with
+    occurrences or a callstack are proven on the aggregated load too, while
+    the components without evidence keep the value their scope gives. A
+    wiring that still skipped the aggregated documents' records, or one
+    that skipped the cdxgen adapter, cannot pass this test."""
     monkeypatch.setattr(
         sys.modules[__name__], "STUB_FINDING_PURLS", tuple(BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF)
     )
@@ -1083,10 +1097,7 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_pa
         ),
         render=False,
     )
-    values = {
-        finding["components"][0]: finding["exploitability"]["axes"]["presence"]
-        for finding in result.findings
-    }
+    values = _presence(result)
     assert values == BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF
     records = _store_records(bom_dir)
     assert any(
@@ -1094,10 +1105,11 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_pa
         for record in records
         if record["producer"]["name"] == "cdxgen"
     ), "the usage records are still written to the store"
+    matching = _matching_stage(result.manifest, "bom")
+    assert not matching.get("notAssessed"), "every dejacode usage record matched a component"
 
     # With reachability on, every component of this fixture is reached, and
-    # presence is proven by reach alone: the stripped usage view costs
-    # nothing there.
+    # presence is proven by reach alone there.
     reach_result = api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),
@@ -1694,6 +1706,299 @@ def test_a_bom_the_adapter_reads_names_no_usage_reason(scan_stubs, tmp_path, mon
     monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", tuple(USAGE_PRESENCE))
     result = _source_scan_of(_usage_bom(), tmp_path, monkeypatch)
     assert all("reasons" not in finding["coverage"] for finding in result.findings)
+
+
+def test_an_aggregated_directory_grades_usage_from_every_bom(scan_stubs, tmp_path, monkeypatch):
+    """Two BOM documents of one directory give usage records for the same
+    purl: the committed cdxgen recording (occurrences and a callstack) and a
+    second document repeating the component with occurrences of its own. The
+    aggregated load grades on both documents' records, so presence is
+    proven; the index joins the finding to every one of those records, and
+    no record counts twice anywhere."""
+    purl = "pkg:pypi/sqlparse@0.6.1"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    shutil.copy2(CDXGEN_DATA / "sbom-python.cdx.json", bom_dir / "first.cdx.json")
+    recording = json.loads((CDXGEN_DATA / "sbom-python.cdx.json").read_text(encoding="utf-8"))
+    recorded = next(c for c in recording["components"] if c.get("purl") == purl)
+    second = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.7",
+        "metadata": recording["metadata"],
+        "components": [
+            {
+                "type": "library",
+                "name": "sqlparse",
+                "version": "0.6.1",
+                "scope": "required",
+                "purl": purl,
+                "bom-ref": purl,
+                "evidence": {"occurrences": recorded["evidence"]["occurrences"][:2]},
+            }
+        ],
+    }
+    (bom_dir / "second.cdx.json").write_text(json.dumps(second), encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    assert _presence(result) == {purl: "proven"}, "records of both documents graded"
+    records = _store_records(bom_dir)
+    ids = [record["id"] for record in records]
+    assert len(ids) == len(set(ids)), "no record is written twice"
+    usage = [
+        record
+        for record in records
+        if record["kind"] in ("occurrence", "callstack") and purl in record["subject"]["purls"]
+    ]
+    kinds_by_source = {}
+    for record in usage:
+        kinds_by_source.setdefault(record["source"], set()).add(record["kind"])
+    assert kinds_by_source == {
+        "first.cdx.json": {"occurrence", "callstack"},
+        "second.cdx.json": {"occurrence"},
+    }, "each document's records reached the store under their own source"
+    index = json.loads((bom_dir / "evidence.index.json").read_text())
+    (finding,) = result.findings
+    joined = set(index["byFinding"][f"{finding['id']} {finding['components'][0]}"])
+    assert {record["id"] for record in usage} <= joined, (
+        "the finding joins the records of both documents"
+    )
+    assert joined <= set(ids), "the index names only records that exist"
+    assert not _matching_stage(result.manifest, "bom").get("notAssessed")
+
+
+@pytest.mark.parametrize("evidence_first", [True, False], ids=["evidence-first", "plain-first"])
+def test_a_case_differing_purl_still_names_the_loaded_component(
+    scan_stubs, tmp_path, monkeypatch, evidence_first
+):
+    """A directory where the document carrying the usage evidence spells
+    the purl in lowercase and the loaded component spells it capitalized:
+    nuget purls compare without case, so the record belongs to the
+    component and proves the finding, whose ref spells the loaded
+    component's purl exactly, whichever document the aggregate read
+    first."""
+    purl = "pkg:nuget/NodaTime@3.1.9"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+
+    def document(component):
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+            "components": [component],
+        }
+
+    plain = document(
+        {
+            "type": "library",
+            "name": "NodaTime",
+            "version": "3.1.9",
+            "scope": "required",
+            "purl": purl,
+            "bom-ref": purl,
+        }
+    )
+    evidence = document(
+        {
+            "type": "library",
+            "name": "nodatime",
+            "version": "3.1.9",
+            "scope": "required",
+            "purl": "pkg:nuget/nodatime@3.1.9",
+            "evidence": {"occurrences": [{"location": "Program.cs", "line": 3}]},
+        }
+    )
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    documents = {"a-first.cdx.json": evidence if evidence_first else plain}
+    documents["b-second.cdx.json"] = plain if evidence_first else evidence
+    for name, body in documents.items():
+        (bom_dir / name).write_text(json.dumps(body), encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    (finding,) = result.findings
+    assert finding["components"] == [purl]
+    assert finding["exploitability"]["axes"]["presence"] == "proven", (
+        "the lowercase record names the loaded component"
+    )
+
+
+def test_a_refused_bom_still_names_itself_on_a_finding_graded_from_another(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """One directory holds a healthy BOM and a BOM at a spec major the
+    adapter refuses, both naming the same package. The finding grades on the
+    healthy BOM's usage records, and its coverage still names the refused
+    BOM with the adapter's reason: an unread document never looks measured,
+    whatever another document proved."""
+    purl = "pkg:pypi/shared@1.0"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+
+    def document(spec_version, lines):
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": spec_version,
+            "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+            "components": [
+                {
+                    "type": "library",
+                    "name": "shared",
+                    "version": "1.0",
+                    "scope": "required",
+                    "purl": purl,
+                    "bom-ref": purl,
+                    "evidence": {
+                        "occurrences": [{"location": "app.py", "line": line} for line in lines]
+                    },
+                }
+            ],
+        }
+
+    healthy = document("1.7", [3, 7])
+    (bom_dir / "first.cdx.json").write_text(json.dumps(healthy), encoding="utf-8")
+    (bom_dir / "second.cdx.json").write_text(json.dumps(document("2.0", [5])), encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    (finding,) = result.findings
+    assert finding["exploitability"]["axes"]["presence"] == "proven", (
+        "the healthy document's records graded"
+    )
+    (reason,) = finding["coverage"]["reasons"]
+    assert reason["capability"] == "presence:usage"
+    assert reason["reason"] == "report-not-assessed"
+    assert "second.cdx.json" in reason["detail"] and "2.0" in reason["detail"]
+    sources = {record["source"] for record in _store_records(bom_dir)}
+    assert "first.cdx.json" in sources and "second.cdx.json" not in sources, (
+        "the refused document left no records"
+    )
+
+
+def test_records_of_components_the_loader_leaves_out_count_as_not_assessed(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """The usage records of components no loaded package names (a nested
+    ``application``, a ``data`` twin, a data component whose purl no library
+    shares) grade nothing, and the matching stage's manifest entry counts
+    them, so they disappear from the grading without disappearing from the
+    record."""
+    purl = "pkg:pypi/kept@1.0"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+    document = _usage_bom()
+    document["components"] = [
+        {
+            "type": "library",
+            "name": "kept",
+            "purl": purl,
+            "bom-ref": purl,
+            "evidence": {"occurrences": [{"location": "app.py", "line": 3}]},
+        },
+        {
+            "type": "library",
+            "name": "parent",
+            "purl": "pkg:pypi/parent@1.0",
+            "bom-ref": "pkg:pypi/parent@1.0",
+            "components": [
+                {
+                    "type": "application",
+                    "name": "napp",
+                    "purl": "pkg:pypi/napp@1.0",
+                    "bom-ref": "pkg:pypi/napp@1.0",
+                    "evidence": {"occurrences": [{"location": "app.py", "line": 13}]},
+                }
+            ],
+        },
+        {
+            "type": "data",
+            "name": "twin",
+            "purl": purl,
+            "bom-ref": "twin-data",
+            "evidence": {"occurrences": [{"location": "app.py", "line": 15}]},
+        },
+        {
+            "type": "data",
+            "name": "orphan",
+            "purl": "pkg:pypi/orphan@1.0",
+            "evidence": {"occurrences": [{"location": "app.py", "line": 17}]},
+        },
+    ]
+    result = _source_scan_of(document, tmp_path, monkeypatch)
+    assert _presence(result) == {purl: "proven"}, "the kept component's record graded"
+    matching = _matching_stage(result.manifest, "python")
+    assert matching.get("notAssessed") == [
+        "3 cdxgen usage records grade nothing: their components are not in the loaded package list"
+    ]
+    occurrences = {
+        record["subject"]["purls"][0]
+        for record in _store_records(tmp_path / "reports")
+        if record["kind"] == "occurrence"
+    }
+    assert {"pkg:pypi/napp@1.0", "pkg:pypi/orphan@1.0", purl} <= occurrences, (
+        "the left-out components' records still reached the store"
+    )
+
+
+def test_a_lifecycle_scan_proves_presence_from_the_boms_usage(scan_stubs, tmp_path, monkeypatch):
+    """A source scan under the semantic analyzer runs in lifecycle mode and
+    loads its BOM through the aggregated loader, which keeps only identity
+    evidence; the BOM's usage records still prove presence there. No slices
+    exist, so nothing reaches the package and only usage can prove it."""
+    purl = "pkg:pypi/used@1.0"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+    aggregated = []
+    real_get_all_pkg_list = pipeline.get_all_pkg_list
+
+    def counting_get_all_pkg_list(from_dir):
+        aggregated.append(from_dir)
+        return real_get_all_pkg_list(from_dir)
+
+    monkeypatch.setattr(pipeline, "get_all_pkg_list", counting_get_all_pkg_list)
+    document = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.7",
+        "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+        "components": [
+            {
+                "type": "library",
+                "name": "used",
+                "purl": purl,
+                "bom-ref": purl,
+                "scope": "required",
+                "evidence": {"occurrences": [{"location": "app.py", "line": 3}]},
+            }
+        ],
+    }
+    result = _source_scan_of(
+        document, tmp_path, monkeypatch, reachability_analyzer="SemanticReachability"
+    )
+    assert aggregated, "positive control: the aggregated loader ran on the lifecycle load"
+    (finding,) = result.findings
+    assert finding["exploitability"]["axes"]["reach"] == "not_assessed", (
+        "no slices exist, so reach says nothing here"
+    )
+    assert _presence(result) == {purl: "proven"}, "the BOM's usage records proved presence"
 
 
 def test_a_source_scan_reads_no_trace_bom_left_in_its_reports_dir(

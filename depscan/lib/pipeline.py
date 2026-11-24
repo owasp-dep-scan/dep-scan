@@ -67,7 +67,8 @@ from vdb.lib.utils import parse_purl
 from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
-from depscan.lib import explainer, utils
+from depscan.lib import binary_review, explainer, utils
+from depscan.lib.exclusions import ExclusionSet
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
@@ -94,7 +95,7 @@ from depscan.lib.config import (
     spdx_license_list,
     write_vdb_image_marker,
 )
-from depscan.lib.license import build_license_data, bulk_lookup
+from depscan.lib.license import build_license_data, bulk_lookup, packages_without_license_data
 from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console, log_console
 
 LOGO = """
@@ -167,6 +168,18 @@ class TypeScan:
     risk_error: Optional[str] = None
     # Why a requested risk audit had nothing it could audit for this type.
     risk_not_assessed: Optional[str] = None
+    #: How many of this type's packages carried no license data at all, as
+    #: the notAssessed line the licenses stage records; None when the stage
+    #: did not run or every package carried license data.
+    license_not_assessed: Optional[str] = None
+    #: Why the requested explanation rendered nothing, named by the
+    #: explainer (a missing input or the rendering gates); None when
+    #: something was rendered or no explanation was requested.
+    explain_not_assessed: Optional[str] = None
+    #: Why a requested blint binary review did not assess, recorded as the
+    #: scan's binary-review stage; empty when the review ran or none was
+    #: requested.
+    review_not_assessed: List[str] = field(default_factory=list)
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -190,15 +203,19 @@ class TypeScan:
     #: only the reachability names; the store write and the exploitability
     #: inputs read them all.
     adapter_results: Dict[str, "AdapterResult"] = field(default_factory=dict)
-    #: The BOM documents whose components the package loader kept with their
-    #: usage evidence, each with the keys (``bom-ref``, else purl) of those
-    #: components. A load of one BOM keeps every component's evidence; the
-    #: aggregated BOM-directory loader keeps none, so on such a scan only a
-    #: user BOM appended to the aggregate is listed.
-    usage_documents: Dict[str, Set[str]] = field(default_factory=dict)
     #: cdxgen's adapter result of each BOM document, keyed by the path the
     #: inventory stage listed it under.
     cdxgen_reads: Dict[str, "AdapterResult"] = field(default_factory=dict)
+    #: For each BOM document in ``cdxgen_reads``, the keys (``bom-ref``, else
+    #: purl) and the comparable purls of the components of that document the
+    #: loaders keep, assessed or refused alike. A document whose result was
+    #: not completed owes every loaded package these name a reason in
+    #: ``ScanContext.usage_not_assessed``.
+    cdxgen_document_keys: Dict[str, Tuple[Set[str], Set[str]]] = field(default_factory=dict)
+    #: How many cdxgen usage records of this type matched no loaded component
+    #: and therefore graded nothing; the matching stage's manifest entry
+    #: carries the count as a not-assessed line.
+    ungraded_usage_records: int = 0
     #: The BOM documents cdxgen wrote with an introspection score below its
     #: gate (exit status 4); their fidelity tier is logged from the
     #: introspection records.
@@ -272,13 +289,20 @@ class ScanContext:
     #: A record that arrives again is kept again; the store's write rules
     #: fold the copies (and merge their caveats) at write time.
     evidence_records: List = field(default_factory=list)
+    #: Whether a blint review of this scan completed, and the coverage
+    #: reports it wrote, so the rendering states the review's coverage
+    #: whatever the inventory outcome of the type that ran it was.
+    blint_review_ran: bool = False
+    blint_coverage_files: List[str] = field(default_factory=list)
     #: The Python object ids of the records already in ``evidence_records``,
     #: so a result shared by several types is added once.
     evidence_record_objects: Set[int] = field(default_factory=set)
     #: Why a package's usage evidence was not assessed, keyed by comparable
-    #: purl: the reason cdxgen's adapter gave for not reading the BOM the
-    #: package was loaded from with its evidence. A finding of such a package
-    #: whose presence was not proven carries the reason in its coverage.
+    #: purl: the reason cdxgen's adapter gave for not assessing a BOM
+    #: document that names the package. Every graded finding of such a
+    #: package carries the reason in its coverage, proven presence included,
+    #: so a finding that graded on another BOM's records still names the BOM
+    #: that was not read.
     usage_not_assessed: Dict[str, str] = field(default_factory=dict)
     #: atom's adapter results, one per group of atom output files read
     #: together, keyed by the group's sorted resolved paths. A file is read
@@ -851,29 +875,36 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     written last, through a temporary file and a rename, so it lists only
     files that exist, the evidence files included. A scan that stopped
     partway still gets one, carrying the failed stage and its reason.
-    Returns the manifest and the findings array, or None when this run
-    writes no scan directory.
+
+    A scan where no project type produced a result (every type's inventory
+    failed or listed no packages) and no blint review ran writes no findings
+    file: an empty findings array is the mark of a scan whose matching ran
+    and found nothing, and nothing here was matched. Cdxgen's own evidence
+    records do not change that. A completed blint review still writes the
+    file, because its binary-hardening findings are findings even when the
+    BOM it reviewed lists no components to scan. The
+    manifest it still writes shows no matching stage completed, which is
+    what refuses the directory at load time. Returns the manifest and the
+    findings array, or None when this run writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
-    findings_document = scan_directory.write_findings(
-        ctx.reports_dir,
-        ctx.all_pkg_vulnerabilities,
-        get_version(),
-        exploitability=ctx.exploitability,
-        blint_reviews=any(
-            blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
-            for project_type in (ctx.project_types or [None])
-        ),
-        evidence_records=ctx.evidence_records,
-        usage_not_assessed=ctx.usage_not_assessed,
-    )
+    findings: List = []
+    if ctx.scans or ctx.blint_review_ran:
+        findings_document = scan_directory.write_findings(
+            ctx.reports_dir,
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            exploitability=ctx.exploitability,
+            blint_reviews=_scan_requested_blint_reviews(ctx),
+            evidence_records=ctx.evidence_records,
+            usage_not_assessed=ctx.usage_not_assessed,
+        )
+        findings = findings_document["findings"]
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
-        index = evidence_store.build_index(
-            evidence_store.read(evidence_path), findings_document["findings"]
-        )
+        index = evidence_store.build_index(evidence_store.read(evidence_path), findings)
         evidence_store.write_index(
             os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_INDEX_FILE), index
         )
@@ -883,7 +914,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         shards_used=ctx.shards_connected,
     )
     scan_directory.write_manifest(scan_dir, manifest)
-    return {"manifest": manifest, "findings": findings_document["findings"]}
+    return {"manifest": manifest, "findings": findings}
 
 
 def stage_database(ctx):
@@ -1041,6 +1072,11 @@ def finalize_setup(ctx):
         LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
         search.load_custom_data(args.custom_data)
     ctx.purl_pkg_list = pkg_list
+    exclusions = ExclusionSet.from_options(ctx.depscan_options)
+    if exclusions:
+        # The patterns bound dep-scan's own walks as well as cdxgen's; naming
+        # them (and where they came from) shows what a scan left out.
+        LOG.info("Exclude patterns applied to this scan's walks: %s", exclusions.describe())
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         ctx.perform_risk_audit = True
@@ -1247,6 +1283,9 @@ def _produce_boms(ctx, scan):
     # Lifecycle runs nominate nothing: no one of their per-stage documents
     # represents the project.
     scan.nominated_bom_file = None
+    # Only the source-scan branch below fills this in; the failure path
+    # after the chain reads it through getattr, which tolerates None.
+    bom_result = None
     # Are we scanning a single purl
     if args.search_purl:
         creation_status = True
@@ -1293,13 +1332,18 @@ def _produce_boms(ctx, scan):
             getattr(bom_result, "introspection_gate_missed", None) or []
         )
         scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
+        scan.review_not_assessed = list(getattr(bom_result, "review_not_assessed", None) or [])
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
             scan.target_bom_file,
         )
+        # The generator's own reason, when it gave one, says more than the
+        # generic line: a cdxgen failure names its exit status and the
+        # CDXGEN_TIMEOUT_MS budget that was in effect.
         scan.inventory_error = (
-            f"the BOM for the {scan.project_type} type was not created; the type's "
+            getattr(bom_result, "failure_reason", None)
+            or f"the BOM for the {scan.project_type} type was not created; the type's "
             "packages were not scanned"
         )
         if ctx.args.fail_on_error:
@@ -1338,6 +1382,30 @@ def _component_key(component) -> Optional[str]:
     return key if isinstance(key, str) and key else None
 
 
+def _document_component_keys(document) -> Tuple[Set[str], Set[str]]:
+    """The keys and the comparable purls of the components of one BOM
+    document the loaders keep.
+
+    A document the cdxgen adapter did not assess still names the packages
+    it would have contributed, and the loaded packages it names are the
+    ones its refusal owes a reason to; the walk is the loader's own filter,
+    so the named set is exactly what a load of the document would keep. A
+    document that is not a JSON object names nothing."""
+    from analysis_lib.findings.vdr_convert import comparable_purl
+    from analysis_lib.packages import bom_components
+
+    keys = set()
+    purls = set()
+    for component in bom_components(document):
+        key = _component_key(component)
+        if key:
+            keys.add(key)
+        purl = component.get("purl")
+        if isinstance(purl, str) and purl:
+            purls.add(comparable_purl(purl))
+    return keys, purls
+
+
 def _load_packages(ctx, scan):
     """Load the package list for this type from its BOM documents.
 
@@ -1357,12 +1425,6 @@ def _load_packages(ctx, scan):
             user_pkgs, _ = get_pkg_list(ctx.args.bom)
             appended = [pkg for pkg in user_pkgs if _component_key(pkg) not in seen]
             scan.pkg_list += appended
-            # The aggregated loader keeps only the identity evidence of the
-            # components it loads; the user BOM appended to it keeps each
-            # component whole, usage evidence included.
-            scan.usage_documents = {
-                ctx.args.bom: {key for key in map(_component_key, appended) if key}
-            }
     # We are working with a single BOM file and will collect all packages from it accordingly.
     elif scan.bom_file:
         LOG.debug("Scanning using the bom file %s", scan.bom_file)
@@ -1373,9 +1435,6 @@ def _load_packages(ctx, scan):
                 scan.bom_file,
             )
         scan.pkg_list, _ = get_pkg_list(scan.bom_file)
-        scan.usage_documents = {
-            scan.bom_file: {key for key in map(_component_key, scan.pkg_list) if key}
-        }
     # An empty package list is reported whatever its source. Matching zero
     # packages would print "No vulnerabilities found", which reads as clean.
     if not scan.pkg_list:
@@ -1453,7 +1512,11 @@ def stage_analysis_licenses(ctx, scan) -> bool:
     """Look up license risks, before any security-related analysis.
 
     Returns False when license analysis was not requested, so the scan's
-    manifest can record the stage as skipped rather than silent.
+    manifest can record the stage as skipped rather than silent. When it
+    ran, the report file is written whatever the lookup matched (see
+    :func:`licenses_risk_table`), and the packages whose BOM entries stated
+    no license are counted in ``scan.license_not_assessed`` so the manifest
+    can say they were never assessed rather than clean.
     """
     args = ctx.args
     # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
@@ -1463,6 +1526,12 @@ def stage_analysis_licenses(ctx, scan) -> bool:
         build_license_data(license_data_dir, spdx_license_list),
         pkg_list=scan.pkg_list,
     )
+    without, total = packages_without_license_data(scan.pkg_list, licenses_results)
+    if without:
+        scan.license_not_assessed = (
+            f"{without} of {total} packages carry no license data at all; "
+            "their licenses were not assessed"
+        )
     license_report_file = os.path.join(ctx.reports_dir, f"license-{scan.project_type}.json")
     ltable = licenses_risk_table(scan.project_type, licenses_results, license_report_file)
     if ltable and not args.no_vuln_table:
@@ -1535,8 +1604,8 @@ def stage_analysis_risk(ctx, scan) -> bool:
             if not args.no_vuln_table and report_data and rtable:
                 console.print(rtable)
         if report_rows and scan.risk_report_file:
-            # The risk audit findings are stored in jsonl format.
-            file_write(scan.risk_report_file, "\n".join(json.dumps(row) for row in report_rows))
+            # The risk audit findings are stored as one JSON array of rows.
+            file_write(scan.risk_report_file, json.dumps(report_rows, indent=2))
     except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
         LOG.error(e)
         LOG.error("Risk audit was not successful")
@@ -1848,20 +1917,22 @@ def _merge_adapter_results(reads: List[Tuple[str, Any]]):
 
 def _cdxgen_adapter_result(ctx, scan):
     """cdxgen's BOM evidence as records: one adapter call per BOM document
-    whose components this type's package list was built from.
+    the inventory stage listed for this type.
 
     The documents are the ones the inventory stage settled on, a BOM
     directory's BOM files or the type's own BOM, and each carries the
     build-introspection report that sits beside it
     (``<bom>.introspection.json``, cdxgen's own naming). The adapter runs
     whatever the reachability setting, because the presence axis reads the
-    usage records of the documents the package loader kept evidence from
-    (see :func:`_exploitability_inputs`); every document's records reach
-    the store. Each document's result is kept in ``scan.cdxgen_reads``. A
-    BOM the adapter refuses is logged with the reason and costs its own
-    records alone, so the healthy documents' records survive. For a BOM
-    cdxgen wrote with an introspection score below its gate, the fidelity
-    tier and score are logged from the introspection record.
+    usage records of every document it assesses on every scan type (see
+    :func:`_exploitability_inputs`); every document's records reach the
+    store. Each document's result is kept in ``scan.cdxgen_reads`` and the
+    keys and comparable purls of the components of it the loaders keep in
+    ``scan.cdxgen_document_keys``, assessed or refused alike. A BOM the
+    adapter refuses is logged with the reason and costs its own records
+    alone, so the healthy documents' records survive. For a BOM cdxgen
+    wrote with an introspection score below its gate, the fidelity tier
+    and score are logged from the introspection record.
     """
     from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
 
@@ -1877,6 +1948,7 @@ def _cdxgen_adapter_result(ctx, scan):
         document = _bom_document(scan, bom_file)
         if document is None:
             continue
+        scan.cdxgen_document_keys[str(bom_file)] = _document_component_keys(document)
         source = _record_source(bom_file, base)
         introspection_file = f"{bom_file}.introspection.json"
         introspection = _read_report_text(introspection_file)
@@ -1941,8 +2013,9 @@ def _blint_adapter_result(ctx, scan):
     tools' raw reports; a source scan that did not ask for the review reads
     nothing, so an earlier run's reports never stand in for this scan's. The
     producer version is the one the blint-written BOM's ``metadata.tools``
-    names; the locally installed blint is never asked. ``source_root`` is
-    the source directory blint reviewed.
+    names; on a source scan, whose BOM cdxgen wrote, no document names
+    blint, so the doctor report's installed blint version stands in.
+    ``source_root`` is the source directory blint reviewed.
     """
     from analysis_lib.evidence.adapters import blint as blint_adapter
 
@@ -1971,7 +2044,7 @@ def _blint_adapter_result(ctx, scan):
     result = blint_adapter.extract(
         documents.get("findings"),
         source=source_of("findings.json") if "findings" in documents else "",
-        producer_version=_blint_bom_version(scan),
+        producer_version=_blint_bom_version(scan) or _doctor_analyzer_version("blint", ctx),
         reviews_document=documents.get("reviews"),
         reviews_source=source_of("reviews.json") if "reviews" in documents else None,
         coverage_document=documents.get("coverage"),
@@ -1986,6 +2059,13 @@ def _blint_adapter_result(ctx, scan):
         LOG.debug(
             "blint evidence: the adapter built %d records from %s", len(result.records), directory
         )
+        # The rendering states the review's coverage from blint's own
+        # report, whatever the inventory outcome of this type turns out to
+        # be, so a type that loads no packages still gets its statement.
+        ctx.blint_review_ran = True
+        coverage_file = binary_review.coverage_path(base)
+        if os.path.isfile(coverage_file) and coverage_file not in ctx.blint_coverage_files:
+            ctx.blint_coverage_files.append(coverage_file)
     return result
 
 
@@ -2214,18 +2294,16 @@ def _exploitability_inputs(ctx, scan):
     records this scan produced is graded on: a report left by an earlier
     run is never read.
 
-    Presence reads cdxgen's usage records (occurrences and callstacks) only
-    for the components the package loader kept with their evidence
-    (:func:`_usage_records`): every component of a scan that loads one BOM
-    (a source scan with the default analyzer, a ``--bom`` scan), and the
-    components of a user BOM appended to an aggregated load. A scan that
-    aggregates a BOM directory (the BOM-directory and lifecycle modes)
-    loads every other component with its identity evidence alone, so their
-    usage records prove nothing. The records still reach the evidence
-    store, which is additive; only the grading skips them. A BOM whose
-    usage evidence would grade but which cdxgen's adapter did not assess
-    leaves the adapter's reason in ``ctx.usage_not_assessed`` for the
-    findings of its packages.
+    Presence reads the cdxgen usage records (occurrences and callstacks) of
+    every BOM the scan read and the cdxgen adapter assessed, on every scan
+    type, but only for the components the scan loaded
+    (:func:`_usage_records`): a record of a loaded component grades
+    whatever document it came from, so an aggregated load grades records
+    from any of the directory's BOMs. The records of components the loader
+    left out still reach the evidence store, which is additive, and grade
+    nothing; the matching stage's manifest entry counts them. A BOM the
+    adapter did not assess leaves its reason in ``ctx.usage_not_assessed``
+    for the findings of the loaded packages it names.
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
@@ -2266,47 +2344,83 @@ def _exploitability_inputs(ctx, scan):
 
 
 def _usage_records(ctx, scan) -> List[Any]:
-    """cdxgen's usage records of the components the package loader kept
-    with their evidence.
+    """cdxgen's usage records of the components the scan loaded, from every
+    BOM document the scan read and the cdxgen adapter assessed.
 
-    ``scan.usage_documents`` names each BOM the loader kept usage evidence
-    from and the keys of the components it kept. A usage record of that
-    document grades when its component is one of them: matched on the
-    ``bom-ref``, or on the purl when the component has none. A record of a
-    component the loader left out (a ``data`` component, a nested
-    ``application``) or of another document grades nothing. When the
-    adapter did not assess such a document, its packages have no usage
-    records, and the adapter's reason is kept for their findings so
-    presence never reads as measured and unused."""
+    A record grades when its component is one the scan loaded: a record
+    whose subject names a ``bom-ref`` grades when that ref is a loaded
+    component's key (the ``bom-ref``, else the purl), and a record whose
+    component has no bom-ref grades when one of its purls matches a loaded
+    component's comparable purl. The purl match is the join that carries a
+    record from any BOM of an aggregated directory to the aggregated
+    component. A record whose bom-ref is set but not loaded does not fall
+    back to the purl match: a component the loader left out (a ``data``
+    component, a nested ``application``) must not prove a ref. Records that
+    match no loaded component are counted on the scan and still reach the
+    evidence store, but grade nothing. A document the adapter did not
+    assess owes every loaded package it names a reason in
+    ``ctx.usage_not_assessed``, whether or not another assessed document
+    gives the same package usage records."""
     from analysis_lib.findings.exploitability import USAGE_KINDS
     from analysis_lib.findings.vdr_convert import comparable_purl
 
+    loaded_keys = {key for key in map(_component_key, scan.pkg_list or []) if key}
+    loaded_purls = {
+        comparable_purl(pkg["purl"])
+        for pkg in scan.pkg_list or []
+        if isinstance(pkg.get("purl"), str) and pkg["purl"]
+    }
     records = []
-    for document, keys in (scan.usage_documents or {}).items():
-        read = scan.cdxgen_reads.get(str(document))
-        if read is None:
-            continue
+    ungraded = 0
+    for document, read in (scan.cdxgen_reads or {}).items():
         if read.status != "completed":
-            reason = (
-                f"cdxgen's usage evidence in {os.path.basename(str(document))} was not "
-                f"assessed: {read.reason}"
-            )
-            for pkg in scan.pkg_list or []:
-                purl = pkg.get("purl")
-                if _component_key(pkg) in keys and isinstance(purl, str) and purl:
-                    ctx.usage_not_assessed.setdefault(comparable_purl(purl), reason)
+            _mark_usage_not_assessed(ctx, scan, document, read.reason)
             continue
         for record in read.records:
             if record.producer.name != "cdxgen" or record.kind not in USAGE_KINDS:
                 continue
             component_ref = record.subject.component_ref
             if component_ref:
-                kept = component_ref in keys
+                grades = component_ref in loaded_keys
             else:
-                kept = any(purl in keys for purl in record.subject.purls)
-            if kept:
+                grades = any(
+                    comparable_purl(purl) in loaded_purls for purl in record.subject.purls
+                )
+            if grades:
                 records.append(record)
+            else:
+                ungraded += 1
+    scan.ungraded_usage_records = ungraded
+    if ungraded:
+        LOG.info(
+            "%d cdxgen usage records grade nothing: their components are not "
+            "in the loaded package list",
+            ungraded,
+        )
     return records
+
+
+def _mark_usage_not_assessed(ctx, scan, document: str, reason: Optional[str]) -> None:
+    """Keep why a BOM document's usage evidence was not assessed for every
+    loaded package the document's components name.
+
+    The reason is keyed by comparable purl and written once per package, so
+    the first refused document naming it wins. A package another assessed
+    document gave usage records keeps the reason as well: the engine grades
+    on those records either way, and the finding still names the BOM that
+    was not read."""
+    from analysis_lib.findings.vdr_convert import comparable_purl
+
+    keys, purls = (scan.cdxgen_document_keys or {}).get(str(document), (set(), set()))
+    detail = (
+        f"cdxgen's usage evidence in {os.path.basename(str(document))} was not assessed: {reason}"
+    )
+    for pkg in scan.pkg_list or []:
+        purl = pkg.get("purl")
+        if not (isinstance(purl, str) and purl):
+            continue
+        if _component_key(pkg) in keys or comparable_purl(purl) in purls:
+            ctx.usage_not_assessed.setdefault(comparable_purl(purl), detail)
 
 
 def _collect_exploitability(ctx, vdr_result):
@@ -2401,7 +2515,7 @@ def stage_render_explain(ctx, scan):
     args = ctx.args
     # Explain the results
     if args.explain:
-        explainer.explain(
+        reason = explainer.explain(
             scan.project_type,
             ctx.src_dir,
             scan.bom_dir or ctx.reports_dir,
@@ -2415,6 +2529,11 @@ def stage_render_explain(ctx, scan):
             # wrote.
             evidence_file=os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE),
         )
+        if reason:
+            # An explanation that says nothing must say why: the reason goes
+            # to the console here and to the manifest's explain stage.
+            LOG.warning("The explanation was not rendered: %s", reason)
+            scan.explain_not_assessed = reason
     else:
         LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")
     # CSAF VEX export
@@ -2451,10 +2570,53 @@ def stage_render_explain(ctx, scan):
         )
 
 
+def _scan_requested_blint_reviews(ctx) -> bool:
+    """Whether any project type of this scan asked for blint's review.
+
+    This is the gate :func:`finish_scan_directory` applies to the review's
+    findings, so a table rendered under it counts the same findings the
+    findings file holds.
+    """
+    return any(
+        blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+        for project_type in (ctx.project_types or [None])
+    )
+
+
+def _render_binary_review(ctx) -> None:
+    """Print the blint review's binary-hardening findings on the console.
+
+    The rows are the findings :func:`finish_scan_directory` writes to
+    ``depscan.findings.json``, built from the same records under the same
+    review gate, so the table's count agrees with the file. A review that
+    completed is followed by one line stating its coverage from blint's own
+    report, so a clean review never reads as a scan that found nothing to
+    check; the line is printed even when the tables are off. The printing
+    happens before the console is saved, so ``depscan.txt`` and
+    ``depscan.html`` carry it. A scan that did not ask for the review
+    prints nothing here.
+    """
+    if not _scan_requested_blint_reviews(ctx):
+        return
+    from analysis_lib.findings.blint_convert import findings_from_blint_records
+
+    rows = [finding.to_dict() for finding in findings_from_blint_records(ctx.evidence_records)]
+    if rows and not ctx.args.no_vuln_table:
+        console.print(binary_review.binary_hardening_table(rows))
+    if ctx.blint_review_ran:
+        units = binary_review.sum_coverage_units(
+            binary_review.read_coverage_units(path) for path in ctx.blint_coverage_files
+        )
+        console.print(
+            binary_review.coverage_summary(len(rows), units, binary_review.COVERAGE_RELATIVE_PATH)
+        )
+
+
 def stage_render_reports(ctx):
     """Export the console output and render every report file."""
     args = ctx.args
     console.record = True
+    _render_binary_review(ctx)
     # Export the console output
     console.save_html(
         ctx.html_report_file,

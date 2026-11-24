@@ -56,6 +56,7 @@ BLINT_DATA = (
     / "blint"
 )
 FIXTURE_DIR = DATA_DIR / "scan-directory"
+REPORT_VDR_DIR = DATA_DIR / "report-vdr"
 
 VULN_REQUESTS = {
     "id": "CVE-2024-1111",
@@ -289,6 +290,55 @@ def test_round_trip_scan_load_and_report(scan_stubs, tmp_path, capsys):
     assert "Vulnerabilities count: 1" in output
     assert "high: 1" in output
     assert "2.32.2" in output, "the fix version of the one advisory is rendered"
+
+
+def test_report_renders_the_fields_the_vdr_persists(capsys, monkeypatch):
+    """The report verb's table carries what the VDR file keeps.
+
+    The scan-time table renders transient fields the VDR writer strips
+    before the file is written, so the loaded entries must get them back
+    from the persisted form: the advisory id and the affected component in
+    the package column, the insights from the ``depscan:insights``
+    property, and the fix version from the affects versions. The fixture is
+    a cut of a real scan whose VDR was written the normal way.
+    """
+    monkeypatch.setenv("COLUMNS", "200")
+    exit_code = report_lib.run_report_command([str(REPORT_VDR_DIR)])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "Vulnerabilities count: 1" in out
+    assert "CVE-2026-118764" in out
+    assert "minimatch@10.2.6" in out
+    assert "Indirect dependency" in out
+    assert "11.0.1" in out
+
+
+def test_table_entry_splits_the_insights_the_vdr_writer_joins():
+    """One property value holds every plain insight of an entry, joined by
+    the backslash-n the VDR writer writes; the rebuilt entry splits them
+    back into the list the table renders, and reads the fix version and the
+    package prefix from the affects entry."""
+    entry = report_lib._table_entry(
+        {
+            "id": "CVE-2026-118764",
+            "affects": [
+                {
+                    "ref": "pkg:npm/minimatch@10.2.6",
+                    "versions": [
+                        {"range": "vers:npm/>=7.0.0", "status": "affected"},
+                        {"version": "11.0.1", "status": "unaffected"},
+                    ],
+                }
+            ],
+            "ratings": [{"severity": "medium", "score": 6.9}],
+            "properties": [
+                {"name": "depscan:insights", "value": "Indirect dependency\\nKnown Exploits"}
+            ],
+        }
+    )
+    assert entry["insights"] == ["Indirect dependency", "Known Exploits"]
+    assert entry["fixed_location"] == "11.0.1"
+    assert entry["purl_prefix"] == "pkg:npm/minimatch"
 
 
 def test_findings_are_the_conversion_of_the_vdr_entries(scan_stubs, tmp_path):
@@ -571,7 +621,9 @@ def test_fixture_is_a_valid_scan_directory():
     assert len(record["path"]) == 5
     index = json.loads((FIXTURE_DIR / "evidence.index.json").read_text())
     assert index["byComponent"] == {"pkg:pypi/requests@2.32.1": [record["id"]]}
-    assert index["byFinding"] == {finding["id"]: [record["id"]]}
+    assert index["byFinding"] == {
+        f"{finding['id']} {finding['components'][0]}": [record["id"]]
+    }
     assert finding["exploitability"]["axes"]["reach"] == "likely"
     assert finding["exploitability"]["sources"]["reach"] == ["atom"]
     assert finding["exploitability"]["witness"] == record["id"]
@@ -1087,6 +1139,232 @@ def test_a_bom_that_was_not_created_is_a_failed_inventory(scan_stubs, monkeypatc
     assert "the BOM for the python type was not created" in inventory["reason"]
 
 
+def test_a_scan_whose_every_inventory_failed_writes_no_findings_file(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A findings file with an empty array means a scan that found nothing,
+    so a scan where no type's inventory produced a BOM writes none at all.
+
+    Nothing was assessed: the manifest shows no matching stage completed,
+    and an assessed-empty file would read as a clean scan.
+    """
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=False, bom_files=[], primary=None, not_assessed=[]
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            project_type=["python"],
+            reports_dir=str(reports),
+            no_banner=True,
+        ),
+        render=False,
+    )
+    assert result.findings == []
+    assert not (reports / scan_directory.FINDINGS_FILE).exists(), (
+        "a scan whose inventory failed presents no assessed-empty findings file"
+    )
+
+
+def test_a_failed_lifecycle_sub_run_is_named_and_the_written_documents_listed(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A lifecycle scan whose build stage failed records the sub-run and
+    lists the documents it did write.
+
+    The inventory stage used to read completed with empty outputs while the
+    surviving BOM files sat on disk unlisted and the failed build run left
+    no trace.
+    """
+    reports = tmp_path / "reports"
+    prebuild = reports / "sbom-prebuild-universal.cdx.json"
+    postbuild = reports / "sbom-postbuild-universal.cdx.json"
+    reports.mkdir()
+    for path in (prebuild, postbuild):
+        path.write_text(
+            json.dumps(
+                {
+                    "bomFormat": "CycloneDX",
+                    "specVersion": "1.6",
+                    "components": [
+                        {
+                            "name": "requests",
+                            "version": "2.32.1",
+                            "purl": "pkg:pypi/requests@2.32.1",
+                            "bom-ref": "pkg:pypi/requests@2.32.1",
+                            "type": "library",
+                        }
+                    ],
+                }
+            )
+        )
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=True,
+            bom_files=[str(prebuild), str(postbuild)],
+            primary=None,
+            not_assessed=[
+                "cdxgen exited with status 1 while generating the build lifecycle "
+                "BOM, so no document was written"
+            ],
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            no_banner=True,
+            vuln_analyzer="LifecycleAnalyzer",
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
+    assert inventory["status"] == "completed"
+    assert inventory["outputs"] == [
+        {"file": "sbom-postbuild-universal.cdx.json", "status": "completed"},
+        {"file": "sbom-prebuild-universal.cdx.json", "status": "completed"},
+    ]
+    assert any(
+        "build lifecycle" in reason for reason in inventory["notAssessed"]
+    ), "the failed sub-run is named"
+
+
+def test_a_failed_blint_review_is_a_failed_manifest_stage(scan_stubs, monkeypatch, tmp_path):
+    """A blint review that failed is recorded as a failed stage with the
+    reason, next to the inventory that kept going."""
+    reason = "blint review failed: [Errno 2] No such file or directory"
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    bom = _write_bom(reports / "sbom-universal.cdx.json")
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=True,
+            bom_files=[bom],
+            primary=bom,
+            not_assessed=[],
+            review_not_assessed=[reason],
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            no_banner=True,
+            techniques=["binary-analysis"],
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    review = next(
+        stage for stage in result.manifest["stages"] if stage["name"] == "binary-review"
+    )
+    assert review["status"] == "failed"
+    assert review["reason"] == reason
+    assert review["capabilities"] == ["binary"]
+    inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
+    assert inventory["status"] == "completed"
+
+
+def test_an_explanation_that_rendered_nothing_names_the_gate(scan_stubs, tmp_path):
+    """The explain stage says why nothing was explained instead of reading
+    as an explanation that ran and said nothing."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    # The explanation runs in the rendering stages, so the scan renders; the
+    # fixture's stubs keep the report files off the disk.
+    result = api.scan(
+        api.scan_options(
+            bom=bom,
+            reports_dir=str(reports),
+            no_banner=True,
+            explain=True,
+            explanation_mode="EndpointsAndReachables",
+        ),
+    )
+    assert result.manifest is not None
+    explain = next(stage for stage in result.manifest["stages"] if stage["name"] == "explain")
+    assert explain["status"] == "completed"
+    assert explain["notAssessed"] == [
+        "the evidence store was read but holds no records; there is nothing to explain"
+    ]
+
+
+def test_a_license_scan_counts_the_packages_without_license_data(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """The licenses stage says how many packages carry no license data.
+
+    A completed licenses stage with no report file and no count read as a
+    scan that matched nothing; the report is written whenever the stage ran
+    and the count lands on the stage's notAssessed line.
+    """
+    monkeypatch.setenv("FETCH_LICENSE", "true")
+    # The fixture's stub package carries no version; the lookup keys on name
+    # and version, so give it a package that keys and states no license.
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: ([{"purl": "pkg:pypi/requests@2.32.1", "name": "requests", "version": "2.32.1"}], []),
+    )
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True),
+        render=False,
+    )
+    assert result.manifest is not None
+    licenses = next(stage for stage in result.manifest["stages"] if stage["name"] == "licenses")
+    assert licenses["status"] == "completed"
+    assert licenses["notAssessed"] == [
+        "1 of 1 packages carry no license data at all; their licenses were not assessed"
+    ]
+    assert (reports / "license-bom.json").is_file()
+
+
+def test_a_scan_that_assessed_and_found_nothing_writes_the_empty_findings_file(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """The assessed-empty findings file is the mark of a scan whose matching
+    ran and found nothing, and only of that."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+
+    class NothingFound:
+        def __init__(self, vdr_options):
+            # Record the run the way the fixture's stub does; this class
+            # replaces that stub, so it keeps the positive control alive.
+            scan_stubs["matching"].append(vdr_options)
+
+        def process(self):
+            return _StubVdrResult(None, success=False)
+
+    monkeypatch.setattr(pipeline, "VDRAnalyzer", NothingFound)
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True),
+        render=False,
+    )
+    # Positive control: the stubbed matching stage ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    assert result.findings == []
+    assert (reports / scan_directory.FINDINGS_FILE).exists()
+
+
 def test_a_clean_scan_loads_as_empty_because_matching_completed(scan_stubs, tmp_path, monkeypatch):
     class NothingFound:
         def __init__(self, vdr_options):
@@ -1198,6 +1476,7 @@ def test_classify_file_roles():
         "license-npm.json": {"role": "report"},
         "depscan-risk-npm.json": {"role": "report"},
         "depscan.toml.sample": {"role": "report"},
+        "csaf.toml.sample": {"role": "report"},
         "depscan.html": {"role": "report"},
         "unknown.json": {"role": "other"},
     }
@@ -1211,6 +1490,54 @@ def test_classify_file_roles():
     assert classify_file("bom.json").get("role") == "other", (
         "without the parsed document, a user BOM is other, never guessed"
     )
+
+
+def test_a_boms_producer_is_the_tool_its_metadata_names(tmp_path):
+    """A BOM file blint wrote is attributed to blint whatever its name.
+
+    The binary check writes blint's SBOM into the requested ``sbom-<type>``
+    path, so the name alone cannot tell the two generators apart; the
+    document's own ``metadata.tools`` entry is what names its producer.
+    """
+    blint_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "tools": {
+                "components": [
+                    {
+                        "type": "application",
+                        "group": "owasp-dep-scan",
+                        "name": "blint",
+                        "version": "4.1.0",
+                    }
+                ]
+            }
+        },
+        "components": [{"type": "file", "name": "libc.so.6", "purl": "pkg:file/libc.so.6"}],
+    }
+    cdxgen_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {"tools": {"components": [{"type": "application", "name": "cdxgen"}]}},
+        "components": [{"type": "library", "name": "requests", "version": "2.32.1"}],
+    }
+    # The spec 1.5-and-earlier shape, a bare list, names the producer too.
+    listed_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "metadata": {"tools": [{"name": "blint", "version": "4.1.0"}]},
+    }
+    (tmp_path / "sbom-universal.cdx.json").write_text(json.dumps(blint_bom))
+    (tmp_path / "sbom-python.cdx.json").write_text(json.dumps(cdxgen_bom))
+    (tmp_path / "sbom-postbuild-universal.cdx.json").write_text(json.dumps(listed_bom))
+    (tmp_path / "sbom-broken.cdx.json").write_text("not json")
+    entries = {entry["path"]: entry for entry in scan_directory.walk_files(str(tmp_path))}
+    assert entries["sbom-universal.cdx.json"]["producer"] == "blint"
+    assert entries["sbom-python.cdx.json"]["producer"] == "cdxgen"
+    assert entries["sbom-postbuild-universal.cdx.json"]["producer"] == "blint"
+    # An unreadable document keeps the name-based answer rather than guessing.
+    assert entries["sbom-broken.cdx.json"]["producer"] == "cdxgen"
 
 
 def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):

@@ -24,9 +24,13 @@ For each tool, resolve in this order and record which one answered:
 2. The environment that runs `depscan`: atom-tools, blint and vdb sit in
    the same `bin` (or `Scripts`) directory as the `depscan` script.
 3. `PATH`.
-4. The plugins package directory:
+4. The plugins package directory, in either place it installs:
    `<npm prefix>/lib/node_modules/@cdxgen/cdxgen-plugins-bin-<platform>/plugins/`
-   (`npm root -g` prints the parent), where `<platform>` is
+   (`npm root -g` prints the parent), or under a user-level cdxgen install
+   at `<cdxgen-install>/node_modules/@cdxgen/cdxgen-plugins-bin-<platform>/plugins/`
+   (for example
+   `~/.local/share/depscan-tools/cdxgen/node_modules/@cdxgen/cdxgen-plugins-bin-<platform>/plugins/`),
+   where `<platform>` is
    `darwin-arm64`, `darwin-amd64`, `linux-amd64`, `linux-arm64`,
    `linux-arm64-musl` or `windows-amd64`. golem, rusi and kosi sit at
    `plugins/<tool>/<tool>-<platform>`; trustinspector and trivy sit at

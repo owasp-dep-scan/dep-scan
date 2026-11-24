@@ -204,7 +204,7 @@
       "path": "evidence.index.json",
       "role": "evidence",
       "producer": "dep-scan",
-      "sha256": "d2e07d0c2a5035d58b95b457a6facecb31d1400bfa8bd05352d489b51fb5411d"
+      "sha256": "3adb9ca2ca2a357ab4e77fbfa9cfec90df3afa50947ac6b13f03161129f5d96c"
     },
     {
       "path": "evidence.jsonl",

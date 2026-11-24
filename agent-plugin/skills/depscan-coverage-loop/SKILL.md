@@ -90,14 +90,19 @@ same target.
 Three more signals tell the loop whether the analysis itself was complete,
 beyond the stages:
 
-- **cdxgen's fidelity tiers**: the loop may invoke cdxgen's
-  `sbom-fidelity-loop` skill, which grades each ecosystem
-  (resolved, lockfile, manifest, heuristic, absent) and ranks fixes; a
-  `manifest` tier on an ecosystem means the BOM carried direct
-  dependencies only, which caps what the matching stage can see.
+- **cdxgen's fidelity tiers**: cdxgen's `sbom-fidelity-loop` skill grades
+  each ecosystem (resolved, lockfile, manifest, heuristic, absent) and
+  ranks fixes. The skill is not one of this plugin's: it ships in cdxgen's
+  own agent plugin, inside the installed cdxgen package
+  (`agent-plugin/skills/sbom-fidelity-loop/` next to the package's
+  `bin/`), so read it there when cdxgen's plugin is at hand; otherwise the
+  scan's own introspection sidecar (`<bom>.cdx.json.introspection.json`,
+  its `overall` and `ecosystems` entries) is the nearest signal this
+  plugin carries. A `manifest` tier on an ecosystem means the BOM carried
+  direct dependencies only, which caps what the matching stage can see.
 - **atom's `--parse-report`**: when a run produced one, the files it lists
   were not fully read, and their defects and usages are not assessed.
-- **blint's `Analysis-Coverage.json`** (blint 4.0.0 or newer): for binary
+- **blint's `analysis-coverage.json`** (blint 4.0.0 or newer): for binary
   and app targets it names what blint could not analyse. A scan with the
   binary check writes it under `analysis/blint/`; with an older blint 3.2.x
   it is absent, and binary coverage is then unknown.

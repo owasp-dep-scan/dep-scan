@@ -58,9 +58,10 @@ recommends for images. Both exit 0 when the inventory stage completed and
 write `sbom-docker.cdx.json`, `depscan.findings.json`,
 `depscan.manifest.json` and the VDR `sbom-docker.vdr.json` into the reports
 directory. The findings list
-carries one entry per vulnerable package with its purl
-(`pkg:apk/alpine/...`, `pkg:deb/debian/...`, `pkg:rpm/...`), severity and
-coverage state.
+carries one entry per CVE, not per package: each entry names the affected
+package's purl (`pkg:apk/alpine/...`, `pkg:deb/debian/...`,
+`pkg:rpm/...`) with its severity and coverage state, and a package with
+several CVEs appears in several entries.
 
 To export a rootfs from an image:
 
@@ -71,13 +72,19 @@ docker rm depscan-rootfs
 ```
 
 Run these container commands against a target the user named. Never export
-or scan an image the user did not ask about.
+or scan an image the user did not ask about. When the daemon does not
+already hold an image the user named, say so and ask before scanning: the
+scan pulls the reference from its registry by itself (cdxgen pulls when
+its check of the local daemon finds nothing), the layers can be large,
+and the user may prefer to pull the exact reference themselves or hand
+over an exported rootfs.
 
 ## Decision table
 
 | Situation | Command |
 | --- | --- |
-| An image reference the user named | `depscan scan --target-kind container <image> --format json -o <reports>` |
+| An image reference the user named | `depscan scan --target-kind container <image> --deep --format json -o <reports>` |
+| The daemon lacks the named image | Say so and ask before scanning; the scan would pull the reference from its registry by itself |
 | A rootfs directory | `depscan scan --target-kind container <dir> --format json -o <reports>` |
 | An image tarball on disk | `depscan scan --target-kind container <file.tar> --format json -o <reports>` |
 | The scan exits 0 with no findings | Read `depscan.manifest.json` stages; any stage not `completed` means not assessed, usually the cdxgen version |

@@ -91,7 +91,7 @@ subcommand.
 
 ```bash
 blint --no-banner sbom -i /absolute/path/to/binary \
-  -o /absolute/path/to/blint-reports/binary.cdx.json
+  -o /absolute/path/to/blint-reports/binary.cdx.json --deep
 depscan scan --target-kind bom /absolute/path/to/blint-reports/binary.cdx.json --format json -o /absolute/path/to/reports
 ```
 

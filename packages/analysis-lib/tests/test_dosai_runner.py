@@ -236,6 +236,18 @@ def test_build_args_dataflows_includes_pattern_packs():
     assert DEFAULT_PATTERN_PACKS in args
 
 
+def test_build_args_pass_each_exclude_glob_to_both_commands():
+    """dosai skips globs given with --exclude, relative to --path; both
+    commands take the flag, once per pattern."""
+    for command in (DOSAI_DATAFLOWS_COMMAND, DOSAI_METHODS_COMMAND):
+        args = _build_dosai_args(
+            "/tmp/src", "/tmp/out.json", command, exclude=["test/**", "**/*.Designer.cs"]
+        )
+        pairs = [args[i + 1] for i, a in enumerate(args) if a == "--exclude"]
+        assert pairs == ["test/**", "**/*.Designer.cs"]
+    assert "--exclude" not in _build_dosai_args("/tmp/src", "/tmp/out.json", DOSAI_METHODS_COMMAND)
+
+
 def test_build_args_methods_omits_pattern_packs():
     """The methods command does NOT accept --pattern-packs (System.CommandLine
     rejects it -- verified in Dosai/CommandLine.cs). Passing it would break the

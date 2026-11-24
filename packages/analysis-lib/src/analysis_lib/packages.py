@@ -1,9 +1,11 @@
 """Read packages, dependency trees and lifecycle maps from CycloneDX BOMs.
 
-get_pkg_list and get_all_pkg_list extract the component list of one BOM file
-or a directory of BOMs; the lifecycle helpers split purls into pre-build,
-build and post-build maps and track executable properties; the retrieve_*
-helpers return the BOM's dependency tree and OCI properties.
+bom_components is the component filter of one parsed BOM document the
+loader keeps; get_pkg_list and get_all_pkg_list extract the package list of
+one BOM file or a directory of BOMs through it; the lifecycle helpers split
+purls into pre-build, build and post-build maps and track executable
+properties; the retrieve_* helpers return the BOM's dependency tree and OCI
+properties.
 
 This module only reads finished BOM JSON. It does not generate BOMs (cdxgen
 owns that), match vulnerabilities, or inspect reachability slices.
@@ -32,8 +34,11 @@ def retrieve_bom_dependency_tree(bom_file, bom_dir):
     else:
         bom_files = [bom_file]
     for file_path in bom_files:
-        if bom_data := json_load(file_path):
-            dependencies += bom_data.get("dependencies", [])
+        bom_data = json_load(file_path)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if isinstance(bom_data, dict):
+            tree = bom_data.get("dependencies")
+            dependencies += tree if isinstance(tree, list) else []
     return dependencies
 
 
@@ -55,11 +60,61 @@ def retrieve_oci_properties(bom_file, bom_dir):
     else:
         bom_files = [bom_file]
     for file_path in bom_files:
-        if bom_data := json_load(file_path):
-            for p in bom_data.get("metadata", {}).get("properties", []):
-                if p.get("name", "").startswith("oci:image:"):
-                    props[p.get("name")] = p.get("value")
+        bom_data = json_load(file_path)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if not isinstance(bom_data, dict):
+            continue
+        metadata = bom_data.get("metadata")
+        properties = metadata.get("properties") if isinstance(metadata, dict) else None
+        for p in properties if isinstance(properties, list) else []:
+            if isinstance(p, dict) and str(p.get("name") or "").startswith("oci:image:"):
+                props[p["name"]] = p.get("value")
     return props
+
+
+def bom_components(bom_data):
+    """
+    The components of one parsed BOM document the package loader keeps.
+
+    This walk is the loader's filter alone: every top-level component that
+    is not ``data``, each component nested below one that is neither
+    ``application`` nor ``data``, and each such component below the root
+    ``metadata.component``. ``get_pkg_list`` enriches exactly these with
+    the vendor, license and URL fields; a caller that needs the components
+    a document contributes without loading a file gets the same set here. A
+    document that is not a JSON object, or whose component lists are null,
+    of the wrong type or hold non-objects, keeps nothing.
+
+    :param bom_data: A parsed BOM document.
+    :return: A generator of the kept component dicts, metadata components
+        first.
+    """
+    if not isinstance(bom_data, dict):
+        return
+    metadata = bom_data.get("metadata")
+    if isinstance(metadata, dict):
+        root = metadata.get("component")
+        for mcomp in _component_children(root):
+            yield mcomp
+    components = bom_data.get("components")
+    for comp in components if isinstance(components, list) else []:
+        if not isinstance(comp, dict) or comp.get("type", "") in ("data",):
+            continue
+        yield comp
+        for nc in _component_children(comp):
+            yield nc
+
+
+def _component_children(component):
+    """The components nested below ``component`` that the loader keeps:
+    each child that is neither an ``application`` nor a ``data``
+    component. A parent that is not an object keeps none."""
+    if not isinstance(component, dict):
+        return
+    children = component.get("components")
+    for child in children if isinstance(children, list) else []:
+        if isinstance(child, dict) and child.get("type", "") not in ("application", "data"):
+            yield child
 
 
 def get_pkg_list(jsonfile):
@@ -72,31 +127,17 @@ def get_pkg_list(jsonfile):
     pkgs = []
     lifecycles = []
     if bom_data := json_load(jsonfile):
-        # Start with parsing the metadata section
-        if bom_data.get("metadata", {}):
-            metadata = bom_data.get("metadata", {})
-            # Collect the lifecycles listed in the BOM
-            if metadata.get("lifecycles"):
-                lifecycles = bom_data["metadata"]["lifecycles"]
-            # Track from metadata.component.components
-            for mcomp in metadata.get("component", {}).get("components", []):
-                # Skip component types that do not require checking
-                if mcomp.get("type", "") in ("application", "data"):
-                    continue
-                licenses, vendor, url = get_vendor_url(mcomp)
-                pkgs.append({**mcomp, "vendor": vendor, "licenses": licenses, "url": url})
-        for comp in bom_data.get("components", []):
-            if comp.get("type", "") in ("data",):
-                continue
+        # The BOM file list is a name glob, so a report that is not a BOM (a
+        # license or risk report whose name contains "bom") reaches here as
+        # a list or string and reads as a document with no packages.
+        if not isinstance(bom_data, dict):
+            return pkgs, lifecycles
+        # Collect the lifecycles listed in the BOM
+        if isinstance(bom_data.get("metadata"), dict):
+            lifecycles = bom_data["metadata"].get("lifecycles") or []
+        for comp in bom_components(bom_data):
             licenses, vendor, url = get_vendor_url(comp)
             pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
-            # nested components
-            for nc in comp.get("components", []):
-                # Skip component types that do not require checking
-                if nc.get("type", "") in ("application", "data"):
-                    continue
-                licenses, vendor, url = get_vendor_url(nc)
-                pkgs.append({**nc, "vendor": vendor, "licenses": licenses, "url": url})
     return pkgs, lifecycles
 
 

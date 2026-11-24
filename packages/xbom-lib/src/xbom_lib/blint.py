@@ -1,11 +1,13 @@
 import contextlib
+import dataclasses
 import datetime
+import inspect
 import os
 import shutil
 import tempfile
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from xbom_lib import BOMResult, XBOMGenerator
 
@@ -34,6 +36,31 @@ BLINT_REVIEWS_FILE = "reviews.json"
 BLINT_COVERAGE_FILE = "analysis-coverage.json"
 
 
+def _accepts_exclude(func: Callable) -> bool:
+    """Whether an installed blint callable takes the ``exclude`` parameter
+    (blint releases after 4.1.0 do). An older blint is handed no such
+    argument; the caller's own filtering of the target list stays the guard."""
+    try:
+        return "exclude" in inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+def _options_accept_exclude() -> bool:
+    """Whether ``BlintOptions`` has an ``exclude`` field."""
+    try:
+        return "exclude" in {f.name for f in dataclasses.fields(BlintOptions)}
+    except TypeError:
+        return False
+
+
+def _exclude_kwargs(func: Callable, exclude: Sequence[str]) -> Dict[str, Any]:
+    """``{"exclude": [...]}`` when there are patterns and ``func`` takes them."""
+    if exclude and _accepts_exclude(func):
+        return {"exclude": list(exclude)}
+    return {}
+
+
 @dataclass
 class BlintReviewResult:
     """Outcome of one blint security review run.
@@ -51,7 +78,10 @@ class BlintReviewResult:
 
 
 def run_blint_reviews(
-    src_dirs: List[str], reports_dir: str, deep: bool = False
+    src_dirs: List[str],
+    reports_dir: str,
+    deep: bool = False,
+    exclude: Sequence[str] = (),
 ) -> BlintReviewResult:
     """Run blint's security checks and capability reviews and keep the reports.
 
@@ -70,6 +100,11 @@ def run_blint_reviews(
     it walked, so a relative path would leave the reports naming files
     relative to the working directory, which no reader of the reports can
     place under the scan root.
+
+    ``exclude`` lists cdxgen-style globs anchored at each directory in
+    ``src_dirs``. They are handed to blint's file discovery when the
+    installed blint takes them; with an older blint the caller leaves excluded
+    trees out of ``src_dirs`` itself.
     """
     src_dirs = [os.path.abspath(src) for src in src_dirs]
     # A reports directory reused by an earlier scan can hold reports from it.
@@ -83,6 +118,9 @@ def run_blint_reviews(
             success=False, command_output="blint is not installed; no review was run."
         )
     try:
+        option_extra: Dict[str, Any] = (
+            {"exclude": list(exclude)} if exclude and _options_accept_exclude() else {}
+        )
         options = BlintOptions(
             deep_mode=deep,
             no_error=True,
@@ -91,12 +129,22 @@ def run_blint_reviews(
             src_dir_image=list(src_dirs),
             stdout_mode=False,
             reports_dir=reports_dir,
+            **option_extra,
         )
-        exe_files = gen_file_list(options.src_dir_image)
+        exe_files = gen_file_list(options.src_dir_image, **_exclude_kwargs(gen_file_list, exclude))
         macos_bundles: List[str] = []
         for src in options.src_dir_image:
-            macos_bundles += find_macos_bundles(src) or []
-            exe_files += [f for f in (find_clickonce_files(src) or []) if f not in exe_files]
+            macos_bundles += (
+                find_macos_bundles(src, **_exclude_kwargs(find_macos_bundles, exclude)) or []
+            )
+            exe_files += [
+                f
+                for f in (
+                    find_clickonce_files(src, **_exclude_kwargs(find_clickonce_files, exclude))
+                    or []
+                )
+                if f not in exe_files
+            ]
         exe_files = [f for f in exe_files if not path_inside_any_bundle(f, macos_bundles)]
         exe_files += macos_bundles
         runner = AnalysisRunner(export_artifacts=False, progress_disabled=True)
@@ -143,7 +191,13 @@ class BlintGenerator(XBOMGenerator):
             or os.getenv("AGENT_TEMPDIRECTORY"),
         )
         os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
-        project_type_list = self.options.get("project_type") or []
+        exclude = [str(p) for p in self.options.get("exclude_patterns") or []]
+        # dep-scan hands the targets as a list so a path with a comma in it
+        # survives; the comma-separated source directory is the older form.
+        targets = [str(t) for t in self.options.get("blint_targets") or []] or src_dir.split(",")
+        option_extra: Dict[str, Any] = (
+            {"exclude": exclude} if exclude and _options_accept_exclude() else {}
+        )
         blint_options = BlintOptions(
             deep_mode=self.options.get("deep", True),
             sbom_mode=True,
@@ -151,26 +205,15 @@ class BlintGenerator(XBOMGenerator):
             no_reviews=True,
             no_error=True,
             quiet_mode=True,
-            src_dir_image=src_dir.split(","),
+            src_dir_image=targets,
             stdout_mode=False,
             reports_dir=temp_reports_dir,
             use_blintdb=self.options.get("use_blintdb", False),
             image_url=self.options.get("blintdb_image_url", BLINTDB_IMAGE_URL),
             sbom_output=bom_file,
+            **option_extra,
         )
         blintdb_setup(blint_options)
         sbom = run_sbom_mode(blint_options)
         shutil.rmtree(temp_reports_dir, ignore_errors=True)
-        review_dir = self.options.get("blint_reviews_dir")
-        if review_dir:
-            review = run_blint_reviews(
-                src_dir.split(","), review_dir, deep=bool(self.options.get("deep", True))
-            )
-            if not review.success:
-                if self.logger:
-                    self.logger.warning(review.command_output)
-                if self.options.get("fail_on_error"):
-                    return BOMResult(
-                        success=False, bom_obj=sbom, command_output=review.command_output
-                    )
         return BOMResult(success=True, bom_obj=sbom)

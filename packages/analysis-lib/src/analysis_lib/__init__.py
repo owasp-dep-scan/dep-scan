@@ -84,6 +84,10 @@ class VDRResult:
     #: The (advisory id, affects ref) -> Exploitability map the entries were
     #: graded into, or None when this run graded no exploitability.
     exploitability: Optional[Dict] = None
+    #: Database rows the export left out because they named no component
+    #: (an empty ``matched_by``); the caller states the count on the scan's
+    #: coverage so the rows are never dropped silently.
+    rows_without_component: int = 0
 
 
 class Counts:
@@ -98,6 +102,9 @@ class Counts:
     fix_version_count = 0
     wont_fix_version_count = 0
     distro_packages_count = 0
+    #: Database rows whose matched_by named no component; the VDR export
+    #: skips them instead of writing an affects ref that is the empty string.
+    no_matched_by_count = 0
     has_os_packages = False
     has_redhat_packages = False
     has_ubuntu_packages = False

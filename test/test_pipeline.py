@@ -388,10 +388,44 @@ def test_stage_analysis_licenses_writes_the_license_report(tmp_path, monkeypatch
     pipeline.stage_analysis_licenses(ctx, scan)
     license_report = Path(ctx.reports_dir) / "license-npm.json"
     assert license_report.is_file()
-    rows = [json.loads(line) for line in license_report.read_text().splitlines()]
+    rows = json.loads(license_report.read_text())
     assert rows[0]["Package"] == "demo"
     assert rows[0]["Version"] == "1.0.0"
     assert "CC-BY-NC-4.0" in rows[0]["License Id"]
+
+
+def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(tmp_path, monkeypatch):
+    """A license scan that matched nothing still writes its report.
+
+    The report file is the mark of a scan that ran: it is written with no
+    rows when every license was clean, and when no package carried license
+    data at all. The packages without any license data are counted on the
+    scan instead of vanishing, so the manifest's licenses stage can say how
+    much of the list was never assessed.
+    """
+    monkeypatch.setenv("FETCH_LICENSE", "true")
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.pkg_list = [
+        # MIT is a known, condition-free license, so it earns no row.
+        {"name": "clean", "version": "1.0.0", "purl": "pkg:npm/clean@1.0.0", "licenses": ["MIT"]},
+        {"name": "bare", "version": "2.0.0", "purl": "pkg:npm/bare@2.0.0"},
+    ]
+    assert pipeline.stage_analysis_licenses(ctx, scan) is True
+    license_report = Path(ctx.reports_dir) / "license-npm.json"
+    assert license_report.is_file(), "an assessed-clean license scan writes its report"
+    assert json.loads(license_report.read_text()) == []
+    assert scan.license_not_assessed == (
+        "1 of 2 packages carry no license data at all; their licenses were not assessed"
+    )
+    # No package carrying license data at all is the same honest shape.
+    bare = pipeline.TypeScan(project_type="npm")
+    bare.pkg_list = [{"name": "bare", "version": "2.0.0", "purl": "pkg:npm/bare@2.0.0"}]
+    assert pipeline.stage_analysis_licenses(ctx, bare) is True
+    assert (Path(ctx.reports_dir) / "license-npm.json").read_text().strip() == "[]"
+    assert bare.license_not_assessed == (
+        "1 of 1 packages carry no license data at all; their licenses were not assessed"
+    )
 
 
 def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch):
@@ -424,7 +458,7 @@ def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch
     assert calls["audit"][1] == scan.pkg_list
     risk_report = Path(ctx.reports_dir) / "depscan-risk-npm.json"
     assert risk_report.is_file()
-    rows = [json.loads(line) for line in risk_report.read_text().splitlines()]
+    rows = json.loads(risk_report.read_text())
     assert rows[0]["Package"] == "fsevents"
     assert "Deprecated" in rows[0]["Identified Risks"]
 
@@ -465,7 +499,7 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
         ("pypi", ["pkg:pypi/requests@2.0.0"]),
     ]
     assert scan.risk_not_assessed is None
-    rows = [json.loads(line) for line in Path(scan.risk_report_file).read_text().splitlines()]
+    rows = json.loads(Path(scan.risk_report_file).read_text())
     assert [row["Package"] for row in rows] == ["left-pad", "requests"]
 
 
@@ -620,7 +654,6 @@ def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
         adapter_results={"atom": AdapterResult(status="completed")},
         pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
@@ -876,6 +909,10 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         shards_connected=False,
         evidence_records=records,
         usage_not_assessed=usage_not_assessed,
+        # One produced result, so the findings file is written at all; a scan
+        # whose every type failed writes none.
+        scans=[object()],
+        blint_review_ran=False,
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
@@ -883,6 +920,43 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         "the findings file receives the scan's evidence records, the blint ones included"
     )
     assert captured["usage_not_assessed"] is usage_not_assessed
+
+
+@pytest.mark.parametrize(
+    "review_ran, written",
+    [(False, False), (True, True)],
+)
+def test_a_scan_with_no_matched_type_writes_a_findings_file_only_for_a_review(
+    monkeypatch, tmp_path, review_ran, written
+):
+    """cdxgen's own evidence records do not make an empty findings array
+    mean anything: with no project type matched (an inventory that listed
+    no packages) only a completed blint review, whose findings are
+    findings, writes the file."""
+    calls = []
+    monkeypatch.setattr(
+        pipeline.scan_directory,
+        "write_findings",
+        lambda *a, **k: calls.append(k) or {"findings": []},
+    )
+    monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    ctx = SimpleNamespace(
+        scan_dir=SimpleNamespace(build=lambda **k: {}),
+        reports_dir=str(tmp_path),
+        all_pkg_vulnerabilities=[],
+        src_dir=str(tmp_path),
+        exploitability={},
+        depscan_options={},
+        project_types=["universal"],
+        vdb_flavor=None,
+        shards_connected=False,
+        evidence_records=[object()],
+        usage_not_assessed={},
+        scans=[],
+        blint_review_ran=review_ran,
+    )
+    pipeline.finish_scan_directory(ctx)
+    assert bool(calls) is written
 
 
 def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
@@ -911,7 +985,6 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
@@ -948,7 +1021,6 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
@@ -1051,3 +1123,22 @@ def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monk
     assert pipeline._source_root(stored, str(tmp_path)) is None, "the working directory default"
     stored.src_dir_image = source
     assert pipeline._source_root(stored, source) == source, "an explicit --src"
+
+
+def test_matching_not_assessed_counts_rows_that_named_no_component():
+    from depscan import api
+
+    tscan = SimpleNamespace(
+        ungraded_usage_records=0, vdr_result=SimpleNamespace(rows_without_component=3)
+    )
+    assert api._matching_not_assessed(tscan) == [
+        "3 vulnerability rows named no component and are not in the VDR or the findings"
+    ]
+    clean = SimpleNamespace(
+        ungraded_usage_records=0, vdr_result=SimpleNamespace(rows_without_component=0)
+    )
+    assert api._matching_not_assessed(clean) == []
+    assert (
+        api._matching_not_assessed(SimpleNamespace(ungraded_usage_records=0, vdr_result=None))
+        == []
+    )

@@ -354,3 +354,110 @@ def test_each_merged_component_row_shows_its_own_grade():
     assert list(table.columns[-1].cells) == ["moderate\nreached", "moderate\nreached"]
     # The summary counts pairs, as the caption does.
     assert exploitability_grade_stats(graded) == {"moderate": 1, "low": 1}
+
+
+def test_next_steps_count_the_fail_safe_label_as_known_exploits():
+    """The fail-safe insight names known exploits in lower case; the
+    next-steps analysis must still read it as exploit evidence, so the
+    finding keeps its place in the priority table."""
+    from analysis_lib.output import find_next_steps
+
+    analysis = find_next_steps(
+        POSTCSS_8431,
+        ["CVE-2026-41305"],
+        ["Direct dependency with known exploits, reach not assessed"],
+        "8.5.0",
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+    )
+    assert analysis["has_exploits"] is True
+    assert analysis["is_exploitable"] is False
+
+
+def test_license_report_file_holds_plain_json_rows(tmp_path):
+    """The license report file is one JSON array of plain rows: the license
+    id reaches it without the console colour markup the table cell carries."""
+    from analysis_lib.output import licenses_risk_table
+
+    report_file = tmp_path / "license-npm.json"
+    table = licenses_risk_table(
+        "npm",
+        {
+            "demo@1.0.0": [
+                {
+                    "spdx-id": "CC-BY-4.0",
+                    "condition_flag": True,
+                    "conditions": ["Include Copyright", "Document Changes"],
+                }
+            ]
+        },
+        str(report_file),
+    )
+    assert table is not None
+    rows = json.loads(report_file.read_text())
+    assert rows == [
+        {
+            "Package": "demo",
+            "Version": "1.0.0",
+            "License Id": "CC-BY-4.0",
+            "License conditions": "Include Copyright, Document Changes",
+        }
+    ]
+
+
+def test_risk_report_file_holds_plain_json_rows(tmp_path):
+    """The risk report file is one JSON array of plain values: the risk
+    score is a number, the identified risks are a list instead of strings
+    joined with a separator, and an attestation digest the producer states
+    twice (npm signs a version twice with one key id) appears once."""
+    from analysis_lib.output import pkg_risks_table
+
+    report_file = tmp_path / "depscan-risk-npm.json"
+    table, report_data = pkg_risks_table(
+        "npm",
+        {"required": ["npm:demo"]},
+        {
+            "demo": {
+                "scope": "required",
+                "risk_metrics": {
+                    "risk_score": 0.63,
+                    "pkg_includes_binary_risk": True,
+                    "pkg_attested_check": True,
+                    "pkg_attested_info": "SHA256:abc\nSHA256:abc",
+                },
+            }
+        },
+        risk_report_file=str(report_file),
+    )
+    assert table is not None
+    assert report_data is not None
+    assert report_data[0]["Identified Risks"] == [
+        "Includes binary",
+        "Has attestation",
+        "SHA256:abc",
+    ]
+    rows = json.loads(report_file.read_text())
+    assert rows == [
+        {
+            "Package": "demo",
+            "Used?": "Yes",
+            "Risk Score": 0.63,
+            "Identified Risks": ["Includes binary", "Has attestation", "SHA256:abc"],
+        }
+    ]
+
+
+def test_license_report_file_is_valid_json_when_no_package_has_license_data(tmp_path):
+    """A scan whose packages carry no license data still writes a license
+    report, and the file is the empty JSON array rather than an empty file."""
+    from analysis_lib.output import licenses_risk_table
+
+    report_file = tmp_path / "license-npm.json"
+    assert licenses_risk_table("npm", {}, str(report_file)) is None
+    assert json.loads(report_file.read_text()) == []

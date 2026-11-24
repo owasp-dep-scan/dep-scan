@@ -68,7 +68,19 @@ source scan also lets golem fetch Go modules unless
 `--go-analyzer-network offline` is passed, and when no usable local cdxgen
 exists (neither `CDXGEN_CMD` nor a cdxgen on `PATH` at the minimum version)
 and `docker` is on `PATH`, the `auto` engine pulls the
-`ghcr.io/cdxgen/cdxgen` image; say which applies.
+`ghcr.io/cdxgen/cdxgen` image; say which applies. A source scan of a tree
+that carries Dockerfiles or compose files reads every image they name: it
+pulls the ones the daemon lacks and extracts their layers, which on a
+container-heavy tree can consume the whole cdxgen time budget (30 minutes
+by default, `CDXGEN_TIMEOUT_MS` to raise it). Look for container files
+before scanning a large tree. When they are CI or build material rather
+than the product, exclude their folders, for example
+`--cdxgen-args "--exclude 'ci/**' --exclude 'test/**'"`, one `--exclude`
+per tree with the pattern anchored at the scanned root. dep-scan applies
+the same patterns to its own walks (the binary review and the golem, rusi,
+kosi and dosai runs it makes; a language tool that cannot take exclusions
+starts on the one project folder the patterns leave, or is reported as not
+assessed), so one set keeps a tree out of every stage (see [reference/safety.md](../../reference/safety.md)).
 
 ```bash
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
@@ -101,7 +113,10 @@ Any stage whose status is not `completed` (`failed`, `skipped`,
 `not-assessed`), and any stage missing after one that stopped the run,
 means part of the analysis did not run; report "not assessed" with the
 stage's reason rather than a clean result. `depscan doctor --format json` shows the same state
-machine-wide.
+machine-wide. The verbs this skill does not show, `depscan version` (the
+dep-scan version and every tool's version) among them, are listed in
+[reference/commands.md](../../reference/commands.md) with the document each
+writes.
 
 ## Choosing checks and profiles
 

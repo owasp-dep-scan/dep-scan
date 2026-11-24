@@ -34,7 +34,10 @@ blint -i /absolute/path/to/app.apk -o /absolute/path/to/blint-reports --no-banne
 The deep SBOM (`app.cdx.json`) carries the bundled SDK and library
 components per architecture (`.aar` and `.so` entries with their ABI) and
 tracker or service SDK identification; next to it, blint writes the DEX
-call graph as `app.cdx-app.apk.dex-callgraph.json`. The review run writes
+call graph as `<bom-stem>-<apk-file-name>.dex-callgraph.json`, the BOM's
+stem followed by the APK's own file name, so the exact name varies with
+the APK (`app.cdx-app.apk.dex-callgraph.json` only for an APK named
+`app.apk`). The review run writes
 `reviews.json` (and `findings.json` when a hardening rule fired), whose
 rule ids name the behaviour (dynamic code loading, reflection, native
 command execution, weak cryptography, cleartext traffic) with evidence

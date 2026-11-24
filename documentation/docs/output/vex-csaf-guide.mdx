@@ -36,7 +36,7 @@ The output filename is derived from the BOM base name with the `.csaf.json` suff
 
 ## The csaf.toml metadata
 
-If no `csaf.toml` exists in the target directory, dep-scan writes a starter template and continues with sensible defaults, so you do not need to run the command twice. Edit the toml to customize the publisher and tracking metadata, then rerun to pick up your changes. The repository ships a commented example at `contrib/csaf.toml`.
+If no `csaf.toml` exists in the target directory, dep-scan writes a starter as `csaf.toml.sample` into the reports directory and continues with sensible defaults, so you do not need to run the command twice. The scanned project is never written to. Edit the toml to customize the publisher and tracking metadata, then rerun to pick up your changes; a `csaf.toml` you place in the target directory, or one named by `DEPSCAN_CSAF_TEMPLATE`, is read as before. The repository ships a commented example at `contrib/csaf.toml`.
 
 The toml sets the metadata outside the vulnerabilities section. The required fields are the document category and title, the publisher category, name, and namespace, and the tracking status and version. The document category defaults to `csaf_vex`. Valid publisher categories are coordinator, discoverer, other, translator, user, and vendor. Notes require non-empty text (notes without text are dropped), and references require a summary and a url. The product tree is built automatically from the CycloneDX BOM components, with every component's purl becoming its product id, so no manual product-tree import is needed.
 

@@ -33,6 +33,13 @@ Use absolute paths for the scan target and for `-o`. Relative paths break
 the report paths a later skill or the MCP server reads back, and the
 result documents record the scan directory the run used.
 
+A new scan pointed with `-o` at a directory that already holds a finished
+scan replaces its manifest, findings, VDR and rendered reports, and the
+manifest that recorded the earlier scan's provenance is lost. Write each
+scan to a fresh reports directory; when a request needs to scan from a
+finished scan's directory (a BOM directory an earlier scan produced), copy
+that directory aside first and say so.
+
 ## Parse output as a document, and branch on the exit code
 
 With `--format json`, every verb writes exactly one JSON document to stdout
@@ -48,6 +55,13 @@ document. The exit codes are:
 
 Exit 4 with a capability the machine lacks is a fact to report, not a
 failure to retry with different flags until it disappears.
+
+When a scan exits 1 or its manifest records a failed stage, do not
+attribute a cause from the summary line alone: run the same command with
+`SCAN_DEBUG_MODE=debug` in the environment and read the producer's own
+error output before saying what failed or why (the non-debug console
+names the variable). A cause this cannot establish is reported as
+unknown, with the failing stage and its recorded reason.
 
 ## A clean result must be earned
 
@@ -98,6 +112,25 @@ entry, give the purl without the credential, or the account name and host.
   a cdxgen on `PATH` at the minimum version, first. Only when neither
   exists and `docker` is on `PATH` (outside Windows) does it pull the
   `ghcr.io/cdxgen/cdxgen` image. Say which one ran.
+- A container scan of an image reference the daemon does not have pulls
+  the image from its registry by itself (cdxgen pulls when its check of the
+  local daemon finds nothing, and the layers can be large). Check the
+  daemon first and ask before scanning, or have the user pull the
+  reference or export a rootfs.
+- A source scan of a tree with Dockerfiles or compose files reads every
+  image they name the same way: the ones the daemon lacks are pulled and
+  their layers extracted, whatever the scan type, so a tree whose container
+  files are build or CI material rather than the product turns a scan into
+  a long image-pulling run whose result depends on the daemon's state.
+  Look for container files before scanning a large tree; when they are not
+  product content, exclude their trees with
+  `--cdxgen-args "--exclude 'ci/**'"` (one `--exclude` per tree, the
+  pattern anchored at the scanned root, a leading `**/` only for same-named
+  nested directories), and say which trees were excluded. dep-scan applies
+  the same patterns to the blint review and to the golem, rusi, kosi and
+  dosai runs it starts itself, so no second setting is needed. cdxgen stops at
+  its time budget (`CDXGEN_TIMEOUT_MS`, 30 minutes by default) when a scan
+  outruns it; the failure reason names the budget.
 - golem fetches Go modules for a source scan unless
   `--go-analyzer-network offline` is passed.
 - `depscan-vdb` and `depscan-coverage-loop` change state and run only when

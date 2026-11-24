@@ -386,9 +386,13 @@ def cve_to_vdr(cve: Dict, vid: str):
         ratings = {
             "method": method,
             "severity": severity.lower(),
-            "score": score,
             "vector": vector,
         }
+        # A metric without a baseScore leaves the score unset rather than
+        # empty: the CycloneDX rating schema accepts a number or no field,
+        # never an empty string.
+        if isinstance(score, (int, float)) and not isinstance(score, bool):
+            ratings["score"] = score
     return (
         source,
         references,

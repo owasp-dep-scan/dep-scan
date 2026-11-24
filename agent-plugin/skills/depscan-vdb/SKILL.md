@@ -70,9 +70,10 @@ the download would have added.
 ## Advisory search and the malware list
 
 dep-scan's `vdb` verb reports the store state. The sibling `vdb` command
-that ships with vulnerability-db (the dep-scan venv carries it; `depscan
-doctor --format json` names the tools it found) answers advisory questions
-directly from the store:
+that ships with vulnerability-db (it sits in the same `bin` directory as
+the `depscan` script; [reference/tools.md](../../reference/tools.md) gives
+the lookup, and `depscan doctor --format json` does not list it) answers
+advisory questions directly from the store:
 
 ```bash
 vdb --search-text "jwt"

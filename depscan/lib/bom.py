@@ -1,4 +1,5 @@
 import glob
+import inspect
 import os
 import re
 import shutil
@@ -18,7 +19,9 @@ from xbom_lib.cdxgen import (
     CdxgenServerGenerator,
     as_command_list,
     cdxgen_install_hint,
+    cdxgen_timeout_hint,
     check_cdxgen_version,
+    deep_enabled,
     find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
@@ -35,11 +38,14 @@ from depscan.lib.config import (
     RUSI_DEFAULT_CALLGRAPH_MODE,
     RUSI_DEFAULT_DATAFLOW_MODE,
     RUSI_REACHABLES_SLICE_FILE,
+    SEMANTIC_REACHABILITY_ANALYZER,
+    UNIVERSAL_SCAN_TYPE,
 )
+from depscan.lib.exclusions import ExclusionSet, kept_targets, project_roots
 from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 def _blint_generator_class() -> type:
@@ -112,6 +118,14 @@ class BomResult:
     :param introspection_gate_missed: the documents cdxgen wrote with exit
         status 4 (an introspection score below its gate). The inventory
         stage logs their fidelity tier from the introspection records.
+    :param failure_reason: why nothing was produced, for the manifest's
+        inventory stage. Set when the generator failed; a cdxgen failure
+        names the CDXGEN_TIMEOUT_MS budget that was in effect, because
+        dep-scan sets that budget and a run stopped at it looks like any
+        other failure from here.
+    :param review_not_assessed: why a requested blint binary review did not
+        assess, kept so the scan records a failed review stage instead of a
+        console warning nobody reads back.
     """
 
     success: bool
@@ -121,6 +135,8 @@ class BomResult:
     not_assessed: List[str] = field(default_factory=list)
     adapter_results: Dict[str, AdapterResult] = field(default_factory=dict)
     introspection_gate_missed: List[str] = field(default_factory=list)
+    failure_reason: Optional[str] = None
+    review_not_assessed: List[str] = field(default_factory=list)
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -176,6 +192,23 @@ def _atom_not_assessed(bom_result) -> List[str]:
     return []
 
 
+def _cdxgen_failure_reason(bom_result, stage: str) -> str:
+    """Why a failed cdxgen run produced no document, for console and manifest.
+
+    The exit status is named when the process exited on its own, and so is
+    the CDXGEN_TIMEOUT_MS budget that was in effect: dep-scan itself sets it
+    (30 minutes by default) and stops cdxgen at it, and a run stopped at the
+    budget is indistinguishable from any other failure from here, so the
+    text says what was in effect without claiming the cause.
+    """
+    returncode = getattr(bom_result, "returncode", None)
+    status = f"exited with status {returncode}" if returncode is not None else "did not finish"
+    return (
+        f"cdxgen {status} while generating the {stage} BOM, so no document was written. "
+        f"{cdxgen_timeout_hint()}. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output."
+    )
+
+
 def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     """Interpret a finished cdxgen run from its exit status.
 
@@ -211,11 +244,7 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
                 stage,
             )
         return failures
-    LOG.error(
-        "cdxgen exited with status %s while generating the %s BOM. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output.",
-        returncode,
-        stage,
-    )
+    LOG.error("%s", _cdxgen_failure_reason(bom_result, stage))
     return []
 
 
@@ -505,26 +534,44 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     if not options:
         options = {}
     # Get the various options and filenames
-    techniques = options.get("techniques") or []
     lifecycles = options.get("lifecycles") or []
     project_type_list = options.get("project_type") or []
     bom_engine = options.get("bom_engine", "")
     lifecycle_analysis_mode = options.get("lifecycle_analysis_mode", False)
-    # Detect if blint needs to be used for the given project type, technique, and lifecycle.
-    # For binaries, generate an sbom with blint directly
-    if (
+    # The blint BOM path is for targets that are binaries: a binary or apk
+    # project type, an explicitly chosen blint engine, or the post-build
+    # stage of a lifecycle run. The binary-analysis technique alone (the
+    # binary check on a source scan) must not take it: replacing the cdxgen
+    # inventory with a blint-written one loses every source component and
+    # with them the vulnerability findings, so on a source scan the check
+    # runs blint's security review beside the cdxgen BOM instead
+    # (:func:`_run_blint_review`).
+    blint_bom = (
         bom_engine == "BlintGenerator"
-        or "binary-analysis" in techniques
         or "post-build" in lifecycles
         or any([t in ("binary", "apk") for t in project_type_list])
-    ):
-        blint_ok = create_blint_bom(
-            bom_file, src_dir, options=options, reviews=blint_reviews_requested(options)
+    )
+    if blint_bom:
+        targets = blint_targets(src_dir, options)
+        if not targets:
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    "every path below the scan path matches an --exclude pattern, "
+                    "so blint had nothing to inventory"
+                ),
+            )
+        blint_ok = create_blint_bom(bom_file, src_dir, options=options, targets=targets)
+        review_not_assessed = (
+            _run_blint_review(bom_file, src_dir, options)
+            if blint_ok and blint_reviews_requested(options)
+            else []
         )
         return BomResult(
             success=blint_ok,
             bom_files=[bom_file] if blint_ok else [],
             primary=bom_file if blint_ok else None,
+            review_not_assessed=review_not_assessed,
         )
     cdxgen_server = options.get("cdxgen_server")
     cdxgen_lib = CdxgenGenerator
@@ -570,15 +617,33 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     # control, so it is checked before the first run; the container image and
     # the cdxgen server are pinned or remote and skip the check.
     if cdxgen_lib is CdxgenGenerator and not _refuse_old_cdxgen(logger=LOG):
-        return BomResult(success=False)
+        return BomResult(
+            success=False,
+            failure_reason=(
+                f"the local cdxgen command was refused; dep-scan needs cdxgen "
+                f"{CDXGEN_MIN_VERSION} or newer"
+            ),
+        )
+    # A technique the binary check appended narrows cdxgen's inventory to
+    # file-level components (no manifest parsing), which is the opposite of
+    # what the check wants on a source scan: the review runs beside the full
+    # inventory instead. The user's own --technique values pass through
+    # untouched; only the check-appended ones are kept out.
+    check_appended = options.get("check_appended_techniques") or []
+    generator_options = options
+    if check_appended:
+        kept = [t for t in (options.get("techniques") or []) if t not in check_appended]
+        generator_options = {**options, "techniques": kept or None}
     # For lifecycle analysis, we need to generate multiple BOM files
     if lifecycle_analysis_mode:
-        return create_lifecycle_boms(cdxgen_lib, src_dir, options)
+        return create_lifecycle_boms(cdxgen_lib, src_dir, generator_options)
     # Invoke the cdxgen library directly
     with console_status(
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
-        bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
+        bom_result = cdxgen_lib(
+            src_dir, bom_file, logger=LOG, options=generator_options
+        ).generate()
         extractor_failures: List[str] = []
         not_assessed: List[str] = []
         if bom_result.success:
@@ -594,14 +659,26 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             *CDXGEN_PARTIAL_EXIT_CODES,
         )
         if not bom_result.success or not partial_ok:
+            reason = _cdxgen_failure_reason(bom_result, "project")
+            if not bom_result.success:
+                # The verdict above interprets finished runs only; a run that
+                # never finished (stopped at the time budget, missing command)
+                # has this reason as its only console message.
+                LOG.error("%s", reason)
             LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
-            return BomResult(success=False)
+            return BomResult(success=False, failure_reason=reason)
         # cdxgen can report success without writing anything, so the requested
         # path only counts once it is on disk.
         if not os.path.exists(bom_file):
             LOG.debug("cdxgen reported success but `%s` was not written.", bom_file)
-            return BomResult(success=False)
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    f"cdxgen reported success but the project BOM was not written "
+                    f"at {os.path.basename(bom_file)}"
+                ),
+            )
         # Each language tool whose project types select it runs (or reads the
         # report cdxgen persisted) and hands its raw report to its evidence
         # adapter. No converted reachables slice is written: the enrichment
@@ -611,6 +688,14 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             result = runner(bom_file, src_dir, options=options)
             if result is not None:
                 adapter_results[name] = result
+        # The binary check on a source scan: blint reviews the binaries the
+        # tree holds beside the cdxgen inventory, and the review's findings
+        # reach the evidence store from its reports.
+        review_not_assessed = (
+            _run_blint_review(bom_file, src_dir, options)
+            if blint_reviews_requested(options)
+            else []
+        )
         return BomResult(
             success=True,
             bom_files=[bom_file],
@@ -621,6 +706,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             introspection_gate_missed=(
                 [bom_file] if getattr(bom_result, "returncode", None) == 4 else []
             ),
+            review_not_assessed=review_not_assessed,
         )
 
 
@@ -846,12 +932,15 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
         LOG.debug("dosai runner unavailable: %s", e)
         return None
     pattern_packs = options.get("dotnet_pattern_packs") or DOSAI_PATTERN_PACKS_DEFAULT
+    # dosai takes the patterns itself (``--exclude``, relative to its path).
+    exclusion_args = _accepted_exclude_argument(run_dosai, options)
     with console_status(f"Running dosai .NET reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_dosai(
             src_dir,
             analysis_report_dir(bom_dir, "dosai"),
             pattern_packs=pattern_packs,
             logger=LOG,
+            **exclusion_args,
         )
     if res.skipped or not res.success:
         if fail_on_error:
@@ -994,6 +1083,16 @@ class ReachabilityTool:
     #: directory-relative forward-slash path. It names the records' source
     #: when the scan ran the tool itself.
     fallback_source: str = ""
+    #: The purl type that selects this tool on a universal-typed scan, whose
+    #: type token names no language. Empty for a tool the purl of a
+    #: component cannot select.
+    purl_type: str = ""
+    #: File names (or ``*.ext`` suffixes) that mark a directory as a project
+    #: of this tool's language. A tool with no exclusion argument of its own
+    #: is started on a project root that survives the ``--exclude``
+    #: patterns instead of the scan root; empty for a tool that takes the
+    #: patterns itself.
+    project_markers: tuple = ()
 
 
 def _remove_tool_slice(path: str) -> None:
@@ -1110,6 +1209,21 @@ def _extract_report_records(
     return result
 
 
+def _bom_carries_purl_type(bom_file: Optional[str], purl_type: str) -> bool:
+    """Whether a BOM's components carry a purl of the given type.
+
+    An unreadable or missing BOM selects nothing. Only the purl prefix is
+    read, so a component with no purl at all never selects a tool."""
+    if not bom_file or not os.path.isfile(bom_file):
+        return False
+    bom_data = json_load(bom_file, log=LOG) or {}
+    prefix = f"pkg:{purl_type}/"
+    return any(
+        isinstance(component.get("purl"), str) and component["purl"].startswith(prefix)
+        for component in bom_data.get("components", []) or []
+    )
+
+
 def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[AdapterResult]:
     """Run one reachability tool and hand its raw report to its adapter.
 
@@ -1129,7 +1243,20 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         return None
     project_type_list: List[str] = options.get("project_type") or []
     if not any(pt in tool.project_types for pt in project_type_list):
-        return None
+        # A universal scan names no language, but its BOM's components do:
+        # the tool applies when they carry its purl type. cdxgen is invoked
+        # with the universal type too, so its own dispatch never reaches the
+        # language analysis either; this gate is what runs it at all. Only
+        # semantic reachability starts a language tool this way: the
+        # default analyzer reads cdxgen's usage records and must not turn
+        # a universal scan of a large tree into a multi-minute analysis.
+        if not (
+            tool.purl_type
+            and options.get("reachability_analyzer") == SEMANTIC_REACHABILITY_ANALYZER
+            and UNIVERSAL_SCAN_TYPE in project_type_list
+            and _bom_carries_purl_type(bom_file, tool.purl_type)
+        ):
+            return None
     if bom_file:
         # A slice left by an earlier scan must not outlive a run where this
         # tool does not produce one, or the analyzer would read as completed.
@@ -1171,7 +1298,13 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         # FALLBACK: cdxgen did not produce a report (plugins unavailable, or
         # reachability invoked without cdxgen). Run the tool directly; it
         # writes its raw report under analysis/<producer>/.
-        report = tool.run_fallback(src_dir, bom_dir, options, _is_report_ok(tool), _json_load)
+        target, skipped_reason = _fallback_target(tool, src_dir, options)
+        if skipped_reason:
+            LOG.warning("%s reachability was not assessed: %s", tool.name, skipped_reason)
+            if fail_on_error:
+                raise ScanFailureError(skipped_reason)
+            return not_assessed(skipped_reason)
+        report = tool.run_fallback(target, bom_dir, options, _is_report_ok(tool), _json_load)
         source = tool.fallback_source
     if report is None:
         if fail_on_error:
@@ -1202,6 +1335,57 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
     return result
 
 
+def _accepted_exclude_argument(runner: Callable, options) -> Dict[str, Any]:
+    """``{"exclude": patterns}`` when the scan has ``--exclude`` patterns and
+    ``runner`` accepts an ``exclude`` parameter, else nothing. The check is
+    on the installed signature, so a runner or tool without the parameter
+    still works and the caller's own target filtering stays the guard."""
+    exclusions = ExclusionSet.from_options(options)
+    if exclusions and "exclude" in inspect.signature(runner).parameters:
+        return {"exclude": list(exclusions.patterns)}
+    return {}
+
+
+def _fallback_target(tool: "ReachabilityTool", src_dir, options) -> Tuple[str, Optional[str]]:
+    """The directory a fallback run of ``tool`` starts on, and the reason no
+    run can start.
+
+    Without ``--exclude`` patterns (or for a tool that takes them itself)
+    this is the scan root. A tool that has no exclusion argument analyses
+    whatever sits below the directory it is given, so with patterns it is
+    given the one project root the patterns leave, and a scan root that is a
+    project itself stays the target. No surviving root, or several of them
+    after a pattern removed one (one run covers one directory), gives a
+    reason instead of a run that would read excluded trees.
+    """
+    exclusions = ExclusionSet.from_options(options)
+    if not exclusions or not tool.project_markers or not os.path.isdir(src_dir):
+        return src_dir, None
+    everything = ExclusionSet()
+    all_roots = project_roots(src_dir, everything, tool.project_markers, _skipped_dirs())
+    kept = project_roots(src_dir, exclusions, tool.project_markers, _skipped_dirs())
+    if kept == all_roots:
+        return src_dir, None
+    if not kept:
+        return src_dir, (
+            f"every {tool.name} project below the scan path matches an --exclude pattern, "
+            "so there is nothing to analyse"
+        )
+    if len(kept) == 1:
+        return kept[0], None
+    return src_dir, (
+        f"the --exclude patterns remove some of the {len(all_roots)} {tool.name} projects "
+        f"below the scan path and {len(kept)} remain; {tool.name} analyses one directory "
+        "per run, so scan one project directory or exclude none of them"
+    )
+
+
+def _skipped_dirs() -> Tuple[str, ...]:
+    """Directory names no walk of dep-scan's own enters (VCS data and
+    dependency caches)."""
+    return (".git", "node_modules", ".hg", ".svn")
+
+
 def _is_report_ok(tool: "ReachabilityTool") -> Callable:
     """The report-shape check of ``tool``'s adapter, used to tell the report
     cdxgen persisted apart from any other file that shares the path. Every
@@ -1213,6 +1397,8 @@ RUSI_TOOL = ReachabilityTool(
     name="rusi",
     # cdxgen labels Cargo projects "rust"; accept "cargo"/"crates" aliases.
     project_types=("rust", "cargo", "crates"),
+    purl_type="cargo",
+    project_markers=("Cargo.toml",),
     default_prefix="rust",
     slice_file=RUSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_rusi_adapter,
@@ -1227,6 +1413,8 @@ RUSI_TOOL = ReachabilityTool(
 GOLEM_TOOL = ReachabilityTool(
     name="golem",
     project_types=("go", "golang"),
+    purl_type="golang",
+    project_markers=("go.mod", "go.work"),
     default_prefix="go",
     slice_file=GOLEM_REACHABLES_SLICE_FILE,
     import_adapter=_import_golem_adapter,
@@ -1243,6 +1431,17 @@ KOSI_TOOL = ReachabilityTool(
     # cdxgen labels Kotlin projects "kotlin" (alias "kt") and Android ones
     # "android". Pure-Java Gradle builds are left to atom.
     project_types=("kotlin", "kt", "android"),
+    # kosi keeps the project-type gate alone, with no purl type: Kotlin and
+    # plain Java components share the maven purl type, so a purl cannot tell
+    # them apart, and a wrong kosi run over a Java build costs more than the
+    # run a universal scan of a Kotlin project misses.
+    project_markers=(
+        "build.gradle",
+        "build.gradle.kts",
+        "settings.gradle",
+        "settings.gradle.kts",
+        "pom.xml",
+    ),
     default_prefix="kotlin",
     slice_file=KOSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_kosi_adapter,
@@ -1258,6 +1457,7 @@ DOSAI_TOOL = ReachabilityTool(
     name="dosai",
     # cdxgen labels .csproj projects "dotnet"; accept csharp/nuget aliases.
     project_types=("dotnet", "csharp", "nuget"),
+    purl_type="nuget",
     default_prefix="dotnet",
     slice_file=DOSAI_REACHABLES_SLICE_FILE,
     import_adapter=_import_dosai_adapter,
@@ -1604,11 +1804,77 @@ def blint_reviews_requested(options: Optional[Dict]) -> bool:
     )
 
 
+def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> List[str]:
+    """Run blint's security and capability review and keep its reports.
+
+    The review writes ``findings.json``, ``reviews.json`` and
+    ``analysis-coverage.json`` under ``analysis/blint/`` beside the BOM,
+    which is where the blint evidence adapter reads them, so the review's
+    findings reach the evidence store and ``depscan.findings.json``.
+    dep-scan drives the review itself rather than leaving it to the BOM
+    generator, so the cdxgen path of a source scan and the blint path of a
+    binary target share one step whose outcome the scan can record. A
+    failure never raises; its reason comes back for the manifest.
+
+    Returns the reasons the review did not assess, empty when it ran.
+    """
+    from xbom_lib.blint import run_blint_reviews
+
+    review_dir = analysis_report_dir(os.path.dirname(os.path.abspath(bom_file)), "blint")
+    targets = blint_targets(src_dir, options)
+    if not targets:
+        LOG.info("The blint review has no target: every path matches an --exclude pattern.")
+        return []
+    with console_status(f"Running blint's binary review on '{src_dir}'.", spinner=SPINNER):
+        review = run_blint_reviews(
+            targets,
+            review_dir,
+            deep=deep_enabled(options or {}),
+            **_accepted_exclude_argument(run_blint_reviews, options),
+        )
+    if review.success:
+        return []
+    LOG.warning("%s", review.command_output)
+    return [review.command_output or "the blint review failed without a reason"]
+
+
+def blint_targets(src_dir: str, options: Optional[Dict]) -> List[str]:
+    """The paths dep-scan hands blint for a comma-separated ``src_dir``.
+
+    With ``--exclude`` patterns in the cdxgen arguments, each directory is
+    replaced by the directories and files that together cover everything
+    the patterns keep, so blint's own walk never reaches an excluded tree
+    (see :func:`depscan.lib.exclusions.kept_targets`). Without patterns the
+    entries come back unchanged. An empty list means nothing is left.
+    """
+    entries = [entry for entry in src_dir.split(",") if entry]
+    exclusions = ExclusionSet.from_options(options)
+    if not exclusions:
+        return entries
+    targets: List[str] = []
+    for entry in entries:
+        if os.path.isdir(entry):
+            targets.extend(kept_targets(entry, exclusions, _blint_ignored_dirs()))
+        else:
+            targets.append(entry)
+    return targets
+
+
+def _blint_ignored_dirs() -> Tuple[str, ...]:
+    """The directory names blint never enters, lower-cased as blint compares
+    them; empty when blint is not installed."""
+    try:
+        from blint.config import ignore_directories
+    except ImportError:
+        return ()
+    return tuple(ignore_directories)
+
+
 def create_blint_bom(
     bom_file: str,
     src_dir: str = ".",
     options: Optional[Dict] = None,
-    reviews: bool = False,
+    targets: Optional[List[str]] = None,
 ) -> bool:
     """
     Method to create BOM file by using blint
@@ -1616,8 +1882,9 @@ def create_blint_bom(
     :param bom_file: BOM file
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM file.
-    :param reviews: Also run blint's security checks and capability reviews
-        and keep their reports under ``analysis/blint/`` next to the BOM.
+    :param targets: The paths to inventory, as :func:`blint_targets` returns
+        them; computed from ``src_dir`` and the ``--exclude`` patterns when
+        not given.
     :returns: True if the bom was generated successfully. False otherwise.
     """
     if options is None:
@@ -1627,11 +1894,18 @@ def create_blint_bom(
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
     generator_options = dict(options)
-    if reviews:
-        generator_options["blint_reviews_dir"] = analysis_report_dir(
-            os.path.dirname(os.path.abspath(bom_file)), "blint"
-        )
-    blint_lib = _blint_generator_class()(src_dir, bom_file, logger=LOG, options=generator_options)
+    if targets is None:
+        targets = blint_targets(src_dir, options)
+    if not targets:
+        LOG.warning("The blint BOM has no target: every path matches an --exclude pattern.")
+        return False
+    # The target list rides along as a list too, so a path with a comma in
+    # it survives; the patterns are for a blint that filters its own walk.
+    generator_options["blint_targets"] = list(targets)
+    generator_options["exclude_patterns"] = list(ExclusionSet.from_options(options).patterns)
+    blint_lib = _blint_generator_class()(
+        ",".join(targets), bom_file, logger=LOG, options=generator_options
+    )
     with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
@@ -1676,6 +1950,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         (an atom timeout) are kept in ``not_assessed``.
         """
         if not bom_result.success:
+            _record_stage_failure(bom_result, stage_file, stage)
             return False
         extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
         if getattr(bom_result, "returncode", None) == 4:
@@ -1689,8 +1964,26 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             0,
             *CDXGEN_PARTIAL_EXIT_CODES,
         ):
+            _record_stage_failure(bom_result, stage_file, stage)
             return False
-        return os.path.exists(stage_file)
+        if not os.path.exists(stage_file):
+            reason = f"cdxgen reported success but the {stage} lifecycle BOM was not written"
+            not_assessed.append(reason)
+            LOG.warning("Not assessed: %s", reason)
+            return False
+        return True
+
+    def _record_stage_failure(bom_result, stage_file, stage) -> None:
+        """Keep why one lifecycle stage's document is missing.
+
+        A stage that falls away (the scan continues on the other stages'
+        documents) must leave a named trace, or the inventory reads as a
+        whole: the reason carries the cdxgen exit status and the time budget
+        that was in effect, like the single-document path's failure reason.
+        """
+        reason = _cdxgen_failure_reason(bom_result, f"{stage} lifecycle")
+        not_assessed.append(reason)
+        LOG.warning("Not assessed: %s", reason)
 
     with console_status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
@@ -1775,12 +2068,23 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     # What if the build directory is different to the source
     build_dir = os.getenv("DEPSCAN_BUILD_DIR") or options.get("build_dir") or src_dir
     res = create_blint_bom(postbuild_bom_file, build_dir, options=coptions)
+    review_not_assessed: List[str] = []
     if not res or not os.path.exists(postbuild_bom_file):
+        reason = (
+            "the post-build lifecycle BOM was not generated; the blint invocation "
+            "was unsuccessful. Try building this project prior to invoking depscan, "
+            "or check that it generates binary artefacts"
+        )
+        not_assessed.append(reason)
         LOG.debug(
             "The blint invocation was unsuccessful. Try building this project prior to invoking depscan. Alternatively, check if this project generates binary artefacts."
         )
     else:
         written_bom_files.append(postbuild_bom_file)
+        if blint_reviews_requested(options):
+            # The binary check on a lifecycle scan reviews the built
+            # artefacts beside the post-build document they went into.
+            review_not_assessed = _run_blint_review(postbuild_bom_file, build_dir, options)
     any_success = bool(written_bom_files)
     # Each language tool whose project types select it runs once against the
     # source; its raw report goes to the evidence adapter, whose result rides
@@ -1800,6 +2104,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         not_assessed=not_assessed,
         adapter_results=adapter_results,
         introspection_gate_missed=introspection_gate_missed,
+        review_not_assessed=review_not_assessed,
     )
 
 

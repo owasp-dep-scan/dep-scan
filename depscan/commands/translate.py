@@ -97,7 +97,10 @@ OPTION_TABLE: tuple[OptionRow, ...] = (
         kind=FLAG,
         v7_flag="--csaf",
         v7_display="depscan scan --csaf",
-        note="Unchanged.",
+        note=(
+            "The starter `csaf.toml` is no longer written into the scanned"
+            " project; see the reports directory entry."
+        ),
     ),
     OptionRow(
         v6_flags=("--csaf-version",),

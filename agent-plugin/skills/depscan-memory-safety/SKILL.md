@@ -1,17 +1,20 @@
 ---
 name: depscan-memory-safety
-description: 'Finds memory-safety defects in C and C++ with atom and chen under the 37-rule family set, with confidence levels, compile-command support, SARIF output, and reachability ranking; and inventories the unsafe boundaries other languages carry (golem cgo and native interop, rusi unsafe-code and FFI, blint JNI joins). Use when asked to find memory-safety defects, review native code, audit unsafe boundaries, or check whether a memory-safety defect is reachable.'
+description: 'Finds memory-safety defects in C and C++ with atom and its bundled chen engine under the 37-rule family set, with confidence levels, compile-command support, SARIF output, and reachability ranking; and inventories the unsafe boundaries other languages carry (golem cgo and native interop, rusi unsafe-code and FFI, blint JNI joins). Use when asked to find memory-safety defects, review native code, audit unsafe boundaries, or check whether a memory-safety defect is reachable.'
 ---
 
 # Memory-safety analysis
 
 Use this skill for native code. dep-scan's memory-safety check is not
 implemented yet (a scan that asks for it exits 4 with the reason), so atom
-and chen are run directly; this is the same analyzer dep-scan plans to
-use, and the skill moves to the dep-scan path when that lands.
+is run directly; chen is atom's bundled AST engine, not a separate binary
+to find (`atom --version` prints both versions). This is the same analyzer
+dep-scan plans to use, and the skill moves to the dep-scan path when that
+lands.
 
-The rules in [reference/safety.md](../../reference/safety.md) apply. atom
-and chen read the project; `--fetch-deps`, the build tools and a CMake
+The rules in [reference/safety.md](../../reference/safety.md) apply, and
+[reference/tools.md](../../reference/tools.md) says where atom is found.
+atom reads the project; `--fetch-deps`, the build tools and a CMake
 configure step would run project tooling and need the user's consent.
 `--no-build-tools` below keeps them off.
 
@@ -26,7 +29,17 @@ assessed until the user chooses to upgrade it.
 
 ```bash
 mkdir -p /absolute/path/to/ms-reports
+# With a compilation database the project already has
 atom memory-safety -l c --compile-commands /absolute/path/to/project/compile_commands.json \
+  --min-confidence medium --no-build-tools \
+  --parse-report /absolute/path/to/ms-reports/parse-report.json \
+  -o /absolute/path/to/ms-reports/ms-app.atom \
+  --slice-outfile /absolute/path/to/ms-reports/findings.json \
+  /absolute/path/to/project
+
+# Without one (most projects have none): the macro census defines the
+# build-option macros that hide #if code first
+atom memory-safety -l c --auto-defines \
   --min-confidence medium --no-build-tools \
   --parse-report /absolute/path/to/ms-reports/parse-report.json \
   -o /absolute/path/to/ms-reports/ms-app.atom \
@@ -35,9 +48,8 @@ atom memory-safety -l c --compile-commands /absolute/path/to/project/compile_com
 ```
 
 Use `-l cpp` for C++. Results are much better with a
-`compile_commands.json`; without one, `--auto-defines` runs a macro census
-first and defines the build-option macros that hide `#if` code (it changes
-what is analysed, so say that you used it). `--format sarif` writes SARIF
+`compile_commands.json`, and `--auto-defines` changes what is analysed, so
+say which of the two forms you ran. `--format sarif` writes SARIF
 2.1.0 instead of JSON; `--memory-api-config <file>` declares the project's
 in-house allocation wrappers; `--min-confidence` takes low, medium or high
 (medium is the reviewed default; low is noisy).
@@ -82,8 +94,10 @@ CGO_ENABLED=0 GOFLAGS=-mod=readonly golem analyze -dir /absolute/path/to/go-proj
 rusi analyze --dir /absolute/path/to/rust-project --out /tmp/rusi.json
 ```
 
-golem reads the project from `-dir` and ignores positional paths. With
-cgo off, packages that import "C" still appear with their `#cgo`
+golem reads the project from `-dir` and ignores positional paths, and
+neither golem nor rusi is on `PATH` by default:
+[reference/tools.md](../../reference/tools.md) gives the lookup order for
+both. With cgo off, packages that import "C" still appear with their `#cgo`
 variables, flag names and risk categories, read from source rather than
 compiled; the crossings in `nativeBoundary[]` need the cgo build
 (`CGO_ENABLED=1`), which runs the host C compiler with flags the project
