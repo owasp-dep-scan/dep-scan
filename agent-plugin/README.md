@@ -27,7 +27,7 @@ Only Claude Code has the agents and the `userConfig` options, and only Claude Co
 
 ## Plugin settings
 
-The settings hold no keys or tokens: `lockfile_reminder` (the opt-in stale-scan hook), `vdb_home` (the database directory, as `VDB_HOME`), `vdb_flavor` (full, app-only, app-extended, app-10y, app-10y-extended), `cdxgen_cmd` (how dep-scan starts cdxgen; dep-scan needs cdxgen 13.8.0 or newer), and `runtime` (the local CLI or the ghcr.io/owasp-dep-scan/dep-scan image).
+The settings hold no keys or tokens: `lockfile_reminder` (the opt-in stale-scan hook), `vdb_home` (the database directory, as `VDB_HOME`), `vdb_flavor` (full, app-only, app-extended, app-2y, app-2y-extended, app-10y, app-10y-extended), `cdxgen_cmd` (how dep-scan starts cdxgen; dep-scan needs cdxgen 13.8.0 or newer), and `runtime` (the local CLI or the ghcr.io/owasp-dep-scan/dep-scan image).
 
 ## Privacy
 

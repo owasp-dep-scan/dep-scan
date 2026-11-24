@@ -40,7 +40,7 @@
     "vdb_flavor": {
       "type": "string",
       "title": "Vulnerability database flavor",
-      "description": "Value for --vdb-flavor and depscan vdb download --flavor: full, app-only, app-extended, app-10y or app-10y-extended. Leave empty for the dep-scan default."
+      "description": "Value for --vdb-flavor and depscan vdb download --flavor: full, app-only, app-extended, app-2y, app-2y-extended, app-10y or app-10y-extended. Leave empty for the dep-scan default."
     },
     "cdxgen_cmd": {
       "type": "string",

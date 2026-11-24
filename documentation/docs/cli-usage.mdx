@@ -63,7 +63,7 @@ usage: depscan scan [-h] [--target-kind {purl,git,container,bom,bom-dir,binary,a
                     [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS] [--cdxgen-server CDXGEN_SERVER]
                     [--rust-analyzer-backend {stable,compiler}] [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo] [--exploitability-rules EXPLOITABILITY_RULES] [--no-suggest]
                     [--fail-on-error] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}]
-                    [--severity {low,medium,high,critical}] [--malware-only] [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}] [--vdb-scope {app,app+os}]
+                    [--severity {low,medium,high,critical}] [--malware-only] [--vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}] [--vdb-scope {app,app+os}]
                     [--vdb-time {2y,default,10y}] [--vdb-extended] [--vdb-compression {xz,zst}] [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}] [--vdb-image VDB_IMAGE] [--no-universal]
                     [--no-vuln-table] [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}] [--annotate]
                     [target ...]
@@ -158,15 +158,16 @@ vulnerability database selection:
   Select which published vdb database the scan downloads. These can also be persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An explicit VDB_DATABASE_URL env pin always wins.
   The `depscan vdb download` command shares the same options for pre-fetching.
 
-  --vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}
+  --vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}
                         Which published database flavor to use: 'full' (app+OS), 'app-only' (application ecosystems, NVD 2020+), 'app-extended' (adds metadata tables for severity, text, alias,
-                        reference, symbol and date search), 'app-10y' (NVD 2016+), 'app-10y-extended' (both). Default: full.
+                        reference, symbol and date search), 'app-2y' (NVD 2024+, the smallest), 'app-2y-extended' (app-2y with metadata), 'app-10y' (NVD 2016+), 'app-10y-extended' (app-10y with
+                        metadata). Default: full.
   --vdb-scope {app,app+os}
-                        Deprecated alias for --vdb-flavor: 'app' maps to app-only (or app-extended/app-10y/app-10y-extended with the other deprecated options), 'app+os' to full. Default: app+os.
+                        Deprecated alias for --vdb-flavor: 'app' maps to app-only (or an app-2y, app-10y or -extended flavor with the other deprecated options), 'app+os' to full. Default: app+os.
   --vdb-time {2y,default,10y}
-                        Deprecated alias for --vdb-flavor: '10y' selects a 10-year flavor; '2y' has no v7 equivalent and is rejected. Default: default.
-  --vdb-extended        Deprecated alias selecting the metadata flavor (app-extended or app-10y-extended), needed for severity, text, alias, reference, symbol, and date search. Auto-selected when
-                        --severity is set.
+                        Deprecated alias for --vdb-flavor: '2y' selects a two-year and '10y' a 10-year application flavor. Default: default.
+  --vdb-extended        Deprecated alias selecting the metadata flavor (app-extended, app-2y-extended or app-10y-extended), needed for severity, text, alias, reference, symbol, and date search.
+                        Auto-selected when --severity is set.
   --vdb-compression {xz,zst}
                         Compression format. 'xz' (tar.xz) always works; 'zst' (zstd) is faster to decompress but needs a zstd decompressor. Default: xz.
   --vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}

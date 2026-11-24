@@ -119,8 +119,9 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         choices=VDB_FLAVORS,
         default=None,
         help="Which published database flavor to download: full (app+OS), "
-        "app-only, app-extended (metadata tables), app-10y (NVD 2016+), "
-        "app-10y-extended. Default: full.",
+        "app-only, app-extended (metadata tables), app-2y (NVD 2024+, the "
+        "smallest), app-2y-extended, app-10y (NVD 2016+), app-10y-extended. "
+        "Default: full.",
     )
     dl.add_argument(
         "--shards",
@@ -141,14 +142,15 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         "--time",
         choices=("2y", "default", "10y"),
         default=None,
-        help="Deprecated alias for --flavor. '10y' selects a 10-year flavor; "
-        "'2y' has no v7 equivalent and is rejected.",
+        help="Deprecated alias for --flavor. '2y' selects a two-year and '10y' "
+        "a 10-year application flavor.",
     )
     dl.add_argument(
         "--extended",
         action="store_true",
         default=False,
-        help="Deprecated alias selecting the metadata flavor (app-extended or app-10y-extended).",
+        help="Deprecated alias selecting the metadata flavor (app-extended, app-2y-extended "
+        "or app-10y-extended).",
     )
     dl.add_argument(
         "--compression",

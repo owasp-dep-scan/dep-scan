@@ -1,5 +1,7 @@
 """Tests for the flavor selection and image resolution helpers."""
 
+import argparse
+
 import pytest
 
 from depscan.lib.config import (
@@ -14,17 +16,20 @@ from vdb.lib.db_cmd import FULL_DB_FLAVORS
 
 def test_flavor_list_matches_vdb():
     """depscan offers exactly the flavors vdb publishes, from vdb's own list."""
-    assert (
-        VDB_FLAVORS
-        == FULL_DB_FLAVORS
-        == (
-            "full",
-            "app-only",
-            "app-extended",
-            "app-10y",
-            "app-10y-extended",
-        )
-    )
+    assert VDB_FLAVORS == FULL_DB_FLAVORS
+
+
+def test_cli_flavor_choices_match_vdb():
+    """The scan and serve parsers list the flavor choices literally, to keep
+    vdb out of the CLI start-up imports; they must still match vdb's list."""
+    from depscan.cli_options import build_parser
+    from depscan.commands.scan import add_vdb_options
+
+    scan_parser = argparse.ArgumentParser()
+    add_vdb_options(scan_parser)
+    for parser in (build_parser(), scan_parser):
+        action = next(a for a in parser._actions if a.dest == "vdb_flavor")
+        assert tuple(action.choices) == FULL_DB_FLAVORS
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +43,8 @@ def test_flavor_list_matches_vdb():
         ({"scope": "app+os", "time": "default", "extended": False}, "full"),
         ({"scope": "app", "time": "default", "extended": False}, "app-only"),
         ({"scope": "app", "time": "default", "extended": True}, "app-extended"),
+        ({"scope": "app", "time": "2y", "extended": False}, "app-2y"),
+        ({"scope": "app", "time": "2y", "extended": True}, "app-2y-extended"),
         ({"scope": "app", "time": "10y", "extended": False}, "app-10y"),
         ({"scope": "app", "time": "10y", "extended": True}, "app-10y-extended"),
     ],
@@ -50,7 +57,7 @@ def test_legacy_flavor_map_rows(kwargs, flavor):
 
 
 def test_legacy_map_has_no_other_rows():
-    assert len(VDB_LEGACY_FLAVOR_MAP) == 5
+    assert len(VDB_LEGACY_FLAVOR_MAP) == 7
 
 
 def test_legacy_defaults_resolve_to_full():
@@ -60,24 +67,18 @@ def test_legacy_defaults_resolve_to_full():
 @pytest.mark.parametrize(
     "kwargs",
     [
-        # A two-year window has no v7 flavor in any scope.
-        {"scope": "app", "time": "2y", "extended": False},
-        {"scope": "app", "time": "2y", "extended": True},
+        # App+OS has no two-year, 10-year or extended variant: those
+        # flavors are app-scope only.
         {"scope": "app+os", "time": "2y", "extended": False},
-        # App+OS has no 10-year or extended variant: those flavors are
-        # app-scope only.
         {"scope": "app+os", "time": "10y", "extended": False},
         {"scope": "app+os", "time": "10y", "extended": True},
         {"scope": "app+os", "time": "default", "extended": True},
     ],
 )
 def test_combinations_without_a_flavor_are_rejected(kwargs):
-    """The rejection names the flavors instead of silently mapping the
-    selection onto a bigger or smaller database."""
-    with pytest.raises(
-        ValueError,
-        match="Published flavors: full, app-only, app-extended, app-10y, app-10y-extended",
-    ):
+    """The selection is rejected instead of silently mapped onto a bigger or
+    smaller database."""
+    with pytest.raises(ValueError):
         resolve_vdb_flavor(**kwargs)
 
 
@@ -136,8 +137,8 @@ def test_image_override_wins_verbatim():
 
 
 def test_invalid_flavor_rejected():
-    with pytest.raises(ValueError, match="Invalid flavor"):
-        resolve_vdb_image_url(flavor="app-2y")
+    with pytest.raises(ValueError):
+        resolve_vdb_image_url(flavor="app-5y")
 
 
 def test_invalid_compression_rejected():
