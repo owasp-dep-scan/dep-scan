@@ -81,7 +81,7 @@ wheels = [
 
 [[package]]
 name = "appthreat-vulnerability-db"
-version = "7.0.6"
+version = "7.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -94,9 +94,9 @@ dependencies = [
     { name = "rich" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/78/4abdfb7c991fe553c17fb95de06d525277866cb6911ca7aa7e1a4411a8ad/appthreat_vulnerability_db-7.0.6.tar.gz", hash = "sha256:9f6b8586ec693fc2d4a1cb0b3d29ce278f28db0a2c3eb9ca30b44bd99b5ceaf7", size = 517054, upload-time = "2026-11-15T02:05:54.072Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/c6/c4e2cff92b05005739c7719959709d46d652615a0c5880f68980f27eb13f/appthreat_vulnerability_db-7.0.7.tar.gz", hash = "sha256:5f5115962a3ad4aa9a49b3ca3e95ec73049d2c30727bb752d5d4709709522829", size = 519982, upload-time = "2026-11-24T02:30:35.145Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/df/4370030ed35e568fe6d93ee217dc615461d10e3c78e3d22cb4d45043eeea/appthreat_vulnerability_db-7.0.6-py3-none-any.whl", hash = "sha256:85ecf7e8eeba1c9fc17564702eee67253fa54c22c40a8f5570974c5cf6aaf41f", size = 295518, upload-time = "2026-11-15T02:05:52.629Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/3d/fc060319423a191c186ec52b7fa916a64d1c8ecc2dcdcbb7fe5792000748/appthreat_vulnerability_db-7.0.7-py3-none-any.whl", hash = "sha256:d56ab43a0211ce6ce70a6634b2c1374862a8f0dfd18228f73b9b3bed593346db", size = 297417, upload-time = "2026-11-24T02:30:33.379Z" },
 ]
 
 [[package]]
@@ -246,7 +246,7 @@ wheels = [
 
 [[package]]
 name = "blint"
-version = "4.1.0"
+version = "4.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "apkinspector" },
@@ -265,9 +265,9 @@ dependencies = [
     { name = "rich" },
     { name = "wasm-tools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/37/edd11d51f22115f736c06992d78be53b0f5a290b112df31302d3befb0c9f/blint-4.1.0.tar.gz", hash = "sha256:53922077a8c374b46ab71673de1f44dbc053a3360138a43d1d3538f1cddb4f56", size = 1317857, upload-time = "2026-11-23T06:40:22.981Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/dd/725045c70ee77dfff3952bce3dedbb960bd80e059d81c232a795b725189c/blint-4.1.1.tar.gz", hash = "sha256:3d8d5648e47d017d52951362bd7efe17a185c61d66e51856f3e58c01121d00b0", size = 1322838, upload-time = "2026-11-24T02:33:37.591Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/32/a8bef9637d7e3ad8081254ba05b7bacedfc094e87a7aa0b528ee8dee6e97/blint-4.1.0-py3-none-any.whl", hash = "sha256:28a6fa1ca71eff0d5ed4477d07a8077aea9e104b7f8ed9f4bb268ef9cee129be", size = 1395069, upload-time = "2026-11-23T06:40:20.624Z" },
+    { url = "https://files.pythonhosted.org/packages/28/cb/59177172876cad25bde30818e8b1f6a248135ee597856e63e5e16e314a5d/blint-4.1.1-py3-none-any.whl", hash = "sha256:e51b8cb68d8e3f22fc16e9548b9ea6eff55b2fd360655e9f45208270b042df33", size = 1399805, upload-time = "2026-11-24T02:33:36.006Z" },
 ]
 
 [[package]]
@@ -820,7 +820,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", specifier = ">=7.0.6,<8" },
+    { name = "appthreat-vulnerability-db", specifier = ">=7.0.7,<8" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "cvss", specifier = "~=3.6" },
     { name = "jsonschema", specifier = "~=4.26.0" },
@@ -858,7 +858,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", specifier = ">=7.0.6,<8" },
+    { name = "appthreat-vulnerability-db", specifier = ">=7.0.7,<8" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "ds-analysis-lib", editable = "packages/analysis-lib" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "~=9.2.0" },
@@ -1571,11 +1571,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", specifier = ">=7.0.6,<8" },
+    { name = "appthreat-vulnerability-db", specifier = ">=7.0.7,<8" },
     { name = "atom-tools", marker = "extra == 'all'", specifier = "~=1.0.5" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = "~=1.0.5" },
-    { name = "blint", marker = "extra == 'all'", specifier = "~=4.1.0" },
-    { name = "blint", marker = "extra == 'ext'", specifier = "~=4.1.0" },
+    { name = "blint", marker = "extra == 'all'", specifier = "~=4.1.1" },
+    { name = "blint", marker = "extra == 'ext'", specifier = "~=4.1.1" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "cvss", specifier = "~=3.6" },
     { name = "defusedxml", specifier = "~=0.7.1" },

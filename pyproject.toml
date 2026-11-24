@@ -6,7 +6,7 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db>=7.0.6,<8",
+    "appthreat-vulnerability-db>=7.0.7,<8",
     "custom-json-diff~=2.1.6",
     "defusedxml~=0.7.1",
     "httpx~=0.28.1",
@@ -52,11 +52,11 @@ dev = [
     "mcp[cli]>=2.0.0,<3.0.0",
 ]
 server = ["ds-server-lib~=7.0.0a3"]
-ext = ["atom-tools~=1.0.5", "blint~=4.1.0"]
+ext = ["atom-tools~=1.0.5", "blint~=4.1.1"]
 mcp = ["mcp[cli]>=2.0.0,<3.0.0"]
 all = [
     "atom-tools~=1.0.5",
-    "blint~=4.1.0",
+    "blint~=4.1.1",
     "ds-server-lib~=7.0.0a3",
     "PyGithub~=2.10.0",
     "mcp[cli]>=2.0.0,<3.0.0",

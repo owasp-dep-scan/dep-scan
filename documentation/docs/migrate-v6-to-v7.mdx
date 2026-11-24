@@ -101,7 +101,7 @@ Every v6 option and its v7 equivalent:
 
 ## Vulnerability database (BREAKING)
 
-dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), whose database format and download images differ from v6.
+dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.7,<8`), whose database format and download images differ from v6.
 
 - **v6 databases are not read or migrated.** A database directory that holds only v6 files is reported as unusable, with the steps to fetch a v7 database. Delete the old directory or point `VDB_HOME` at a new one.
 - **A missing or empty database stops the scan.** v6 could report zero findings when the database was missing, empty or failed to download. v7 stops with a message naming the problem and exits with status 1, so a CI job no longer passes on a scan that could not match anything.
