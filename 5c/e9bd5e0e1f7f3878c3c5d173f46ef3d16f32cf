@@ -1,0 +1,40 @@
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_a7047eb50a1dba::t_77c7d1c5be57b8 1-119
+agent-plugin/skills/depscan-container-image/SKILL.md
+  s_a7047eb50a1dba::t_63b14af76bf089 1-96
+test/test_agent_plugin_commands.py
+  s_a7047eb50a1dba::t_172e9e0083d07b 1-86,93-104,106,111,113-154
+  s_a7047eb50a1dba::t_334b9c81c3dc52 87-92,105,107-110,112
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_a7047eb50a1dba::t_e62f323e5af85e 1-83
+agent-plugin/reference/commands.md
+  s_a7047eb50a1dba::t_7b071d96b0bb38 1-69
+  s_a7047eb50a1dba::t_df3ef26a9b1124 70
+agent-plugin/skills/depscan-vdb/SKILL.md
+  s_a7047eb50a1dba::t_b352b92a45b5b4 1-74
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_a7047eb50a1dba::t_b1812fc45b13ea 1-2,4-78
+  s_a7047eb50a1dba::t_5e346934fd4b60 3
+agent-plugin/reference/safety.md
+  s_a7047eb50a1dba::t_e887cae1a0d555 1-84
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_a7047eb50a1dba::t_3fac2eeed6a65e 1-31,34-38,41-84
+  s_a7047eb50a1dba::t_8c5b85064e7a36 40
+  s_a7047eb50a1dba::t_1c853f10792a10 32-33,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ce9bd5e0e1f7f3878c3c5d173f46ef3d16f32cf",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

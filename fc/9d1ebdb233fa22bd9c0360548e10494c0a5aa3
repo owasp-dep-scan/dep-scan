@@ -1,0 +1,16 @@
+agent-plugin/evals/not-invoked-depscan-coverage-loop/graders/no-install.md
+  h_6a4cc5cdf68def 2-3,5-7
+agent-plugin/evals/not-invoked-depscan-vdb/graders/no-download.md
+  h_6a4cc5cdf68def 2-3,5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc9d1ebdb233fa22bd9c0360548e10494c0a5aa3",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

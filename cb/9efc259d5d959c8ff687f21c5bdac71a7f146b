@@ -1,0 +1,45 @@
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 82-83
+agent-plugin/skills/depscan-container-image/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 127-129
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 91-92
+agent-plugin/skills/depscan-vdb/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 105-106
+documentation/docs/agent-skills-toolchain.mdx
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 17-20,24,29,31,36,38,40,42,47,50,52,57,59,66,69,74,77,83
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 116-119
+agent-plugin/skills/depscan-memory-safety/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 93-94
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 77-78
+agent-plugin/skills/depscan-attack-surface/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 99-100
+agent-plugin/skills/depscan-binary/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 89-90
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 99-100
+agent-plugin/skills/depscan-mobile-app/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 78-79
+agent-plugin/skills/depscan-crypto/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 92-93
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_a7047eb50a1dba::t_e12aecfd81e9ef 102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb9efc259d5d959c8ff687f21c5bdac71a7f146b",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

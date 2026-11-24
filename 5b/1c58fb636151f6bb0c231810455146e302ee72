@@ -1,0 +1,46 @@
+agent-plugin/.claude-plugin/plugin.json
+  s_a7047eb50a1dba::t_3b8ab7a862da82 4
+  s_a7047eb50a1dba::t_376f342a4a816a 1-2,5,9,24-56
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 3,6-8,10-23
+agent-plugin/mcp.json
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-10
+test/test_agent_plugin_manifests.py
+  s_a7047eb50a1dba::t_1ca7260f8610be 1-134
+.claude-plugin/marketplace.json
+  s_a7047eb50a1dba::t_674c28e800e071 1-26
+agent-plugin/plugin.json
+  s_a7047eb50a1dba::t_3b8ab7a862da82 5
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-4,6-30
+.agents/plugins/marketplace.json
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-20
+agent-plugin/LICENSE
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-21
+.cursor-plugin/marketplace.json
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-8,10-15,17-38
+  s_a7047eb50a1dba::t_3b8ab7a862da82 9,16
+contrib/agent_manifests_template.json
+  s_a7047eb50a1dba::t_67a109fdcf489b 1-32
+agent-plugin/gemini-extension.json
+  s_a7047eb50a1dba::t_e9af943cbc7ab4 1-2,4-5
+  s_a7047eb50a1dba::t_3b8ab7a862da82 3
+contrib/gen_agent_manifests.py
+  s_a7047eb50a1dba::t_186bba7e131a7a 1-47,51-279,289-315
+  s_a7047eb50a1dba::t_0076ba11889513 48-50
+  s_a7047eb50a1dba::t_db27dccf1d7e44 280-288,316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b1c58fb636151f6bb0c231810455146e302ee72",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

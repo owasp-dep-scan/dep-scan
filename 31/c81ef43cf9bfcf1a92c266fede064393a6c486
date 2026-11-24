@@ -1,0 +1,19 @@
+documentation/docs/concepts/exploitability.mdx
+  s_376e7604108c38::t_a952cf1f621f31 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31c81ef43cf9bfcf1a92c266fede064393a6c486",
+  "prompts": {},
+  "sessions": {
+    "s_376e7604108c38": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_387cb362-0e14-412a-8ae9-a7b8c308dbfc",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

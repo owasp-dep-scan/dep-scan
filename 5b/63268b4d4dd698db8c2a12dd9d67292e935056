@@ -1,0 +1,155 @@
+packages/analysis-lib/src/analysis_lib/data/exploitability_rules.yaml
+  s_376e7604108c38::t_1762c8ea762b46 1-44
+test/test_api.py
+  s_376e7604108c38::t_0a4a9b0fedf8be 68
+depscan/lib/report.py
+  s_376e7604108c38::t_1597ea2384224b 16
+  s_376e7604108c38::t_ebb141e89c59b6 103-110
+packages/analysis-lib/src/analysis_lib/output.py
+  s_376e7604108c38::t_92b4ba3f143264 270
+  s_376e7604108c38::t_5d3da461b2b0fb 7
+  s_376e7604108c38::t_508649c25dae6a 293
+  s_376e7604108c38::t_624d98a9b24d81 331,338-356
+  s_376e7604108c38::t_b30d825b79de87 172-191
+  s_376e7604108c38::t_68296099ff8a61 357-358
+packages/analysis-lib/pyproject.toml
+  s_376e7604108c38::t_8a2d02e7b7d83e 14
+  s_376e7604108c38::t_a6ae09ccce357d 48
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_376e7604108c38::t_8f5ded7ad81699 288-292,295-300
+  s_376e7604108c38::t_a7283d35f12160 1-230,232-287,293-294,301-357,360-367,369-370,373-397
+  s_376e7604108c38::t_420741aee3acc2 231
+  s_376e7604108c38::t_754c452550aace 358-359,368,371-372
+packages/analysis-lib/tests/test_findings_schema.py
+  s_376e7604108c38::t_97faa76b1b19c8 269-282
+  s_376e7604108c38::t_9458ca55cd373d 141-142,146-150
+  s_376e7604108c38::t_8634618d7bff3f 59
+  s_376e7604108c38::t_2df7c1374d6345 100
+  s_376e7604108c38::t_4ad1c237d6c1ca 283-284
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_376e7604108c38::t_e711181edff99b 189-192
+  s_376e7604108c38::t_0b9a6e0d375d2b 225
+  s_376e7604108c38::t_b1753b02c1b3e5 4
+test/test_v7_version_help_config.py
+  s_376e7604108c38::t_0c77085d9ec306 123-128
+depscan/lib/scan_directory.py
+  s_376e7604108c38::t_5071ae4667dbdd 83
+  s_376e7604108c38::t_a242da8f3c4a21 35-37
+  s_376e7604108c38::t_ec7ba1274a12dd 605,614-616,624
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_376e7604108c38::t_6eeea71ef53620 238,243,248-250
+  s_376e7604108c38::t_6b0333e5ead1b6 225,229
+  s_376e7604108c38::t_f773628303c7eb 251,261-262,283-297,299-321
+  s_376e7604108c38::t_221ee31f2e061f 3
+  s_376e7604108c38::t_79c53dc794b320 88
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-exploitability-rules.schema.json
+  s_376e7604108c38::t_e823274d759b24 1-69
+packages/analysis-lib/tests/test_vdr_convert.py
+  s_376e7604108c38::t_e52c140e079fb2 239-240,242,250-264
+  s_376e7604108c38::t_722574bfc0ce9d 323-324
+  s_376e7604108c38::t_acc6000c075ed7 184,187-191,202-203,214-229,234-235,237,241,243-246,275,295,297-300,315,322,325,334-336,351-352,362-363,365,377,385,396
+  s_376e7604108c38::t_420741aee3acc2 265
+  s_376e7604108c38::t_d422d4c1f34cf5 282
+  s_376e7604108c38::t_924e2b39766449 327
+  s_376e7604108c38::t_71020fdc391908 266-267,289
+packages/analysis-lib/src/analysis_lib/findings/model.py
+  s_376e7604108c38::t_4ed3276152d4bc 132,149
+depscan/cli_options.py
+  s_376e7604108c38::t_d44e14d508bdb6 146-153
+  s_376e7604108c38::t_83ffa2be45c4fa 145
+test/test_v7_scan.py
+  s_376e7604108c38::t_0a4a9b0fedf8be 101
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_376e7604108c38::t_feb74a7550f7ab 210,214
+  s_376e7604108c38::t_44d2071b36699a 223-233,245-246
+  s_376e7604108c38::t_58f6d4bb560dc5 168-169,171-174
+  s_376e7604108c38::t_be30d26211f7b6 292,303-306,316,329-330
+  s_376e7604108c38::t_9cf9cff6b29c85 19
+  s_376e7604108c38::t_55eb86dcae36e6 145
+  s_376e7604108c38::t_7a089e691a1180 162
+depscan/lib/pipeline.py
+  s_376e7604108c38::t_7ca008bd185741 665-675
+  s_376e7604108c38::t_a464d9fda92c2e 44-49
+  s_376e7604108c38::t_6ff89e9a569603 717
+  s_376e7604108c38::t_26238c5b6ef96f 1555-1563
+  s_376e7604108c38::t_545e0a5e905edc 215-220
+  s_376e7604108c38::t_2a5a80c0b6644a 1489-1502
+  s_376e7604108c38::t_cd12672643357b 1419-1421
+  s_376e7604108c38::t_4f59498a53302f 1426-1428,1431,1433-1435,1437,1457,1464-1485
+  s_376e7604108c38::t_cbaefbc4f2c204 1486-1488
+depscan/commands/scan.py
+  s_376e7604108c38::t_dc9eb8c3601038 884-895
+  s_376e7604108c38::t_7f6b1eb9269275 909-929
+  s_376e7604108c38::t_52a55be9dd2fa9 368-376
+depscan/commands/config.py
+  s_376e7604108c38::t_d7554934e26f1e 166-177,193,195,204
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_376e7604108c38::t_305ccddb9e6118 11-13
+  s_376e7604108c38::t_acfa3ad05ac267 39-41
+test/test_v7_output_contract.py
+  s_376e7604108c38::t_648ef6cafa3b22 224,234,237-246
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_376e7604108c38::t_8e72329cc4bb04 82-84
+  s_376e7604108c38::t_beedfc7a6a14c6 6
+  s_376e7604108c38::t_277ab130fb897f 58-61
+depscan/mcp_server/tools.py
+  s_376e7604108c38::t_df5678428f6a9f 303-304
+  s_376e7604108c38::t_db80c45e81763c 256-267
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_findings-input.schema.json
+  s_376e7604108c38::t_3e89bb8995f8e8 55-64
+packages/analysis-lib/tests/data/findings/memory-safety.json
+  s_376e7604108c38::t_d189f1b8ce5a77 20,24-25
+packages/analysis-lib/tests/test_output_schemas.py
+  s_376e7604108c38::t_1cb7ef3c47f674 80
+  s_376e7604108c38::t_3726ca92789fd5 77-79
+  s_376e7604108c38::t_c538b47598511f 96,107,111
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-config-show-output.schema.json
+  s_376e7604108c38::t_77be15822586c0 23-40
+  s_376e7604108c38::t_5509459cf63662 5,10-12
+test/test_pipeline.py
+  s_376e7604108c38::t_02c6c785e38354 810,814-819
+  s_376e7604108c38::t_e1577aa6fd857f 602,652
+  s_376e7604108c38::t_d89bdc456e3034 767,777,779,795-796,798-809,811-813,820-831
+test/test_mcp_tools.py
+  s_376e7604108c38::t_e5849288156baa 637-652,663-683
+  s_376e7604108c38::t_25889fc0e0c6e6 198,201-210
+  s_376e7604108c38::t_1262be1cdeee0f 136
+  s_376e7604108c38::t_eca12ea93dd69b 653-662
+  s_376e7604108c38::t_a3ea3073c1ba82 767-770
+  s_376e7604108c38::t_f9e9b6ebcfd4dd 795-798
+test/test_scan_internals.py
+  s_376e7604108c38::t_0a4a9b0fedf8be 75
+packages/analysis-lib/tests/test_exploitability.py
+  s_376e7604108c38::t_420741aee3acc2 214,278,327,356
+  s_376e7604108c38::t_f9e2d3e2b4ecc2 263,303,340
+  s_376e7604108c38::t_8f1e45f32a6a40 196-198,375-376
+  s_376e7604108c38::t_43b9929873cb5c 1-187,189-195,199-213,215-260,262,264-272,279-302,304-326,328-339,341-355,357-374
+  s_376e7604108c38::t_fab9ec72d5b96d 261,273-277
+  s_376e7604108c38::t_924e2b39766449 188
+test/test_v7_verbs.py
+  s_376e7604108c38::t_adbda6f8422719 775-789
+  s_376e7604108c38::t_aff673dc6ff9f7 309
+test/test_scan_directory.py
+  s_376e7604108c38::t_857fe3a8a72e2c 296
+  s_376e7604108c38::t_f09b127f109506 79
+  s_376e7604108c38::t_583f512aa76b81 312-367
+  s_376e7604108c38::t_928cc7b53be9c4 113,116-125
+uv.lock
+  s_376e7604108c38::t_d16f3c0997b1dc 2,8,815,828,956-957,2046,2049-2057,2073-2081
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b63268b4d4dd698db8c2a12dd9d67292e935056",
+  "prompts": {},
+  "sessions": {
+    "s_376e7604108c38": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_387cb362-0e14-412a-8ae9-a7b8c308dbfc",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

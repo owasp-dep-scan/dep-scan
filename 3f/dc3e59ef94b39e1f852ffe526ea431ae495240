@@ -1,0 +1,29 @@
+contrib/gen_agent_manifests.py
+  s_a7047eb50a1dba::t_e73b2a1a8d850b 266-268,309
+test/test_agent_plugin_check.py
+  s_a7047eb50a1dba::t_b6a09a28eb0ebc 37-39
+.gitattributes
+  s_a7047eb50a1dba::t_b5b714f53759de 2-12
+.gitignore
+  s_a7047eb50a1dba::t_62fae731fc4301 179-183
+test/test_agent_plugin_manifests.py
+  s_a7047eb50a1dba::t_e73b2a1a8d850b 52,57,83
+agent-plugin/.mcp.json
+  s_a7047eb50a1dba::t_5b421ee235ec2b 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fdc3e59ef94b39e1f852ffe526ea431ae495240",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

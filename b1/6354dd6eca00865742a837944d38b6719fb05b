@@ -1,0 +1,146 @@
+test/test_agent_plugin_tool_commands.py
+  s_a7047eb50a1dba::t_b7e117d76039aa 15
+  s_a7047eb50a1dba::t_1165ec7a0b31ae 145,149-152
+  s_a7047eb50a1dba::t_dee4eee9670db3 69-73,77-79,86-88,96-122,124,130-132,134-136
+  s_a7047eb50a1dba::t_aff0482a605fed 146-148
+  s_a7047eb50a1dba::t_478388692e949b 1-14,16-68,74-76,80-85,89,92-95,123,137-144,153-166
+  s_a7047eb50a1dba::t_9eb03907f1ec28 125-129,133
+  s_a7047eb50a1dba::t_556bd2d1194741 90-91
+documentation/docs/agent-skills-toolchain.mdx
+  s_a7047eb50a1dba::t_5b98f559ba37c2 1-96
+agent-plugin/agents/vuln-triager.md
+  s_a7047eb50a1dba::t_955c1b0d8358c8 32-34
+  s_a7047eb50a1dba::t_93ada378d99207 9-11,19-22
+documentation/docs/agent-plugin.mdx
+  s_a7047eb50a1dba::t_5b98f559ba37c2 14,19,22,24-31,60
+agent-plugin/README.md
+  s_a7047eb50a1dba::t_2a0e72dc2a40b9 3,10
+agent-plugin/reference/safety.md
+  s_a7047eb50a1dba::t_9b54aceb381609 85-113
+agent-plugin/skills/depscan-container-image/SKILL.md
+  s_a7047eb50a1dba::t_9bf084313b26e6 91,94,103-106
+  s_a7047eb50a1dba::t_c5b4cd7eaeee9c 82-90,92-93,95-102,107-114
+agent-plugin/reference/tools.md
+  s_a7047eb50a1dba::t_5417ccc8fe72f6 42
+  s_a7047eb50a1dba::t_8ca52eb68f3b09 1-41,43-63
+README.md
+  s_a7047eb50a1dba::t_2a0e72dc2a40b9 645
+test/test_docs_cli.py
+  s_a7047eb50a1dba::t_c4d6fd18715fee 222-225
+documentation/sidebars.ts
+  s_a7047eb50a1dba::t_5b98f559ba37c2 23
+agent-plugin/skills/depscan-vdb/SKILL.md
+  s_a7047eb50a1dba::t_c51cb69595ced9 63,65-68,71-74,89-93
+  s_a7047eb50a1dba::t_7358db6b8c08ef 64,69-70,75-76,94
+  s_a7047eb50a1dba::t_1eae704f10a23c 77-88
+test/test_agent_plugin_plugin.py
+  s_a7047eb50a1dba::t_c4d6fd18715fee 51-53,56-59,61
+agent-plugin/reference/commands.md
+  s_a7047eb50a1dba::t_ad9d406c23731f 71-108
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_a7047eb50a1dba::t_df664d7ff32945 73-91
+agent-plugin/agents/binary-reviewer.md
+  s_a7047eb50a1dba::t_c2bf5bb638bac0 1-62
+agent-plugin/agents/exposure-analyst.md
+  s_a7047eb50a1dba::t_3b8582e760c5c9 1-70
+agent-plugin/evals/evidence-not-assessed/graders/says-not-assessed.md
+  s_a7047eb50a1dba::t_bb4234f1f7bd5b 1-7
+agent-plugin/evals/evidence-not-assessed/prompt.md
+  s_a7047eb50a1dba::t_309a67d49e684c 1-8
+agent-plugin/evals/evidence-witness-path/graders/cites-root-set.md
+  s_a7047eb50a1dba::t_6180c97840d448 1-7
+agent-plugin/evals/evidence-witness-path/prompt.md
+  s_a7047eb50a1dba::t_df02f3a34242ea 1-8
+agent-plugin/evals/safety-consent-for-project-code/graders/asks-first.md
+  s_a7047eb50a1dba::t_5ce46a7fb5254e 1-7
+agent-plugin/evals/safety-consent-for-project-code/prompt.md
+  s_a7047eb50a1dba::t_316be5e3968de8 1-8
+agent-plugin/evals/safety-no-large-downloads/graders/names-the-size.md
+  s_a7047eb50a1dba::t_98e1ff0a99e80d 1-7
+agent-plugin/evals/safety-no-large-downloads/prompt.md
+  s_a7047eb50a1dba::t_88237cf366b482 1-8
+agent-plugin/evals/safety-no-upstream-clones/graders/names-the-clones.md
+  s_a7047eb50a1dba::t_69609daa5c1351 1-7
+agent-plugin/evals/safety-no-upstream-clones/prompt.md
+  s_a7047eb50a1dba::t_f001a68770de3c 1-8
+agent-plugin/evals/select-depscan-attack-surface/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_eff6eecabd5a1f 1-6
+agent-plugin/evals/select-depscan-attack-surface/graders/skill-fired.md
+  s_a7047eb50a1dba::t_5be7402dbe8480 1-5
+agent-plugin/evals/select-depscan-attack-surface/prompt.md
+  s_a7047eb50a1dba::t_c8a5c85d065f43 1-8
+agent-plugin/evals/select-depscan-binary/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_4e4ab6b0900c8c 1-6
+agent-plugin/evals/select-depscan-binary/graders/skill-fired.md
+  s_a7047eb50a1dba::t_9a1c2eb326adce 1-5
+agent-plugin/evals/select-depscan-binary/prompt.md
+  s_a7047eb50a1dba::t_a95ef8039f0f8b 1-8
+agent-plugin/evals/select-depscan-change-risk/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_8b77542165a1f9 1-6
+agent-plugin/evals/select-depscan-change-risk/graders/skill-fired.md
+  s_a7047eb50a1dba::t_6ae3e9af93f268 1-5
+agent-plugin/evals/select-depscan-change-risk/prompt.md
+  s_a7047eb50a1dba::t_5c6b8c52f8d04b 1-8
+agent-plugin/evals/select-depscan-crypto/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_2c38db8f6a766c 1-6
+agent-plugin/evals/select-depscan-crypto/graders/skill-fired.md
+  s_a7047eb50a1dba::t_5c4b3839df4f78 1-5
+agent-plugin/evals/select-depscan-crypto/prompt.md
+  s_a7047eb50a1dba::t_52f2d654ca42bd 1-8
+agent-plugin/evals/select-depscan-memory-safety/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_393bb930d6190e 1-6
+agent-plugin/evals/select-depscan-memory-safety/graders/skill-fired.md
+  s_a7047eb50a1dba::t_259fe319fd95a8 1-5
+agent-plugin/evals/select-depscan-memory-safety/prompt.md
+  s_a7047eb50a1dba::t_f20842fba03344 1-8
+agent-plugin/evals/select-depscan-mobile-app/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_021bf901d65454 1-6
+agent-plugin/evals/select-depscan-mobile-app/graders/skill-fired.md
+  s_a7047eb50a1dba::t_aabe9d65d8ab5a 1-5
+agent-plugin/evals/select-depscan-mobile-app/prompt.md
+  s_a7047eb50a1dba::t_e964cbfca77539 1-8
+agent-plugin/evals/select-depscan-reachability-proof/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_a9e6d01fca5a40 1-6
+agent-plugin/evals/select-depscan-reachability-proof/graders/skill-fired.md
+  s_a7047eb50a1dba::t_77f66826b35b00 1-5
+agent-plugin/evals/select-depscan-reachability-proof/prompt.md
+  s_a7047eb50a1dba::t_f3b00d2c28d744 1-8
+agent-plugin/evals/select-depscan-supply-chain/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_e65f23c8dba04c 1-6
+agent-plugin/evals/select-depscan-supply-chain/graders/skill-fired.md
+  s_a7047eb50a1dba::t_1ddc90e8b48314 1-5
+agent-plugin/evals/select-depscan-supply-chain/prompt.md
+  s_a7047eb50a1dba::t_c8188c6f3436a4 1-8
+agent-plugin/skills/depscan-attack-surface/SKILL.md
+  s_a7047eb50a1dba::t_5770cf83b2b78c 1-100
+agent-plugin/skills/depscan-binary/SKILL.md
+  s_a7047eb50a1dba::t_d9c49433bdb310 1-90
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_a7047eb50a1dba::t_f2300d2891aace 1-100
+agent-plugin/skills/depscan-crypto/SKILL.md
+  s_a7047eb50a1dba::t_5622eea5af6701 1-93
+agent-plugin/skills/depscan-memory-safety/SKILL.md
+  s_a7047eb50a1dba::t_8dcea2d177d6b7 1-94
+agent-plugin/skills/depscan-mobile-app/SKILL.md
+  s_a7047eb50a1dba::t_6564c4de904418 1-79
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_a7047eb50a1dba::t_2cab25cc4aeac4 1-132
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_a7047eb50a1dba::t_283074dda63616 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b16354dd6eca00865742a837944d38b6719fb05b",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
