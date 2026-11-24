@@ -143,16 +143,15 @@ PYPI_SERVER = "https://pypi.org/pypi"
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
 # --- vdb database selection -----------------------------------------------
-# vdb 7 publishes five complete databases ("flavors"), one per image repo
+# vdb 7 publishes seven complete databases ("flavors"), one per image repo
 # ``ghcr.io/appthreat/vdb7-<flavor>``. The image URL for a flavor is resolved
 # by vdb itself (``vdb.lib.db_cmd.resolve_full_image_url``), so a registry or
 # tag override set through ``VDB_DATABASE_URL`` applies to every flavor.
 VDB_FLAVORS = FULL_DB_FLAVORS
 
 # The legacy ``--vdb-scope``/``--vdb-time``/``--vdb-extended`` triple mapped
-# onto the published flavors. Combinations with no row (a two-year window in
-# any scope, an app+OS 10-year or extended variant, and every per-distro
-# image) have no v7 flavor; they are rejected with the flavors listed rather
+# onto the published flavors. Combinations with no row (an app+OS two-year,
+# 10-year or extended variant, and every per-distro image) have no v7 flavor; they are rejected with the flavors listed rather
 # than silently mapped onto a bigger or smaller database.
 #
 # ============ ========= ========= ==========================
@@ -161,6 +160,8 @@ VDB_FLAVORS = FULL_DB_FLAVORS
 # ``app+os``   default   no        ``full``
 # ``app``      default   no        ``app-only``
 # ``app``      default   yes       ``app-extended``
+# ``app``      2y        no        ``app-2y``
+# ``app``      2y        yes       ``app-2y-extended``
 # ``app``      10y       no        ``app-10y``
 # ``app``      10y       yes       ``app-10y-extended``
 # ============ ========= ========= ==========================
@@ -168,6 +169,8 @@ VDB_LEGACY_FLAVOR_MAP = {
     ("app+os", "default", False): "full",
     ("app", "default", False): "app-only",
     ("app", "default", True): "app-extended",
+    ("app", "2y", False): "app-2y",
+    ("app", "2y", True): "app-2y-extended",
     ("app", "10y", False): "app-10y",
     ("app", "10y", True): "app-10y-extended",
 }

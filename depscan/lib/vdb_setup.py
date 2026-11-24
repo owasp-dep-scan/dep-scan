@@ -222,7 +222,7 @@ def resolve_scan_vdb_image(args):
     )
     if args.severity and not explicit_choice and "extended" not in flavor:
         # The metadata flavors are the answer to --severity's push-down.
-        flavor = "app-10y-extended" if flavor == "app-10y" else "app-extended"
+        flavor = f"{flavor}-extended" if flavor in ("app-2y", "app-10y") else "app-extended"
     if "extended" in flavor:
         os.environ["VDB_INCLUDE_METADATA"] = "true"
     if args.severity and not explicit_choice:

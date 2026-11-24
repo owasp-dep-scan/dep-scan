@@ -478,14 +478,23 @@ def add_vdb_options(
     vdb_group = parser.add_argument_group("vulnerability database selection", description)
     vdb_group.add_argument(
         "--vdb-flavor",
-        choices=("full", "app-only", "app-extended", "app-10y", "app-10y-extended"),
+        choices=(
+            "full",
+            "app-only",
+            "app-extended",
+            "app-2y",
+            "app-2y-extended",
+            "app-10y",
+            "app-10y-extended",
+        ),
         default=argparse.SUPPRESS,
         dest="vdb_flavor",
         help="Which published database flavor to use: 'full' (app+OS), "
         "'app-only' (application ecosystems, NVD 2020+), 'app-extended' "
         "(adds metadata tables for severity, text, alias, reference, symbol "
-        "and date search), 'app-10y' (NVD 2016+), 'app-10y-extended' "
-        "(both). Default: full.",
+        "and date search), 'app-2y' (NVD 2024+, the smallest), "
+        "'app-2y-extended' (app-2y with metadata), 'app-10y' (NVD 2016+), "
+        "'app-10y-extended' (app-10y with metadata). Default: full.",
     )
     vdb_group.add_argument(
         "--vdb-scope",
@@ -493,7 +502,7 @@ def add_vdb_options(
         default=argparse.SUPPRESS,
         dest="vdb_scope",
         help="Deprecated alias for --vdb-flavor: 'app' maps to app-only (or "
-        "app-extended/app-10y/app-10y-extended with the other deprecated "
+        "an app-2y, app-10y or -extended flavor with the other deprecated "
         "options), 'app+os' to full. Default: app+os.",
     )
     vdb_group.add_argument(
@@ -501,16 +510,16 @@ def add_vdb_options(
         choices=("2y", "default", "10y"),
         default=argparse.SUPPRESS,
         dest="vdb_time",
-        help="Deprecated alias for --vdb-flavor: '10y' selects a 10-year "
-        "flavor; '2y' has no v7 equivalent and is rejected. Default: default.",
+        help="Deprecated alias for --vdb-flavor: '2y' selects a two-year and "
+        "'10y' a 10-year application flavor. Default: default.",
     )
     vdb_group.add_argument(
         "--vdb-extended",
         action="store_true",
         default=argparse.SUPPRESS,
         dest="vdb_extended",
-        help="Deprecated alias selecting the metadata flavor (app-extended or "
-        "app-10y-extended), needed for severity, text, alias, reference, "
+        help="Deprecated alias selecting the metadata flavor (app-extended, "
+        "app-2y-extended or app-10y-extended), needed for severity, text, alias, reference, "
         "symbol, and date search. Auto-selected when --severity is set.",
     )
     vdb_group.add_argument(

@@ -215,7 +215,7 @@ usage: depscan scan [-h]
                     [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search]
                     [--search-order {purl,pcu,cpe,cpu,url}]
                     [--severity {low,medium,high,critical}] [--malware-only]
-                    [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}]
+                    [--vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}]
                     [--vdb-scope {app,app+os}] [--vdb-time {2y,default,10y}]
                     [--vdb-extended] [--vdb-compression {xz,zst}]
                     [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}]
@@ -386,26 +386,28 @@ vulnerability database selection:
   explicit VDB_DATABASE_URL env pin always wins. The `depscan vdb download`
   command shares the same options for pre-fetching.
 
-  --vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}
+  --vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}
                         Which published database flavor to use: 'full'
                         (app+OS), 'app-only' (application ecosystems, NVD
                         2020+), 'app-extended' (adds metadata tables for
                         severity, text, alias, reference, symbol and date
-                        search), 'app-10y' (NVD 2016+), 'app-10y-extended'
-                        (both). Default: full.
+                        search), 'app-2y' (NVD 2024+, the smallest),
+                        'app-2y-extended' (app-2y with metadata), 'app-10y'
+                        (NVD 2016+), 'app-10y-extended' (app-10y with
+                        metadata). Default: full.
   --vdb-scope {app,app+os}
                         Deprecated alias for --vdb-flavor: 'app' maps to app-
-                        only (or app-extended/app-10y/app-10y-extended with
+                        only (or an app-2y, app-10y or -extended flavor with
                         the other deprecated options), 'app+os' to full.
                         Default: app+os.
   --vdb-time {2y,default,10y}
-                        Deprecated alias for --vdb-flavor: '10y' selects a
-                        10-year flavor; '2y' has no v7 equivalent and is
-                        rejected. Default: default.
+                        Deprecated alias for --vdb-flavor: '2y' selects a two-
+                        year and '10y' a 10-year application flavor. Default:
+                        default.
   --vdb-extended        Deprecated alias selecting the metadata flavor (app-
-                        extended or app-10y-extended), needed for severity,
-                        text, alias, reference, symbol, and date search. Auto-
-                        selected when --severity is set.
+                        extended, app-2y-extended or app-10y-extended), needed
+                        for severity, text, alias, reference, symbol, and date
+                        search. Auto-selected when --severity is set.
   --vdb-compression {xz,zst}
                         Compression format. 'xz' (tar.xz) always works; 'zst'
                         (zstd) is faster to decompress but needs a zstd

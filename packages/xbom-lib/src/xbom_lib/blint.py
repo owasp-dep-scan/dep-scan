@@ -38,7 +38,7 @@ BLINT_COVERAGE_FILE = "analysis-coverage.json"
 
 def _accepts_exclude(func: Callable) -> bool:
     """Whether an installed blint callable takes the ``exclude`` parameter
-    (blint releases after 4.1.0 do). An older blint is handed no such
+    (blint 4.1.1 and later do). An older blint is handed no such
     argument; the caller's own filtering of the target list stays the guard."""
     try:
         return "exclude" in inspect.signature(func).parameters

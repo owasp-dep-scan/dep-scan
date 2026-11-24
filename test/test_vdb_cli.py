@@ -93,11 +93,26 @@ def test_distro_is_rejected():
         _resolve_flavor_from_args(args)
 
 
-def test_two_year_window_is_rejected():
+def test_two_year_window_resolves_to_app_2y():
     parser = _build_parser()
     args = parser.parse_args(["download", "--scope", "app", "--time", "2y"])
-    with pytest.raises(ValueError, match="Published flavors"):
+    flavor, _legacy = _resolve_flavor_from_args(args)
+    assert flavor == "app-2y"
+
+
+def test_two_year_window_with_os_is_rejected():
+    parser = _build_parser()
+    args = parser.parse_args(["download", "--scope", "app+os", "--time", "2y"])
+    with pytest.raises(ValueError):
         _resolve_flavor_from_args(args)
+
+
+def test_app_2y_flavor_is_accepted():
+    parser = _build_parser()
+    args = parser.parse_args(["download", "--flavor", "app-2y-extended"])
+    flavor, legacy = _resolve_flavor_from_args(args)
+    assert flavor == "app-2y-extended"
+    assert legacy == []
 
 
 # ---------------------------------------------------------------------------

@@ -134,7 +134,7 @@
         },
         "flavor": {
           "type": ["string", "null"],
-          "description": "The flavor of the recorded image (full, app-only, app-extended, app-10y, app-10y-extended) or shards for a shard-set marker. Null when the marker is missing or names no known flavor."
+          "description": "The flavor of the recorded image (full, app-only, app-extended, app-2y, app-2y-extended, app-10y, app-10y-extended) or shards for a shard-set marker. Null when the marker is missing or names no known flavor."
         },
         "shards": {
           "type": "object",
