@@ -3,7 +3,7 @@
   "name": "io.github.owasp-dep-scan/dep-scan",
   "title": "OWASP dep-scan",
   "description": "MCP server for OWASP dep-scan: scan directories, findings, coverage, diffs and scans over stdio.",
-  "version": "7.0.0a2",
+  "version": "7.0.0a3",
   "websiteUrl": "https://depscan.readthedocs.io/",
   "repository": {
     "url": "https://github.com/owasp-dep-scan/dep-scan",
@@ -15,7 +15,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "owasp-depscan",
-      "version": "7.0.0a2",
+      "version": "7.0.0a3",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -24,7 +24,7 @@
         {
           "type": "named",
           "name": "--from",
-          "value": "owasp-depscan[mcp]==7.0.0a2",
+          "value": "owasp-depscan[mcp]==7.0.0a3",
           "description": "Install the package with the mcp extra, which carries the MCP SDK the server runs on."
         },
         {
