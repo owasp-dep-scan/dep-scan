@@ -285,7 +285,7 @@ def test_a_binary_review_without_a_coverage_report_says_so(scan_stubs, tmp_path,
     assert (
         "Binary hardening checks ran, but the coverage report "
         "analysis/blint/analysis-coverage.json is missing or unreadable, "
-        "so their coverage was not assessed." in text
+        "so their coverage was not assessed." in " ".join(text.split())
     )
     assert "with no findings:" not in text
 
