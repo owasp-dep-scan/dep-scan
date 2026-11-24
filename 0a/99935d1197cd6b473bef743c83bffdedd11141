@@ -1,0 +1,56 @@
+README.md
+  s_7318da1b9edd46::t_7330fcc2832a3a 218,389,394-397,400,404-406,408-410
+test/test_vdb_cli.py
+  s_7318da1b9edd46::t_d1e321c4d75f0e 96,99-106,110-115
+  s_7318da1b9edd46::t_ae38ec9188aaec 116-117
+agent-plugin/.claude-plugin/plugin.json
+  s_7318da1b9edd46::t_853e3cab2942a4 43
+agent-plugin/README.md
+  s_7318da1b9edd46::t_853e3cab2942a4 30
+depscan/lib/vdb_setup.py
+  s_7318da1b9edd46::t_7b01b537399c4a 225
+agent-plugin/reference/commands.md
+  s_7318da1b9edd46::t_853e3cab2942a4 27
+documentation/docs/vulnerability-database.mdx
+  s_7318da1b9edd46::t_f66b47498599dc 14,21-22,26,33,45-46,50
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_853e3cab2942a4 109-110
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor.schema.json
+  s_7318da1b9edd46::t_853e3cab2942a4 137
+depscan/lib/config.py
+  s_7318da1b9edd46::t_7b01b537399c4a 146,153-154,163-164,172-173
+depscan/cli_options.py
+  s_7318da1b9edd46::t_f958bf366fdc6a 350-358
+  s_7318da1b9edd46::t_7b01b537399c4a 364-366,374,382-383,390-391
+documentation/docs/cli-usage.mdx
+  s_7318da1b9edd46::t_853e3cab2942a4 66,161,166,168
+  s_7318da1b9edd46::t_cb0365a9f53cd2 163-164,169-170
+test/test_vdb_config.py
+  s_7318da1b9edd46::t_06eb98686e5bca 3-4
+  s_7318da1b9edd46::t_757444cbec4e05 19-32,46-47,60,70-71,79-81,140-141
+agent-plugin/skills/depscan-vdb/SKILL.md
+  s_7318da1b9edd46::t_f66b47498599dc 62-63,100
+documentation/docs/agent-plugin.mdx
+  s_7318da1b9edd46::t_853e3cab2942a4 82
+depscan/vdb_cli.py
+  s_7318da1b9edd46::t_7b01b537399c4a 122-124,145-146,152-153
+depscan/commands/scan.py
+  s_7318da1b9edd46::t_f958bf366fdc6a 481-489
+  s_7318da1b9edd46::t_7b01b537399c4a 495-497,505,513-514,521-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a99935d1197cd6b473bef743c83bffdedd11141",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
