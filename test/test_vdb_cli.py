@@ -100,11 +100,11 @@ def test_two_year_window_resolves_to_app_2y():
     assert flavor == "app-2y"
 
 
-def test_two_year_window_with_os_is_rejected():
+def test_two_year_window_with_os_resolves_to_full_2y():
     parser = _build_parser()
     args = parser.parse_args(["download", "--scope", "app+os", "--time", "2y"])
-    with pytest.raises(ValueError):
-        _resolve_flavor_from_args(args)
+    flavor, _legacy = _resolve_flavor_from_args(args)
+    assert flavor == "full-2y"
 
 
 def test_app_2y_flavor_is_accepted():

@@ -123,10 +123,8 @@ def _select_flavor(args):
     ``--vdb-flavor`` wins; the deprecated ``--vdb-scope``/``--vdb-time``/
     ``--vdb-extended`` triple (plus ``USE_VDB_10Y``) is mapped through
     ``VDB_LEGACY_FLAVOR_MAP``, and each legacy option in use logs one warning
-    naming the flavor the selection resolved to. Combinations with no v7
-    flavor (a two-year window in any scope, an app+OS 10-year or extended
-    variant, any per-distro selection) raise, naming the flavors, instead of
-    silently mapping onto a bigger or smaller database.
+    naming the flavor the selection resolved to. Every scope, time and
+    metadata combination has a published flavor.
 
     :return: ``(flavor, legacy_flags)``; *legacy_flags* lists the deprecated
         selectors in use, used by the caller to decide whether the choice was
@@ -152,13 +150,12 @@ def _select_flavor(args):
     time_window = getattr(args, "vdb_time", None)
     scope = getattr(args, "vdb_scope", None)
     if not time_window and os.getenv("USE_VDB_10Y", "") in ("true", "1"):
-        # USE_VDB_10Y has no v7 constant; the v7 10-year flavors are
-        # app-scope, so the scope moves with it. The env var is not an
-        # explicit flavor choice, so --severity may still add metadata.
+        # USE_VDB_10Y has no v7 constant; it selects the 10-year window in
+        # the chosen scope (full-10y by default, as vdbxz-10y was on v6).
+        # The env var is not an explicit flavor choice, so --severity may
+        # still add metadata.
         legacy_flags.append("USE_VDB_10Y")
         time_window = "10y"
-        if scope is None:
-            scope = "app"
     flavor = resolve_vdb_flavor(
         scope=scope or "app+os",
         time=time_window or "default",
@@ -181,13 +178,14 @@ def resolve_scan_vdb_image(args):
     Precedence, highest first:
 
     1. ``VDB_DATABASE_URL`` or ``--vdb-image`` -> used verbatim (flavor None).
-    2. ``--vdb-flavor`` -> one of the five published flavors.
+    2. ``--vdb-flavor`` -> one of the published flavors (``VDB_FLAVORS``).
     3. The legacy ``--vdb-scope``/``--vdb-time``/``--vdb-extended`` triple
        (plus ``USE_VDB_10Y``), mapped through ``VDB_LEGACY_FLAVOR_MAP``.
     4. Nothing given -> ``full``.
 
-    ``--severity`` upgrades an automatic selection to the metadata flavor
-    (``app-extended``, or ``app-10y-extended`` under ``USE_VDB_10Y``) and sets
+    ``--severity`` upgrades an automatic selection to the metadata flavor of
+    the same scope and window (``full-extended`` by default, or
+    ``full-10y-extended`` under ``USE_VDB_10Y``) and sets
     ``VDB_INCLUDE_METADATA=true`` so the severity push-down into the search
     layer fires. A flavor the user chose explicitly is never overridden; the
     depscan-side severity floor (``analysis_lib.prioritize.vuln_meets_severity``)
@@ -222,7 +220,7 @@ def resolve_scan_vdb_image(args):
     )
     if args.severity and not explicit_choice and "extended" not in flavor:
         # The metadata flavors are the answer to --severity's push-down.
-        flavor = f"{flavor}-extended" if flavor in ("app-2y", "app-10y") else "app-extended"
+        flavor = "app-extended" if flavor == "app-only" else f"{flavor}-extended"
     if "extended" in flavor:
         os.environ["VDB_INCLUDE_METADATA"] = "true"
     if args.severity and not explicit_choice:

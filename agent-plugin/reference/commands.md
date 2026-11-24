@@ -24,7 +24,7 @@ not a clean scan; see [safety.md](safety.md).
 | --- | --- | --- |
 | `depscan vdb info` | The local database and shard store state, staleness included | the vdb info document |
 | `depscan vdb path` | The `VDB_HOME` directory | `{"path": "..."}` |
-| `depscan vdb download --flavor <flavor>` | Download a flavor: `full`, `app-only`, `app-extended`, `app-2y`, `app-2y-extended`, `app-10y`, `app-10y-extended` | `{"image", "marker"}` |
+| `depscan vdb download --flavor <flavor>` | Download a flavor: `full`, `full-extended`, `full-2y`, `full-2y-extended`, `full-10y`, `full-10y-extended`, `app-only`, `app-extended`, `app-2y`, `app-2y-extended`, `app-10y`, `app-10y-extended` | `{"image", "marker"}` |
 
 Distro package matching (apk, deb, rpm) needs the `full` flavor;
 app-only is enough for application packages. Downloads are consent-first;

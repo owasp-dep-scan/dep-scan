@@ -480,6 +480,11 @@ def add_vdb_options(
         "--vdb-flavor",
         choices=(
             "full",
+            "full-extended",
+            "full-2y",
+            "full-2y-extended",
+            "full-10y",
+            "full-10y-extended",
             "app-only",
             "app-extended",
             "app-2y",
@@ -489,37 +494,37 @@ def add_vdb_options(
         ),
         default=argparse.SUPPRESS,
         dest="vdb_flavor",
-        help="Which published database flavor to use: 'full' (app+OS), "
-        "'app-only' (application ecosystems, NVD 2020+), 'app-extended' "
-        "(adds metadata tables for severity, text, alias, reference, symbol "
-        "and date search), 'app-2y' (NVD 2024+, the smallest), "
-        "'app-2y-extended' (app-2y with metadata), 'app-10y' (NVD 2016+), "
-        "'app-10y-extended' (app-10y with metadata). Default: full.",
+        help="Which published database flavor to use: 'full' (app+OS, NVD "
+        "2020+) or 'app-only' (application ecosystems, NVD 2020+), each with "
+        "a '-2y' (NVD 2024+, smaller) and '-10y' (NVD 2016+) variant, and "
+        "an '-extended' form of all three that adds the metadata tables for "
+        "severity, text, alias, reference, symbol and date search "
+        "(full-extended, app-extended, full-2y-extended, ...). Default: full.",
     )
     vdb_group.add_argument(
         "--vdb-scope",
         choices=("app", "app+os"),
         default=argparse.SUPPRESS,
         dest="vdb_scope",
-        help="Deprecated alias for --vdb-flavor: 'app' maps to app-only (or "
-        "an app-2y, app-10y or -extended flavor with the other deprecated "
-        "options), 'app+os' to full. Default: app+os.",
+        help="Deprecated alias for --vdb-flavor: 'app' maps to app-only and "
+        "'app+os' to full, or to their 2y, 10y or -extended flavor with the "
+        "other deprecated options. Default: app+os.",
     )
     vdb_group.add_argument(
         "--vdb-time",
         choices=("2y", "default", "10y"),
         default=argparse.SUPPRESS,
         dest="vdb_time",
-        help="Deprecated alias for --vdb-flavor: '2y' selects a two-year and "
-        "'10y' a 10-year application flavor. Default: default.",
+        help="Deprecated alias for --vdb-flavor: '2y' selects the two-year "
+        "and '10y' the 10-year flavor of the chosen scope. Default: default.",
     )
     vdb_group.add_argument(
         "--vdb-extended",
         action="store_true",
         default=argparse.SUPPRESS,
         dest="vdb_extended",
-        help="Deprecated alias selecting the metadata flavor (app-extended, "
-        "app-2y-extended or app-10y-extended), needed for severity, text, alias, reference, "
+        help="Deprecated alias selecting the -extended (metadata) flavor of "
+        "the chosen scope and window, needed for severity, text, alias, reference, "
         "symbol, and date search. Auto-selected when --severity is set.",
     )
     vdb_group.add_argument(

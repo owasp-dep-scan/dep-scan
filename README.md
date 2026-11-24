@@ -215,7 +215,7 @@ usage: depscan scan [-h]
                     [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search]
                     [--search-order {purl,pcu,cpe,cpu,url}]
                     [--severity {low,medium,high,critical}] [--malware-only]
-                    [--vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}]
+                    [--vdb-flavor {full,full-extended,full-2y,full-2y-extended,full-10y,full-10y-extended,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}]
                     [--vdb-scope {app,app+os}] [--vdb-time {2y,default,10y}]
                     [--vdb-extended] [--vdb-compression {xz,zst}]
                     [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}]
@@ -386,27 +386,27 @@ vulnerability database selection:
   explicit VDB_DATABASE_URL env pin always wins. The `depscan vdb download`
   command shares the same options for pre-fetching.
 
-  --vdb-flavor {full,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}
+  --vdb-flavor {full,full-extended,full-2y,full-2y-extended,full-10y,full-10y-extended,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}
                         Which published database flavor to use: 'full'
-                        (app+OS), 'app-only' (application ecosystems, NVD
-                        2020+), 'app-extended' (adds metadata tables for
-                        severity, text, alias, reference, symbol and date
-                        search), 'app-2y' (NVD 2024+, the smallest),
-                        'app-2y-extended' (app-2y with metadata), 'app-10y'
-                        (NVD 2016+), 'app-10y-extended' (app-10y with
-                        metadata). Default: full.
+                        (app+OS, NVD 2020+) or 'app-only' (application
+                        ecosystems, NVD 2020+), each with a '-2y' (NVD 2024+,
+                        smaller) and '-10y' (NVD 2016+) variant, and an
+                        '-extended' form of all three that adds the metadata
+                        tables for severity, text, alias, reference, symbol
+                        and date search (full-extended, app-extended,
+                        full-2y-extended, ...). Default: full.
   --vdb-scope {app,app+os}
                         Deprecated alias for --vdb-flavor: 'app' maps to app-
-                        only (or an app-2y, app-10y or -extended flavor with
-                        the other deprecated options), 'app+os' to full.
+                        only and 'app+os' to full, or to their 2y, 10y or
+                        -extended flavor with the other deprecated options.
                         Default: app+os.
   --vdb-time {2y,default,10y}
-                        Deprecated alias for --vdb-flavor: '2y' selects a two-
-                        year and '10y' a 10-year application flavor. Default:
-                        default.
-  --vdb-extended        Deprecated alias selecting the metadata flavor (app-
-                        extended, app-2y-extended or app-10y-extended), needed
-                        for severity, text, alias, reference, symbol, and date
+                        Deprecated alias for --vdb-flavor: '2y' selects the
+                        two-year and '10y' the 10-year flavor of the chosen
+                        scope. Default: default.
+  --vdb-extended        Deprecated alias selecting the -extended (metadata)
+                        flavor of the chosen scope and window, needed for
+                        severity, text, alias, reference, symbol, and date
                         search. Auto-selected when --severity is set.
   --vdb-compression {xz,zst}
                         Compression format. 'xz' (tar.xz) always works; 'zst'
