@@ -126,7 +126,7 @@ members = ["packages/*"]
 
 [dependency-groups]
 dev = [
-    "pyrefly~=1.4.1",
+    "pyrefly~=1.5.0",
     "ruff~=0.17.4",
 ]
 
