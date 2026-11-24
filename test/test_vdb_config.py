@@ -7,6 +7,8 @@ import pytest
 from depscan.lib.config import (
     VDB_FLAVORS,
     VDB_LEGACY_FLAVOR_MAP,
+    VDB_SCOPES,
+    VDB_TIMES,
     resolve_vdb_flavor,
     resolve_vdb_image_url,
     vdb_shards_marker,
@@ -15,13 +17,15 @@ from vdb.lib.db_cmd import FULL_DB_FLAVORS
 
 
 def test_flavor_list_matches_vdb():
-    """depscan offers exactly the flavors vdb publishes, from vdb's own list."""
-    assert VDB_FLAVORS == FULL_DB_FLAVORS
+    """depscan offers every flavor vdb names, plus the app+OS variants a vdb
+    release may not name yet."""
+    assert set(FULL_DB_FLAVORS) <= set(VDB_FLAVORS)
+    assert len(set(VDB_FLAVORS)) == len(VDB_FLAVORS) == 12
 
 
 def test_cli_flavor_choices_match_vdb():
     """The scan and serve parsers list the flavor choices literally, to keep
-    vdb out of the CLI start-up imports; they must still match vdb's list."""
+    vdb out of the CLI start-up imports; they must still match VDB_FLAVORS."""
     from depscan.cli_options import build_parser
     from depscan.commands.scan import add_vdb_options
 
@@ -30,7 +34,7 @@ def test_cli_flavor_choices_match_vdb():
     for parser in (build_parser(), scan_parser):
         action = next(a for a in parser._actions if a.dest == "vdb_flavor")
         assert action.choices is not None
-        assert tuple(action.choices) == FULL_DB_FLAVORS
+        assert tuple(action.choices) == VDB_FLAVORS
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +46,11 @@ def test_cli_flavor_choices_match_vdb():
     "kwargs, flavor",
     [
         ({"scope": "app+os", "time": "default", "extended": False}, "full"),
+        ({"scope": "app+os", "time": "default", "extended": True}, "full-extended"),
+        ({"scope": "app+os", "time": "2y", "extended": False}, "full-2y"),
+        ({"scope": "app+os", "time": "2y", "extended": True}, "full-2y-extended"),
+        ({"scope": "app+os", "time": "10y", "extended": False}, "full-10y"),
+        ({"scope": "app+os", "time": "10y", "extended": True}, "full-10y-extended"),
         ({"scope": "app", "time": "default", "extended": False}, "app-only"),
         ({"scope": "app", "time": "default", "extended": True}, "app-extended"),
         ({"scope": "app", "time": "2y", "extended": False}, "app-2y"),
@@ -58,29 +67,20 @@ def test_legacy_flavor_map_rows(kwargs, flavor):
 
 
 def test_legacy_map_has_no_other_rows():
-    assert len(VDB_LEGACY_FLAVOR_MAP) == 7
+    assert len(VDB_LEGACY_FLAVOR_MAP) == 12
 
 
 def test_legacy_defaults_resolve_to_full():
     assert resolve_vdb_flavor() == "full"
 
 
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        # App+OS has no two-year, 10-year or extended variant: those
-        # flavors are app-scope only.
-        {"scope": "app+os", "time": "2y", "extended": False},
-        {"scope": "app+os", "time": "10y", "extended": False},
-        {"scope": "app+os", "time": "10y", "extended": True},
-        {"scope": "app+os", "time": "default", "extended": True},
-    ],
-)
-def test_combinations_without_a_flavor_are_rejected(kwargs):
-    """The selection is rejected instead of silently mapped onto a bigger or
-    smaller database."""
-    with pytest.raises(ValueError):
-        resolve_vdb_flavor(**kwargs)
+def test_every_legacy_combination_has_a_flavor():
+    """Every scope, time and metadata combination maps onto a published
+    flavor, so no legacy selection is refused."""
+    for scope in VDB_SCOPES:
+        for time in VDB_TIMES:
+            for extended in (False, True):
+                assert resolve_vdb_flavor(scope=scope, time=time, extended=extended) in VDB_FLAVORS
 
 
 def test_invalid_scope_rejected():
@@ -155,3 +155,23 @@ def test_invalid_compression_rejected():
 def test_shards_marker_is_sorted_and_prefixed():
     assert vdb_shards_marker(["npm", "pypi"]) == "shards:npm,pypi"
     assert vdb_shards_marker(["pypi", "npm"]) == "shards:npm,pypi"
+
+
+@pytest.mark.parametrize(
+    "flavor",
+    ["full-extended", "full-2y", "full-2y-extended", "full-10y", "full-10y-extended"],
+)
+def test_app_os_variant_urls(flavor):
+    assert resolve_vdb_image_url(flavor=flavor) == f"ghcr.io/appthreat/vdb7-{flavor}:v7.0.x-xz"
+    assert (
+        resolve_vdb_image_url(flavor=flavor, compression="zst")
+        == f"ghcr.io/appthreat/vdb7-{flavor}:v7.0.x-zst"
+    )
+
+
+def test_app_os_variant_url_follows_a_mirror(monkeypatch):
+    """A registry and tag override reaches the variants vdb does not name."""
+    import vdb.lib.config as vdb_config
+
+    monkeypatch.setattr(vdb_config, "VDB_DATABASE_URL", "mirror.example/vdb/vdb7-full:v7-xz")
+    assert resolve_vdb_image_url(flavor="full-10y") == "mirror.example/vdb/vdb7-full-10y:v7-xz"

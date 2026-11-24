@@ -143,21 +143,43 @@ PYPI_SERVER = "https://pypi.org/pypi"
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
 # --- vdb database selection -----------------------------------------------
-# vdb 7 publishes seven complete databases ("flavors"), one per image repo
-# ``ghcr.io/appthreat/vdb7-<flavor>``. The image URL for a flavor is resolved
-# by vdb itself (``vdb.lib.db_cmd.resolve_full_image_url``), so a registry or
-# tag override set through ``VDB_DATABASE_URL`` applies to every flavor.
-VDB_FLAVORS = FULL_DB_FLAVORS
+# vdb 7 publishes twelve complete databases ("flavors"), one per image repo
+# ``ghcr.io/appthreat/vdb7-<flavor>``: ``full`` and ``app-only``, each with a
+# two-year, a 10-year and a metadata (``-extended``) variant. The image URL
+# for a flavor vdb names in ``FULL_DB_FLAVORS`` is resolved by vdb itself
+# (``vdb.lib.db_cmd.resolve_full_image_url``), so a registry or tag override
+# set through ``VDB_DATABASE_URL`` applies to every flavor. The app+OS
+# variants are published before every vdb release names them; their URL is
+# derived from a flavor vdb does resolve, so the same override applies.
+VDB_FLAVORS = (
+    "full",
+    "full-extended",
+    "full-2y",
+    "full-2y-extended",
+    "full-10y",
+    "full-10y-extended",
+    "app-only",
+    "app-extended",
+    "app-2y",
+    "app-2y-extended",
+    "app-10y",
+    "app-10y-extended",
+)
 
 # The legacy ``--vdb-scope``/``--vdb-time``/``--vdb-extended`` triple mapped
-# onto the published flavors. Combinations with no row (an app+OS two-year,
-# 10-year or extended variant, and every per-distro image) have no v7 flavor; they are rejected with the flavors listed rather
-# than silently mapped onto a bigger or smaller database.
+# onto the published flavors. Every scope, time and metadata combination has
+# a row; only a per-distro image has no v7 flavor, and that is rejected with
+# the flavors listed rather than silently mapped onto a bigger database.
 #
 # ============ ========= ========= ==========================
 # scope        time      extended  flavor
 # ============ ========= ========= ==========================
 # ``app+os``   default   no        ``full``
+# ``app+os``   default   yes       ``full-extended``
+# ``app+os``   2y        no        ``full-2y``
+# ``app+os``   2y        yes       ``full-2y-extended``
+# ``app+os``   10y       no        ``full-10y``
+# ``app+os``   10y       yes       ``full-10y-extended``
 # ``app``      default   no        ``app-only``
 # ``app``      default   yes       ``app-extended``
 # ``app``      2y        no        ``app-2y``
@@ -167,6 +189,11 @@ VDB_FLAVORS = FULL_DB_FLAVORS
 # ============ ========= ========= ==========================
 VDB_LEGACY_FLAVOR_MAP = {
     ("app+os", "default", False): "full",
+    ("app+os", "default", True): "full-extended",
+    ("app+os", "2y", False): "full-2y",
+    ("app+os", "2y", True): "full-2y-extended",
+    ("app+os", "10y", False): "full-10y",
+    ("app+os", "10y", True): "full-10y-extended",
     ("app", "default", False): "app-only",
     ("app", "default", True): "app-extended",
     ("app", "2y", False): "app-2y",
@@ -216,7 +243,13 @@ def resolve_vdb_image_url(flavor=None, *, compression=None, image=None):
         raise ValueError(
             f"Invalid compression '{compression}'. Use one of: {', '.join(VDB_COMPRESSIONS)}."
         )
-    url = resolve_full_image_url(flavor=flavor)
+    if flavor is None or flavor in FULL_DB_FLAVORS:
+        url = resolve_full_image_url(flavor=flavor)
+    else:
+        # vdb derives every non-env flavor as <registry>/vdb7-<flavor>:<tag>;
+        # take the registry and tag from one it knows.
+        reference = resolve_full_image_url(flavor="app-extended")
+        url = reference.replace("/vdb7-app-extended:", f"/vdb7-{flavor}:", 1)
     if compression == "zst" and url.endswith("-xz"):
         url = url[: -len("-xz")] + "-zst"
     return url

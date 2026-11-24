@@ -57,6 +57,9 @@ shards instead: `depscan vdb download --shards npm pypi --format json`.
 | Flavor | Carries |
 | --- | --- |
 | `full` | Application and OS advisories (apk, deb, rpm). Required for distro package matching, such as a container image scan. |
+| `full-extended` | full plus the extended metadata set. |
+| `full-2y` / `full-2y-extended` | full with a two-year window, without or with metadata. |
+| `full-10y` / `full-10y-extended` | full with a ten-year window, without or with metadata. |
 | `app-only` | Application ecosystem advisories. Enough for most source scans. |
 | `app-extended` | app-only plus the extended metadata set. |
 | `app-2y` | app-only with a two-year window, the smallest download. |
@@ -97,7 +100,7 @@ command line in the dep-scan environment, so resolve `vdb` through the
 same environment that runs dep-scan before using them.
 
 The text, alias and symbol searches read the advisory metadata tables,
-which only the `-extended` flavors (`app-extended`, `app-2y-extended`, `app-10y-extended`)
+which only the `-extended` flavors (such as `full-extended`, `app-extended` or `app-10y-extended`)
 carry. On `full` or `app-only` (`extendedFlavor: false`, `metadataRows: 0`
 in `vdb info`) they print "No results found!" and exit 0: that is not
 assessed, never "nothing known". Purl and CPE searches (`vdb --search

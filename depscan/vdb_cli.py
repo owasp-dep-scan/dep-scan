@@ -119,9 +119,9 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         choices=VDB_FLAVORS,
         default=None,
         help="Which published database flavor to download: full (app+OS), "
-        "app-only, app-extended (metadata tables), app-2y (NVD 2024+, the "
-        "smallest), app-2y-extended, app-10y (NVD 2016+), app-10y-extended. "
-        "Default: full.",
+        "app-only, and their -2y (NVD 2024+), -10y (NVD 2016+) and "
+        "-extended (metadata tables) variants, such as full-10y or "
+        "app-2y-extended. Default: full.",
     )
     dl.add_argument(
         "--shards",
@@ -135,22 +135,23 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         "--scope",
         choices=("app", "app+os"),
         default=None,
-        help="Deprecated alias for --flavor. 'app' resolves to app-only (or a "
-        "10y/extended flavor with the other aliases), 'app+os' to full.",
+        help="Deprecated alias for --flavor. 'app' resolves to app-only and "
+        "'app+os' to full, or to their 2y, 10y or extended flavor with the "
+        "other aliases.",
     )
     dl.add_argument(
         "--time",
         choices=("2y", "default", "10y"),
         default=None,
-        help="Deprecated alias for --flavor. '2y' selects a two-year and '10y' "
-        "a 10-year application flavor.",
+        help="Deprecated alias for --flavor. '2y' selects the two-year and "
+        "'10y' the 10-year flavor of the chosen scope.",
     )
     dl.add_argument(
         "--extended",
         action="store_true",
         default=False,
-        help="Deprecated alias selecting the metadata flavor (app-extended, app-2y-extended "
-        "or app-10y-extended).",
+        help="Deprecated alias selecting the -extended (metadata) flavor of the "
+        "chosen scope and window.",
     )
     dl.add_argument(
         "--compression",

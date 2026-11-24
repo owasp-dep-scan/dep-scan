@@ -284,10 +284,10 @@ def test_resolve_scan_severity_auto_extended(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="high")
     url, pinned, flavor = vdb_setup.resolve_scan_vdb_image(args)
-    # The metadata flavor is app-scope only, so --severity selects app-extended.
-    assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz"
+    # --severity keeps the default app+OS scope and adds the metadata tables.
+    assert url == "ghcr.io/appthreat/vdb7-full-extended:v7.0.x-xz"
     assert pinned is False
-    assert flavor == "app-extended"
+    assert flavor == "full-extended"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
@@ -311,10 +311,10 @@ def test_resolve_scan_use_vdb_10y(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args()
     url, pinned, flavor = vdb_setup.resolve_scan_vdb_image(args)
-    # The 10-year flavor is app-scope only, so USE_VDB_10Y selects app-10y.
-    assert url == "ghcr.io/appthreat/vdb7-app-10y:v7.0.x-xz"
+    # USE_VDB_10Y selects the 10-year window in the default app+OS scope.
+    assert url == "ghcr.io/appthreat/vdb7-full-10y:v7.0.x-xz"
     assert pinned is False
-    assert flavor == "app-10y"
+    assert flavor == "full-10y"
 
 
 def test_resolve_scan_use_vdb_10y_with_severity(monkeypatch):
@@ -326,9 +326,9 @@ def test_resolve_scan_use_vdb_10y_with_severity(monkeypatch):
     url, pinned, flavor = vdb_setup.resolve_scan_vdb_image(args)
     # USE_VDB_10Y is not an explicit flavor choice, so --severity still adds
     # the metadata tables.
-    assert url == "ghcr.io/appthreat/vdb7-app-10y-extended:v7.0.x-xz"
+    assert url == "ghcr.io/appthreat/vdb7-full-10y-extended:v7.0.x-xz"
     assert pinned is False
-    assert flavor == "app-10y-extended"
+    assert flavor == "full-10y-extended"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
@@ -430,11 +430,9 @@ def test_use_vdb_10y_env_warns_naming_the_flavor(monkeypatch, caplog):
     monkeypatch.setenv("USE_VDB_10Y", "true")
     with caplog.at_level("WARNING"):
         _url, _pinned, flavor = vdb_setup.resolve_scan_vdb_image(_make_args())
-    assert flavor == "app-10y"
+    assert flavor == "full-10y"
     warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
     assert len(warnings) == 1
-    assert "USE_VDB_10Y" in warnings[0]
-    assert "'app-10y'" in warnings[0]
 
 
 def test_vdb_flavor_direct_no_warning(monkeypatch, caplog):

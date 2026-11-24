@@ -65,6 +65,33 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           uv publish --trusted-publishing always
+      # The source SBOM describes the packages this job publishes, so it is
+      # made and attached here rather than in post-process: post-process
+      # waits for every container image, so one failed image build would
+      # leave the release without bom.json.
+      - name: Generate SBOM with cdxgen
+        run: |
+          npm install -g @cdxgen/cdxgen@13.8.0
+          cdxgen -t python -o bom.json . --profile research
+      - name: Name the release kind
+        id: release
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Attach the SBOM to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3  # v3.0.4
+        with:
+          files: |
+            bom.json
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          make_latest: ${{ steps.release.outputs.prerelease == 'true' && 'false' || 'legacy' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-images:
     strategy:
@@ -235,10 +262,9 @@ jobs:
           else
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Generate SBOM with cdxgen
+      - name: Generate the image SBOM with cdxgen
         run: |
           npm install -g @cdxgen/cdxgen@13.8.0
-          cdxgen -t python -o bom.json . --profile research
           cdxgen -t docker -o depscan-oci-image.cdx.json "${IMAGE_REF}"
         env:
           IMAGE_REF: ${{ steps.image.outputs.ref }}
@@ -256,7 +282,6 @@ jobs:
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3  # v3.0.4
         with:
           files: |
-            bom.json
             depscan-oci-image.cdx.json
           prerelease: ${{ steps.image.outputs.prerelease }}
           make_latest: ${{ steps.image.outputs.prerelease == 'true' && 'false' || 'legacy' }}
