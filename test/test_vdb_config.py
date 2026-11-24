@@ -29,6 +29,7 @@ def test_cli_flavor_choices_match_vdb():
     add_vdb_options(scan_parser)
     for parser in (build_parser(), scan_parser):
         action = next(a for a in parser._actions if a.dest == "vdb_flavor")
+        assert action.choices is not None
         assert tuple(action.choices) == FULL_DB_FLAVORS
 
 
