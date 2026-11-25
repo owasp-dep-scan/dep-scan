@@ -22,7 +22,7 @@ git -C "$SRC" checkout --quiet $COMMIT
 echo "project: juice-shop $COMMIT"
 
 ### Run the supply-chain and licence checks
-depscan scan "$SRC" --checks supply-chain,license --no-banner \
+depscan scan "$SRC" --checks supply-chain,license --vdb-flavor app-only --no-banner \
   --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
   -o "$SCANS/reports"
 
@@ -37,18 +37,21 @@ for s in m["stages"]:
 PY
 
 ### Read the risk report
-# One JSON array of row objects with plain values; a score crossing the
-# ceiling prints as a console table, and every audited package is a row.
+# The report holds the packages the audit flagged: a risk score above the
+# threshold (0.5 unless PKG_MAX_RISK_SCORE says otherwise), or a deprecated,
+# missing, binary-carrying or private-on-public package. With nothing flagged,
+# the file is not written at all.
 python3 - "$SCANS/reports" <<'PY'
-import json, sys
-d = sys.argv[1]
-rows = json.load(open(f"{d}/depscan-risk-universal.json"))
-print(f"audited packages: {len(rows)}")
-flagged = [r for r in rows if r["Risk Score"] >= 4]
-print(f"rows at or above the ceiling of 4: {len(flagged)}")
-with_risks = [r for r in rows if r["Identified Risks"]]
-x = with_risks[0]
-print(f"row shape: Package, Used?, Risk Score, Identified Risks ({len(x['Identified Risks'])} entries)")
+import json, os, sys
+path = os.path.join(sys.argv[1], "depscan-risk-universal.json")
+if not os.path.exists(path):
+    print("flagged packages: 0 (no risk report written)")
+else:
+    rows = json.load(open(path))
+    print(f"flagged packages: {len(rows)}")
+    top = max(rows, key=lambda r: r["Risk Score"])
+    print("row shape: Package, Used?, Risk Score, Identified Risks")
+    print(f"highest score: {top['Risk Score']} ({len(top['Identified Risks'])} risks identified)")
 PY
 
 ### Read the licence report

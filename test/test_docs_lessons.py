@@ -14,9 +14,12 @@ command or a quoted line disagree.
 import re
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LESSONS_DIR = REPO_ROOT / "documentation" / "lessons"
 PAGES_DIR = REPO_ROOT / "documentation" / "docs" / "lessons"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "lessons.yml"
 
 
 def lesson_dirs():
@@ -24,13 +27,14 @@ def lesson_dirs():
     return sorted(path for path in LESSONS_DIR.iterdir() if path.is_dir())
 
 
-def fenced_bash_blocks(text: str):
-    """The bodies of every fenced ```bash block in the page text."""
+def fenced_blocks(text: str, language: str):
+    """The bodies of every fenced block of *language* in the page text."""
     blocks = []
     lines = text.split("\n")
     index = 0
+    opening = re.compile(rf"^```{re.escape(language)}\s*$")
     while index < len(lines):
-        if re.match(r"^```bash\s*$", lines[index]):
+        if opening.match(lines[index]):
             body = []
             index += 1
             while index < len(lines) and not lines[index].lstrip().startswith("```"):
@@ -39,6 +43,11 @@ def fenced_bash_blocks(text: str):
             blocks.append("\n".join(body))
         index += 1
     return blocks
+
+
+def fenced_bash_blocks(text: str):
+    """The bodies of every fenced ```bash block in the page text."""
+    return fenced_blocks(text, "bash")
 
 
 def test_every_lesson_has_script_and_expectations():
@@ -59,7 +68,7 @@ def test_every_script_is_bash_with_pinned_inputs():
         assert text.startswith("#!/usr/bin/env bash\n"), (
             f"{directory.name}/run.sh must start with the bash shebang"
         )
-        assert "set -euo pipefail" in text, (
+        assert re.search(r"^set -euo pipefail$", text, re.M), (
             f"{directory.name}/run.sh must stop on its own errors"
         )
 
@@ -85,16 +94,28 @@ def test_page_embeds_the_script_verbatim():
 
 
 def test_page_quotes_the_expectations():
-    """Every line the workflow greps for is quoted on the page."""
+    """Every line the workflow greps for is quoted in the page's output
+    blocks. Only the ```text blocks count: the embedded script prints the
+    same labels, so a search of the whole page would always pass."""
     for directory in lesson_dirs():
         page = PAGES_DIR / f"{directory.name}.mdx"
         assert page.is_file(), f"{directory.name} has no lesson page"
-        text = page.read_text()
+        quoted = "\n".join(fenced_blocks(page.read_text(), "text"))
         missing = [
             line
             for line in (directory / "expect.txt").read_text().splitlines()
-            if line.strip() and line not in text
+            if line.strip() and line not in quoted
         ]
         assert not missing, (
             f"{page.name} does not quote the expectation lines: {missing}"
         )
+
+
+def test_workflow_runs_every_lesson():
+    """The lessons workflow's matrix names each lesson directory once, so a
+    new lesson cannot be added without the job that re-runs it."""
+    workflow = yaml.safe_load(WORKFLOW.read_text())
+    include = workflow["jobs"]["lessons"]["strategy"]["matrix"]["include"]
+    names = [entry["lesson"] for entry in include]
+    assert len(names) == len(set(names)), "the matrix names a lesson twice"
+    assert sorted(names) == [path.name for path in lesson_dirs()]

@@ -7,7 +7,9 @@ sidebar_position: 09
 
 This lesson scans three well-known intentionally vulnerable applications at pinned commits and reads what dep-scan proves on each, and what it cannot. The three cover different ecosystems: Juice Shop (Node), DVWA (PHP) and railsgoat (Ruby). npm is a reachability ecosystem with atom behind it; PHP and Ruby are matched-only today, and the reports say so.
 
-The inputs are pinned: Juice Shop at `33518f5a0911`, DVWA at `068d974487a2`, railsgoat at `f5951f13089d`, dep-scan 7.0.0a3 with cdxgen 13.9.0, and the `app-only` database flavor. The scans are typed (`-t js`, `-t php`, `-t ruby`) so the container files in these trees do not turn a source scan into an image pull.
+The inputs are pinned: Juice Shop at `33518f5a0911`, DVWA at `068d974487a2`, railsgoat at `f5951f13089d`, and the `app-only` database flavor. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3, cdxgen 13.9.0 from its master branch and atom 4.0.3; the lesson's CI job installs the cdxgen 13.8.0 release instead. The scans are typed (`-t js`, `-t php`, `-t ruby`) so the container files in these trees do not turn a source scan into an image pull.
+
+Juice Shop at this commit ships no lockfile (its `.npmrc` sets `package-lock=false`), so its dependencies are resolved at scan time and its finding count can drift between runs, as in lessons 1 and 6. The install writes `node_modules` and a `package-lock.json` into the clone, which is acceptable for the throwaway clones the script makes.
 
 ## The script
 
@@ -47,13 +49,18 @@ echo "pinned: juice-shop, DVWA, railsgoat"
 ### Scan each project typed
 # Typed scans keep the container files in these trees from turning a source
 # scan into an image-pulling run.
-depscan scan "$WORK/juice-shop" -t js --bom-profile research --no-banner \
+depscan scan "$WORK/juice-shop" -t js --bom-profile research --vdb-flavor app-only \
+  --no-banner \
   --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
   -o "$SCANS/juice-shop"
-depscan scan "$WORK/DVWA" -t php --no-banner -o "$SCANS/dvwa"
-depscan scan "$WORK/railsgoat" -t ruby --no-banner -o "$SCANS/railsgoat"
+depscan scan "$WORK/DVWA" -t php --vdb-flavor app-only --no-banner -o "$SCANS/dvwa"
+depscan scan "$WORK/railsgoat" -t ruby --vdb-flavor app-only --no-banner \
+  -o "$SCANS/railsgoat"
 
 ### What v7 proves, and what it cannot
+# A project whose findings carry no reach verdict gets the reason from its
+# manifest: the enrichment stage lists each reachability analyzer the scan
+# could have used, and a not-assessed analyzer carries the reason it gave.
 python3 - "$SCANS" <<'PY'
 import json, sys
 scans = sys.argv[1]
@@ -61,26 +68,36 @@ for name in ("juice-shop", "dvwa", "railsgoat"):
     f = json.load(open(f"{scans}/{name}/depscan.findings.json"))
     reaches = {x.get("exploitability", {}).get("axes", {}).get("reach") for x in f["findings"]}
     assessed = all(r in ("likely", "proven", "unknown") for r in reaches)
-    print(f"{name}: findings {len(f['findings'])}, reach assessed: {assessed}")
-    if not assessed:
-        print(f"{name}: reach verdict is not_assessed, with the analyzer gap named in the manifest")
+    print(f"{name}: reach assessed: {assessed}, findings {len(f['findings'])}")
+    if assessed:
+        continue
+    m = json.load(open(f"{scans}/{name}/depscan.manifest.json"))
+    gaps = [a for s in m["stages"] for a in s.get("analyzers", [])
+            if a["status"] != "completed"]
+    for a in gaps:
+        print(f"{name}: reach verdict is not_assessed; manifest: "
+              f"{a['name']} {a['status']}: {a.get('reason', 'no reason given')}")
+    if not gaps:
+        print(f"{name}: reach verdict is not_assessed; the manifest lists no analyzer for it")
 PY
 ```
 
 ## Reading the run
 
-One line per project says what v7 proves and where it stops:
+One line per project says what v7 proves and where it stops, and for the projects without a reach verdict the script reads the reason from the scan's manifest:
 
 ```text
 pinned: juice-shop, DVWA, railsgoat
-juice-shop: findings 93, reach assessed: True
-dvwa: findings 1, reach assessed: False
-railsgoat: findings 258, reach assessed: False
+juice-shop: reach assessed: True, findings 93
+dvwa: reach assessed: False, findings 1
+dvwa: reach verdict is not_assessed; manifest: atom not-assessed: no atom report was given; the adapter has nothing to read
+railsgoat: reach assessed: False, findings 258
+railsgoat: reach verdict is not_assessed; manifest: atom not-assessed: no atom report was given; the adapter has nothing to read
 ```
 
-The contrast is the lesson. On Juice Shop, 93 advisory matches and an analyzer behind them: 11 reached, 82 assessed and not reached, and the reached ones carry witness paths. On railsgoat, 258 advisory matches (the bundled Rails stack), each correct as a version match, and none with a reach verdict, because no analyzer covers Ruby. On DVWA, one finding: the project's PHP is scanned from its composer manifest, and most of the application is not composed packages at all, which is a real limitation of manifest-based scanning on non-package-managed code, not a defect of the match.
+The contrast is the lesson. On Juice Shop, 93 advisory matches and an analyzer behind them: 11 reached, 82 assessed and not reached, and the reached ones carry witness paths. On railsgoat, 258 advisory matches (the bundled Rails stack), each correct as a version match, and none with a reach verdict, because no reachability analyzer produced a report for the scan. On DVWA, one finding: the project's PHP is scanned from its composer manifest, and most of the application is not composed packages at all, which is a real limitation of manifest-based scanning on non-package-managed code, not a defect of the match.
 
-The script prints the gap per project (`dvwa: reach verdict is not_assessed`, `railsgoat: reach verdict is not_assessed`), and the manifest's atom entry names the analyzer that was not there. Their prioritization leans on severity, exploit evidence and the fail-safe rules instead of a traced path. That is the honest answer to "which of these 258 first": severity and insight order them, and only an ecosystem with an analyzer can prove the rest.
+The script takes the gap from each manifest's enrichment stage, which lists every reachability analyzer the scan could have used. For the PHP and Ruby scans that list is atom alone, since no language-specific analyzer covers either type, and atom's entry reads `not-assessed` with its adapter's reason: no atom report was given, so there was nothing to read. The findings of those two projects carry `reach` in their `unassessed` list. Their prioritization leans on severity, exploit evidence and the fail-safe rules instead of a traced path. That is the honest answer to "which of these 258 first": severity and insight order them, and only an ecosystem with an analyzer can prove the rest.
 
 ## Takeaways
 

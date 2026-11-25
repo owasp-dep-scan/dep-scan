@@ -31,13 +31,18 @@ echo "pinned: juice-shop, DVWA, railsgoat"
 ### Scan each project typed
 # Typed scans keep the container files in these trees from turning a source
 # scan into an image-pulling run.
-depscan scan "$WORK/juice-shop" -t js --bom-profile research --no-banner \
+depscan scan "$WORK/juice-shop" -t js --bom-profile research --vdb-flavor app-only \
+  --no-banner \
   --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
   -o "$SCANS/juice-shop"
-depscan scan "$WORK/DVWA" -t php --no-banner -o "$SCANS/dvwa"
-depscan scan "$WORK/railsgoat" -t ruby --no-banner -o "$SCANS/railsgoat"
+depscan scan "$WORK/DVWA" -t php --vdb-flavor app-only --no-banner -o "$SCANS/dvwa"
+depscan scan "$WORK/railsgoat" -t ruby --vdb-flavor app-only --no-banner \
+  -o "$SCANS/railsgoat"
 
 ### What v7 proves, and what it cannot
+# A project whose findings carry no reach verdict gets the reason from its
+# manifest: the enrichment stage lists each reachability analyzer the scan
+# could have used, and a not-assessed analyzer carries the reason it gave.
 python3 - "$SCANS" <<'PY'
 import json, sys
 scans = sys.argv[1]
@@ -45,7 +50,15 @@ for name in ("juice-shop", "dvwa", "railsgoat"):
     f = json.load(open(f"{scans}/{name}/depscan.findings.json"))
     reaches = {x.get("exploitability", {}).get("axes", {}).get("reach") for x in f["findings"]}
     assessed = all(r in ("likely", "proven", "unknown") for r in reaches)
-    print(f"{name}: findings {len(f['findings'])}, reach assessed: {assessed}")
-    if not assessed:
-        print(f"{name}: reach verdict is not_assessed, with the analyzer gap named in the manifest")
+    print(f"{name}: reach assessed: {assessed}, findings {len(f['findings'])}")
+    if assessed:
+        continue
+    m = json.load(open(f"{scans}/{name}/depscan.manifest.json"))
+    gaps = [a for s in m["stages"] for a in s.get("analyzers", [])
+            if a["status"] != "completed"]
+    for a in gaps:
+        print(f"{name}: reach verdict is not_assessed; manifest: "
+              f"{a['name']} {a['status']}: {a.get('reason', 'no reason given')}")
+    if not gaps:
+        print(f"{name}: reach verdict is not_assessed; the manifest lists no analyzer for it")
 PY

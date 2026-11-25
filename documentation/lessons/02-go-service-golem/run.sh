@@ -26,7 +26,7 @@ echo "project: shop-golang-microservices $COMMIT"
 ### Scan with golem reachability
 # The typed scan (-t go) starts golem directly; semantic reachability also
 # attributes the reached services and endpoints.
-depscan scan "$SRC" -t go --bom-profile research \
+depscan scan "$SRC" -t go --bom-profile research --vdb-flavor app-only \
   --reachability-analyzer SemanticReachability --no-banner \
   -o "$SCANS/reports"
 

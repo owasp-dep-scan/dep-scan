@@ -32,7 +32,8 @@ print("plugin binaries:", tool["version"])
 '
 
 ### Scan the directory as binaries
-depscan scan "$PLUGINS" --target-kind binary --checks binary --no-banner \
+depscan scan "$PLUGINS" --target-kind binary --checks binary --vdb-flavor app-only \
+  --no-banner \
   -o "$SCANS/binaries"
 
 ### Read the findings and the coverage line

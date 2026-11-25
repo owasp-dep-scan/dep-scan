@@ -15,21 +15,24 @@ SCANS="$WORK/scans"
 mkdir -p "$SCANS"
 
 ### Save a scan for the agent to read
-depscan scan pkg:pypi/requests@2.31.0 --profile ci --no-banner -o "$SCANS/reports"
+depscan scan pkg:pypi/requests@2.31.0 --profile ci --vdb-flavor app-only --no-banner \
+  -o "$SCANS/reports"
 
 ### List the tools an MCP client sees
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/list > "$SCANS/tools.json"
 python3 -c "
 import json
 doc = json.load(open('$SCANS/tools.json'))
-names = [t['name'] for t in doc['tools']]
+names = sorted(t['name'] for t in doc['tools'])
+read = [n for n in names if n != 'run_scan']
 print(f'tools: {len(names)}')
-print('read tools:', ', '.join(sorted(names)))
+print(f'read tools ({len(read)}):', ', '.join(read))
+print('scan tool:', ', '.join(n for n in names if n == 'run_scan'))
 "
 
 ### Ask for the summary
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name scan_summary \
   --tool-arg scan_dir="$SCANS/reports" > "$SCANS/summary.json"
 python3 -c "
@@ -41,7 +44,7 @@ print('countsBySeverity:', json.dumps(state['countsBySeverity']))
 "
 
 ### Ask for the medium-severity findings
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name list_findings \
   --tool-arg scan_dir="$SCANS/reports" --tool-arg severity=medium > "$SCANS/medium.json"
 python3 -c "
@@ -63,7 +66,7 @@ state = json.loads(doc['content'][0]['text'])
 finding = state['findings'][0]
 print(fingerprint := finding['id'])
 " > "$SCANS/fingerprint.txt"
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name get_finding \
   --tool-arg scan_dir="$SCANS/reports" \
   --tool-arg finding_id="$(cat "$SCANS/fingerprint.txt")" > "$SCANS/finding.json"

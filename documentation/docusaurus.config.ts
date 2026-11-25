@@ -58,12 +58,11 @@ const config: Config = {
           {from: '/output/validate-command', to: '/reference/validate'},
           {from: '/migrate-v6-to-v7', to: '/upgrade/migrate-v6-to-v7'},
           {from: '/migrate-v5-to-v6', to: '/upgrade/migrate-v5-to-v6'},
-          // The three old /Develop/<page> ids are the new pages' own ids in
-          // lowercase, and a redirect from one to the other collides with
-          // the built page on a case-insensitive filesystem, so the build
-          // machine cannot create those three files. The old URLs answer
-          // the new pages through the server's own case-insensitive
-          // fallback where it has one; noted in the page map.
+          {from: '/Develop/getting-started-development', to: '/Develop/development-setup'},
+          {from: '/Develop/develop', to: '/Develop/contributing'},
+          {from: '/Develop/help', to: '/Develop/contributing'},
+          {from: '/Develop/testing-quality', to: '/Develop/development-setup'},
+          {from: '/Develop/core-concepts', to: '/results/finding-model'},
           {from: '/Lessons/java-semantic-analysis', to: '/lessons/01-node-source-reachability'},
           {from: '/Lessons/dotnet-framework-analysis', to: '/lessons/02-go-service-golem'},
           {from: '/adv-usage', to: '/reference/cli'},

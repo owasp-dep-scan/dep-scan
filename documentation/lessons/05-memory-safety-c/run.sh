@@ -6,8 +6,8 @@
 # planned check, atom memory-safety, over a pinned C project, and reads one
 # finding with its flow.
 #
-# Needs: dep-scan, cdxgen (which bundles atom), and no vulnerability
-# database for the refusal path.
+# Needs: dep-scan, atom on PATH (npm install -g @appthreat/atom), and no
+# vulnerability database for the refusal path.
 set -euo pipefail
 
 WORK="${WORK:-/tmp/depscan-lesson-05}"

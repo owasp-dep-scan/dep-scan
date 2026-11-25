@@ -7,7 +7,9 @@ sidebar_position: 01
 
 This lesson scans a real JavaScript project, the OWASP Juice Shop, at a pinned commit, follows one reached finding from the report to the call site that reached it, and reads one axis the scan could not assess and why. It is the shortest path from "a scanner found CVEs" to "here is the one that matters first".
 
-The inputs are pinned: Juice Shop at commit `33518f5a0911`, dep-scan 7.0.0a3 with cdxgen 13.9.0 and atom 4.0.3, and the `app-only` database flavor, which is the right flavor for a source-only scan. Everything runs locally.
+The inputs are pinned: Juice Shop at commit `33518f5a0911` and the `app-only` database flavor, which is the right flavor for a source-only scan. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3, cdxgen 13.9.0 from its master branch and atom 4.0.3; the lesson's CI job installs the cdxgen 13.8.0 release instead. Everything runs locally.
+
+The commit pins the source, not the dependency tree. Juice Shop at this commit ships no lockfile (its `.npmrc` sets `package-lock=false`), so cdxgen installs the dependencies at scan time, and the versions npm resolves, and with them the finding counts below, can drift from run to run. The install writes `node_modules` and a `package-lock.json` into the clone, and atom leaves its `.chen` cache there; for the throwaway clone the script makes, that is acceptable, but do not point the script at a working copy you care about.
 
 ## The script
 
@@ -42,7 +44,7 @@ echo "project: juice-shop $COMMIT"
 # The typed scan (-t js) plus the research BOM profile is what makes cdxgen
 # persist the atom slices the reachability analyzers read. The two exclude
 # patterns keep the Dockerfile and the compose file out of a source scan.
-depscan scan "$SRC" -t js --bom-profile research --no-banner \
+depscan scan "$SRC" -t js --bom-profile research --vdb-flavor app-only --no-banner \
   --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
   -o "$SCANS/reports"
 

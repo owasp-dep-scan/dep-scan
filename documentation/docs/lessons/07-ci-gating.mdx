@@ -7,7 +7,7 @@ sidebar_position: 07
 
 This lesson is the CI job in miniature: a scan with the CI profile, the exit codes, the JSON contract, and a gate on the findings file that reads the coverage block so an unassessed finding cannot pass as a clean one. The scan target is a pinned package URL, so the lesson runs in seconds and shows the shape without a project's noise; the [CI page](../integrate/ci) is the workflow around it.
 
-The inputs are pinned: `pkg:pypi/requests@2.31.0`, dep-scan 7.0.0a3 and the `app-only` database flavor. One deliberate negative case is included: a refused capability, because a gate that never saw a failure is not a gate.
+The inputs are pinned: `pkg:pypi/requests@2.31.0`, dep-scan 7.0.0a3 and the `app-only` database flavor. The output below is from a run on 2026-11-25. One deliberate negative case is included: a refused capability, because a gate that never saw a failure is not a gate.
 
 ## The script
 
@@ -31,9 +31,12 @@ SCANS="$WORK/scans"
 mkdir -p "$SCANS"
 
 ### Scan with the CI profile
-depscan scan pkg:pypi/requests@2.31.0 --profile ci --format json --no-banner \
-  -o "$SCANS/reports" > "$SCANS/scan.json"
-echo "scan exit code: $?"
+set +e
+depscan scan pkg:pypi/requests@2.31.0 --profile ci --vdb-flavor app-only \
+  --format json --no-banner -o "$SCANS/reports" > "$SCANS/scan.json"
+rc=$?
+set -e
+echo "scan exit code: $rc"
 
 ### The JSON contract: stdout is exactly one document
 python3 - "$SCANS" <<'PY'
@@ -65,7 +68,8 @@ PY
 set +e
 depscan scan pkg:pypi/requests@2.31.0 --checks memory-safety --format json \
   --no-banner -o "$SCANS/refused" > "$SCANS/refused.json" 2>/dev/null
-echo "refused scan exit code: $?"
+rc=$?
+echo "refused scan exit code: $rc"
 python3 -c "
 import json
 doc = json.load(open('$SCANS/refused.json'))

@@ -93,9 +93,9 @@ const sidebars: SidebarsConfig = {
       collapsible: true,
       label: 'Develop',
       items: [
-        'develop/contributing',
-        'develop/development-setup',
-        'develop/debugging',
+        'Develop/contributing',
+        'Develop/development-setup',
+        'Develop/debugging',
       ],
     },
     {

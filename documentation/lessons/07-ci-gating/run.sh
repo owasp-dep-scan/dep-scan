@@ -15,9 +15,12 @@ SCANS="$WORK/scans"
 mkdir -p "$SCANS"
 
 ### Scan with the CI profile
-depscan scan pkg:pypi/requests@2.31.0 --profile ci --format json --no-banner \
-  -o "$SCANS/reports" > "$SCANS/scan.json"
-echo "scan exit code: $?"
+set +e
+depscan scan pkg:pypi/requests@2.31.0 --profile ci --vdb-flavor app-only \
+  --format json --no-banner -o "$SCANS/reports" > "$SCANS/scan.json"
+rc=$?
+set -e
+echo "scan exit code: $rc"
 
 ### The JSON contract: stdout is exactly one document
 python3 - "$SCANS" <<'PY'
@@ -49,7 +52,8 @@ PY
 set +e
 depscan scan pkg:pypi/requests@2.31.0 --checks memory-safety --format json \
   --no-banner -o "$SCANS/refused" > "$SCANS/refused.json" 2>/dev/null
-echo "refused scan exit code: $?"
+rc=$?
+echo "refused scan exit code: $rc"
 python3 -c "
 import json
 doc = json.load(open('$SCANS/refused.json'))

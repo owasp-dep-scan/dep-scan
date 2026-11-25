@@ -7,7 +7,7 @@ sidebar_position: 02
 
 This lesson replaces the old .NET walk-through with the same depth on a Go service: `shop-golang-microservices` at a pinned commit, scanned with golem, the Go call-graph analyzer. The shape is the lesson 1 shape, with one addition golem brings: its caveats, which say how complete the traced graph was.
 
-The inputs are pinned: `shop-golang-microservices` at commit `76c34f1ab7e`, dep-scan 7.0.0a3 with cdxgen 13.9.0 and golem 4.3.1, and the `app-only` database flavor. The Go toolchain loads the modules; the first run lets golem download them through the local Go environment, which is its documented default.
+The inputs are pinned: `shop-golang-microservices` at commit `76c34f1ab7e` and the `app-only` database flavor. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3, cdxgen 13.9.0 from its master branch and golem 4.3.1 from cdxgen-plugins-bin 4.3.1; the lesson's CI job installs the cdxgen 13.8.0 release instead. The Go toolchain loads the modules; the first run lets golem download them through the local Go environment, which is its documented default.
 
 ## The script
 
@@ -42,7 +42,7 @@ echo "project: shop-golang-microservices $COMMIT"
 ### Scan with golem reachability
 # The typed scan (-t go) starts golem directly; semantic reachability also
 # attributes the reached services and endpoints.
-depscan scan "$SRC" -t go --bom-profile research \
+depscan scan "$SRC" -t go --bom-profile research --vdb-flavor app-only \
   --reachability-analyzer SemanticReachability --no-banner \
   -o "$SCANS/reports"
 
@@ -90,7 +90,7 @@ PY
 
 ## Reading the run
 
-golem reaches 77 of the 166 findings, and the lesson follows GHSA-jq35-85cj-fj4p, the net/http request-smuggling defect reachable through the docker client package the service imports:
+golem reaches 77 of the 166 findings, and the lesson follows GHSA-jq35-85cj-fj4p on `github.com/docker/docker`, the module the service imports for its docker client. The advisory is about Docker's default container configuration: `/sys/devices/virtual/powercap` stayed readable inside containers, which exposes the host's Intel RAPL energy counters to them, and the fix landed in 24.0.7 (20.10.27 on the older line):
 
 ```text
 project: shop-golang-microservices 76c34f1ab7e428f6106c5cf291570502df4ff257
@@ -102,12 +102,13 @@ presence: proven, reach: likely
 witness kind: reached-flow from golem 4.3.1
 first hop: (*github.com/docker/docker/client.Client).setupHijackConn
 caveat: budget: golem's slice reachability came back partial (no-entry-roots)
+caveat: location-outside-root: 1 file path(s) the producer named lie outside the source root and no package directory; the record leaves them out
 unassessed: exposure, barrier
 ```
 
-Presence is `proven` here, not merely `likely`: golem's own records place the package's code on the paths it traced, and the sources block of the finding names golem beside vdb and cdxgen. The witness path starts inside the docker client's `setupHijackConn`, which is the code an upgrade moves.
+Presence is `proven` here, not merely `likely`: golem's own records place the package's code on the paths it traced, and the sources block of the finding names golem beside vdb and cdxgen. The witness path starts inside the docker client's `setupHijackConn`. That is worth reading closely: the advisory concerns how the Docker daemon configures containers, and the service only uses the module as a client library, so the reached path proves the vulnerable module's code runs in this service, not that the daemon behaviour the advisory describes is exercised. The reach verdict is per module, and the reviewer decides from the advisory text whether the reached code is the affected code. The upgrade to 24.0.7 is still the fix the finding names.
 
-The budget caveat is the line a reader of a reachability claim should look for first. golem says its slice reachability came back partial, so the reached set carries that caveat with it, and a summary built from these records carries the caveat upward. A partial analysis is still evidence; it is evidence with its limits written on it.
+The budget caveat is the line a reader of a reachability claim should look for first. (The second caveat says one file path golem named lies outside the scanned tree, so the record leaves that hop's file out.) golem says its slice reachability came back partial, so the reached set carries that caveat with it, and a summary built from these records carries the caveat upward. A partial analysis is still evidence; it is evidence with its limits written on it.
 
 ## Takeaways
 

@@ -7,7 +7,7 @@ sidebar_position: 08
 
 This lesson starts `depscan mcp`, the Model Context Protocol server, and drives it the way an MCP client does, with the inspector's CLI mode standing in for an agent: list the tools, summarise a saved scan, filter its findings, and read one finding back by its fingerprint. The agent never runs a scan and never parses console text; it reads the same documents the CLI writes.
 
-The inputs are pinned: a scan of `pkg:pypi/requests@2.31.0` saved to a scan directory, dep-scan 7.0.0a3 with the `mcp` extra, and the inspector from npm. The server is started with `--allow-dir` naming only the scan directory, which is the whole of what the session may read.
+The inputs are pinned: a scan of `pkg:pypi/requests@2.31.0` saved to a scan directory, dep-scan 7.0.0a3 with the `mcp` extra and the `app-only` database flavor, and version 2.16.0 of the MCP inspector from npm. The output below is from a run on 2026-11-25 with those versions. The server is started with `--allow-dir` naming only the scan directory, which is the whole of what the session may read.
 
 ## The script
 
@@ -31,21 +31,24 @@ SCANS="$WORK/scans"
 mkdir -p "$SCANS"
 
 ### Save a scan for the agent to read
-depscan scan pkg:pypi/requests@2.31.0 --profile ci --no-banner -o "$SCANS/reports"
+depscan scan pkg:pypi/requests@2.31.0 --profile ci --vdb-flavor app-only --no-banner \
+  -o "$SCANS/reports"
 
 ### List the tools an MCP client sees
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/list > "$SCANS/tools.json"
 python3 -c "
 import json
 doc = json.load(open('$SCANS/tools.json'))
-names = [t['name'] for t in doc['tools']]
+names = sorted(t['name'] for t in doc['tools'])
+read = [n for n in names if n != 'run_scan']
 print(f'tools: {len(names)}')
-print('read tools:', ', '.join(sorted(names)))
+print(f'read tools ({len(read)}):', ', '.join(read))
+print('scan tool:', ', '.join(n for n in names if n == 'run_scan'))
 "
 
 ### Ask for the summary
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name scan_summary \
   --tool-arg scan_dir="$SCANS/reports" > "$SCANS/summary.json"
 python3 -c "
@@ -57,7 +60,7 @@ print('countsBySeverity:', json.dumps(state['countsBySeverity']))
 "
 
 ### Ask for the medium-severity findings
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name list_findings \
   --tool-arg scan_dir="$SCANS/reports" --tool-arg severity=medium > "$SCANS/medium.json"
 python3 -c "
@@ -79,7 +82,7 @@ state = json.loads(doc['content'][0]['text'])
 finding = state['findings'][0]
 print(fingerprint := finding['id'])
 " > "$SCANS/fingerprint.txt"
-npx -y @modelcontextprotocol/inspector --cli depscan mcp --allow-dir "$SCANS" \
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
   --method tools/call --tool-name get_finding \
   --tool-arg scan_dir="$SCANS/reports" \
   --tool-arg finding_id="$(cat "$SCANS/fingerprint.txt")" > "$SCANS/finding.json"
@@ -93,11 +96,12 @@ print('read back:', state['rule'], 'fix', state.get('fix', {}).get('fixed_versio
 
 ## Reading the run
 
-The tools an MCP client sees are the ten read tools plus the dry-run scan tool:
+The server offers ten tools: nine read tools, and `run_scan`, which only reports the scan it would run unless the server was started with `--allow-scans` and the call asks to execute:
 
 ```text
 tools: 10
-read tools: coverage, diff_scans, doctor, explain_finding, get_finding, list_components, list_findings, run_scan, scan_summary, vdb_status
+read tools (9): coverage, diff_scans, doctor, explain_finding, get_finding, list_components, list_findings, scan_summary, vdb_status
+scan tool: run_scan
 ```
 
 The summary call answers "what is in this scan" without reading a table:

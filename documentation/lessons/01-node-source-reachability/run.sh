@@ -26,7 +26,7 @@ echo "project: juice-shop $COMMIT"
 # The typed scan (-t js) plus the research BOM profile is what makes cdxgen
 # persist the atom slices the reachability analyzers read. The two exclude
 # patterns keep the Dockerfile and the compose file out of a source scan.
-depscan scan "$SRC" -t js --bom-profile research --no-banner \
+depscan scan "$SRC" -t js --bom-profile research --vdb-flavor app-only --no-banner \
   --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
   -o "$SCANS/reports"
 

@@ -7,7 +7,8 @@
 # Rails gems.
 #
 # Needs: dep-scan, cdxgen, a container daemon (docker, podman or nerdctl),
-# and the full vulnerability database (depscan vdb download). The images are
+# and the full vulnerability database (depscan vdb download --flavor full).
+# The images are
 # pulled by digest, so the bytes are pinned.
 set -euo pipefail
 
@@ -19,7 +20,7 @@ mkdir -p "$SCANS"
 # The digest pins the bytes. The full flavor carries the OS advisories an
 # image scan needs; app-only would leave the apk packages matching nothing.
 depscan scan nginx@sha256:7fc0fb4af7bf006aeb31aea88069976060f8f0a0a86b667126742cc17f4e31ae \
-  --no-banner -o "$SCANS/nginx"
+  --vdb-flavor full --no-banner -o "$SCANS/nginx"
 
 ### What the OS layer produced
 python3 - "$SCANS/nginx" <<'PY'
@@ -36,7 +37,7 @@ PY
 
 ### Scan redmine, an application-on-an-OS image
 depscan scan redmine@sha256:c3c9da0407e99b2a47af9e0af7b06bce1a3cfec16def1c14cd1fae61e3fa0770 \
-  --no-banner -o "$SCANS/redmine"
+  --vdb-flavor full --no-banner -o "$SCANS/redmine"
 
 ### The two layers in one report
 python3 - "$SCANS/redmine" <<'PY'

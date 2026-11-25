@@ -5,9 +5,9 @@ sidebar_position: 04
 
 # Lesson 4: binaries with the binary check
 
-This lesson reviews a directory of real binaries with the binary check, blint's review, and reads the findings and the coverage line that says how complete the review was. The binaries are the analyzer binaries the cdxgen plugins package ships, so the lesson needs no download beyond the toolchain itself; the plugin version that doctor reports pins the input set.
+This lesson reviews a directory of real binaries with the binary check, blint's review, and reads the findings and the coverage line that says how complete the review was. The binaries are the analyzer binaries the cdxgen plugins package ships, so the lesson needs no binaries beyond the toolchain itself; the plugin version that doctor reports pins the input set.
 
-The inputs are the cdxgen-plugins-bin binaries (4.3.1 at the time of writing) and dep-scan 7.0.0a3 with blint 4.1.1 from the `ext` extra. No database flavor choice matters here beyond the default download.
+The inputs are the cdxgen-plugins-bin binaries (4.3.1, macOS arm64 build, on the run quoted below) and dep-scan 7.0.0a3 with blint 4.1.1 from the `ext` extra. The scan names the `app-only` database flavor, which is enough for the vulnerability matches the binaries' embedded package data produces. The output below is from a run on 2026-11-25 with those versions.
 
 ## The script
 
@@ -48,7 +48,8 @@ print("plugin binaries:", tool["version"])
 '
 
 ### Scan the directory as binaries
-depscan scan "$PLUGINS" --target-kind binary --checks binary --no-banner \
+depscan scan "$PLUGINS" --target-kind binary --checks binary --vdb-flavor app-only \
+  --no-banner \
   -o "$SCANS/binaries"
 
 ### Read the findings and the coverage line
@@ -79,6 +80,8 @@ The review writes binary-hardening findings into the same findings file as every
 plugin binaries: 4.3.1
 categories: binary-hardening: 11, vulnerability: 5
 hardening producer: blint 4.1.1
+first hardening finding: CHECK_UNUSED_DEPENDENCIES on pkg:generic/cdxrs-darwin-arm64
+binary: cdxrs/cdxrs-darwin-arm64
 coverage report read: True
 ```
 
