@@ -13,15 +13,15 @@ Most compromises of the last few years did not exploit a CVE. They came through 
 depscan scan ./my-project --checks supply-chain --reports-dir reports
 ```
 
-The check runs the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). Rows whose score crosses the ceiling (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default) print as a table, and every audited package is written to `depscan-risk-<type>.json` in the scan directory as one JSON array of row objects with plain values:
+The check runs the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). A package whose score crosses the threshold (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default), or that is deprecated, missing its version, carrying binaries or private on a public registry, is printed in a table and written to `depscan-risk-<type>.json` in the scan directory, as one JSON array of row objects with plain values. When no package is flagged, the file is not written. A row from a scan of Juice Shop:
 
 ```json
 [
   {
-    "Package": "eventsource-parser",
+    "Package": "@codemirror/streamparser",
     "Used?": "Yes",
-    "Risk Score": 0.16,
-    "Identified Risks": ["Has attestation"]
+    "Risk Score": 1,
+    "Identified Risks": ["Has fewer versions", "Has fewer maintainers"]
   }
 ]
 ```

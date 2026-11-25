@@ -433,10 +433,6 @@ pkg_version_missing_max = get_float_from_env("pkg_version_missing_max", 0)
 pkg_includes_binary_weight = get_float_from_env("pkg_includes_binary_weight", 2)
 pkg_includes_binary_max = get_float_from_env("pkg_includes_binary_max", 0)
 
-# Package has attestation
-pkg_attested_weight = get_float_from_env("pkg_attested_weight", -2)
-pkg_attested_max = get_float_from_env("pkg_attested_max", 0)
-
 # Package dependency confusion
 pkg_private_on_public_registry_weight = get_float_from_env(
     "pkg_private_on_public_registry_weight", 4

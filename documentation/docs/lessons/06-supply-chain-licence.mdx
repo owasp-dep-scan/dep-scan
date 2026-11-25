@@ -91,14 +91,14 @@ The manifest names the two stages the checks add, beside the matching every scan
 project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
 stage licenses: completed
 stage risk: completed
-flagged packages: 382
+flagged packages: 86
 row shape: Package, Used?, Risk Score, Identified Risks
 highest score: 1 (2 risks identified)
 licence rows: 5
 copyleft conditions flagged: 2
 ```
 
-The risk report, `depscan-risk-universal.json`, is not the whole audited list. It holds only the packages the audit flagged: a risk score above the threshold (0.5 unless `PKG_MAX_RISK_SCORE` sets another), or a package the audit marked as deprecated, as a deprecated or missing version, as carrying binaries, as private on a public registry, or as published with an npm provenance attestation. A row is plain JSON: the package, whether the scan's code uses it, the score, and the identified risks as a list. On the recorded run 325 of the 382 rows list "Has attestation" and 296 are there for the attestation alone, only 9 score above 0.5, and the highest, `@codemirror/streamparser` at 1, is there for having few versions and few maintainers. Read the identified risks, not the row count. The private-namespace check (`--private-ns`) is the same audit aimed at dependency confusion; name the namespaces your organisation registers and the audit flags any that appear in public.
+The risk report, `depscan-risk-universal.json`, is not the whole audited list. It holds only the packages the audit flagged: a risk score above the threshold (0.5 unless `PKG_MAX_RISK_SCORE` sets another), or a package the audit marked as deprecated, as a deprecated or missing version, as carrying binaries, or as private on a public registry. A row is plain JSON: the package, whether the scan's code uses it, the score, and the identified risks as a list. On the recorded run 9 of the 86 rows score above 0.5; the rest are there for a flag, most often binaries in the package (41 rows), a deprecated package (31) or an "Outdated Node version" (30). The highest score, `@codemirror/streamparser` at 1, comes from few versions and few maintainers. Read the identified risks, not the row count. The private-namespace check (`--private-ns`) is the same audit aimed at dependency confusion; name the namespaces your organisation registers and the audit flags any that appear in public.
 
 The licence report is deliberately small on this project: five rows resolved to licence ids with conditions, two of them copyleft. Packages whose BOM carries no licence data are counted on the manifest's licenses stage as not assessed rather than silently clean (282 of 2137 packages on the recorded run). A licence policy gate (allowed and denied lists in the config, violations as findings) is planned work; today the file is the audit, read the way you would read a spreadsheet.
 

@@ -1035,7 +1035,6 @@ def pkg_risks_table(
             or risk_metrics.get("pkg_version_deprecated_risk")
             or risk_metrics.get("pkg_version_missing_risk")
             or risk_metrics.get("pkg_includes_binary_risk")
-            or risk_metrics.get("pkg_attested_check")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
@@ -1051,8 +1050,8 @@ def pkg_risks_table(
             risk_categories = []
             risk_categories_plain = []
             for rk, rv in risk_metrics.items():
-                if (rk.endswith("_risk") or rk.endswith("_check")) and rv is True:
-                    rcat = rk.removesuffix("_risk").removesuffix("_check")
+                if rk.endswith("_risk") and rv is True:
+                    rcat = rk.removesuffix("_risk")
                     help_text = risk_help_text.get(rcat)
                     extra_info = risk_metrics.get(f"{rcat}_info")
                     if extra_info:
@@ -1066,8 +1065,6 @@ def pkg_risks_table(
                             "pkg_private_on_public_registry",
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")
-                        elif rk.endswith("_check"):
-                            risk_categories.append(f":white_heavy_check_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")
                         # The report file holds plain values, one risk per
