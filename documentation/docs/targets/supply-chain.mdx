@@ -13,24 +13,18 @@ Most compromises of the last few years did not exploit a CVE. They came through 
 depscan scan ./my-project --checks supply-chain --reports-dir reports
 ```
 
-The check runs the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). A package whose score crosses the threshold (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default), or that is deprecated, missing its version, carrying binaries or private on a public registry, is printed in a table and written to `depscan-risk-<type>.json` in the scan directory, as one JSON array of row objects with plain values. When no package is flagged, the file is not written. A row from a scan of Juice Shop:
+The check runs cdxgen's `cdx-audit` over the BOM the scan produced or was given. Its findings become `supply-chain` findings in `depscan.findings.json`, each with cdxgen's rule id, cdx-audit's severity and the component it names: install scripts (INT-001), deprecated packages and versions (INT-005, INT-010), a private name that exists on a public registry (INT-017 to INT-019), a version the registry does not list (INT-020 to INT-022), a package first published within the last year (INT-023 to INT-025), a package whose newest release is more than six years old (INT-026 to INT-028), and npm packages that ship native platform binaries (INT-029). There is no risk score and no threshold: a package is listed when a rule matches it. The audit's own report is `cdx-audit-<type>.json` in the scan directory, and each finding's evidence is in `evidence.jsonl` with `cdx-audit` as the producer. The rule packs, the profiles that add the predictive mode and the options are on [the supply-chain audit reference](../reference/cli#the-supply-chain-audit). To list the findings:
 
-```json
-[
-  {
-    "Package": "@codemirror/streamparser",
-    "Used?": "Yes",
-    "Risk Score": 1,
-    "Identified Risks": ["Has fewer versions", "Has fewer maintainers"]
-  }
-]
+```bash
+jq '.findings[] | select(.category == "supply-chain") | {rule, severity, components}' \
+  reports/depscan.findings.json
 ```
 
 Two things the check always does, whatever else runs: malicious-package advisories (`MAL-*`) are matched and reported at every version, and they are the top of the prioritization ladder when they are also reachable ([prioritization](../results/prioritization)). Private namespaces are checked for dependency-confusion exposure with `--private-ns appthreat,shiftleft`, naming the namespaces that must not exist in public.
 
 ## Where the check stops
 
-The registry audit covers npm, PyPI and crates.io; other ecosystems are audited as advisories only. The deeper supply-chain rules, install-script policy, CI workflow permissions, dependency sources, provenance and AI-component inventory, exist as rule packs in cdxgen's `cdx-audit`, and wiring them into dep-scan's findings is [the supply-chain plan](https://github.com/owasp-dep-scan/dep-scan/issues/606). In this version nothing in the audit claims more than registry metadata supports, and a registry lookup that cannot run (offline mode, no network) is reported as not assessed with the reason, never as "no risk".
+The check needs `cdx-audit`, which the cdxgen npm package ships (cdxgen 13.10.0 or newer); `depscan doctor` reports it, and a scan without it records the check as not assessed with the reason. Source and BOM scans audit the `package-integrity` and `dependency-source` rule packs, and container scans add `container-risk`, `rootfs-hardening` and `cbom-security`. The `deep` and `research` profiles add cdx-audit's predictive mode, which audits the required dependencies' upstream repositories under a target cap and a time budget; every target it did not audit is a coverage caveat, never a clean result. Under the `offline` profile the audit makes no registry, git or OCI request.
 
 ## AI and agent components
 

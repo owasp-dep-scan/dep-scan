@@ -14,7 +14,7 @@ npm install -g @cdxgen/cdxgen
 pip install owasp-depscan
 ```
 
-dep-scan needs Python 3.11 or later. The base install covers vulnerability matching, reachability and the package risk audit. Four optional extras add more:
+dep-scan needs Python 3.11 or later. The base install covers vulnerability matching and reachability; the supply-chain check runs the `cdx-audit` command that cdxgen 13.10.0 or newer ships. Four optional extras add more:
 
 - `ext`: the binary and app analysis stack (blint 4 and atom-tools), needed for `--checks binary` and for app targets.
 - `mcp`: the Model Context Protocol SDK, needed only by `depscan mcp`.

@@ -5,9 +5,9 @@ sidebar_position: 06
 
 # Lesson 6: a supply-chain and licence audit
 
-This lesson runs the supply-chain and licence checks over the same pinned Juice Shop commit as lesson 1 and reads the two reports they write. Neither check needs anything beyond cdxgen and the network a registry lookup uses, and both write plain JSON arrays into the scan directory, so the audit is a file a reviewer opens, not console output to scrape.
+This lesson runs the supply-chain and licence checks over the same pinned Juice Shop commit as lesson 1 and reads the files they write. The supply-chain check runs cdxgen's `cdx-audit` over the scan's BOM, so its findings carry cdxgen's rule ids, severities and the components each one names; the licence check writes its report beside them. Both write plain JSON into the scan directory, so the audit is a file a reviewer opens, not console output to scrape.
 
-The inputs are pinned: Juice Shop at commit `33518f5a0911`, the `app-only` database flavor, and the npm and PyPI registries the risk audit queries. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3 and cdxgen 13.9.0 from its master branch; the lesson's CI job installs the cdxgen 13.8.0 release instead.
+The inputs are pinned: Juice Shop at commit `33518f5a0911`, the `app-only` database flavor, and the cdxgen release the supply-chain check needs (13.10.0 or newer, which ships `cdx-audit` with the options dep-scan passes). The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3 and the cdxgen 13.9.0 master build that already carries the audit options; the lesson's CI job installs the cdxgen release instead.
 
 As in lesson 1, the commit pins the source but not the dependency tree: Juice Shop at this commit ships no lockfile (its `.npmrc` sets `package-lock=false`), so the dependencies are resolved at scan time and the counts below can drift between runs. The install writes `node_modules` and a `package-lock.json` into the clone, which is acceptable for the throwaway clone the script makes.
 
@@ -20,10 +20,11 @@ The commands live in `documentation/lessons/06-supply-chain-licence/run.sh` (and
 # Lesson 06: a supply-chain and licence audit.
 #
 # Runs the supply-chain and licence checks over the same pinned Juice Shop
-# commit as lesson 01, and reads the risk report, the licence report and the
-# manifest stages that record what ran.
+# commit as lesson 01, and reads the supply-chain findings, the audit's own
+# report, the licence report and the manifest stages that record what ran.
 #
-# Needs: dep-scan, cdxgen, Node.js, and an app-only vulnerability database.
+# Needs: dep-scan, cdxgen 13.10.0 or newer (for the cdx-audit it ships),
+# Node.js, and an app-only vulnerability database.
 set -euo pipefail
 
 WORK="${WORK:-/tmp/depscan-lesson-06}"
@@ -54,22 +55,24 @@ for s in m["stages"]:
         print(f"stage {s['name']}: {s['status']}")
 PY
 
-### Read the risk report
-# The report holds the packages the audit flagged: a risk score above the
-# threshold (0.5 unless PKG_MAX_RISK_SCORE says otherwise), or a deprecated,
-# missing, binary-carrying or private-on-public package. With nothing flagged,
-# the file is not written at all.
+### Read the supply-chain findings
 python3 - "$SCANS/reports" <<'PY'
-import json, os, sys
-path = os.path.join(sys.argv[1], "depscan-risk-universal.json")
-if not os.path.exists(path):
-    print("flagged packages: 0 (no risk report written)")
-else:
-    rows = json.load(open(path))
-    print(f"flagged packages: {len(rows)}")
-    top = max(rows, key=lambda r: r["Risk Score"])
-    print("row shape: Package, Used?, Risk Score, Identified Risks")
-    print(f"highest score: {top['Risk Score']} ({len(top['Identified Risks'])} risks identified)")
+import json, sys
+d = sys.argv[1]
+findings = json.load(open(f"{d}/depscan.findings.json"))["findings"]
+supply = [f for f in findings if f["category"] == "supply-chain"]
+print(f"supply-chain findings: {len(supply)}")
+rules = {}
+for f in supply:
+    rules[f["rule"]] = rules.get(f["rule"], 0) + 1
+top = sorted(rules.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+print("most frequent rules: " + ", ".join(f"{rule} x{n}" for rule, n in top))
+if supply:
+    producer = supply[0]["producer"]
+    print(f"producer: {producer['name']} {producer['version']}")
+audit = json.load(open(f"{d}/cdx-audit-universal.json"))
+mode = audit.get("auditMode", "predictive")
+print(f"audit mode: {mode}, total findings: {audit['summary']['totalFindings']}")
 PY
 
 ### Read the licence report
@@ -85,25 +88,28 @@ PY
 
 ## Reading the run
 
-The manifest names the two stages the checks add, beside the matching every scan does:
+The manifest names the two stages the checks add, beside the matching every scan does, and the script then reads what they wrote:
 
 ```text
 project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
 stage licenses: completed
 stage risk: completed
-flagged packages: 86
-row shape: Package, Used?, Risk Score, Identified Risks
-highest score: 1 (2 risks identified)
+supply-chain findings: 104
+most frequent rules: INT-029 x73, INT-023 x16, INT-001 x15
+producer: cdx-audit 13.9.0
+audit mode: direct, total findings: 126
 licence rows: 5
 copyleft conditions flagged: 2
 ```
 
-The risk report, `depscan-risk-universal.json`, is not the whole audited list. It holds only the packages the audit flagged: a risk score above the threshold (0.5 unless `PKG_MAX_RISK_SCORE` sets another), or a package the audit marked as deprecated, as a deprecated or missing version, as carrying binaries, or as private on a public registry. A row is plain JSON: the package, whether the scan's code uses it, the score, and the identified risks as a list. On the recorded run 9 of the 86 rows score above 0.5; the rest are there for a flag, most often binaries in the package (41 rows), a deprecated package (31) or an "Outdated Node version" (30). The highest score, `@codemirror/streamparser` at 1, comes from few versions and few maintainers. Read the identified risks, not the row count. The private-namespace check (`--private-ns`) is the same audit aimed at dependency confusion; name the namespaces your organisation registers and the audit flags any that appear in public.
+The supply-chain findings are not a scored package list: each one is a rule match with cdxgen's rule id, the severity cdx-audit gave it and the component it names. On the recorded run, INT-029 (an npm package that ships native platform binaries) matched 73 packages, INT-023 (a package first published inside the one-year quarantine window) matched 16, and INT-001 (install-time execution hooks) matched 15. The audit's own report, `cdx-audit-universal.json`, holds 126 findings, and the findings file maps every one of them: Juice Shop resolves some packages at two versions, and a finding's fingerprint keys on the package, so those records merge into one finding whose components name both versions' purls (16 of the 104 findings carry merged components, and all 121 components the audit named are named in the findings file). The audit ran with the `package-integrity` and `dependency-source` categories, the ones dep-scan's supply-chain check passes for source scans; a narrower or wider category set is a cdx-audit run of its own. Every finding names its producer (`cdx-audit` and the cdxgen version that ran), so a reader knows which audit answered.
 
-The licence report is deliberately small on this project: five rows resolved to licence ids with conditions, two of them copyleft. Packages whose BOM carries no licence data are counted on the manifest's licenses stage as not assessed rather than silently clean (282 of 2137 packages on the recorded run). A licence policy gate (allowed and denied lists in the config, violations as findings) is planned work; today the file is the audit, read the way you would read a spreadsheet.
+Read the rule ids, not the counts: the dep-scan 6 risk audit flagged 382 packages on this project against a weighted score, and the supply-chain findings replace that list with one finding per rule and component. A private namespace (`--private-ns appthreat,shiftleft`) aims the same rules at dependency confusion: a package whose name starts with one of the prefixes and resolves from a public registry is reported by INT-017 to INT-019. Under the `deep` or `research` profiles the check adds cdx-audit's predictive mode, which audits the upstream repositories of the required dependencies; a target it skips or fails is counted in the findings' coverage reasons, never folded into clean.
+
+The licence report is deliberately small on this project: five rows resolved to licence ids with conditions, two of them copyleft. Packages whose BOM carries no licence data are counted on the manifest's licenses stage as not assessed rather than silently clean (282 of 2137 packages on an earlier recorded run). A licence policy gate (allowed and denied lists in the config, violations as findings) is planned work; today the file is the audit, read the way you would read a spreadsheet.
 
 ## Takeaways
 
-- `--checks supply-chain,license` adds two stages and two plain JSON reports to the scan directory.
-- The risk report lists flagged packages only, and a row's identified risks say why it was flagged; a score above 0.5 is one reason among several.
+- `--checks supply-chain,license` adds two stages, the audit report `cdx-audit-<type>.json` and the plain JSON reports to the scan directory.
+- Supply-chain findings are rule matches with cdxgen's rule ids and severities, one per rule and component; read the rule, not a score.
 - Missing licence data is counted as not assessed on the manifest, never folded into clean.

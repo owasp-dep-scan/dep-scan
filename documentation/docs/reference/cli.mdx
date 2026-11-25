@@ -224,7 +224,7 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 | `vulnerabilities` | vulnerability matching, including the malware advisory reporting | none: always assessed |
 | `reachability` | keeps the reachability analyzers on | `reachability` |
 | `license` | appends the `license` pseudo type, which triggers the license analysis | `license` |
-| `supply-chain` | the package risk audit | `supply-chain` |
+| `supply-chain` | the supply-chain audit through cdxgen's `cdx-audit` (cdxgen 13.10.0 or newer) | `supply-chain` (needs `cdx-audit`) |
 | `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, a source target keeps its cdxgen inventory with blint's security review running beside it, and a container target today gives the review no units to attempt | `binary` (needs the blint package) |
 | `memory-safety` | not implemented in this version | exits 4 when named explicitly |
 | `mobile` | not implemented in this version | exits 4 when named explicitly |
@@ -247,7 +247,7 @@ The binary check on a source scan never replaces the scan's own inventory: the c
 | `ci` | `vulnerabilities,reachability` | explanations off, so no LLM prompt file is ever written |
 | `deep` | `vulnerabilities,reachability,license,supply-chain` | semantic reachability (`SemanticReachability`) |
 | `research` | `deep` plus cdxgen's research BOM profile | `--bom-profile research` implied |
-| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen only, golem offline, no risk audit |
+| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen only, golem offline, no supply-chain audit |
 
 ## BOM profiles and excluded types
 
@@ -411,29 +411,19 @@ export GITHUB_TOKEN="<PAT token>"
 
 Suggest mode is on by default and retrieves the optimal fix version for each vulnerability from the sources, so the fix version in the report is sometimes a later version than the first patched one, chosen to avoid landing on another known vulnerability. The optimal fix version may still not be the right version for your application; read it as a suggestion. Pass `--no-suggest` to disable the behaviour.
 
-## The package risk audit
+## The supply-chain audit
 
-`--checks supply-chain` enables the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors. Packages that exceed the maximum risk score (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default) print as a table, and every audited row is written to `depscan-risk-<type>.json`. Use `--private-ns` to name the private namespaces that should never exist on a public registry:
+`--checks supply-chain` runs cdxgen's `cdx-audit` over the BOM the scan produced or was given, in its direct BOM audit mode. The findings it reports become dep-scan's `supply-chain` findings, with cdxgen's rule ids, severities and the components each finding names; the audit's raw report lands in the scan directory as `cdx-audit-<type>.json`, and the per-finding evidence goes into `evidence.jsonl` with `cdx-audit` as the producer. Source and BOM scans audit the `package-integrity` and `dependency-source` rule packs; container scans add `container-risk`, `rootfs-hardening` and `cbom-security`. The `deep` and `research` profiles add cdx-audit's predictive mode, which resolves the required dependencies to their upstream repositories, generates child SBOMs and audits those under a target cap of 25 and a 30-minute budget; every target it did not audit is named as a coverage caveat, never as a clean result. The `offline` profile passes `--offline`, so the audit makes no registry, git or OCI request.
+
+Malicious-package matching (`MAL-` advisories) stays in the matching stage, from the vulnerability database.
+
+Dependency confusion: use `--private-ns` to name the private package namespaces or name prefixes your organisation registers. A public-registry package whose name starts with one of them is reported by cdx-audit's INT-017 to INT-019 rules, for npm scopes and for PyPI and Cargo names. Prefixes match by prefix, so `appthreat` matches both the npm scope `@appthreat` and a PyPI name that starts with `appthreat`:
 
 ```bash
 depscan scan . --checks supply-chain --private-ns appthreat,shiftleft
 ```
 
-| Risk category | Default weight | Reason |
-| --- | --- | --- |
-| pkg_private_on_public_registry | 4 | Private package is available on a public registry |
-| pkg_min_versions | 2 | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages |
-| mod_create_min_seconds | 1 | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
-| latest_now_min_seconds | 0.5 | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable |
-| latest_now_max_seconds | 0.5 | Package versions that are over 6 years old are in use. Such packages might have vulnerable dependencies that are known or yet to be found |
-| pkg_min_maintainers | 2 | Package has less than 2 maintainers. Many opensource projects have only 1 or 2 maintainers so special heuristics are used to ignore older stable packages |
-| pkg_min_users | 0.25 | Package has less than 2 npm users |
-| pkg_install_scripts | 2 | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm. |
-| pkg_node_version | 0.5 | Package supports outdated version of node such as 0.8, 0.10, 4 or 6.x. Such projects might have prototype pollution or closure related vulnerabilities |
-| pkg_scope | 4 or 0.5 | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score with a weight of 0.5 |
-| deprecated | 1 | Latest version is deprecated |
-
-A parameter called `created_now_quarantine_seconds` identifies packages safely past the quarantine period (1 year); risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past it, because a malicious package is unlikely to sit unnoticed on a registry for over a year. Every weight and threshold is configurable through its own environment variable: `PKG_MIN_VERSIONS_WEIGHT=4` raises the weight of the `pkg_min_versions` factor, while `PKG_MIN_VERSIONS=5` raises its threshold, the version count below which the factor applies. See [the configuration page](configuration).
+The rules that replace the retired registry audit: install-time scripts (INT-001), deprecated packages and versions (INT-005, INT-010), a version the registry does not list (INT-020 to INT-022), npm packages that ship native platform binaries (INT-029), a package first published inside the one-year quarantine window (INT-023 to INT-025), and a package whose newest release is more than six years old (INT-026 to INT-028). Each rule carries its own severity; the rule catalogue lives in cdxgen's `data/rules/` directory and is documented in cdxgen's BOM audit guide. cdxgen 13.10.0 or newer is required; `depscan doctor` reports the installed one as the `cdx-audit` tool.
 
 ## Live OS scan
 

@@ -141,13 +141,13 @@ gates; checks that cannot run become not-assessed entries in the manifest.
 | `vulnerabilities` | Always runs. |
 | `license` | License analysis. |
 | `reachability` | Reachability enrichment; needs cdxgen 13.8.0 or newer. |
-| `supply-chain` | The supply-chain risk audit, for the project types it supports. |
+| `supply-chain` | The supply-chain audit through cdxgen's cdx-audit (cdxgen 13.10.0 or newer). |
 | `binary`, `memory-safety`, `mobile`, `code`, `crypto` | Present as names, but several are not implemented in this version and exit 4 with the reason. Probe with `depscan doctor` before promising one. |
 | `all` | Every check; the ones that cannot run are recorded, not refused. |
 
 Other options worth knowing: `--exclude-type <type>` drops a detected
 project type, `--severity <level>` limits the reported findings,
-`--private-ns <prefix>` marks the user's own packages, `--malware-only`
+`--private-ns <prefix>` names the private package namespaces the dependency-confusion check watches, `--malware-only`
 looks for known malicious packages only, and several targets can be passed
 in one run.
 

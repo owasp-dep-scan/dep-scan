@@ -1,6 +1,9 @@
 project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
 stage licenses: completed
 stage risk: completed
-flagged packages:
+supply-chain findings:
+most frequent rules: INT-
+producer: cdx-audit 13.
+audit mode: direct, total findings:
 licence rows:
 copyleft conditions flagged:

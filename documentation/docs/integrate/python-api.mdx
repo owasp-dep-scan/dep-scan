@@ -24,7 +24,7 @@ print(result.reports_dir, result.project_types)
 
 An override name that is not a command line option raises `TypeError` naming it. If you parse the command line yourself, pass that namespace to `scan` directly.
 
-The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`, plus the scan directory's own `depscan.findings.json` and `depscan.manifest.json`. The [scan directory](../results/scan-directory) page documents the layout. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
+The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license report, the `cdx-audit-<type>.json` supply-chain audit reports and `depscan.toml.sample`, plus the scan directory's own `depscan.findings.json` and `depscan.manifest.json`. The [scan directory](../results/scan-directory) page documents the layout. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
 
 ```python
 result = api.scan(options, render=False)

@@ -116,7 +116,7 @@ Regenerate it with that command when the table changes. -->
 | `memory-safety:c` | Memory-safety analysis of C sources with atom memory-safety. | not implemented yet ([dep-scan#613](https://github.com/owasp-dep-scan/dep-scan/issues/613)) |
 | `mobile` | Android and iOS app analysis. | not implemented yet ([dep-scan#625](https://github.com/owasp-dep-scan/dep-scan/issues/625)) |
 | `mobile:android` | Android app analysis with blint, atom and kosi. | not implemented yet ([dep-scan#625](https://github.com/owasp-dep-scan/dep-scan/issues/625)) |
-| `supply-chain` | Package risk audit and malware advisory reporting. | nothing external |
+| `supply-chain` | Supply-chain audit through cdxgen's cdx-audit, and malware advisory reporting. | `tool:cdx-audit` |
 | `binary` | Binary analysis with blint. | `tool:blint` |
 | `code` | Findings from the analyzers' own code rules. | not implemented yet ([dep-scan#605](https://github.com/owasp-dep-scan/dep-scan/issues/605)) |
 | `crypto` | Crypto findings from the cbom-security audit pack. | not implemented yet ([dep-scan#606](https://github.com/owasp-dep-scan/dep-scan/issues/606)) |
