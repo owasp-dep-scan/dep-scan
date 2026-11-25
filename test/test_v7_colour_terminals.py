@@ -5,7 +5,8 @@ any non-empty value turns colour off everywhere, FORCE_COLOR or an explicit
 CONSOLE_COLOR_SCHEME other than ``auto`` turns it on even for a redirected
 stream, and with none of them set rich detects colour support per stream.
 Emoji follow
-DISABLE_CONSOLE_EMOJI and stay off on a non-terminal. Progress bars and
+DISABLE_CONSOLE_EMOJI and stay off on a non-terminal, where a shortcode is
+replaced by plain text or dropped instead of printed. Progress bars and
 spinners stay off whenever stderr is not a terminal.
 """
 
@@ -96,8 +97,9 @@ def test_colour_arguments_follow_the_user(monkeypatch, environ, expected):
 def test_stderr_as_a_file_is_plain_by_default():
     stderr = _run_console_child({})
     assert b"\x1b" not in stderr
-    # Emoji are off for the non-terminal stream, so the shortcode stays text.
-    assert b":thumbs_up:" in stderr
+    # Emoji are off for the non-terminal stream, and the shortcode is not
+    # left behind as text either.
+    assert b":thumbs_up:" not in stderr
 
 
 def test_force_colour_reaches_stderr_as_a_file():
@@ -160,14 +162,48 @@ def test_emoji_follow_the_terminal_and_the_disable_variable(monkeypatch):
     monkeypatch.setenv("DISABLE_CONSOLE_EMOJI", "1")
     plain_tty = _FakeTty()
     logger._build_console(plain_tty).print(":thumbs_up: hello")
-    assert ":thumbs_up:" in plain_tty.getvalue()
+    assert ":thumbs_up:" not in plain_tty.getvalue()
+    assert plain_tty.getvalue().strip() == "hello"
 
 
 def test_emoji_are_off_for_a_non_terminal(monkeypatch):
     monkeypatch.setattr(logger, "IS_CI", False)
     stream = io.StringIO()
     logger._build_console(stream).print(":thumbs_up: hello")
-    assert ":thumbs_up:" in stream.getvalue()
+    assert ":thumbs_up:" not in stream.getvalue()
+    assert stream.getvalue().strip() == "hello"
+
+
+def test_shortcodes_become_plain_text_in_tables_panels_and_exports(monkeypatch):
+    """With emoji off, a table cell, a panel title and a saved export carry
+    the plain form of a shortcode that means something, and nothing for the
+    rest."""
+    from rich.panel import Panel
+    from rich.table import Table
+
+    monkeypatch.setattr(logger, "IS_CI", False)
+    stream = io.StringIO()
+    console = logger._build_console(stream, record=True, width=100)
+    table = Table(title=":collision: Top Packages")
+    table.add_column("Insights")
+    table.add_row("[bright_red]:exclamation_mark: Exploitable[/bright_red]")
+    table.add_row(":left_arrow: GHSA-1234")
+    table.add_row(":cross_mark: Weak hash")
+    console.print(table)
+    console.print(Panel("at 12:30:45 see :white_check_mark: done", title=":direct_hit: Next"))
+    text = console.export_text(clear=False)
+    html = console.export_html()
+    for output in (stream.getvalue(), text, html):
+        assert ":collision:" not in output
+        assert ":exclamation_mark:" not in output
+        assert ":direct_hit:" not in output
+        assert ":left_arrow:" not in output
+        assert "Top Packages" in output
+        assert "Exploitable" in output
+        assert "&lt;- GHSA-1234" in output or "<- GHSA-1234" in output
+        assert "(x) Weak hash" in output
+        # A time of day is not a shortcode and stays as written.
+        assert "12:30:45 see (ok) done" in output
 
 
 def test_spinners_enabled_follows_stderr():

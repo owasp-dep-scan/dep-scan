@@ -4,6 +4,7 @@ import random
 import re
 import sys
 
+from rich._emoji_codes import EMOJI as _RICH_EMOJI_CODES
 from rich.console import Console
 from rich.highlighter import RegexHighlighter
 from rich.logging import RichHandler
@@ -109,7 +110,53 @@ def _emoji_enabled(file):
     return not (sys.platform == "win32" and IS_CI)
 
 
-def _build_console(file=None, **overrides):
+# What an emoji shortcode becomes when emoji are off. A code that carries
+# meaning gets a short plain-text form; every other known code is dropped,
+# together with the one space that followed it, because the words beside it
+# already say the same thing.
+_PLAIN_EMOJI = {
+    "left_arrow": "<-",
+    "cross_mark": "(x)",
+    "white_heavy_check_mark": "(ok)",
+    "white_check_mark": "(ok)",
+}
+_EMOJI_CODE = re.compile(r":([a-z0-9][a-z0-9_+\-]*):( ?)")
+
+
+def strip_emoji_codes(text):
+    """Replace the emoji shortcodes of ``text`` with plain text.
+
+    Only names rich itself knows as emoji are touched, so ``12:30:45`` or a
+    path with colons stays as it is.
+    """
+
+    def replace(match):
+        name = match.group(1)
+        if name in _PLAIN_EMOJI:
+            return _PLAIN_EMOJI[name] + match.group(2)
+        if name in _RICH_EMOJI_CODES:
+            return ""
+        return match.group(0)
+
+    return _EMOJI_CODE.sub(replace, text)
+
+
+class _PlainEmojiConsole(Console):
+    """A console that never prints a literal emoji shortcode.
+
+    Rich leaves ``:left_arrow:`` in the text when emoji are off, which
+    reads as noise in a pipe, a log file or a saved report. Every string the
+    console renders, whether printed, put in a table or panel, or exported to
+    HTML or text, goes through ``render_str``, so the codes are replaced there.
+    """
+
+    def render_str(self, text, *args, emoji=None, **kwargs):
+        if isinstance(text, str) and not (self._emoji if emoji is None else emoji):
+            text = strip_emoji_codes(text)
+        return super().render_str(text, *args, emoji=emoji, **kwargs)
+
+
+def _build_console(file=None, **overrides) -> Console:
     """Build a rich console with dep-scan's colour, emoji and width rules.
 
     Both dep-scan consoles go through this builder so they always agree on
@@ -133,7 +180,7 @@ def _build_console(file=None, **overrides):
     )
     kwargs.update(_color_arguments())
     kwargs.update(overrides)
-    return Console(**kwargs)
+    return _PlainEmojiConsole(**kwargs)
 
 
 # The stdout console pins no file, so it follows the current sys.stdout at

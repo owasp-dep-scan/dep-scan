@@ -75,7 +75,7 @@ Colour follows the stream unless the environment asks otherwise, and each consol
 | `NO_COLOR` | Any non-empty value turns colour off on both consoles, including a real terminal. |
 | `FORCE_COLOR` | Any non-empty value turns colour on even when the stream is not a terminal. |
 | `CONSOLE_COLOR_SCHEME` | `auto` (default), `standard`, `256`, `truecolor` or `windows`. A named scheme forces colour and selects it, on redirected streams too; an unknown value falls back to dep-scan's detection with colour forced. |
-| `DISABLE_CONSOLE_EMOJI` | `true` or `1` turns emoji shortcodes off. Emoji are also off when the stream is not a terminal. |
+| `DISABLE_CONSOLE_EMOJI` | `true` or `1` turns emoji off. Emoji are also off when the stream is not a terminal. With emoji off, a shortcode prints as a short plain-text form (`<-`, `(ok)`, `(x)`) or is left out. |
 
 Progress bars and spinners draw only when stderr is a terminal; `FORCE_COLOR` does not turn them on, because redrawing on a redirected stream would only fill the file a script is capturing. With none of the variables set, redirected output on either stream carries no ANSI escape sequences, so a parser never strips them.
 
