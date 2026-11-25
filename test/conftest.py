@@ -150,7 +150,7 @@ def fake_cdx_audit(monkeypatch, calls, report=None, version="13.10.0"):
             report=audit_report,
             report_version=audit_report.get("version"),
             findings_count=(audit_report.get("summary") or {}).get("totalFindings", 0),
-            results=audit_report.get("results") or [],
+            results=list(audit_report.get("results") or []),
         )
 
     monkeypatch.setattr(cdx_audit_module, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")

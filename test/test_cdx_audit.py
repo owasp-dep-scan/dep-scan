@@ -177,6 +177,7 @@ def test_offline_direct_audit_makes_no_network_request(tmp_path, monkeypatch):
     registry metadata: no socket is ever built, and the report still lands."""
     _block_network(monkeypatch)
     cmd = cdx_audit.find_cdx_audit_cmd()
+    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
     bom_file = tmp_path / "sbom.cdx.json"
     bom_file.write_text(
         json.dumps(
@@ -217,6 +218,7 @@ def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
     from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
 
     cmd = cdx_audit.find_cdx_audit_cmd()
+    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
     bom_file = tmp_path / "sbom.cdx.json"
     bom_file.write_text(
         json.dumps(

@@ -127,7 +127,8 @@ def test_same_rule_on_two_components_gives_two_findings():
     findings = findings_from_cdx_audit_records(records)
     assert len(findings) == 2
     assert len({f.id for f in findings}) == 2
-    assert {f.components[0] for f in findings} == {"pkg:pypi/one@1.0.0", "pkg:pypi/two@2.0.0"}
+    named = {component for f in findings for component in (f.components or [])}
+    assert named == {"pkg:pypi/one@1.0.0", "pkg:pypi/two@2.0.0"}
 
 
 def test_records_of_other_producers_and_kinds_are_ignored():
