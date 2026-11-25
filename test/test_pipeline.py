@@ -62,6 +62,23 @@ def _ctx(tmp_path, argv):
 # ---------------------------------------------------------------------------
 
 
+def test_stage_setup_makes_a_relative_reports_dir_absolute(tmp_path, monkeypatch):
+    """A relative --reports-dir must not ride into the cdxgen argument list.
+
+    dep-scan resolves it against its own working directory, cdxgen against
+    the directory it analyses, so a relative value put the BOM inside the
+    scanned tree, and with --fail-on-error the scan aborted because the BOM
+    was not where dep-scan looked. The setup stage makes the directory
+    absolute, which is also what the JSON contract requires of scanDir.
+    """
+    monkeypatch.chdir(tmp_path)
+    args = _args(["--reports-dir", "reports", "--no-banner"])
+    ctx = pipeline.build_context(args)
+    pipeline.stage_setup(ctx)
+    assert ctx.reports_dir == str(tmp_path / "reports")
+    assert os.path.isabs(ctx.reports_dir)
+
+
 def test_stage_setup_resolves_directories_and_options(tmp_path):
     bom = _write_bom(tmp_path / "sbom.cdx.json")
     # An empty --src makes the setup stage infer the source directory from
