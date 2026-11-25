@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from depscan.lib.logger import LOG
+from xbom_lib.process import build_command
 
 #: The cdxgen release this dep-scan needs. The audit passes
 #: ``--private-namespace``, ``--offline`` and ``--time-budget-minutes`` and
@@ -79,7 +80,7 @@ def cdx_audit_version(cmd: str) -> Optional[str]:
     """
     try:
         proc = subprocess.run(
-            [cmd, "--version"],
+            build_command([cmd, "--version"]),
             capture_output=True,
             text=True,
             timeout=60,
@@ -181,8 +182,11 @@ def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
     failure; exit code 1 or a missing report is. The report's own markers
     name what the run cut short, so the caller can turn them into caveats.
     """
-    argv = [cmd, *args]
-    LOG.debug("Running cdx-audit: %s", " ".join(argv))
+    # build_command spells a Windows npm shim (a .cmd batch file) as the
+    # command line cmd.exe needs, and leaves a plain argv list everywhere
+    # else.
+    argv = build_command([cmd, *args])
+    LOG.debug("Running cdx-audit: %s", " ".join(str(part) for part in argv))
     proc = subprocess.run(
         argv,
         capture_output=True,

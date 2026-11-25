@@ -10,6 +10,7 @@ import json
 import os
 import socket
 import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,52 @@ TESTS_DIR = Path(__file__).parent
 DATA_DIR = TESTS_DIR / "data"
 
 
+#: The body of a fake cdx-audit: prints the version line, writes the
+#: report the environment names to the --report-file argument and exits
+#: with the environment's exit code. The same body runs behind a POSIX
+#: shebang script and behind a Windows batch shim, so the runner tests
+#: exercise the real argv handling on both.
+FAKE_AUDIT_BODY = """import os
+import sys
+
+args = sys.argv[1:]
+if args and args[0] == "--version":
+    print("CycloneDX Generator " + os.environ.get("FAKE_VERSION", "13.10.0"))
+    sys.exit(0)
+report = ""
+for index, arg in enumerate(args):
+    if arg == "--report-file" and index + 1 < len(args):
+        report = args[index + 1]
+if report:
+    with open(report, "w", encoding="utf-8") as handle:
+        handle.write(os.environ.get("FAKE_REPORT", ""))
+sys.exit(int(os.environ.get("FAKE_EXIT", "0")))
+"""
+
+
+def _write_fake_audit(directory, name="cdx-audit-fake", version=None):
+    """The fake cdx-audit command for this platform, as a path."""
+    body = directory / f"{name}-body.py"
+    text = FAKE_AUDIT_BODY
+    if version:
+        # A fixed version line, for the tests that probe --version.
+        text = text.replace(
+            'os.environ.get("FAKE_VERSION", "13.10.0")', repr(version)
+        )
+    body.write_text(text, encoding="utf-8")
+    if sys.platform == "win32":
+        script = directory / f"{name}.cmd"
+        script.write_text(
+            "@echo off\n" + f'python "{body}" %*\n' + "exit /b %ERRORLEVEL%\n",
+            encoding="utf-8",
+        )
+    else:
+        script = directory / name
+        script.write_text("#!/usr/bin/env python3\n" + text, encoding="utf-8")
+        script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    return script
+
+
 @pytest.fixture()
 def fake_cdx_audit(tmp_path, monkeypatch):
     """A fake cdx-audit executable that records its arguments and writes a
@@ -27,23 +74,7 @@ def fake_cdx_audit(tmp_path, monkeypatch):
     choose, so the minimum check is exercised against real parse output."""
     calls = {}
 
-    script = tmp_path / "cdx-audit-fake"
-    body = f"""#!/bin/sh
-if [ "$1" = "--version" ]; then
-  echo "CycloneDX Generator {calls.get('version', '13.10.0')}"
-  exit 0
-fi
-report=""
-prev=""
-for arg in "$@"; do
-  if [ "$prev" = "--report-file" ]; then report="$arg"; fi
-  prev="$arg"
-done
-printf '%s' "$FAKE_REPORT" > "$report"
-exit "${{FAKE_EXIT:-0}}"
-"""
-    script.write_text(body)
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    script = _write_fake_audit(tmp_path, version="13.10.0")
     return script, calls
 
 
@@ -277,9 +308,7 @@ def test_doctor_reports_the_audit_tool(tmp_path, monkeypatch):
     a too-old one is unusable with the reason a scan refuses on."""
     from depscan.lib import doctor as doctor_lib
 
-    script = tmp_path / "cdx-audit-old"
-    script.write_text("#!/bin/sh\necho 'CycloneDX Generator 13.0.0'\n")
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    script = _write_fake_audit(tmp_path, name="cdx-audit-old", version="13.0.0")
     monkeypatch.setenv("CDX_AUDIT_CMD", str(script))
     monkeypatch.delenv("DEPSCAN_CDX_AUDIT_MIN_VERSION", raising=False)
     status = doctor_lib._cdx_audit_status()
