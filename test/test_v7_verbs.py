@@ -32,7 +32,7 @@ DATA_DIR = Path(__file__).parent / "data"
 # strict schema rejects, so it is not a valid-by-construction input.
 VDR_FIXTURE = DATA_DIR / "jinja-report.vdr.json"
 
-MIGRATION_GUIDE = "https://depscan.readthedocs.io/migrate-v6-to-v7/"
+MIGRATION_GUIDE = "https://depscan.readthedocs.io/upgrade/migrate-v6-to-v7/"
 
 
 def run_main(monkeypatch, argv):
@@ -395,8 +395,8 @@ def test_config_init_writes_and_refuses(monkeypatch, capsys, tmp_path, clean_opt
     code = run_main(monkeypatch, ["config", "init", "--format", "json"])
     assert code == 0
     written = json.loads(capsys.readouterr().out)["written"]
-    assert written.endswith("depscan.toml")
-    config = (tmp_path / "depscan.toml").read_text()
+    assert written.endswith("/.config/depscan.toml")
+    config = (tmp_path / ".config" / "depscan.toml").read_text()
     assert "no_banner" not in config
     assert 'profile = "generic"' in config
 

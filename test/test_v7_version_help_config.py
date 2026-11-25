@@ -163,7 +163,7 @@ def test_config_show_unknown_check_stays_text_without_json(monkeypatch, capsys):
 
 
 def test_config_init_json_reports_the_written_path_normalised(
-    monkeypatch, capsys, tmp_path
+    monkeypatch, capsys, tmp_path, clean_option_env
 ):
     monkeypatch.chdir(tmp_path)
     assert run_main(monkeypatch, ["config", "init", "--format", "json"]) == 0
@@ -172,29 +172,60 @@ def test_config_init_json_reports_the_written_path_normalised(
     # The absolute, normalised, slash-separated form the path rule asks for:
     # naming the file again changes nothing, so the value is already normal.
     assert os.path.isabs(written)
-    assert written.endswith("/depscan.toml")
+    assert written.endswith("/.config/depscan.toml")
     assert "\\" not in written
     assert json_path(written) == written
-    assert os.path.realpath(written) == os.path.realpath(tmp_path / "depscan.toml")
+    assert os.path.realpath(written) == os.path.realpath(tmp_path / ".config" / "depscan.toml")
     assert captured.err == ""
     # Positive control: the file exists and carries the effective options.
-    assert 'profile = "generic"' in (tmp_path / "depscan.toml").read_text()
+    assert 'profile = "generic"' in (tmp_path / ".config" / "depscan.toml").read_text()
     validate_against_published_schema(document, "depscan-config-init-output")
 
 
-def test_config_init_text_names_the_file(monkeypatch, capsys, tmp_path):
+def test_config_init_writes_the_file_the_next_scan_reads(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
+    monkeypatch.chdir(tmp_path)
+    assert run_main(monkeypatch, ["config", "init", "--format", "json"]) == 0
+    written = read_one_document(capsys)[0]["written"]
+    assert os.path.realpath(written) == os.path.realpath(tmp_path / ".config" / "depscan.toml")
+    # The written file is the one config show (and so a scan) loads by
+    # default: its keys report the configuration file as their source.
+    assert run_main(monkeypatch, ["config", "show", "--format", "json"]) == 0
+    options = read_one_document(capsys)[0]["options"]
+    assert options["reports_dir"]["source"] == "depscan.toml"
+    # Negative control: without the file, the same key is a default.
+    (tmp_path / ".config" / "depscan.toml").unlink()
+    assert run_main(monkeypatch, ["config", "show", "--format", "json"]) == 0
+    options = read_one_document(capsys)[0]["options"]
+    assert options["reports_dir"]["source"] == "default"
+
+
+def test_config_init_honours_depscan_config(monkeypatch, capsys, tmp_path, clean_option_env):
+    target = tmp_path / "settings" / "scan.toml"
+    monkeypatch.setenv("DEPSCAN_CONFIG", str(target))
+    monkeypatch.chdir(tmp_path)
+    assert run_main(monkeypatch, ["config", "init", "--format", "json"]) == 0
+    written = read_one_document(capsys)[0]["written"]
+    assert os.path.realpath(written) == os.path.realpath(target)
+    assert target.is_file()
+    assert not (tmp_path / ".config" / "depscan.toml").exists()
+
+
+def test_config_init_text_names_the_file(monkeypatch, capsys, tmp_path, clean_option_env):
     monkeypatch.chdir(tmp_path)
     assert run_main(monkeypatch, ["config", "init"]) == 0
     captured = capsys.readouterr()
     assert captured.out.startswith("Wrote the effective scan options to ")
-    assert (tmp_path / "depscan.toml").is_file()
+    assert (tmp_path / ".config" / "depscan.toml").is_file()
 
 
 def test_config_init_refuses_an_existing_file_with_the_error_document(
-    monkeypatch, capsys, tmp_path
+    monkeypatch, capsys, tmp_path, clean_option_env
 ):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "depscan.toml").write_text('severity = "high"\n')
+    (tmp_path / ".config").mkdir()
+    (tmp_path / ".config" / "depscan.toml").write_text('severity = "high"\n')
     assert run_main(monkeypatch, ["config", "init", "--format", "json"]) == 1
     document, captured = read_one_document(capsys)
     assert document["error"]["exitCode"] == 1
@@ -203,13 +234,17 @@ def test_config_init_refuses_an_existing_file_with_the_error_document(
     assert "not overwriting" in document["error"]["message"]
     details_path = document["error"]["details"]["path"]
     assert os.path.isabs(details_path)
-    assert os.path.realpath(details_path) == os.path.realpath(tmp_path / "depscan.toml")
+    expected = tmp_path / ".config" / "depscan.toml"
+    assert os.path.realpath(details_path) == os.path.realpath(expected)
     assert captured.err == document["error"]["message"] + "\n"
 
 
-def test_config_init_refusal_stays_text_without_json(monkeypatch, capsys, tmp_path):
+def test_config_init_refusal_stays_text_without_json(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "depscan.toml").write_text('severity = "high"\n')
+    (tmp_path / ".config").mkdir()
+    (tmp_path / ".config" / "depscan.toml").write_text('severity = "high"\n')
     assert run_main(monkeypatch, ["config", "init"]) == 1
     captured = capsys.readouterr()
     assert captured.out == ""
@@ -217,7 +252,7 @@ def test_config_init_refusal_stays_text_without_json(monkeypatch, capsys, tmp_pa
 
 
 def test_config_init_write_failure_writes_the_error_document(
-    monkeypatch, capsys, tmp_path
+    monkeypatch, capsys, tmp_path, clean_option_env
 ):
     calls = []
 
@@ -233,14 +268,17 @@ def test_config_init_write_failure_writes_the_error_document(
     assert document["error"]["verb"] == "config"
     assert "could not be written" in document["error"]["message"]
     details_path = document["error"]["details"]["path"]
-    assert os.path.realpath(details_path) == os.path.realpath(tmp_path / "depscan.toml")
+    expected = tmp_path / ".config" / "depscan.toml"
+    assert os.path.realpath(details_path) == os.path.realpath(expected)
     assert captured.err == document["error"]["message"] + "\n"
     # Positive control: the write was attempted once, at the current
-    # directory's depscan.toml.
-    assert calls == [os.path.join(os.getcwd(), "depscan.toml")]
+    # directory's .config/depscan.toml.
+    assert calls == [os.path.join(os.getcwd(), ".config", "depscan.toml")]
 
 
-def test_config_init_write_failure_stays_text_without_json(monkeypatch, capsys, tmp_path):
+def test_config_init_write_failure_stays_text_without_json(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(pipeline, "write_config_file", lambda options, path: False)
     assert run_main(monkeypatch, ["config", "init"]) == 1

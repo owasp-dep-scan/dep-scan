@@ -32,7 +32,7 @@ if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
-MIGRATION_GUIDE = "https://depscan.readthedocs.io/migrate-v6-to-v7/"
+MIGRATION_GUIDE = "https://depscan.readthedocs.io/upgrade/migrate-v6-to-v7/"
 
 _V6_PREFIX = "depscan: this is a dep-scan 6 command line, which dep-scan 7 no longer runs."
 
