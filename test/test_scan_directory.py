@@ -1795,7 +1795,7 @@ def test_documented_manifest_fields_match_the_schema():
     """The scan directory page carries the generated tables; regenerate them
     with the command in the page when this fails."""
     page = (
-        Path(__file__).parent.parent / "documentation" / "docs" / "output" / "scan-directory.mdx"
+        Path(__file__).parent.parent / "documentation" / "docs" / "results" / "scan-directory.mdx"
     )
     assert scan_directory.manifest_fields_markdown() in page.read_text(encoding="utf-8")
 

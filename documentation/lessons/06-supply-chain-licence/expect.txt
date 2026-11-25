@@ -1,0 +1,8 @@
+project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
+stage licenses: completed
+stage risk: completed
+audited packages:
+rows at or above the ceiling of 4:
+row shape: Package, Used?, Risk Score, Identified Risks
+licence rows:
+copyleft conditions flagged:

@@ -1,0 +1,103 @@
+---
+title: "Lesson 5: C and C++ memory safety"
+sidebar_position: 05
+---
+
+# Lesson 5: C and C++ memory safety
+
+This lesson is the honest one: dep-scan's memory-safety check is not implemented in this version, and the lesson shows that refusal, then runs the analyzer behind the planned check directly and reads a real finding with its flow. Nothing here pretends the check exists.
+
+The inputs are pinned: `C23-examples` at commit `46ecae4927f7`, dep-scan 7.0.0a3, cdxgen 13.9.0 and atom 4.0.3 (bundled with cdxgen). No vulnerability database is needed for the refusal, and the analyzer run needs none either.
+
+## The script
+
+The commands live in `documentation/lessons/05-memory-safety-c/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 05: C and C++ memory safety.
+#
+# dep-scan's memory-safety check is not implemented in this version, and the
+# lesson shows that refusal honestly, then runs the analyzer behind the
+# planned check, atom memory-safety, over a pinned C project, and reads one
+# finding with its flow.
+#
+# Needs: dep-scan, cdxgen (which bundles atom), and no vulnerability
+# database for the refusal path.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-05}"
+SRC="$WORK/C23-examples"
+COMMIT=46ecae4927f761ca434077bfd22270ae0360647a
+mkdir -p "$WORK"
+
+### Pin the project
+if [ ! -d "$SRC/.git" ]; then
+  git clone --quiet https://github.com/scivision/C23-examples "$SRC"
+fi
+git -C "$SRC" checkout --quiet $COMMIT
+echo "project: C23-examples $COMMIT"
+
+### The check refuses, honestly
+# Naming the check stops the scan with exit 4 before any work runs.
+set +e
+depscan scan "$SRC" --checks memory-safety --no-banner -o "$WORK/scans/refusal"
+echo "exit code: $?"
+set -e
+
+# --no-build-tools never runs the project's build system, --auto-defines
+# defines the build-option macros a macro census finds, and the parse report
+# names every file the front end left out, so an unparseable project is never
+# reported as clean. --cache none keeps atom from writing into the tree.
+OUT="$WORK/scans/atom-memsafety"
+mkdir -p "$OUT"
+# atom writes its findings JSON to slices.json in the working directory, so
+# the run starts there.
+(cd "$OUT" && atom memory-safety -l c "$SRC" --auto-defines --no-build-tools \
+  --cache none --format json -o ms.atom --parse-report parse-report.json)
+
+### Read one finding with its flow
+python3 - "$OUT" <<'PY'
+import json, sys
+d = sys.argv[1]
+findings = json.load(open(f"{d}/slices.json"))
+print(f"memory-safety findings: {len(findings)}")
+x = findings[0]
+print(f"rule: {x['rule']} ({x['cwe']}), severity {x['severity']}, confidence {x['confidence']}")
+print(f"location: {x['file']}:{x['line']}")
+flow_roles = [step.get("role") for step in x["flow"]]
+print("flow roles:", ", ".join(r for r in flow_roles if r))
+report = json.load(open(f"{d}/parse-report.json"))
+units = report.get("units", report)
+print("parse report entries:", len(units))
+PY
+```
+
+## Reading the run
+
+The refusal is a designed behaviour, not a missing file:
+
+```text
+project: C23-examples 46ecae4927f761ca434077bfd22270ae0360647a
+exit code: 4
+```
+
+Naming the check stops the scan before any work, with the doctor's reason and the issue that tracks the implementation on stderr. `--checks all` behaves the same way for the checks that cannot run here: it leaves them off and records the reason in the manifest, so a scan never reads as memory-safe because nobody asked.
+
+The analyzer behind the planned check already ships with cdxgen. Run the way the script runs it, over the pinned C examples, it writes one finding with its flow:
+
+```text
+memory-safety findings: 1
+rule: MS-ALLOC-009 (CWE-680), severity high, confidence low
+location: C23-examples/c23/unreachable.c:24
+flow roles: length-argument, memory-operation, origin
+parse report entries: 6
+```
+
+The rule id is atom's (`MS-ALLOC-009`, an overflow-sized allocation), and the flow names the length argument and the allocation it sizes. The confidence is atom's own word, `low`, and the planned check will carry it the same way. The parse report is the honesty half of the run: it names every file the front end left out or only partly read, so an unparseable project is never reported as free of defects. The three flags the script passes are the ones dep-scan's own check will pass: `--no-build-tools` never runs the project's build system, `--auto-defines` defines the build-option macros a macro census finds (which changes what is analysed, so dep-scan's manifest will record the defines), and `--cache none` keeps atom from writing into the scanned tree.
+
+## Takeaways
+
+- The memory-safety check exits 4 today, and that refusal is the correct behaviour to expect until the check lands.
+- `atom memory-safety` is the tool behind the check, and it already reports rule ids, CWEs, confidence and flows.
+- The parse report, not the finding count, is what tells you the run covered the project.

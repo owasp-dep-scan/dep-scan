@@ -1,0 +1,41 @@
+---
+slug: /
+sidebar_position: 1
+title: What dep-scan is
+---
+
+# OWASP dep-scan
+
+dep-scan audits the software you ship for what can actually hurt it: known vulnerabilities in your dependencies, malicious packages, unsafe native code, weak binary hardening, risky supply-chain practices and licence limits. You point it at a source repository, a container image, a binary or a package list; it builds an inventory of what is there, matches it against a vulnerability database you hold locally, and grades every finding by whether the dangerous code is really in your product, really called, and really reachable. Everything runs on your machine. Your code never leaves it, and no model is involved in producing a result.
+
+One scan writes one directory that answers three audiences at once. A person reads the console tables or the HTML report. A CI job reads `--format json`, the documented exit codes and the manifest. A coding agent reads the same files through the `depscan mcp` server or the agent plugin. Nobody re-runs anything to see what another audience saw.
+
+## The ideas behind the tool
+
+Three decisions shape everything on this site. Each names what you will see in the output.
+
+**One finding model.** Every result is a finding of one published schema, whether it came from an advisory match, a call-graph analyzer, a binary review or the licence audit. A finding carries its fix, its references, the producer and version that reported it, a fingerprint that survives unrelated edits, and the evidence that backs it. [The finding model](../results/finding-model) shows the shape; `depscan schema finding` prints it.
+
+**Graded by evidence, on four axes.** Every finding is graded on presence (is the vulnerable code in what you ship), reach (can your code reach it), exposure (can untrusted input get there) and barrier (what stands in the way). An axis is filled only from evidence the scan collected, and a rule table turns the axes into a grade that names its rule. [Exploitability](../results/exploitability) explains how a grade is reached.
+
+**Not assessed is not clean.** When an analyzer did not run, hit a budget or lacked data, the affected findings and stages say so with a reason, in the manifest, the report and the coverage view. A missing tool never reads as a clean scan. [Coverage and not assessed](../results/coverage) lists every state and where it shows.
+
+Underneath sits a deliberate division of work: cdxgen builds the inventory and runs the source analyzers, the vulnerability database owns the advisory data, atom, golem, rusi, dosai, kosi and blint own the analysis, and dep-scan owns orchestration, matching, grading and presentation. A tool it needs is checked at startup by `depscan doctor`; a missing one is a reported reason, not an exception in the middle of a scan.
+
+## Where to go
+
+| If you want to | Read |
+| --- | --- |
+| install it and run the first scan | [Installation](/start/installation) and [the first scan](/start/first-scan) |
+| choose a vulnerability database | [The vulnerability database](/start/vulnerability-database) |
+| understand the findings file | [The finding model](../results/finding-model) |
+| scan an image, a binary or an app | [Scan your software](../targets/source-repositories) |
+| gate a pull request | [CI](../integrate/ci) |
+| let a coding agent use the results | [The MCP server](../integrate/mcp) and [the agent plugin](../integrate/agent-plugin) |
+| move from dep-scan 6 | [The migration guide](../upgrade/migrate-v6-to-v7) |
+
+Walk-throughs on real projects, from the first scan to a fix plan, are under [Tutorials](../lessons/01-node-source-reachability).
+
+## Funding
+
+This project is funded through [NGI Zero Core](https://nlnet.nl/core), a fund established by [NLnet](https://nlnet.nl) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu) program. Learn more at the [NLnet project page](https://nlnet.nl/project/OWASP-dep-scan).

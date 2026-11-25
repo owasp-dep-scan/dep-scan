@@ -1,0 +1,224 @@
+---
+title: Agents and scripts
+---
+
+# Writing agents and scripts against dep-scan
+
+dep-scan 7's command line is built for programs as much as for people. Every verb accepts `--format json` and then writes exactly one JSON document to stdout, whatever the outcome, while everything a human reads, logs, progress and tables included, goes to stderr. A script or agent starts a verb as a subprocess with stdin closed, parses the whole of stdout as one JSON document, checks the exit code, and shows stderr to a human. This page lists the documents each verb writes, the error document, the exit codes and the rules the command line keeps. The option reference lives in [the usage page](../reference/cli).
+
+If you use a coding agent rather than writing one, the agent plugin packages these verbs as skills, three agents and an MCP configuration; see [the agent plugin](agent-plugin).
+
+## The stdout and stderr rule
+
+In json format a verb writes exactly one JSON document to stdout, followed by a newline, and nothing else on stdout, whatever the exit code: logs, progress, warnings, the result tables and argparse usage text all go to stderr, and the scan verb suppresses its banner. `-h` or `--help` on a command line that asks for json prints the help as the `help` verb's document. An error no verb expected, such as a malformed configuration file, still ends as the error document with exit 1. When a verb fails in json format it also prints its message on stderr as one plain text line, so a human watching stderr sees the failure without reading the document. The default format is text, which prints the verb's human output, the banner and the result tables included, on stdout, and keeps logs, progress, warnings and argparse usage text on stderr.
+
+## The verbs and their documents
+
+Each row names the document a verb writes in json format and the published schema it validates against. The schema name is what `depscan schema <name>` accepts: the schema file's name without `.json`.
+
+| Verb | Document in json format | Schema |
+| --- | --- | --- |
+| `scan` | `{"scans": [entry, ...]}`, one entry per given target | `depscan-scan-output` |
+| `report` | `{"scanDir", "manifest", "findings"}` for the saved scan directory | `depscan-report-output` |
+| `vdb download` | `{"image", "marker"}` after a flavor download, `{"shards", "marker"}` after a shard refresh | `depscan-vdb-download-output` |
+| `vdb info` | the local database and shard store state | `depscan-vdb-info-output` |
+| `vdb path` | `{"path": "..."}`, the `VDB_HOME` directory | `depscan-vdb-path-output` |
+| `doctor` | the doctor report, exactly as the `depscan-doctor` schema defines it | `depscan-doctor-output` |
+| `schema` | `{"schemas": [{"name", "$id", "title"}, ...]}` for the listing; with a name, the schema document itself, a JSON Schema that `depscan-schema-output` does not describe | `depscan-schema-output` |
+| `config show` | `{"options": {"<option>": {"value", "source"}}}` | `depscan-config-show-output` |
+| `config init` | `{"written": "..."}`, the configuration file's path | `depscan-config-init-output` |
+| `serve` | `{"serving": {"host", "port", "url"}}` once the server is listening | `depscan-serve-output` |
+| `validate` | `{"results": [entry, ...]}`, one entry per given file with `file`, `format`, `valid` and `errors` | `depscan-validate-output` |
+| `version` | `{"version", "tools"}`, the dep-scan version and every tool's version | `depscan-version-output` |
+| `help` | `{"help": "..."}`, the top-level help or one verb's help as one string | `depscan-help-output` |
+
+The `mcp` verb is not in this table: it has no `--format` option and writes no json document, because its stdout is the protocol channel of the Model Context Protocol server. Agents that speak MCP can drive the same data through its ten tools; see [the MCP server](mcp). Each tool returns one document over that protocol, with a published output schema of its own:
+
+| Tool | Document | Schema |
+| --- | --- | --- |
+| `scan_summary` | the manifest summary and the finding counts by category and severity, or the spill envelope when the summary exceeds the response budget | `depscan-mcp-scan_summary-output` |
+| `list_findings` | one page of findings with `nextCursor` when more remain, or the spill envelope | `depscan-mcp-list_findings-output` |
+| `get_finding` | the one finding the id names, or the spill envelope when the finding alone exceeds the budget | `depscan-mcp-get_finding-output` |
+| `explain_finding` | the finding and the scan-wide explanation, or the spill envelope | `depscan-mcp-explain_finding-output` |
+| `coverage` | the stages, the not-assessed reasons and the checks not run, or the spill envelope | `depscan-mcp-coverage-output` |
+| `list_components` | one page of BOM components with `nextCursor` when more remain, or the spill envelope | `depscan-mcp-list_components-output` |
+| `diff_scans` | the new, fixed and changed pairs of two scans, or the spill envelope | `depscan-mcp-diff_scans-output` |
+| `doctor` | the doctor report, exactly as the `depscan-doctor` schema defines it | `depscan-mcp-doctor-output` |
+| `vdb_status` | the local database and shard store state, as the vdb info document carries it | `depscan-mcp-vdb_status-output` |
+| `run_scan` | the dry run's argv and effective options, the real run's scan entry, or the spill envelope | `depscan-mcp-run_scan-output` |
+
+Every published schema is a draft 2020-12 schema whose `$id` is `urn:owasp:depscan:schema:<name>:1`, where `<name>` is the schema name without the `depscan-` prefix (`urn:owasp:depscan:schema:scan-output:1`). A schema that embeds an existing document refers to it instead of copying: the scan output references the manifest and finding schemas, and the doctor output references the doctor report schema. `depscan schema` prints every published name, `depscan schema --format json` adds each one's `$id` and title, and `depscan schema <name>` prints the schema document, which a caller can validate against directly. The short name `finding` stays accepted as an alias for `depscan-finding`.
+
+The `scan` entry for a scanned target is `{"target", "kind", "scanDir", "manifest", "findings"}`; the kind is the detected or forced kind (`purl`, `git`, `container`, `bom`, `bom-dir`, `binary`, `android` or `source`). The wrapper is always the `{"scans": [...]}` object, one entry per given target in the order given, also for a single target and for zero targets: zero targets means the source the options name, the current directory by default, and produces the one entry. A target the detection refuses, or whose scan stops with an unexpected error, is never dropped: its entry is `{"target", "kind": null, "error": "<reason>"}` and the remaining targets still run. The exit code is the highest of the scans. A kind this version cannot scan (`ios` or `firmware`) stops the whole run with the error document instead.
+
+The `validate` result entry is `{"file", "format", "valid", "errors"}`. An invalid document is a result, not an error of the verb: `validate` writes its results document and exits 1 when any document is invalid, and reserves the error document for a failure that stops the verb as a whole.
+
+## The error document
+
+When a verb in json format stops with a failure that ends it as a whole, it exits 1, 2 or 4 and stdout carries the error document instead of the verb's own document:
+
+```json
+{
+  "error": {
+    "exitCode": 2,
+    "verb": "scan",
+    "message": "depscan scan: unknown check bogus; known checks: all, vulnerabilities, reachability, license, supply-chain, binary, memory-safety, mobile, code, crypto",
+    "details": {
+      "unknownChecks": ["bogus"]
+    }
+  }
+}
+```
+
+`exitCode` is the process's exit code, `verb` the failing verb, and `message` the same text that is printed on stderr. `details` is optional and verb specific:
+
+| Verb and exit code | `details` |
+| --- | --- |
+| `scan` exit 2, unknown check names | `{"unknownChecks": [...]}` |
+| `scan` exit 4, a refused kind or a gated check | `{"capability": "<name or null>", "reason": "..."}` |
+| `doctor` exit 2, unknown capability names | `{"unknownCapabilities": [...]}` |
+| `doctor` exit 4, an unmet `--require` | `{"unmet": [...]}` |
+| `serve` exit 4, a server whose requirements are refused | `{"capability": "server", "reason": "..."}` |
+| `config` exit 2, unknown check names | `{"unknownChecks": [...]}` |
+| `config init` exit 1, the file it refuses to overwrite or could not write | `{"path": "..."}` |
+| every other failure | no `details` |
+
+A failure that does not stop the verb keeps the verb's own document and still exits 1: a scan whose targets fail keeps the `{"scans": [...]}` object, and `validate` with invalid documents keeps its results document. The error document is what stdout carries when nothing else can be: a usage error, a scan refused before any target runs, a failed vdb download, a report or config command that cannot run, a doctor requirement, a server that cannot start.
+
+A usage error that argparse finds before a verb runs (an unknown option, an unknown verb, a missing value) writes the error document on stdout and exits 2 only when the command line asks for json anywhere, `--format json` as two tokens or `--format=json` as one. Otherwise argparse's text usage on stderr is the whole output. A dep-scan 6 command line, one that starts with an option, never reaches a verb: it is translated on stderr and exits 2, and when it also asks for json, stdout carries the error document with the migration guide link and, when the line translates, the v7 command under `details`. The `verb` field of a usage-error document is the first token the command line names that is not an option, or the empty string when it names none.
+
+## Exit codes
+
+<!-- exit code table start -->
+| Code | Meaning |
+| --- | --- |
+| 0 | Success. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database or a source target that does not exist. |
+| 2 | A usage error, including any dep-scan 6 command line. |
+| 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
+<!-- exit code table end -->
+
+Findings never change the exit code: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. Exit code 0 never produces the error document.
+
+## No prompts
+
+No verb reads stdin or waits for input, in any format, with or without a terminal. A caller can always start dep-scan with stdin closed; when input is needed, it is an option or an environment variable with a default.
+
+## Paths in json documents
+
+Every path a json document carries outside the manifest and the findings is absolute and normalised, with `/` as the separator on every platform and the drive letter kept on Windows. The rule covers the scan entries' `target` when the target is a local path (a package URL, a URL or an image reference is kept as given), the scan and report documents' `scanDir`, the validate results' `file`, `config init`'s `written`, and the vdb documents' `vdbHome`, shard `storeDir` and marker-file path. The doctor report is the one document outside the rule: its `tools[].path` and `data.vulnerabilityDatabase.directory` report the paths its lookups found, which on Windows keep backslash separators. Inside the manifest and the findings, paths keep the scan-directory-relative form their schemas define, and `scanDir` is the stated root for them.
+
+`config show` is the one place that prints option values verbatim: it mirrors the effective options the next scan receives, and rewriting a path there would misreport it.
+
+The `vdb info` document's `marker` is the recorded value, an image reference or a shard-set marker, not a filesystem path, and is printed verbatim; the `vdb download` document's `marker` is the marker file's path and follows the path rule.
+
+## Colour and terminals
+
+Colour follows the stream unless the environment asks otherwise, and each console decides for its own stream, so stderr that is a file or a pipe receives plain text by default.
+
+- `NO_COLOR`: set to any non-empty value to turn colour off on both consoles, including a real terminal.
+- `FORCE_COLOR`: set to any non-empty value to turn colour on even when the stream is not a terminal.
+- `CONSOLE_COLOR_SCHEME`: one of `auto`, `standard`, `256`, `truecolor` or `windows`. Setting it to a named scheme forces colour and selects that scheme, on redirected streams too; an unknown value falls back to dep-scan's own detection with colour forced. `auto` keeps rich's per-stream detection instead of forcing colour, so a redirected stream stays plain unless `FORCE_COLOR` is also set.
+- `DISABLE_CONSOLE_EMOJI`: set to `true` or `1` to turn emoji shortcodes off. Emoji are also off when the stream is not a terminal.
+
+Progress bars and spinners draw only when stderr is a terminal; `FORCE_COLOR` does not turn them on, because redrawing output on a redirected stream would only fill the file or pipe a script is capturing. With none of the variables set, redirected output on either stream carries no ANSI escape sequences.
+
+## One worked example per verb
+
+Each command below runs on its own and prints the document its row in the verbs table names. The examples run from a checkout of this repository, so the two that read a fixture use paths under `test/data`; a scan needs its vulnerability database, which the first scan downloads into `VDB_HOME` when it is missing.
+
+### scan
+
+```bash
+depscan scan pkg:pypi/requests@2.31.0 --format json
+```
+
+Exits 0 and prints the `{"scans": [...]}` object with one entry whose `kind` is `purl`, whatever vulnerabilities the purl has.
+
+### report
+
+```bash
+depscan report test/data/scan-directory --format json
+```
+
+Exits 0 and prints the saved scan directory as `{"scanDir", "manifest", "findings"}`.
+
+### vdb download
+
+```bash
+depscan vdb download --flavor app-only --format json
+```
+
+Exits 0 after the download completed and prints `{"image", "marker"}`. A failed download prints the error document and exits 1.
+
+### vdb info
+
+```bash
+depscan vdb info --format json
+```
+
+Exits 0 and prints the local database and shard store state, recording a missing database or a stale shard as such.
+
+### vdb path
+
+```bash
+depscan vdb path --format json
+```
+
+Exits 0 and prints `{"path": "..."}` with the `VDB_HOME` directory.
+
+### doctor
+
+```bash
+depscan doctor --format json
+```
+
+Exits 0 with the doctor report; `--require vulnerabilities` makes it exit 4 with the `unmet` details when a required capability is not available here.
+
+### schema
+
+```bash
+depscan schema --format json
+```
+
+Exits 0 and prints every published schema with its name, `$id` and title. An unknown name to `depscan schema <name>` is a usage error: exit 2 with the error document.
+
+### config show
+
+```bash
+depscan config show --format json
+```
+
+Exits 0 and prints every effective scan option with its value and where the value came from.
+
+### serve
+
+```bash
+depscan serve --format json
+```
+
+Runs the server until it is stopped, and prints `{"serving": {"host", "port", "url"}}` on stdout once the listening socket accepts connections, followed by nothing else. `port` is a number, and `url` puts an IPv6 host in brackets (`http://[::1]:7070`). A port that is not a number from 1 to 65535 is a usage error, exit 2. Request logs and startup messages stay on stderr. A server that cannot start prints the error document instead: exit 1 for a database that cannot be prepared, exit 4 for refused requirements.
+
+### validate
+
+```bash
+depscan validate test/data/jinja-report.vdr.json --format json
+```
+
+Exits 0 and prints `{"results": [...]}` with the file's `valid` flag set. An invalid document also produces the results document, with its errors listed, and exits 1.
+
+### version
+
+```bash
+depscan version --format json
+```
+
+Exits 0 and prints the dep-scan version and the version of every tool the doctor report found, null where a version could not be read.
+
+### help
+
+```bash
+depscan help scan --format json
+```
+
+Exits 0 and prints the scan verb's help text as one string; without a topic, the top-level help.

@@ -227,6 +227,50 @@ def resolve_vdb_flavor(*, scope="app+os", time="default", extended=False):
     return flavor
 
 
+def flavor_table_markdown() -> str:
+    """The published flavors as the markdown table the database page embeds.
+
+    Every row is derived from the flavor name itself, so the table cannot
+    name a flavor ``VDB_FLAVORS`` does not hold, or lose one.
+    """
+    windows = {"default": "2020", "2y": "2024", "10y": "2016"}
+    lines = [
+        "| Flavor | Scope | NVD advisories from | Metadata tables |",
+        "| --- | --- | --- | --- |",
+    ]
+    for flavor in VDB_FLAVORS:
+        base = flavor
+        extended = base.endswith("-extended")
+        if extended:
+            base = base[: -len("-extended")]
+        window = "default"
+        if base.endswith("-2y"):
+            window = "2y"
+            base = base[: -len("-2y")]
+        elif base.endswith("-10y"):
+            window = "10y"
+            base = base[: -len("-10y")]
+        scope = "app+OS" if base == "full" else "application ecosystems"
+        lines.append(
+            f"| `{flavor}` | {scope} | {windows[window]} | {'yes' if extended else 'no'} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def legacy_flavor_table_markdown() -> str:
+    """The deprecated option triple as the markdown table the database page
+    embeds, one row per entry of ``VDB_LEGACY_FLAVOR_MAP``."""
+    lines = [
+        "| `--vdb-scope` | `--vdb-time` | `--vdb-extended` | Flavor |",
+        "| --- | --- | --- | --- |",
+    ]
+    for (scope, time, extended), flavor in VDB_LEGACY_FLAVOR_MAP.items():
+        lines.append(
+            f"| `{scope}` | `{time}` | {'yes' if extended else 'no'} | `{flavor}` |"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def resolve_vdb_image_url(flavor=None, *, compression=None, image=None):
     """The OCI image URL for a database refresh, resolved by vdb.
 

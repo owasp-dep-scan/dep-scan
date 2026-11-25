@@ -1,0 +1,85 @@
+---
+sidebar_position: 3
+title: Schemas
+---
+
+# The published schemas
+
+Every JSON document dep-scan writes has a published JSON Schema: the scan's manifest, findings and evidence records, the doctor report, each verb's output document, and the MCP server's tool inputs and outputs. The schemas are draft 2020-12 documents carried inside the packages, printed by `depscan schema`, so a reader validates against the same definition the writer used instead of guessing from an example.
+
+## The command
+
+```bash
+depscan schema                      # list every published schema
+depscan schema --format json        # the list with each schema's $id and title
+depscan schema finding              # one schema document, on stdout
+depscan schema depscan-scan-output  # names are the file names without .json
+```
+
+An unknown name is a usage error with the list of known ones. The short name `finding` is accepted as an alias for `depscan-finding`. Every `$id` follows `urn:owasp:depscan:schema:<name>:<version>`, so a consumer can state exactly which version of a contract it read: a schema that embeds another refers to it rather than copying it, and a version bump changes the `$id`, never the meaning of an old document.
+
+## The list
+
+The table below is generated from the schema registry, and a test keeps the page in step with it:
+
+<!-- schema table start -->
+
+| Name | Title |
+| --- | --- |
+| `depscan-finding` | dep-scan finding |
+| `depscan-doctor` | dep-scan doctor report |
+| `depscan-manifest` | dep-scan scan directory manifest |
+| `depscan-evidence` | dep-scan evidence record |
+| `depscan-exploitability-rules` | dep-scan exploitability rules |
+| `depscan-scan-output` | dep-scan scan output |
+| `depscan-report-output` | dep-scan report output |
+| `depscan-vdb-download-output` | dep-scan vdb download output |
+| `depscan-vdb-info-output` | dep-scan vdb info output |
+| `depscan-vdb-path-output` | dep-scan vdb path output |
+| `depscan-doctor-output` | dep-scan doctor output |
+| `depscan-schema-output` | dep-scan schema output |
+| `depscan-config-show-output` | dep-scan config show output |
+| `depscan-config-init-output` | dep-scan config init output |
+| `depscan-serve-output` | dep-scan serve output |
+| `depscan-validate-output` | dep-scan validate output |
+| `depscan-version-output` | dep-scan version output |
+| `depscan-help-output` | dep-scan help output |
+| `depscan-mcp-scan_summary-input` | dep-scan mcp scan_summary input |
+| `depscan-mcp-scan_summary-output` | dep-scan mcp scan_summary output |
+| `depscan-mcp-list_findings-input` | dep-scan mcp list_findings input |
+| `depscan-mcp-list_findings-output` | dep-scan mcp list_findings output |
+| `depscan-mcp-get_finding-input` | dep-scan mcp get_finding input |
+| `depscan-mcp-get_finding-output` | dep-scan mcp get_finding output |
+| `depscan-mcp-explain_finding-input` | dep-scan mcp explain_finding input |
+| `depscan-mcp-explain_finding-output` | dep-scan mcp explain_finding output |
+| `depscan-mcp-coverage-input` | dep-scan mcp coverage input |
+| `depscan-mcp-coverage-output` | dep-scan mcp coverage output |
+| `depscan-mcp-list_components-input` | dep-scan mcp list_components input |
+| `depscan-mcp-list_components-output` | dep-scan mcp list_components output |
+| `depscan-mcp-diff_scans-input` | dep-scan mcp diff_scans input |
+| `depscan-mcp-diff_scans-output` | dep-scan mcp diff_scans output |
+| `depscan-mcp-doctor-input` | dep-scan mcp doctor input |
+| `depscan-mcp-doctor-output` | dep-scan mcp doctor output |
+| `depscan-mcp-vdb_status-input` | dep-scan mcp vdb_status input |
+| `depscan-mcp-vdb_status-output` | dep-scan mcp vdb_status output |
+| `depscan-mcp-run_scan-input` | dep-scan mcp run_scan input |
+| `depscan-mcp-run_scan-output` | dep-scan mcp run_scan output |
+| `depscan-error` | dep-scan error document |
+<!-- schema table end -->
+
+The three documents at the top of the list are the scan directory's own contracts: [the manifest](../results/scan-directory), [the findings](../results/finding-model) and [the evidence records](../results/evidence). The verb outputs and the MCP tool documents are described on [the agents page](../integrate/agents) and [the MCP page](../integrate/mcp) with one example each.
+
+## Validating a document
+
+The schemas are ordinary files inside the installed package, so a validator needs no network. From Python, with dep-scan's own helper:
+
+```python
+from analysis_lib.findings.schemas import validate, schema_names
+import json
+
+document = json.load(open("reports/depscan.findings.json"))
+validate("depscan-manifest", document["manifest"])
+print(schema_names())
+```
+
+`depscan validate` is the command-line form for CSAF and CycloneDX documents, with the schemas bundled the same way ([the validate page](validate)).

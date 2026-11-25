@@ -1,0 +1,6 @@
+tools: 10
+read tools: coverage, diff_scans, doctor, explain_finding, get_finding, list_components, list_findings, run_scan, scan_summary, vdb_status
+findingCount:
+countsBySeverity:
+medium findings:
+read back:

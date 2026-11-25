@@ -1,0 +1,45 @@
+---
+sidebar_position: 6
+title: Supply-chain checks
+---
+
+# Supply-chain checks
+
+Most compromises of the last few years did not exploit a CVE. They came through a hijacked or malicious package, an install script, a private name squatting on a public registry, or a dependency whose maintenance had quietly stopped. The supply-chain check runs the audit for exactly those risks, beside the advisory matching that every scan does anyway.
+
+## The check
+
+```bash
+depscan scan ./my-project --checks supply-chain --reports-dir reports
+```
+
+The check runs the package risk audit, which queries registry metadata for npm and PyPI packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). Rows whose score crosses the configured ceiling print as a table, and every audited package is written to `depscan-risk-<type>.json` in the scan directory as one JSON array of row objects with plain values:
+
+```json
+[
+  {
+    "Package": "eventsource-parser",
+    "Used?": "Yes",
+    "Risk Score": 0.16,
+    "Identified Risks": ["Has attestation"]
+  }
+]
+```
+
+Two things the check always does, whatever else runs: malicious-package advisories (`MAL-*`) are matched and reported at every version, and they are the top of the prioritization ladder when they are also reachable ([prioritization](../results/prioritization)). Private namespaces are checked for dependency-confusion exposure with `--private-ns appthreat,shiftleft`, naming the namespaces that must not exist in public.
+
+## Where the check stops
+
+The registry audit covers npm and PyPI; other ecosystems are audited as advisories only. The deeper supply-chain rules, install-script policy, CI workflow permissions, dependency sources, provenance and AI-component inventory, exist as rule packs in cdxgen's `cdx-audit`, and wiring them into dep-scan's findings is [the supply-chain plan](https://github.com/owasp-dep-scan/dep-scan/issues/606). In this version nothing in the audit claims more than registry metadata supports, and a registry lookup that cannot run (offline mode, no network) is reported as not assessed with the reason, never as "no risk".
+
+## AI and agent components
+
+Projects that carry models, MCP servers or agent skills are inventoried by cdxgen's dedicated project types (`ai`, `mcp`, `ai-skill`), which produce the BOM components; dep-scan matches advisories against them like any other component. The rule packs that grade the configuration of those components land with the work above; scanning an AI project today tells you what is there, not yet whether its configuration is risky.
+
+## Cryptographic assets
+
+The `crypto` check is not implemented in this version and exits 4 when named ([coverage](../results/coverage)). The inventory half exists already: cdxgen writes cryptographic assets into the BOM's evidence, and atom-tools' reports name the algorithms and protocols a project uses. The agent plugin's `depscan-crypto` skill reaches those reports directly and says so at each step. What dep-scan will add, with [the crypto issue](https://github.com/owasp-dep-scan/dep-scan/issues/606), is the join from that inventory to findings and grades.
+
+## Licence policy
+
+Licence checking is its own check, on [the licences page](licences).

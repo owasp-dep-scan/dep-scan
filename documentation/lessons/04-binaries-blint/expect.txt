@@ -1,0 +1,4 @@
+plugin binaries:
+categories: binary-hardening:
+hardening producer: blint
+coverage report read: True

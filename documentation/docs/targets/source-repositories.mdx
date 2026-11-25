@@ -1,0 +1,92 @@
+---
+sidebar_position: 1
+title: Source repositories
+---
+
+# Scanning source repositories
+
+A source scan answers two questions: what is in this project's dependency tree, and which of the dangerous parts is actually used. The first answer comes from matching the inventory against the vulnerability database. The second needs the reachability analyzers, which read the source itself, and they are where a source scan earns its keep over a manifest-only check.
+
+This page covers what every source scan shares: the matrix of languages and analyzers, turning reachability on, profiles, and excluding trees. The per-language pages carry what is specific to each analyzer:
+
+- [Java, JavaScript, Python and PHP (atom)](java-javascript-python-php)
+- [Rust (rusi)](rust)
+- [Go (golem)](go)
+- [.NET (dosai)](dotnet)
+
+## The language matrix
+
+cdxgen builds the inventory for every ecosystem it knows; the reachability analyzers cover seven of them:
+
+| Language / ecosystem | purl type | Reachability analyzer | What it needs installed |
+| --- | --- | --- | --- |
+| Java / JVM (Groovy, Kotlin, Scala) | `pkg:maven` | atom; kosi beside it for Kotlin and Android | JDK 21 or newer for large projects, Maven or Gradle |
+| JavaScript / TypeScript | `pkg:npm` | atom | Node.js 20 or newer, a lockfile |
+| Python | `pkg:pypi` | atom | Python 3.10 or newer |
+| PHP | `pkg:composer` | atom | PHP 7.4 or newer (or the container image) |
+| Rust | `pkg:cargo` | rusi | Rust and Cargo, with a populated `Cargo.lock` |
+| Go | `pkg:golang` | golem | the Go toolchain, and a module cache golem can read |
+| .NET (C#, VB, F#, R) | `pkg:nuget` | dosai | a .NET runtime; a restored tree for versioned purls |
+
+cdxgen generates BOMs for many more project types (Docker, Jenkins, Terraform and the rest of [its project types list](https://github.com/CycloneDX/cdxgen/blob/master/docs/PROJECT_TYPES.md)); reachability needs source-level slicing, so it stops at the seven rows above.
+
+## Turning reachability on
+
+The analyzers read the slice files cdxgen persists under its research BOM profile, so a source scan that should answer reachability questions passes `--bom-profile research`:
+
+```bash
+depscan scan ./my-project --reports-dir reports --bom-profile research
+```
+
+Without it the scan still matches vulnerabilities and reads the BOM's own occurrence evidence, and every reach axis reads `not_assessed` with the reason. Reachability is the default analyzer (framework reachability); `--reachability-analyzer off` turns it off, and [the semantic analyzer](#the-semantic-analyzer) goes further. `--explain` adds the human-readable breakdown of the flows to the report.
+
+A project whose detected type does not match reality (a JavaScript project cdxgen reads as something else) is scanned typed:
+
+```bash
+depscan scan ./my-project -t js --reports-dir reports --bom-profile research
+```
+
+A typed scan starts the language's analyzer directly when needed; a universal scan starts one only under the semantic analyzer, because analyzing a whole tree can outlast the rest of the scan.
+
+## The profiles
+
+`--profile` names a set of checks and analyzer settings for common jobs; an explicitly passed option always wins over the profile.
+
+| Profile | Checks | Other settings |
+| --- | --- | --- |
+| `quick` | `vulnerabilities` | reachability off |
+| `ci` | `vulnerabilities,reachability` | explanations off |
+| `deep` | adds `license` and `supply-chain` | semantic reachability |
+| `research` | `deep` | plus cdxgen's research BOM profile |
+| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen, golem offline, no risk audit |
+
+`--profile` and `--bom-profile` answer different questions and are easy to confuse: `--bom-profile` is cdxgen's own flag for how the BOM is generated (`appsec`, `research`, `operational`, `threat-modeling`, `license-compliance`, the machine-learning profiles), and it is the v6 `--profile` renamed; the v7 `--profile` shapes the scan. A scan that wants call-level reachability and nothing else passes `--bom-profile research`; one that also wants the licence and supply-chain checks passes `--profile research`, which implies it.
+
+## Excluding trees from a scan
+
+A source scan reads the whole tree it is given, test fixtures and build material included, so a tree such as `test/` can add findings that are not part of the product. Name the trees to leave out with `--exclude` patterns in `--cdxgen-args` (or the `CDXGEN_ARGS` environment variable):
+
+```bash
+depscan scan /work/project --cdxgen-args "--exclude 'test/**' --exclude 'ci/**'" -o /work/reports
+```
+
+The patterns are globs anchored at the scanned path, one `--exclude` per tree, each quoted for the shell. dep-scan applies the same patterns to its own walks, so a tree excluded for cdxgen is excluded for the analyzers too. One caution covers most surprises: a tree that holds Dockerfiles or compose files has every image those files name pulled and extracted, whatever the scan type, so exclude the folders that hold build or CI material (`--exclude 'ci/**'`) when they are not product content, and expect a large tree to take longer than its source size suggests.
+
+## The semantic analyzer
+
+`SemanticReachability` extends the framework analyzer with three tiers that need inputs a single source scan cannot supply. Endpoint reachability maps OpenAPI usage targets onto occurrences, so a finding is endpoint-reachable when a traced flow reaches a package used by a route that is itself exposed. Service reachability attributes packages that talk to allow-listed services, which usually lowers priority. Post-build reachability matches framework and cryptographic components across lifecycle BOMs, so a component in the image but not in the source can be triaged as what it is.
+
+The inputs are the point: endpoint reachability needs an OpenAPI document with usage targets, and post-build needs BOMs for the build output and the image. dep-scan cannot build your project or guess your API surface, so the workflow is to collect those documents in one directory and scan the directory:
+
+```bash
+depscan scan ./lifecycle-boms --target-kind bom-dir --reports-dir reports \
+  --reachability-analyzer SemanticReachability --explain
+```
+
+For a single container image, `DEPSCAN_SOURCE_IMAGE` names it; for several, generate one BOM per image with `cdxgen -t docker` and collect them in the directory. The BOMs must describe the same version of the source. The analyzer costs memory and time: over 64 GB for large codebases, with runtimes of fifteen minutes and more, dominated by the slicing that the research BOM profile already paid for.
+
+With `--explain`, `--explanation-mode` selects the emphasis: `Endpoints` (the routes and hotspots), `EndpointsAndReachables` (the default, endpoints plus up to twenty reachable flows per record source), `NonReachables` (up to twenty flows that were not reached, useful for showing where validation works), and `LLMPrompts` (prompt text for a model). `MAX_REACHABLE_EXPLANATIONS` changes the twenty; `MAX_PURLS_REACHABLE_EXPLANATIONS`, `MAX_SOURCE_REACHABLE_EXPLANATIONS` and `MAX_SINK_REACHABLE_EXPLANATIONS` (3, 2 and 2) cap one package or path from filling the section. When nothing can be explained, the run says what stopped the rendering, on the console and in the manifest's explain stage; it never falls silent.
+
+## Prerequisites for good reachability
+
+The analyzers reconcile their flows onto the BOM's versioned purls, so the inventory decides the ceiling. A tree in the state cdxgen expects for its language (a restored .NET tree, a resolved Maven or Gradle project, a warm Go module cache, a `Cargo.lock` that resolves) gives versioned purls; a manifest-only BOM gives versionless ones that no flow can prove. When a scan runs and nothing is reached, look in this order: does the reports directory hold the analyzer's slice file (`<language>-reachables.slices.json` or the `<language>-semantics.slices.json`), does the evidence store hold records with purls, and did the manifest's analyzer entry complete. Slicing is memory-hungry: 32 GB is a practical minimum for large projects, and a slicer that died quietly is visible with `SCAN_DEBUG_MODE=debug`.

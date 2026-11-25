@@ -1,0 +1,98 @@
+---
+sidebar_position: 3
+title: The first scan
+---
+
+# The first scan
+
+This page walks through the first scan on a new machine: the database download, the scan itself, what the scan directory holds, and how to read it back. Every command here works the same in CI; the CI page adds profiles, exit codes and gating.
+
+## The vulnerability database
+
+The first scan downloads the database it needs, so no separate step is required. Downloading it ahead of the scan is still worth doing on a CI runner or a large team's machines, because the download is the slow part and the flavor is a real choice: `app-only` covers the application ecosystems and is the smaller download for source scans, while the default `full` adds the OS advisory data a container or OS scan needs.
+
+```bash
+depscan vdb download --flavor app-only
+```
+
+The [database page](vulnerability-database) lists every flavor, its size and when each is the right pick. A scan never downloads data in the middle of a run; a missing shard or a gap is reported, not silently fetched.
+
+## The scan
+
+Run the scan verb with a target. Without one, it scans the current directory:
+
+```bash
+cd /work/project
+depscan scan --reports-dir reports
+```
+
+The console prints the prioritized findings first, then the full table. This is a scan of one package URL, trimmed to fit:
+
+```text
+                              Top Priority (PYPI)
+╔═══════════════════╤══════════════════╤═════════════╤═════════════════════════╗
+║ Package           │ Prioritized CVEs │ Fix Version │ Next Steps              ║
+╟───────────────────┼──────────────────┼─────────────┼─────────────────────────╢
+║ pkg:pypi/requests │ CVE-2024-47081   │ 2.33.0      │ Update to version       ║
+║                   │                  │             │ '2.33.0' and test for   ║
+║                   │                  │             │ any functional defects. ║
+╚═══════════════════╧══════════════════╧═════════════╧═════════════════════════╝
+                         Dependency Scan Results (PYPI)
+╔═══════════════════════╤══════════╤═════════════╤══════════╤═══════╤══════════╗
+║ CVE                   │ Insights │ Fix Version │ Severity │ Score │ Grade    ║
+╟───────────────────────┼──────────┼─────────────┼──────────┼───────┼──────────╢
+║ requests@2.31.0       │          │ 2.33.0      │ MEDIUM   │   4.4 │ moderate ║
+║ :left_arrow:          │          │             │          │       │ assessed ║
+║ CVE-2026-25645        │          │             │          │       │          ║
+╚═══════════════════════╧══════════╧═════════════╧══════════╧═══════╧══════════╝
+                            Vulnerabilities count: 3
+
+Exploitability grades for project type 'pypi': moderate: 3
+```
+
+The Grade column carries the exploitability grade over the rule that produced it; the summaries after the tables count the grades. A default scan matches vulnerabilities and keeps reachability on where evidence allows it. Source slicing, which turns "the package is present" into "the vulnerable function is called", needs cdxgen's research BOM profile, so a source scan that should answer reachability questions names it:
+
+```bash
+depscan scan --reports-dir reports --bom-profile research
+```
+
+Without it the scan is still correct: the findings are there, and each one's reach axis reads `not_assessed` with the reason. [The source repositories page](../targets/source-repositories) explains what each profile turns on.
+
+## What the scan wrote
+
+Every scan writes one directory, the reports directory named by `--reports-dir` or `reports` under the current directory:
+
+```text
+reports/
+├── depscan.manifest.json          what ran, what did not, and why
+├── depscan.findings.json          one finding per advisory and component
+├── evidence.jsonl                 the evidence store
+├── evidence.index.json            record ids by component and finding
+├── sbom-universal.cdx.json        the BOM documents
+├── depscan-universal.vdr.json     the VDR files
+├── license-universal.json         the licence and risk reports, when they ran
+├── depscan.html, depscan.txt      the rendered reports
+└── analysis/                      raw reports of the tools dep-scan ran itself
+```
+
+The manifest is the honesty record: the inputs with their digests, the tool versions, the database flavor, the stages with their status and the not-assessed reasons. The [scan directory page](../results/scan-directory) documents every file; the [coverage page](../results/coverage) explains how to read what did not run.
+
+## Reading the scan back
+
+`depscan report` re-renders a saved scan directory from its files, without scanning again:
+
+```bash
+depscan report reports
+```
+
+Scripts and agents read the same files: `depscan.findings.json` holds the findings of [the finding model](../results/finding-model), and every verb prints one JSON document under `--format json` ([the agents page](../integrate/agents)). A scan directory copied to another machine reads back the same way; nothing in it points outside the directory.
+
+## What can run here
+
+On a new machine, before debugging a missing analyzer, ask the doctor:
+
+```bash
+depscan doctor
+```
+
+The report lists every tool with where it was found and its version, the database state, and one row per capability with `available`, or the reason it cannot run here. Adding `--require reachability:go` turns a missing capability into exit code 4, which is how a container build fails itself when it lacks what it is meant to carry. The [doctor page](../reference/doctor) shows a full report.

@@ -1,0 +1,32 @@
+---
+sidebar_position: 6
+title: Prioritization
+---
+
+# How dep-scan prioritizes
+
+A hundred findings is not a work list. dep-scan marks the small set that needs attention first, and it writes that verdict into the data, not only into the console, so a triage queue, an ASPM platform or an agent can reproduce the exact same focus list from the files.
+
+## The prioritized property
+
+Every vulnerability carries a CycloneDX property named `depscan:prioritized` with the value `true` or `false`. The decision reads the reachability maps of [the reachability model](reachability): a package in the reached set requires attention, and so does one that is reachable through a route that is itself exposed, at high or critical severity. The Top Priority table in the console is exactly the set of entries with `depscan:prioritized=true`, so filtering the VDR's `vulnerabilities` array on that property reproduces the console's focus list downstream. During deduplication a prioritized entry is preferred over a colliding unprioritized one, so a merge never drops the finding that matters.
+
+## The tiers
+
+The verdicts form a ladder, from the bottom up:
+
+```text
+  MALICIOUS + REACHABLE    a malware advisory on a reached package:
+                           a top-priority security incident, above any CVE
+  ENDPOINT-REACHABLE       reached through a route that is itself exposed
+  REACHABLE                the vulnerable code is on a traced path
+  PRESENT (imported)       in the report, depscan:prioritized = false
+```
+
+Two fail-safes are worth knowing. A direct or deployed dependency with known exploits and no traced flow is kept flagged and prioritized, to avoid a false negative, but the insight says what the records show: "Direct dependency with known exploits, reach not assessed" (or "Deployed dependency ..." for a package only a post-build inventory lists). The console never claims reach no analyzer observed, and the same honesty is on [the exploitability axes](exploitability). Service reachability points the other way: a package that talks only to an allow-listed service is usually a reason to lower priority, not raise it.
+
+## Reading the verdicts
+
+The `depscan:insights` property joins the plain-text labels behind the verdict ("Reachable", "Endpoint-Reachable", "Reachable and Exploitable", "Indirect dependency", "Known Exploits", and the fail-safe sentences above). Reading it first explains why a finding was prioritized; the [VDR guide](../integrate/vdr) walks the file's anatomy. The console's Next Steps column renders the same tier as guidance, from "add workarounds and validations" for a reachable exploit finding to the upgrade advice for a many-CVE package with a known fix version.
+
+What puts a finding in the Top Priority table is reach, exploit evidence, malware verdicts or a large advisory burden on one package. A present-but-unreachable dependency never earns the table: it stays in the full report with `depscan:prioritized=false` and no reachable insight, which is the signal to move on. Where the reach analysis itself did not run, the finding keeps its severity and its fail-safe handling, and its reach axis reads `not_assessed` rather than borrowing a verdict ([coverage](coverage)).

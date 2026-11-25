@@ -1,0 +1,162 @@
+---
+title: Migrate from v6 to v7
+description: The breaking changes between dep-scan 6.3 and 7.0, and what to change in your workflows.
+---
+
+# Migrate from dep-scan v6 to v7
+
+dep-scan 7 is still in development on the `master` branch, and this page grows with it: every change that breaks a v6 workflow is added here in the pull request that makes it. The 6.x line continues on the `release/6.3.x` branch for fixes.
+
+Each entry says what changed, why, and what to do instead.
+
+## Python
+
+- **Python 3.11 is the minimum.** v6 supported Python 3.10. Install dep-scan 7 on Python 3.11 or later.
+
+## Command line (BREAKING)
+
+dep-scan 7 commands start with a verb: `depscan scan`, `depscan serve`, `depscan vdb`, `depscan doctor`, `depscan schema`, `depscan config`, `depscan validate`, `depscan version`, `depscan report`, `depscan help`. The v6 flat option list is not accepted.
+
+- **Options-first command lines exit 2 with the equivalent v7 command printed.** A v6 invocation is not run; dep-scan translates it, prints the translated command and a link to this page on stderr, and exits 2.
+
+  ```text
+  $ depscan --src . --reports-dir reports
+  depscan: this is a dep-scan 6 command line, which dep-scan 7 no longer runs.
+  The equivalent v7 command is: depscan scan . --reports-dir reports
+  See the migration guide: https://depscan.readthedocs.io/migrate-v6-to-v7/
+  ```
+
+- **Bare `depscan` is a usage error.** It exits 2 with the verb list. Use `depscan scan` to scan the current directory; `depscan -h` and `depscan --help` still print the help and exit 0.
+- **The `depscan-vdb` and `depscan-validate` console scripts are gone.** Use `depscan vdb` and `depscan validate`; the subcommands (`depscan vdb download --flavor app-only`, `depscan validate <file>`) are unchanged.
+- **The validate `--format` option changed meaning.** It chose the document format (`auto`, `csaf`, `cyclonedx`), with `json` doubling as "print the results as JSON". That meaning moved to the new `--input-format` option (`auto`, `csaf`, `cyclonedx`, auto-detected per file by default), and `--format` now selects the output, `text` or `json`, like on every verb. `depscan validate --format csaf <file>` becomes `depscan validate --input-format csaf <file>`, and `--format cyclonedx` and `--format auto` become `--input-format cyclonedx` and `--input-format auto`. `depscan validate --format json <file>` keeps its tokens and still prints the results document on stdout, but the document changed shape: it was a bare array of result entries and is now one `{"results": [...]}` object holding the same entries, each with its `file`, `format`, `valid` and `errors` fields. Scripts that read the array should read `document["results"]`.
+- **`--server` is gone; the server is a verb.** `depscan --server --server-host H --server-port P` becomes `depscan serve --server-host H --server-port P`. The four `--server-*` options moved to the serve verb, which also accepts `--cdxgen-server`, `--custom-data`, `--debug` and the `--vdb-*` selection options. `serve` has no `--config` option.
+- **The v6 `--profile` is now `--bom-profile`.** v6's `--profile` named cdxgen's BOM profile; `--profile research` becomes `--bom-profile research`. The new `--profile` names one of five scan profiles (`quick`, `ci`, `deep`, `research`, `offline`) that set the checks and the analyzer settings, with explicit options winning.
+- **`-v`/`--version` became `depscan version`.** `depscan version --format json` also prints every tool version. The vdb command's `--version` flag is gone too; `depscan version` prints the same version.
+- **`--risk-audit` became `--checks supply-chain`.** The package risk audit is the supply-chain check; the matching stage's malware advisory reporting is always on, whatever checks run.
+- **`--src`, `--bom`, `--bom-dir` and `--purl` became positional targets.** `depscan --src .` is `depscan scan .`, `depscan --purl pkg:pypi/requests@2.32.1` is `depscan scan pkg:pypi/requests@2.32.1`. The kind of each target is detected (`--target-kind` forces one); an existing path wins over a same-shaped image reference. A directory counts as a BOM directory only when every JSON file in it, apart from `*.slices.json` slices and dep-scan's own manifest and findings files, is a CycloneDX document, so `depscan --bom-dir DIR` becomes `depscan scan DIR --target-kind bom-dir` to keep v6's meaning for a directory that also holds OpenAPI or other JSON files. A `--src` given together with `--bom`, `--bom-dir` or `--purl` was not scanned in v6 and has no v7 equivalent; drop it. A binary target is recognised by its ELF, PE or Mach-O header, not by the executable bit. Several targets run one scan each into `<reports-dir>/<n>-<name>/` (the 1-based index and the target's name), and the exit code is the highest of the scans.
+- **New exit codes.** A usage error, including every v6 command line, exits 2; a requested capability that cannot run (a check named through `--checks` whose analyzer is missing, an iOS or firmware target) exits 4. Findings still never change the exit code.
+- **`--exclude-type` is a first-class, repeatable option.** It removes the type from the detected list before any stage runs, so an excluded `os` or `docker` stops the OS and container scans, and it is passed to cdxgen so the BOM contents are filtered the same way. Inside v6's `--cdxgen-args` an `--exclude-type` filtered only the BOM contents; the OS and container scans still ran.
+
+Every v6 option and its v7 equivalent:
+
+<!-- v6-to-v7 option table start -->
+| v6 option | v7 equivalent | note |
+| --- | --- | --- |
+| `--no-banner` | `depscan scan --no-banner` | Unchanged. |
+| `-i`, `--src` | `depscan scan <target>` | The value becomes the positional target; the kind is detected. |
+| `-o`, `--reports-dir` | `depscan scan --reports-dir` | Unchanged. |
+| `--csaf` | `depscan scan --csaf` | The starter `csaf.toml` is no longer written into the scanned project; see the reports directory entry. |
+| `--csaf-version` | `depscan scan --csaf-version` | Unchanged. |
+| `--profile` | `depscan scan --bom-profile` | The cdxgen BOM profile flag is renamed. |
+| `--lifecycle` | `depscan scan --lifecycle` | Unchanged. |
+| `--technique` | `depscan scan --technique` | Unchanged. |
+| `--bom-engine` | `depscan scan --bom-engine` | Unchanged. |
+| `--vulnerability-analyzer` | `depscan scan --vulnerability-analyzer` | Unchanged. |
+| `--reachability-analyzer` | `depscan scan --reachability-analyzer` | Unchanged. |
+| `--rust-analyzer-backend` | `depscan scan --rust-analyzer-backend` | Unchanged. |
+| `--go-analyzer-network` | `depscan scan --go-analyzer-network` | Unchanged. |
+| `--go-analyzer-cgo` | `depscan scan --go-analyzer-cgo` | Unchanged. |
+| `--dotnet-analyzer-mode` | `(removed)` | dosai has no source or assembly mode switch, so the flag never changed what dosai ran. dosai reads sources and assemblies from the same path on its own. Drop the flag and the DEPSCAN_DOTNET_ANALYZER_MODE variable. |
+| `--no-suggest` | `depscan scan --no-suggest` | Unchanged. |
+| `--risk-audit` | `depscan scan --checks supply-chain` | The package risk audit became the supply-chain check. |
+| `--fail-on-error` | `depscan scan --fail-on-error` | Unchanged. |
+| `--cdxgen-args` | `depscan scan --cdxgen-args` | Unchanged. |
+| `--spec-version` | `depscan scan --spec-version` | Unchanged. |
+| `--private-ns` | `depscan scan --private-ns` | Unchanged. |
+| `-t`, `--type` | `depscan scan --type` | Unchanged. |
+| `--bom` | `depscan scan <bom-file>` | The value becomes the positional target; the kind is bom. A --src given with it is dropped, because a BOM scan generates nothing from the source directory. |
+| `--bom-dir` | `depscan scan <dir> --target-kind bom-dir` | The value becomes the positional target with its kind forced, as --bom-dir forced it (detection reads a directory holding other JSON files, such as OpenAPI documents, as source); a --src given with it is dropped, because a BOM directory scan generates nothing from the source directory. |
+| `--purl` | `depscan scan <purl>` | The value becomes the positional target; the kind is purl. |
+| `--custom-data` | `depscan scan --custom-data` | Unchanged; also accepted by depscan serve. |
+| `--report-template` | `depscan scan --report-template` | Unchanged. |
+| `--report-name` | `depscan scan --report-name` | Unchanged. |
+| `--deep` | `depscan scan --deep` | Unchanged. |
+| `--fuzzy-search` | `depscan scan --fuzzy-search` | Unchanged. |
+| `--search-order` | `depscan scan --search-order` | Unchanged. |
+| `--severity` | `depscan scan --severity` | Unchanged. |
+| `--malware-only` | `depscan scan --malware-only` | Unchanged. |
+| `--vdb-flavor` | `depscan scan --vdb-flavor` | Unchanged; also accepted by depscan serve. |
+| `--vdb-scope` | `depscan scan --vdb-scope` | Unchanged; deprecated. |
+| `--vdb-time` | `depscan scan --vdb-time` | Unchanged; deprecated. |
+| `--vdb-extended` | `depscan scan --vdb-extended` | Unchanged; deprecated. |
+| `--vdb-compression` | `depscan scan --vdb-compression` | Unchanged; also accepted by depscan serve. |
+| `--vdb-distro` | `depscan scan --vdb-distro` | Unchanged; rejected with the flavor list. |
+| `--vdb-image` | `depscan scan --vdb-image` | Unchanged; also accepted by depscan serve. |
+| `--no-universal` | `depscan scan --no-universal` | Unchanged. |
+| `--no-vuln-table` | `depscan scan --no-vuln-table` | Unchanged. |
+| `--server` | `depscan serve` | Removed as a flag; it switches the verb to serve. |
+| `--server-host` | `depscan serve --server-host` | Now on the serve verb. |
+| `--server-port` | `depscan serve --server-port` | Now on the serve verb. |
+| `--server-allowed-hosts` | `depscan serve --server-allowed-hosts` | Now on the serve verb. |
+| `--server-allowed-paths` | `depscan serve --server-allowed-paths` | Now on the serve verb. |
+| `--cdxgen-server` | `depscan scan --cdxgen-server` | Unchanged; also accepted by depscan serve. |
+| `--debug` | `depscan scan --debug` | Unchanged; also accepted by depscan serve. |
+| `-q`, `--quiet` | `depscan scan --quiet` | Unchanged. |
+| `--explain` | `depscan scan --explain` | Unchanged. |
+| `--explanation-mode` | `depscan scan --explanation-mode` | Unchanged. |
+| `--annotate` | `depscan scan --annotate` | Unchanged. |
+| `-v`, `--version` | `depscan version` | Removed as a flag; use the version verb. |
+| `--config` | `depscan scan --config` | Unchanged; the flat TOML file keeps its v6 semantics. |
+<!-- v6-to-v7 option table end -->
+
+## Vulnerability database (BREAKING)
+
+dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.7,<8`), whose database format and download images differ from v6.
+
+- **v6 databases are not read or migrated.** A database directory that holds only v6 files is reported as unusable, with the steps to fetch a v7 database. Delete the old directory or point `VDB_HOME` at a new one.
+- **A missing or empty database stops the scan.** v6 could report zero findings when the database was missing, empty or failed to download. v7 stops with a message naming the problem and exits with status 1, so a CI job no longer passes on a scan that could not match anything.
+- **The `vdb` download options are gone.** `vdb --download-image` and `vdb --download-full-image` no longer exist. Use `vdb db refresh full --app-only` for application vulnerabilities, or `vdb db refresh full` for application and OS vulnerabilities. `vdb db status` shows what is installed. A scan still downloads the database itself when it is missing.
+- **Select the database with `--vdb-flavor`.** The flavors are `full` (application and OS, the default) and `app-only`, each with `-2y` (NVD 2024+), `-10y` (NVD 2016+) and `-extended` (metadata tables) variants: `full-extended`, `full-2y`, `full-2y-extended`, `full-10y`, `full-10y-extended`, `app-extended`, `app-2y`, `app-2y-extended`, `app-10y` and `app-10y-extended`. `--vdb-scope`, `--vdb-time` and `--vdb-extended` still work but are deprecated: each logs a warning naming the flavor it selected. `--vdb-flavor` cannot be combined with them.
+- **Per-distro databases are gone.** `--vdb-distro` stops the scan with the list of published flavors instead of silently using a bigger database. For a single distribution, use `--vdb-flavor full`.
+- **`--severity` and `USE_VDB_10Y` keep the app+OS scope.** With no flavor chosen, `--severity` selects `full-extended` and `USE_VDB_10Y` selects `full-10y`, as the v6 `vdbxz-extended` and `vdbxz-10y` images did, instead of moving to the app-scope databases.
+- **`VDB_IMAGE_TAG` is no longer read.** Pin a database image with `VDB_DATABASE_URL` or `--vdb-image`, which are used as given.
+- **Type shards are opt-in.** Set `VDB_USE_SHARDS=true` to scan with per-ecosystem shards; see [the vulnerability database page](../start/vulnerability-database).
+
+## cdxgen (BREAKING)
+
+- **cdxgen 13.8.0 or later is required.** dep-scan refuses an older local cdxgen, and a 13.8.0 pre-release, with the command that installs a supported one.
+- **CSAF no longer claims `known_not_affected` from absence.** v6 marked every affected package missing from a non-empty reached set `known_not_affected` with the flag `vulnerable_code_not_in_execute_path`. Absence from a reached set is not evidence that the vulnerable code is outside the execute path, so v7 marks those packages `under_investigation`; reached packages stay `known_affected`.
+- **`--bom-engine auto` prefers a local cdxgen.** v6 chose the cdxgen container image whenever `docker` was on `PATH`, even when `CDXGEN_CMD` was set or a current cdxgen was installed. v7 uses the command named by `CDXGEN_CMD`, or a cdxgen on `PATH` that meets the minimum version, first, and falls back to the container image only when no such cdxgen exists. When `CDXGEN_CMD` names a cdxgen below the minimum version, v7 refuses the scan with the version message, where v6 would have used the image. `--bom-engine CdxgenImageBasedGenerator` still forces the image.
+- **The npm package is `@cdxgen/cdxgen`.** v6 documentation installed `@cyclonedx/cdxgen`. Install with `npm install -g @cdxgen/cdxgen`, and remove the old package first if both are present, because the older one can stay first on `PATH`.
+- **Untrusted sources run cdxgen in secure mode.** When cdxgen fetches the code itself (a git URL as the source) or the scan was requested through the dep-scan server, cdxgen always runs with `CDXGEN_SECURE_MODE=true`, which limits what it may install or execute. Projects that relied on cdxgen installing packages during such scans need their dependencies resolved beforehand.
+
+## Reachability
+
+- **A record that states Low confidence never counts as reached.** v6 counted a dosai data-flow slice that dosai itself rated Low, and the 7.0 alphas did the same for any producer's slice. v7 keeps such a record in `evidence.jsonl` with its confidence as stated, but it adds no purl to the reached set, names no reached service and cannot witness a finding.
+- **`max_dotnet_reachable_explanations` is gone.** The variable was read into the configuration but nothing used it; `--explain` caps every analyzer's explanations with `max_reachable_explanations` and the per path and per package caps.
+- **Slices from atom 2.x are not read.** dep-scan 7 reads the slices atom 4 writes, which cdxgen 13.8 produces. Regenerate BOMs and slices saved by older cdxgen versions before passing them as a BOM directory target; old slices contribute no reachable packages.
+- **When atom times out, the scan says so.** v6 treated the missing slices as zero reachable flows. v7 records the reachability analysis as not assessed for that scan.
+- **Go reachability runs with cgo off.** golem loads Go packages with `CGO_ENABLED=0` and with every `CGO_*_ALLOW` variable removed, even when the environment sets them, because loading cgo packages runs the machine's C compiler with flags from the scanned code. Packages that need cgo are therefore not loaded and their reachability is missing. Pass `--go-analyzer-cgo` (or set `DEPSCAN_GO_ANALYZER_CGO=true`) only for code you trust, with a Go release that carries the fixes for CVE-2026-97033 to CVE-2026-97043.
+- **The language tools' converted reachables slices are no longer written.** dep-scan 6.3 converted golem, rusi and dosai reports into atom-shaped `go-`, `rust-` and `dotnet-reachables.slices.json` files next to the BOM, and the 7.0 alphas also converted kosi reports into `kosi-reachables.slices.json`. v7 reads each tool's own report through its evidence adapter and writes what it found into `evidence.jsonl` instead; the raw reports stay where they are (the `*-semantics.slices.json` cdxgen persists, `analysis/<tool>/` for a direct run). Scripts that read the converted slice files should read that producer's records in the evidence store instead. atom's own `*-reachables.slices.json` files are atom's native output and keep being written.
+
+## Console output
+
+- **Log messages, progress and warnings moved to stderr.** v6 printed them on stdout, mixed with the results tables. v7 keeps stdout for the results tables and any JSON output, and prints everything else on stderr, so piping and JSON parsing work. The `depscan.html` and `depscan.txt` report files export the stdout console and therefore no longer contain the log lines v6 included. Scripts that scraped stdout for log lines should read stderr instead. The `--format json` option of the verbs relies on this split: in json mode stdout carries exactly one JSON document, the banner is suppressed, and everything else, the tables included, moves to stderr.
+- **`depscan scan --format json` always prints one object with a `scans` array.** A scan in json format printed one `{"scanDir", "manifest", "findings"}` object for zero or one target and an array of those objects for several, so a caller had to check the type before reading. The output is now always `{"scans": [...]}`, one entry per given target in the order given, also for a single target and for zero targets; a scanned entry carries `target`, `kind`, `scanDir`, `manifest` and `findings`, and a refused target carries `kind` null and its refusal reason instead of being dropped. When the scan stops as a whole, stdout carries the error document `{"error": {"exitCode", "verb", "message", "details"}}` instead, with the same message on stderr as text; a run whose targets fail keeps the scans object, every target still present, and exits with the highest code. Either way the whole of stdout parses as one JSON document. Scripts that read the single-target object directly should read `document["scans"][0]`.
+- **The fail-safe exploit insight no longer claims reach.** v6 labelled a direct or deployed dependency with known exploits "Reachable and Exploitable" even when no reachability record backed it, while the finding's exploitability axes said reach `not_assessed`. Such findings now read "Direct dependency with known exploits, reach not assessed" in the console, the HTML report and the `depscan:insights` VDR property. They are still flagged (`depscan:prioritized=true`) and still appear in the Top Priority table, and findings whose package is genuinely reachable keep the old label. Scripts that matched the exact string should match on "reach not assessed" or read the `depscan:exploitability:axis:reach` property instead.
+- **Colour no longer forces itself on redirected output.** The `CONSOLE_COLOR_SCHEME` default was `256`, which put ANSI colour codes on every stream, files and pipes included. dep-scan now detects colour support per stream: a redirected stdout or stderr receives plain text unless `FORCE_COLOR`, or an explicit `CONSOLE_COLOR_SCHEME` other than `auto`, asks for colour, and `NO_COLOR` turns colour off everywhere, terminal included. `DISABLE_CONSOLE_EMOJI` still switches emoji off, and emoji are also off when the stream is not a terminal, as are progress bars and spinners. Scripts that parse dep-scan's output no longer need to strip escape sequences; set `FORCE_COLOR=1` to keep the colours a terminal sees. The four variables are listed in [the environment variables page](../reference/configuration).
+
+## Reports directory
+
+- **Every scan now writes a scan directory.** The raw reports of the tools dep-scan runs itself, such as rusi, golem and dosai, moved under `analysis/<tool>/` in the reports directory; files cdxgen writes, and files the user passed in, keep their names and places. Each scan writes `depscan.manifest.json` (the manifest, written last of every file) and `depscan.findings.json` (one finding per advisory and component) at the top of the reports directory. `depscan.api.load_scan` and `depscan report` refuse a directory whose matching stage did not complete, or whose VDR was written outside it (a BOM directory scanned with a separate `--reports-dir`), instead of loading it as a clean scan; a directory without a manifest is still read the way scans before the scan directory wrote them. The layout is documented in [the scan directory](../results/scan-directory) page.
+- **The dosai facts sidecar is gone.** From 6.3.0, dep-scan wrote `dotnet-reachability.facts.json` next to the BOM with the keys `reached_purls`, `reached_services`, `weakness_candidates`, `dangerous_api_reachability` and `source_locations`; the 7.0 alphas moved it under `analysis/dosai/` and added dosai's entry points, exploit chains, attack-surface tiers and nearby sanitizers. That content is now dosai records in the scan's `evidence.jsonl`. Every `PackageReachability` entry that states a verdict and names a NuGet purl becomes a record: a `reached-flow` record when its kind and confidence count as reached, a `dependency` record, which never counts as reached, when they do not (the sidecar's `reached_purls` listed those entries too), and a negative `no-path` record when dosai calls the package not reachable. The record keeps the entry's own `Confidence`, and its `locations` carry the `source_locations` the sidecar listed. The `reached_services` key becomes the `servicePurls` attribute of the slice records whose sink category maps to a service, and entry points, exploit chains and sanitized flows become `entry-point`, `exploit-chain` and `sanitizer` records with dosai's own attributes. The `weakness_candidates` and `dangerous_api_reachability` keys become `weakness` and `dangerous-api` records, one per entry of dosai's `WeaknessCandidates` and `DangerousApiReachability` sections: the subject is the purls the entry names, every field dosai wrote is kept in the attributes, and neither kind counts as reached. Scripts that read the facts file should read the dosai records instead; the raw report stays available as the `*-semantics.slices.json` cdxgen persisted (for example `dotnet-semantics.slices.json`) or `analysis/dosai/dotnet-dataflows.json` when dep-scan ran dosai itself.
+- **The starter `csaf.toml` lands in the reports directory.** v6 wrote a starter `csaf.toml` into the scanned project (or the working directory when the target was not a source tree) the first time `--csaf` ran without one. A scan must not write into the project it scans, so the starter is now `csaf.toml.sample` in the reports directory, beside `depscan.toml.sample`, and the scan continues with the default metadata as before. To customise the publisher and tracking, edit the sample, copy it to `csaf.toml` in the target directory (or point `DEPSCAN_CSAF_TEMPLATE` at any toml) and rerun.
+- **Scan directories from earlier 7.0 alphas are refused.** The scan directory layout is now 2.0, whose marker is the evidence store: `depscan report` and `depscan.api.load_scan` refuse a manifest whose layout major they do not know, so a directory written by an earlier 7.0 alpha (layout 1.x, no `evidence.jsonl`) is refused with both versions named. Re-run the scan to read the directory with this version.
+- **The license and risk reports are JSON arrays of plain values.** v6 wrote `license-<type>.json` and `depscan-risk-<type>.json` as rich-table output: newline-separated JSON objects under a `.json` name, license ids wrapped in console colour markup such as `[cyan]CC-BY-4.0`, risk labels joined with `~~`, and the npm attestation digest repeated in each row. Both files are now one JSON array of row objects with plain values (`json.load` reads them), the risk score is a number, `Identified Risks` is a list, and a digest that covers several risks appears once. A v6 script that parsed either file line by line must read it as JSON instead.
+- **The binary check keeps blint's review.** When a scan asks for the binary check (`--checks binary`), a binary or apk project type or the `BlintGenerator` engine, blint also runs its security checks and capability reviews. Its reports (`findings.json`, `reviews.json` and `analysis-coverage.json`) stay in `analysis/blint/`, and each check result appears in `depscan.findings.json` as a `binary-hardening` finding. On a source scan the review runs beside the cdxgen inventory, which the check never replaces; only a binary or apk target scans through blint's own BOM. v6 switched the review off and removed blint's report directory. dep-scan 7 installs blint 4.1.x with the `ext` extra, which needs wasm-tools 2.2 and multi-demangle 2.1 or later.
+
+## Server mode
+
+- **A request that cannot be scanned answers HTTP 500.** v6 could answer with a BOM carrying no vulnerabilities when the scan did not run. The server also prepares the database once when it starts, rather than in each request.
+
+## Python library
+
+- **`analysis_lib.utils` is removed.** Its functions moved to `analysis_lib.advisory`, `merge`, `suggestions`, `packages`, `prioritize` and `endpoints`, and no compatibility module is kept. Import from the new modules.
+- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](../integrate/python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases. `scan` also accepts a `doctor_report` to reuse a collected report and `checks_not_assessed` to record capability-gated checks in the manifest.
+
+## New commands
+
+These are not breaking, but they replace manual checks some v6 workflows did:
+
+- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](../reference/doctor). The `supply-chain` capability (the package risk audit and malware advisory reporting) and the `binary` capability (binary analysis with blint, needing the blint package) are reported as implemented in this version.
+- `depscan mcp` runs a Model Context Protocol server over stdio, so an MCP client can read saved scan directories through ten tools instead of parsing command output. v6 had no MCP server. The server needs the optional `mcp` extra (`pip install "owasp-depscan[mcp]"`), reads only paths inside the allowed roots (`--allow-dir` and the client's roots), and keeps `run_scan` a dry run unless the server was started with `--allow-scans`. See [the MCP server](../integrate/mcp).

@@ -1,0 +1,52 @@
+---
+sidebar_position: 3
+title: Binaries
+---
+
+# Scanning binaries
+
+A binary is the form most software reaches its users in, and the form a source scan never sees. dep-scan analyses executables, libraries, installers and drivers with blint, which reads ELF, PE (including .NET assemblies), Mach-O and WASM files and the installer formats that wrap them (MSI, MSIX, CAB, ClickOnce, nupkg, and Android and iOS app packages on the [mobile page](mobile-apps)). A binary scan answers three questions: what is inside (the components and their versions), what the binary itself does wrong (blint's security checks and reviews, reported as findings), and how it is built (hardening posture, as facts that temper exploitability).
+
+## The scan
+
+A file that starts with an ELF, PE or Mach-O header is detected as a binary target, as is a directory of them:
+
+```bash
+depscan scan ./binaries --target-kind binary --checks binary --reports-dir reports
+```
+
+`--checks binary` needs blint, which ships with the `ext` extra or the container image. The check adds the `binary-analysis` technique: a binary target is inventoried through blint's own analysis, and on a source scan the review runs beside the cdxgen inventory without replacing it, so a source tree's findings are never displaced by its build output's.
+
+The console counts the review's results and its coverage:
+
+```text
+Binary hardening findings count: 11
+Binary hardening checks completed: 11 attempted, 11 succeeded, 0 skipped units.
+```
+
+## What the findings are
+
+The review's results land in `depscan.findings.json` as findings of the same model as everything else, with blint and its version as the producer. From a real scan of the cdxgen plugin binaries, one finding reads:
+
+```json
+{
+  "category": "binary-hardening",
+  "rule": "CHECK_UNUSED_DEPENDENCIES",
+  "title": "Declared Dependency Is Never Used (libiconv.2.dylib)",
+  "severity": "low",
+  "coverage": { "state": "assessed" },
+  "producer": { "name": "blint", "version": "4.1.1" },
+  "components": ["pkg:generic/cdxrs-darwin-arm64"],
+  "locations": [{ "binary": "cdxrs/cdxrs-darwin-arm64" }]
+}
+```
+
+The rules cover hardening posture (PIE, RELRO, NX, stack canaries, FORTIFY, RPATH, writable and executable segments, and the Windows and Mach-O equivalents), declared dependencies that are never used, suspicious capabilities, and known-vulnerable Windows drivers from the loldrivers and Microsoft blocklist data. Advisory matches against the components blint recovers are vulnerability findings like any other. Raw reports stay under `analysis/blint/` (`findings.json`, `reviews.json`, `analysis-coverage.json`), and the review's coverage report is where its failed and skipped units are counted; those become coverage caveats on the findings, so a partial review never reads as a complete one.
+
+## blintdb
+
+blint can match the functions of a binary against blintdb, a large similarity database that identifies libraries without version banners. The database is a tens-of-gigabytes download per platform, and where it is absent the layer is reported as unavailable rather than as "no match": a scan that cannot consult blintdb says so. Decide per workflow whether the identification is worth the download; a source-side scan of the same project usually identifies the components more cheaply.
+
+## Diffs between builds
+
+Whether a release got less safe than the last one is a question about two builds. Comparing two binaries' hardening posture and findings works through blint's diff from Python (`blint.api.diff`); a dep-scan verb for build-to-build diffs is planned but not built in this version, so a release gate today compares the two scans' findings files by fingerprint, the way [the CI page](../integrate/ci) gates on one scan.

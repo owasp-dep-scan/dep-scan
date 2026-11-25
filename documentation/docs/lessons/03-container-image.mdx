@@ -1,0 +1,92 @@
+---
+title: "Lesson 3: a container image"
+sidebar_position: 03
+---
+
+# Lesson 3: a container image
+
+This lesson scans two images by digest and reads the report the way a release reviewer would: what the OS layer proved, what the application layer proved, and what an image scan structurally cannot see. The digest is the pin: tags move, digests do not.
+
+The inputs are pinned: `nginx:alpine` at digest `7fc0fb4af7bf...` and `redmine` at digest `c3c9da0407e9...`, scanned on 2026-11-25 with dep-scan 7.0.0a3, cdxgen 13.9.0 and the `full` database flavor, which is the flavor an image scan needs: the app-only flavors hold no OS advisories, so the apk and deb packages would match nothing.
+
+## The script
+
+The commands live in `documentation/lessons/03-container-image/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 03: a container image, its OS and application packages, and what an
+# image scan cannot see.
+#
+# Scans the nginx:alpine image by digest with the full database flavor, then
+# the redmine image, whose findings span the Debian OS layer and the bundled
+# Rails gems.
+#
+# Needs: dep-scan, cdxgen, a container daemon (docker, podman or nerdctl),
+# and the full vulnerability database (depscan vdb download). The images are
+# pulled by digest, so the bytes are pinned.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-03}"
+SCANS="$WORK/scans"
+mkdir -p "$SCANS"
+
+### Scan nginx:alpine by digest with the full flavor
+# The digest pins the bytes. The full flavor carries the OS advisories an
+# image scan needs; app-only would leave the apk packages matching nothing.
+depscan scan nginx@sha256:7fc0fb4af7bf006aeb31aea88069976060f8f0a0a86b667126742cc17f4e31ae \
+  --no-banner -o "$SCANS/nginx"
+
+### What the OS layer produced
+python3 - "$SCANS/nginx" <<'PY'
+import json, sys
+d = sys.argv[1]
+m = json.load(open(f"{d}/depscan.manifest.json"))
+print(f"database flavor: {m['database']['flavorUsed']}")
+print(f"inventory stage: {next(s['status'] for s in m['stages'] if s['name'] == 'inventory')}")
+f = json.load(open(f"{d}/depscan.findings.json"))
+print(f"findings: {len(f['findings'])}")
+types = sorted({c.split(':')[1].split('/')[0] for x in f['findings'] for c in x['components']})
+print("component types:", ", ".join(types))
+PY
+
+### Scan redmine, an application-on-an-OS image
+depscan scan redmine@sha256:c3c9da0407e99b2a47af9e0af7b06bce1a3cfec16def1c14cd1fae61e3fa0770 \
+  --no-banner -o "$SCANS/redmine"
+
+### The two layers in one report
+python3 - "$SCANS/redmine" <<'PY'
+import json, sys
+d = sys.argv[1]
+f = json.load(open(f"{d}/depscan.findings.json"))
+print(f"findings: {len(f['findings'])}")
+types = sorted({c.split(':')[1].split('/')[0] for x in f['findings'] for c in x['components']})
+print("component types:", ", ".join(types))
+PY
+```
+
+## Reading the run
+
+nginx:alpine is the OS-only story: the findings are the image's apk packages, matched against the Alpine advisory data in the full flavor:
+
+```text
+database flavor: full
+inventory stage: completed
+component types: apk
+findings: 12
+```
+
+redmine is the story most real images tell, one report spanning both layers: Debian packages and bundled Rails gems in one findings file, each matched against its own advisory source:
+
+```text
+findings: 362
+component types: deb, gem, golang
+```
+
+The `golang` type in that list is the honest edge of an image scan. A binary the image ships carries Go build info even though no package owns it, and cdxgen recovers its modules from the build metadata. What the scan cannot see is the rest of the unpackaged world: a binary without embedded build info is inventoried as a file whose modules are not assessed, never as clean, and nothing in a static unpack says what the container actually executes at run time. The trace BOM workflow records that, when a traced run exists to scan beside the image.
+
+## Takeaways
+
+- Pin images by digest in CI; a tag scan is not reproducible.
+- Image scans need the `full` flavor; the app-only flavors have no OS advisories.
+- Unpackaged binaries and runtime behaviour are the image scan's blind spots, and the report says where they are rather than filling them with guesses.

@@ -1,0 +1,7 @@
+pinned: juice-shop, DVWA, railsgoat
+juice-shop: findings
+dvwa: findings
+railsgoat: findings
+reach assessed: True
+dvwa: reach verdict is not_assessed
+railsgoat: reach verdict is not_assessed

@@ -1,0 +1,9 @@
+project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
+atom analyzer status: completed
+reach verdicts:
+reached finding: CVE-2025-65945 on pkg:npm/jws@0.2.6
+grade: moderate (rule reached)
+record: reached-flow from atom
+first hop: routes/verify.ts:111 in jwtChallenge
+axes: {"presence": "proven", "reach": "likely"
+unassessed: exposure, barrier

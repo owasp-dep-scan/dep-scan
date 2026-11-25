@@ -949,7 +949,7 @@ def test_main_routes_doctor_and_rejects_v6_invocations(monkeypatch, capsys):
 def test_documented_capability_table_matches_the_code():
     """The doctor page carries the generated table; regenerate it when this fails."""
     page = os.path.join(
-        os.path.dirname(__file__), os.pardir, "documentation", "docs", "doctor.mdx"
+        os.path.dirname(__file__), os.pardir, "documentation", "docs", "reference", "doctor.mdx"
     )
     with open(page, encoding="utf-8") as fp:
         text = fp.read()

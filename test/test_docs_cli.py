@@ -1,8 +1,9 @@
 """Tests that keep the documentation's command line pages true to the code.
 
 The usage page embeds the top-level help and the scan help exactly as the
-built parsers print them, and the migration guide embeds the generated v6 to
-v7 option table between markers, so neither page can drift from the code. The
+built parsers print them, the README embeds the top-level help the same way,
+and the migration guide embeds the generated v6 to v7 option table between
+markers, so none of them can drift from the code. The
 remaining tests sweep every page under ``documentation/``: no fenced command
 block may show a v6 (options-first) ``depscan`` invocation, and the removed
 ``depscan-vdb`` and ``depscan-validate`` console scripts may be named only in
@@ -27,9 +28,10 @@ from depscan.commands.translate import option_table_markdown
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "documentation"
-USAGE_PAGE = DOCS_DIR / "docs" / "cli-usage.mdx"
-MIGRATION_PAGE = DOCS_DIR / "docs" / "migrate-v6-to-v7.mdx"
-AGENTS_PAGE = DOCS_DIR / "docs" / "agents.mdx"
+USAGE_PAGE = DOCS_DIR / "docs" / "reference" / "cli.mdx"
+MIGRATION_PAGE = DOCS_DIR / "docs" / "upgrade" / "migrate-v6-to-v7.mdx"
+AGENTS_PAGE = DOCS_DIR / "docs" / "integrate" / "agents.mdx"
+README = REPO_ROOT / "README.md"
 
 #: Fenced block languages that hold shell commands.
 COMMAND_LANGUAGES = frozenset({"bash", "sh", "shell", "zsh"})
@@ -54,8 +56,20 @@ MARKER_FILE = ".depscan-vdb-image"
 SCHEMA_NAMES = tuple(schema_names())
 
 #: The text files under ``documentation/`` the console-script sweep reads;
-#: images and other binaries are skipped.
+#: images and other binaries are skipped, and so are the generated build
+#: output and cache, which mirror the sources but are not editable.
 TEXT_SUFFIXES = frozenset({".mdx", ".md", ".ts", ".js", ".json", ".yaml", ".yml", ".txt", ".css"})
+SKIPPED_DIRS = frozenset({"build", ".docusaurus", "node_modules"})
+
+
+def _sweep_files():
+    """Every text file under ``documentation/`` the sweep reads."""
+    for path in sorted(DOCS_DIR.rglob("*")):
+        if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
+            continue
+        if SKIPPED_DIRS & set(path.relative_to(DOCS_DIR).parts):
+            continue
+        yield path
 
 
 def _read(path: Path) -> str:
@@ -159,6 +173,20 @@ def test_usage_page_embeds_the_built_help(monkeypatch):
     assert _normalized_help("\n".join(tops[0]) + "\n") == _normalized_help(scan_help_text())
 
 
+def test_readme_embeds_the_built_help(monkeypatch):
+    """The README's one help block is the top-level parser's own output."""
+    monkeypatch.setenv("COLUMNS", "200")
+    blocks = [
+        body
+        for _, body in fenced_blocks(_read(README), {"text"})
+        if body and body[0].startswith("usage: depscan")
+    ]
+    assert len(blocks) == 1, "the README must carry exactly the top-level help block"
+    assert _normalized_help("\n".join(blocks[0]) + "\n") == _normalized_help(
+        build_parser().format_help()
+    )
+
+
 def test_migration_page_embeds_the_generated_option_table():
     """The region between the markers is option_table_markdown() exactly."""
     text = _read(MIGRATION_PAGE)
@@ -169,7 +197,11 @@ def test_migration_page_embeds_the_generated_option_table():
     assert region == option_table_markdown()
 
 
-@pytest.mark.parametrize("page", [USAGE_PAGE, AGENTS_PAGE], ids=["cli-usage", "agents"])
+@pytest.mark.parametrize(
+    "page",
+    [USAGE_PAGE, AGENTS_PAGE, DOCS_DIR / "docs" / "integrate" / "ci.mdx"],
+    ids=["cli-usage", "agents", "ci"],
+)
 def test_exit_code_table_matches_the_constant(page):
     """The region between the markers is exit_code_table_markdown() exactly."""
     # Imported here and not at module level: the exit code constant and its
@@ -183,6 +215,46 @@ def test_exit_code_table_matches_the_constant(page):
     assert start != -1 and end != -1, f"{page.name} must carry both exit code table markers"
     region = text[start + len(EXIT_TABLE_START) + 1 : end]
     assert region == exit_code_table_markdown()
+
+
+def test_flavor_tables_match_the_config():
+    """The database page's flavor tables are the config module's own output."""
+    from depscan.lib.config import flavor_table_markdown, legacy_flavor_table_markdown
+
+    text = _read(DOCS_DIR / "docs" / "start" / "vulnerability-database.mdx")
+    for start_marker, end_marker, table in (
+        ("<!-- flavor table start -->", "<!-- flavor table end -->", flavor_table_markdown()),
+        (
+            "<!-- legacy flavor table start -->",
+            "<!-- legacy flavor table end -->",
+            legacy_flavor_table_markdown(),
+        ),
+    ):
+        start = text.find(start_marker + "\n")
+        end = text.find(end_marker)
+        assert start != -1 and end != -1, (
+            f"the database page must carry the {start_marker} markers"
+        )
+        region = text[start + len(start_marker) + 1 : end]
+        assert region == "\n" + table, (
+            "the flavor table drifted from VDB_FLAVORS; regenerate it from "
+            "depscan.lib.config.flavor_table_markdown"
+        )
+
+
+def test_schema_table_matches_the_registry():
+    """The schemas page's table is the schema registry's own output."""
+    from analysis_lib.findings.schemas import schema_table_markdown
+
+    text = _read(DOCS_DIR / "docs" / "reference" / "schemas.mdx")
+    start = text.find("<!-- schema table start -->\n")
+    end = text.find("<!-- schema table end -->")
+    assert start != -1 and end != -1, "the schemas page must carry the table markers"
+    region = text[start + len("<!-- schema table start -->\n") : end]
+    assert region == "\n" + schema_table_markdown(), (
+        "the schema table drifted from the registry; regenerate it from "
+        "analysis_lib.findings.schemas.schema_table_markdown"
+    )
 
 
 def test_no_v6_invocations_remain_in_the_docs():
@@ -216,9 +288,7 @@ def test_no_console_script_names_remain_in_the_docs():
     agent plugin names its skill: the skill `depscan-vdb` is a skill, not
     the removed `depscan-vdb` console script, and the same text is both."""
     problems = []
-    for path in sorted(DOCS_DIR.rglob("*")):
-        if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
-            continue
+    for path in _sweep_files():
         for line_number, line in enumerate(_read(path).split("\n"), start=1):
             if "depscan-vdb" not in line and "depscan-validate" not in line:
                 continue
@@ -236,3 +306,18 @@ def test_no_console_script_names_remain_in_the_docs():
                 continue
             problems.append(f"{path.relative_to(REPO_ROOT)}:{line_number}: {line.strip()}")
     assert not problems, "stale console script references in the docs:\n" + "\n".join(problems)
+
+
+def test_manifest_field_tables_match_the_schema():
+    """The scan-directory page's manifest tables are the generator's output."""
+    from depscan.lib.scan_directory import manifest_fields_markdown
+
+    text = _read(DOCS_DIR / "docs" / "results" / "scan-directory.mdx")
+    start = text.find("<!-- manifest fields start -->\n")
+    end = text.find("<!-- manifest fields end -->")
+    assert start != -1 and end != -1, "the scan-directory page must carry the table markers"
+    region = text[start + len("<!-- manifest fields start -->\n") : end]
+    assert region == "\n" + manifest_fields_markdown() + "\n", (
+        "the manifest field tables drifted from the schema; regenerate them from "
+        "depscan.lib.scan_directory.manifest_fields_markdown"
+    )

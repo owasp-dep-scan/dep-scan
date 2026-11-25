@@ -44,7 +44,7 @@ from analysis_lib.findings.schemas import (
 from depscan.lib import scan_directory
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "agents.mdx"
+AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "integrate" / "agents.mdx"
 SCAN_DIRECTORY_FIXTURE = REPO_ROOT / "test" / "data" / "scan-directory"
 VALID_VDR_FIXTURE = REPO_ROOT / "test" / "data" / "jinja-report.vdr.json"
 

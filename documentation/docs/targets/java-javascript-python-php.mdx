@@ -1,0 +1,98 @@
+---
+title: Java, JavaScript, Python and PHP (atom)
+---
+
+# JVM, JavaScript, Python, and PHP reachability with atom
+
+## What atom is and which languages it covers
+
+[atom](https://github.com/AppThreat/atom) is the analyzer dep-scan uses for the four ecosystems that started the reachability feature: Java and the wider JVM (Groovy, Kotlin, Scala), JavaScript and TypeScript, Python, and PHP. atom builds a language-agnostic intermediate representation, performs static slicing for reachability and usages, and emits its own `*-reachables.slices.json`, `*-usages.slices.json` and `*-callsites.slices.json` files, which the atom adapter reads into the evidence store the shared engine counts from. Because one analyzer covers four languages, they behave consistently and accept the same workflow, which is why they are covered in a single chapter. The native analyzers for Rust (rusi), Go (golem), Kotlin (kosi) and .NET (dosai) are separate and have their own chapters; from the engine's point of view every producer's evidence arrives as the same purl-keyed record shape.
+
+For Kotlin and Android projects (a pure-Java Gradle project is left to atom) dep-scan also runs [kosi](https://github.com/cdxgen/cdxgen-plugins-bin) from the cdxgen plugins package when it is installed (`KOSI_CMD` or `DEPSCAN_KOSI_BINARY` name the binary; otherwise kosi is looked up on `PATH`, in `CDXGEN_PLUGINS_DIR` and in the plugins directory found beside the cdxgen install). It uses kosi's `syntax` backend, which reads source only and starts no Gradle or Maven build, and keeps the raw report as `analysis/kosi/kosi.json` (the trees that the `--exclude` patterns of `--cdxgen-args` name are left out of kosi's targets, as described in [excluding trees from a scan](source-repositories#excluding-trees-from-a-scan)); the kosi adapter reads that report into the evidence store, so its evidence joins atom's in the same engine. The API endpoints the report lists become `entry-point` records that name no package (the workspace module that declares each endpoint is kept as the `modulePurl` attribute), so a route kosi found is kept as attack surface without putting a package in the reached set. The syntax tier records library usages joined to explicit imports, and attributes an import to a dependency only when exactly one artifact in the BOM owns it (star imports and imports shared by several artifacts of a group attribute nothing); it has no call graph or data flow, so a dependency it does not attribute is reported as not observed, never as unreachable. `depscan doctor` reports kosi and the `reachability:kotlin` capability.
+
+## Prerequisites
+
+The prerequisites are per-language because atom loads and slices real source.
+
+- Java projects need a JDK (21 or newer for large modern projects) plus Maven or Gradle, so dependencies resolve and the BOM carries versioned `pkg:maven` purls.
+- JavaScript and TypeScript projects need Node.js (20 or newer recommended) and a lockfile or installed `node_modules`.
+- Python projects need Python 3.10 or newer; cdxgen resolves `pkg:pypi` purls from requirements, Poetry, uv, and Pipfile inputs.
+- PHP projects need PHP 7.4 or newer installed locally, though dep-scan supports scanning PHP 5.2 through 8.3. Alternatively, use the dep-scan container image, which carries the PHP runtime.
+
+Across all four, you need cdxgen and dep-scan (`npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`), and cdxgen's research BOM profile (`--bom-profile research` on `depscan scan`) so cdxgen persists the atom slices.
+
+## Turning reachability on
+
+The documented way to enable atom reachability is the cdxgen `research` BOM profile (`--bom-profile research`), which configures cdxgen to generate the atom intermediate representation and persist the `deps`, `usages`, `data-flow`, `reachables`, and `semantics` slice files. Reachability is then on by default (`FrameworkReachability`), and `--explain` adds the human-readable flow breakdown to the report.
+
+```shell
+# Java / JVM
+depscan scan <source directory> --reports-dir <reports directory> -t java --bom-profile research --explain
+
+# JavaScript / TypeScript
+depscan scan <source directory> --reports-dir <reports directory> -t js --bom-profile research --explain
+
+# Python
+depscan scan <source directory> --reports-dir <reports directory> -t python --bom-profile research --explain
+
+# PHP (ensure PHP >= 7.4 is installed, or use the container image)
+depscan scan <source directory> --reports-dir <reports directory> -t php --bom-profile research --explain
+```
+
+For some project types, notably Docker images and OS packages, add `--deep` so cdxgen digs into the layers that carry the real dependencies. When you already have a BOM and only want dep-scan to analyze it, pass the BOM file as the scan target, but remember that reachability still needs the slice files alongside the BOM.
+
+## Analysis walkthrough: reachable versus present
+
+The atom flow shape is the same one the native slicers are normalized to. Each flow object carries a `purls` array, and a purl lands in `reached_purls` when it sits on a flow atom traced from a real entry point. The `direct_purls` set comes from `component.evidence.occurrences` on the BOM, so a component with occurrences is imported in source while a component without them is merely declared. These two sets drive the same prioritization described in [How dep-scan prioritizes](../results/prioritization): a reachable finding earns `depscan:prioritized` and a Reachable insight, while a present-but-unreachable finding keeps `depscan:prioritized=false`.
+
+The committed `test/data/reachables.slices.json` fixture is a large atom slice you can inspect to see the shape. A flow in that file looks, in essence, like a source node (an HTTP parameter, a file read, a framework entry point) connected through intermediate nodes to a sink node that carries the vulnerable package's purl in its tags. When the slicer can trace that path, the purl is reached; when the package is imported but the vulnerable function is never on a traced path, the purl stays in `direct_purls` only and the finding is not Reachable.
+
+```text
+  reachable:     entry point ─▶ ... ─▶ sink node [purl@version]
+                 flow traced   ⇒ purl lands in reached_purls  ⇒ prioritized
+
+  present only:  import [purl@version]     (no flow reaches a vulnerable call)
+                 in direct_purls only      ⇒ depscan:prioritized = false
+```
+
+For a project-scale illustration rather than a per-flow one, the [tutorials](../lessons/01-node-source-reachability) walk real projects end to end, from the first scan to a fix plan.
+
+## When to move to SemanticReachability
+
+`FrameworkReachability` is enough for the question analysts ask most often: is the vulnerable package actually called? Move to `SemanticReachability` when you need endpoint-level, service-level, and post-build reachability on top of that answer. The semantic analyzer maps OpenAPI `x-atom-usages` usage targets onto a component's own occurrence locations (endpoint reachability), associates service tags with the nearest purl (service reachability), and matches framework and cryptographic-asset components across lifecycle SBOMs (post-build reachability).
+
+SemanticReachability needs more inputs than FrameworkReachability can provide from a single source scan, which is called the formulation problem: dep-scan cannot automatically generate all the BOMs the semantic tiers want. The recommended workflow is to build the project and container images, manually generate the necessary BOMs (source, build, container), place them in a single directory, and pass that directory to `depscan scan` with `--target-kind bom-dir`.
+
+```shell
+# Recommended semantic workflow: analyze a directory of lifecycle BOMs
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+```
+
+For a single container image, set `DEPSCAN_SOURCE_IMAGE` so dep-scan can generate the container BOM automatically. For multiple images, such as a docker-compose setup, build the images, generate a `.cdx.json` BOM for each with `cdxgen -t docker -o reports/<name>.cdx.json <image>`, collect them in one directory, and pass that directory to `depscan scan` with `--target-kind bom-dir`. Ensure the BOM files all correspond to the same version of the source, because mixing versions produces duplicate-looking component names. Semantic analysis, including computing the atom slices, is resource-intensive: for larger codebases allocate over 64GB of memory and expect runtimes of 15 minutes or more. The full trade-offs are developed in the [Semantic reachability](source-repositories#the-semantic-analyzer) chapter.
+
+## Customizing the explanation
+
+When `SemanticReachability` is enabled, `--explanation-mode` selects what the `--explain` report emphasizes. The values are:
+
+- `Endpoints`: lists HTTP endpoints, their methods, and code hotspots detected through static analysis.
+- `EndpointsAndReachables`: endpoints plus up to twenty reachable data flows per record source (the default).
+- `NonReachables`: up to twenty non-reachable data flows per record source, useful for showing where validation and sanitization are properly implemented.
+- `LLMPrompts`: prompt text for use with an LLM when you want code-fix suggestions.
+
+```shell
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
+  --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+```
+
+Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to change the number of data-flow explanations from the default of twenty per record source; the [Semantic reachability](source-repositories#the-semantic-analyzer) chapter lists the per-package and per-path limits that apply as well.
+
+## Reading the artifacts
+
+The `*-reachables.slices.json` file holds the atom slices; check here first if no finding is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` (or `depscan-universal.vdr.json` for multi-BOM runs) carries the `depscan:prioritized` property and the `depscan:insights` text per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../integrate/vdr). When you generate a VEX document with `--csaf`, a reached component becomes `known_affected` while a component that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../integrate/vex-csaf).
+
+## Troubleshooting
+
+If the atom file or slices are not generated under the reports directory, the cause is usually memory. Generating the atom intermediate representation and performing static slicing is memory-intensive: for large projects, 32GB is a minimum, and Python applications such as DejaCode need around 40GB. atom may crash with log messages suppressed unless you invoke dep-scan with `SCAN_DEBUG_MODE=debug`. To troubleshoot step by step, try generating the atom file directly using the [atom documentation](https://atom-docs.appthreat.dev/).
+
+If no reachable flows were identified, the BOM may lack the evidence the engine needs. Computing reachable flows requires an accurate SBOM generated by cdxgen with `--profile research` or `--deep` depending on the project type. For some project types, notably Python and JavaScript, additional semantic tags may be required to identify reachable flows correctly. Look for files matching `*-reachables.slices.json` in the reports directory; if the file is empty or small, no flows were traced, and if a file exists but its flows lack a `purls` value, the BOM lacked the information needed for purl identification.
+

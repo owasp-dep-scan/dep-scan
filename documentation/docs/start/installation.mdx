@@ -1,0 +1,95 @@
+---
+sidebar_position: 2
+title: Installation
+---
+
+# Installing dep-scan
+
+dep-scan needs two commands on the machine that scans: cdxgen, which builds the inventory and runs the source analyzers, and depscan itself. The vulnerability database is not installed, only downloaded on demand, so the install steps below say nothing about it; [the first scan](first-scan) covers the download and [the database page](vulnerability-database) covers the flavors.
+
+## With pip and npm
+
+```bash
+npm install -g @cdxgen/cdxgen
+pip install owasp-depscan
+```
+
+dep-scan needs Python 3.11 or later. The base install covers vulnerability matching, reachability and the package risk audit. Two optional extras add more:
+
+- `ext`: the binary and app analysis stack (blint 4 and atom-tools), needed for `--checks binary` and for app targets.
+- `mcp`: the Model Context Protocol SDK, needed only by `depscan mcp`.
+
+```bash
+pip install "owasp-depscan[ext]"
+```
+
+`pip install owasp-depscan[all]` installs every extra, including the server library and the GitHub client, and is the right choice for a scan workstation that does a bit of everything.
+
+## The container image
+
+The `ghcr.io/owasp-dep-scan/dep-scan` image carries dep-scan, cdxgen at the pinned version, the language analyzer binaries, blint and a current toolchain, so nothing else is installed on the host:
+
+```bash
+docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan depscan scan /app --reports-dir /app/reports
+```
+
+An AlmaLinux 9 variant is published as `ghcr.io/owasp-dep-scan/dep-scan-al9`. Cache the database across runs by mounting a directory and pointing `VDB_HOME` at it:
+
+```bash
+docker run --rm \
+    -e VDB_HOME=/db \
+    -v /tmp:/db \
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan depscan scan /app --reports-dir /app/reports
+```
+
+## Homebrew
+
+The [OWASP dep-scan tap](https://github.com/owasp-dep-scan/homebrew-tap) installs the standalone binary as `depscan`, with cdxgen bundled and no Python or Node.js needed:
+
+```bash
+brew tap owasp-dep-scan/tap
+brew trust --tap owasp-dep-scan/tap
+brew install dep-scan
+```
+
+`brew trust` accepts the tap, which Homebrew requires before loading formulae from a third-party tap when `HOMEBREW_REQUIRE_TAP_TRUST` is set.
+
+## Standalone binaries
+
+Single-file executables are attached to each [GitHub release](https://github.com/owasp-dep-scan/dep-scan/releases). They bundle a matching cdxgen binary, so BOM generation works without installing Python, Node.js or cdxgen.
+
+| Platform | Architecture | Asset |
+| --- | --- | --- |
+| Linux (glibc) | x86_64 | `depscan-linux-amd64` |
+| Linux (glibc) | arm64 | `depscan-linux-arm64` |
+| Linux (musl / Alpine) | x86_64 | `depscan-linux-amd64-musl` |
+| Linux (musl / Alpine) | arm64 | `depscan-linux-arm64-musl` |
+| macOS | Apple silicon | `depscan-darwin-arm64` |
+| macOS | Intel | `depscan-darwin-amd64` |
+| Windows | x86_64 | `depscan-windows-amd64.exe` |
+
+Each asset has a matching `.sha256` file for verification:
+
+```bash
+curl -LO https://github.com/owasp-dep-scan/dep-scan/releases/latest/download/depscan-linux-amd64
+curl -LO https://github.com/owasp-dep-scan/dep-scan/releases/latest/download/depscan-linux-amd64.sha256
+sha256sum -c depscan-linux-amd64.sha256
+chmod +x depscan-linux-amd64
+./depscan-linux-amd64 scan $PWD --reports-dir $PWD/reports
+```
+
+The macOS binaries are unsigned, so Gatekeeper may block the first run; clear the quarantine attribute with `xattr -d com.apple.quarantine ./depscan-darwin-arm64`, or allow the binary under System Settings, Privacy & Security.
+
+Two limits of the binaries are worth knowing before choosing them. The vulnerability database is still downloaded on the first scan; select it with `depscan vdb download` as everywhere else. And the binaries bundle blint without its optional disassembly backend, so deep disassembly-based binary analysis is unavailable there; use the Python package with the `ext` extra when a scan needs it.
+
+## What to install for what
+
+| You want to | Install | Notes |
+| --- | --- | --- |
+| scan source repositories | base + cdxgen | reachability analyzers per language come through cdxgen's plugin binaries |
+| scan container images and OS packages | base, with the `full` database flavor | the image is pulled or unpacked locally |
+| scan binaries and apps | the `ext` extra or the container image | blint and atom-tools |
+| drive dep-scan from an agent | the `mcp` extra | only `depscan mcp` needs it |
+| serve scans over HTTP | the `server` extra or the container image | [server mode](../integrate/server) |
+
+The analyzers a scan may call are checked, not assumed: `depscan doctor` reports, per capability, whether it can run on the machine it stands on and what is missing ([the doctor page](../reference/doctor)).

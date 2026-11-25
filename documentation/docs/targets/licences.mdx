@@ -1,0 +1,35 @@
+---
+sidebar_position: 7
+title: Licences
+---
+
+# Licence checks
+
+A licence violation is not a vulnerability, but it is a finding a legal team can act on, and it belongs in the same file as everything else. The licence check reads the licence expressions on the components of the inventory, flags the ones with copyleft conditions or unknown licences, and writes the result both to the console and to `license-<type>.json` in the scan directory as one JSON array of row objects:
+
+```json
+[
+  {
+    "Package": "alpine:ca-certificates-bundle",
+    "Version": "20261020-r0",
+    "License Id": "MPL-2.0",
+    "License conditions": "Disclose Source, Include Copyright, Same License For File"
+  }
+]
+```
+
+## Running it
+
+```bash
+depscan scan ./my-project --checks license --reports-dir reports
+```
+
+The check sets cdxgen's licence fetch on, which populates the external references the licence resolution needs, and appends the `license` pseudo type so the licence analysis runs. It needs no tool beyond cdxgen. A scan that already carries licence fields on its components resolves them without the fetch.
+
+## What is reported, and what is not
+
+The report holds every package whose licence resolved to an id with conditions worth reading, and the console prints the same rows with their conditions. A package whose BOM entry states no licence at all is never reported as clean: the manifest's licenses stage counts those rows in a `notAssessed` line, so "no licence data" and "licence checked" stay distinct ([coverage](../results/coverage)). When no package of the scan has licence data, the file holds `[]`, which reads as an assessed scan with nothing to report.
+
+## Policy
+
+The licence policy gate, allowed and denied lists and copyleft scope in `depscan.toml` reported as findings a gate can select, is planned ([the supply-chain plan's D7](https://github.com/owasp-dep-scan/dep-scan/issues/612)) and not built in this version. Today the check is informational: read `license-<type>.json` the way you would a spreadsheet, and let the triage of everything else happen in the findings file.

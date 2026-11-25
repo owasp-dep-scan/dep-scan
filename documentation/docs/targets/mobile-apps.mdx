@@ -1,0 +1,30 @@
+---
+sidebar_position: 4
+title: Mobile apps
+---
+
+# Scanning mobile apps
+
+An app is a bundle of other people's code: SDKs for analytics, ads and payments, native libraries per CPU architecture, and the app's own bytecode. dep-scan inventories an Android app and reviews it with blint today, and the deeper mobile analysis (tracker SDK inventory, per-ABI hardening, reachability inside the app, iOS review) is planned, not built. This page says what each scan answers today, so an app review can be planned around the real answers.
+
+## Android apps
+
+An `.apk` or `.aab` file is detected as an `android` target and analysed with blint, which parses the DEX bytecode, the manifest and the native libraries:
+
+```bash
+depscan scan app-release.apk --checks binary --reports-dir reports
+```
+
+The scan writes the same scan directory as any other: the components blint recovered (the app's own code as `pkg:generic` entries, the native libraries per ABI, the embedded runtimes), advisory matches against them, and, with `--checks binary`, blint's security findings about the app as `binary-hardening` findings with the same model as a desktop binary's. Deep DEX analysis is slow and needs the full blint install (`ext` extra).
+
+## iOS apps
+
+An `.ipa` file has no inventory path in this version: naming one stops the scan with exit code 4 and the reason on stderr, the same as the `firmware` target. The refusal is deliberate: without an implemented review, an app scan could only ever be an SBOM, and reporting one as an analysis would be the false comfort this tool does not deal in.
+
+## The mobile check
+
+The `mobile` check (`--checks mobile`) is not implemented in this version. Naming it explicitly stops the scan with exit code 4 and [the issue](https://github.com/owasp-dep-scan/dep-scan/issues/625) that tracks the work; `--checks all` leaves it off and records the reason in the manifest ([coverage](../results/coverage)). The agent plugin's `depscan-mobile-app` skill runs blint's own commands directly for the parts dep-scan does not report yet, and says at each step which path it took.
+
+## What today's answers do not cover
+
+A scan today does not tell you which tracker and analytics SDKs the app embeds by behaviour, whether a vulnerable native library is actually called from the app's own code, what the exported components and deep links expose, or how the app scores against Android's hardening requirements (BTI, PAC, MTE, 16 KB pages). Those answers are the [mobile plan](https://github.com/owasp-dep-scan/dep-scan/issues/572): the inventory and advisory matching you get today are the foundation they will sit on, and the findings file already carries what they produce as findings of the same model.

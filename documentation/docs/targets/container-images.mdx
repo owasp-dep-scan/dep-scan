@@ -1,0 +1,49 @@
+---
+sidebar_position: 2
+title: Container images
+---
+
+# Scanning container images and root filesystems
+
+Much of what runs in production was never compiled on your machine. A container image carries an OS package database, application packages, language runtimes and standalone binaries, and an image scan inventories all of it and matches it against the database's OS-plus-application flavor. Point the scan verb at an image reference, an archive or an unpacked root filesystem; the kind is detected.
+
+## What you can scan
+
+| Target | Example | What happens |
+| --- | --- | --- |
+| an image reference | `nginx:alpine` | pulled with the local daemon (`docker`, `podman` or `nerdctl`) and unpacked |
+| an image by digest | `redmine@sha256:c3c9da04...` | the digest pins the bytes, which is what a reproducible scan wants |
+| an archive | `/tmp/image.tar` from `docker save`, or an OCI layout directory | unpacked locally, no pull |
+| a root filesystem | a directory holding `/etc/os-release` and `/lib/apk/db/...` | inventoried in place |
+| Kubernetes manifests | `-t yaml-manifest` | the manifest files, not a cluster |
+
+A digest reference is the honest form for CI: a tag moves, a digest does not.
+
+```bash
+depscan scan redmine@sha256:c3c9da0407e99b2a47af9e0af7b06bce1a3cfec16def1c14cd1fae61e3fa0770 \
+  --reports-dir reports
+```
+
+The scan detects a `container` kind from the reference shape and scans as the `docker` project type; an existing path that looks like an image reference is scanned as the path. `--target-kind container` forces the reading when a name is ambiguous. Use `--deep` when the image hides its packages in layers the quick pass does not open; it is slower and is what persuades cdxgen to inventory the real dependency set.
+
+## Which database flavor
+
+OS packages are advisories against distro feeds, so an image scan needs the `full` flavor (app+OS); the `app-only` flavor holds no OS advisories, so the OS layer would simply match nothing. For a scan that only ever sees source repositories, `app-only` is enough; [the database page](../start/vulnerability-database) explains the trade.
+
+## What the scan reports
+
+The console and findings carry the same finding model as a source scan. From a scan of the `redmine` image above, the findings span the OS layer and the application layer together: `pkg:deb/debian/...` components from the Debian package database, `pkg:gem/...` components from the bundled Rails gems, and the Go binaries the image ships. Each finding's presence axis and grade mean what they mean everywhere else, and the fix versions are the distro's or the gem's, as the advisory states them.
+
+The manifest records the inventory stage for `docker` and the files the unpack wrote. An image whose OS is not one the database carries (an unknown or custom base) still reports the application packages, and the OS layer is named as a gap in the coverage rather than as clean.
+
+## What an image scan cannot see
+
+An image scan reads package databases, and package databases have edges:
+
+- **Unpackaged binaries.** A Go or Rust binary compiled into the image carries no entry in any package database. cdxgen recovers Go modules from build info and Rust crates from auditable data where the build embedded them; a binary without either is inventoried as a file, and its modules are reported as not assessed rather than clean.
+- **Presence without use.** A library in the package database is not proof that anything loads it. The binary check's link-closure analysis, which the [binaries page](binaries) describes, distinguishes a library that is linked by an executable from one that is merely installed.
+- **Runtime behaviour.** What the container actually executes, and what it reaches over the network, is invisible to a static unpack. The trace BOM workflow records it when you have a traced run to scan beside the image.
+
+## Kubernetes and cloud manifests
+
+`depscan scan ./manifests -t yaml-manifest` scans Kubernetes manifest files and cloud application definitions the same way, as inventory for matching; the cluster itself is never contacted.

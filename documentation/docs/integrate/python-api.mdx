@@ -1,0 +1,118 @@
+---
+sidebar_position: 5
+---
+
+# Python API
+
+dep-scan can be driven from Python through `depscan.api`. The `depscan` command itself goes through this module, so a scan run from Python produces the same files and the same console output as the command line.
+
+:::note
+The Python API is new in 7.0 and may change before the 7.0.0 release.
+:::
+
+## Scanning
+
+`depscan.api.scan(options, render=True)` runs a scan and returns a `ScanResult`. The options are an `argparse.Namespace` built by the `depscan` command line parser; `scan_options()` returns its defaults with your overrides applied, so every command line option can be set by name.
+
+```python
+from depscan import api
+
+options = api.scan_options(bom="sbom.json", reports_dir="reports")
+result = api.scan(options)
+print(result.reports_dir, result.project_types)
+```
+
+An override name that is not a command line option raises `TypeError` naming it. If you parse the command line yourself, pass that namespace to `scan` directly.
+
+The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`, plus the scan directory's own `depscan.findings.json` and `depscan.manifest.json`. The [scan directory](../results/scan-directory) page documents the layout. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
+
+```python
+result = api.scan(options, render=False)
+```
+
+When a stage stops the scan, for example a BOM file target that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan. The console settings a scan applies, such as `quiet=True`, stay in effect for later scans in the same process.
+
+## The scan result
+
+`ScanResult` holds what one scan produced:
+
+| Field | Meaning |
+| --- | --- |
+| `reports_dir` | The directory the scan wrote its files to. |
+| `project_types` | Every project type the scan ran for, including types skipped after producing nothing. |
+| `types` | One `TypeScanResult` per type that produced results, in scan order. |
+| `vulnerabilities` | Property: every vulnerability of every type, in type then write order. |
+| `manifest` | The scan directory's manifest document, or `None` when the result came from a directory without one. |
+| `findings` | The array of `depscan.findings.json`: one finding per advisory and component, each of the `depscan-finding` schema. |
+
+Each `TypeScanResult` carries the `project_type`, the `bom_file` the type was scanned from, the `vdr_file` written for it (either is `None` when the scan produced no such file: a single-purl scan writes neither, and a scan that found no vulnerabilities writes no VDR), and the `vulnerabilities` as written to that VDR.
+
+```python
+for tscan in result.types:
+    print(tscan.project_type, tscan.bom_file, tscan.vdr_file, len(tscan.vulnerabilities))
+```
+
+A scan that stops partway still leaves its directory with a manifest naming the failed stage; the scan raises `ScanError` as above and the directory is there to read.
+
+## Loading a saved scan
+
+`load_scan(reports_dir)` rebuilds a `ScanResult` from a scan directory a scan wrote, without running a scan. When the directory carries `depscan.manifest.json`, the manifest path runs: the project types, the files and the stage results come from the manifest, the vulnerabilities from the VDR files it lists, and the findings from `depscan.findings.json`. The result carries the same `manifest` and `findings` the scan returned, and a project type that found no vulnerabilities loads as an empty result because the manifest shows its matching stage completed. A type whose matching was skipped or failed stays in `project_types` but gets no entry in `types`. A manifest whose layout major this dep-scan does not know is refused with an error naming both versions, and a manifest in which no matching stage completed is refused instead of loading as clean.
+
+A directory without a manifest is read the way scans before the scan directory wrote them: every CycloneDX JSON file directly in the directory that carries a `vulnerabilities` array is treated as a VDR (the BOM name with `.vdr.json`, and `depscan-universal.vdr.json` for a BOM directory scan). Such a directory cannot hold the result of a clean scan, because those scans wrote no VDR, and a directory with no VDR file raises `ScanError` rather than returning an empty result.
+
+```python
+result = api.load_scan("reports")
+print(len(result.vulnerabilities), result.manifest["layoutVersion"])
+```
+
+## Querying vulnerabilities
+
+`query(result, *, purl=None, vuln_id=None, severities=None)` returns the VDR vulnerability objects of a result that match every filter given:
+
+```python
+advisories = api.query(result, purl="pkg:npm/@babel/core")
+critical = api.query(result, severities={"critical"})
+```
+
+A `purl` without a version matches every version, and the purl comparison follows purl semantics, so `pkg:npm/@babel/core` and `pkg:npm/%40babel/core` are the same package. `vuln_id` matches the vulnerability `id` or an id under its `references`, ignoring case, so a GHSA id finds the CVE entry that references it. When `purl` carries qualifiers or a subpath, the affected ref must carry the same ones. `severities` takes a CycloneDX severity name or a set of them (`critical`, `high`, `medium`, `low`, `info`, `none`, `unknown`) and matches them against the vulnerability's highest rating: the most severe rating, and of those the one with the greatest score. An empty set raises `ValueError`.
+
+## Explaining a scan
+
+`explain(result, mode="EndpointsAndReachables", prompts_file=None)` runs the explanation the `--explain` option renders and returns its text, with colour codes stripped:
+
+```python
+text = api.explain(result)
+```
+
+The explanation reads the evidence store (`evidence.jsonl`) and the OpenAPI specifications (`*openapi*.json`) from `result.reports_dir`. When they are missing, or when nothing can be explained, `explain` raises `ScanError` naming what is missing instead of returning empty text. The `mode` values are those of `--explanation-mode`; in the `LLMPrompts` mode the prompts are written to `prompts_file`.
+
+## Comparing two scans
+
+`diff(old, new)` compares two results and returns a `ScanDiff`. Every vulnerability is keyed by the pair of its `id` and the ref of each of its `affects` entries, so the same advisory hitting two components counts once per component. Each list holds `DiffEntry` objects with the `id` and `ref` of the pair and the `old` and `new` vulnerability objects carrying it (`old` is `None` for a new pair, `new` is `None` for a fixed one).
+
+| Field | Meaning |
+| --- | --- |
+| `new` | Pairs that exist only in the new result. |
+| `fixed` | Pairs that exist only in the old result. |
+| `changed` | Pairs on both sides whose highest rating differs in severity or score. |
+
+```python
+changes = api.diff(old_result, new_result)
+print([(entry.id, entry.ref) for entry in changes.new])
+```
+
+## Doctoring the machine
+
+`doctor()` collects the report the `depscan doctor` command prints: every tool a scan may call with where it was found and its version, the vulnerability database as a read-only inspection sees it, and for every capability whether it can run on this machine. The call never prompts, never downloads anything and never writes to the database; a missing tool or database is a reported state, so it always returns a report.
+
+```python
+report = api.doctor()
+report.to_text()   # what `depscan doctor` prints
+report.to_dict()   # the JSON document, which validates against the depscan-doctor schema
+```
+
+The `DoctorReport` carries `platform`, `tools`, `data` and `capabilities`; the [doctor page](../reference/doctor) documents each field. The capability table the report evaluates is the one in `depscan/lib/doctor.py`, the single place that knows which capability needs which tool or data.
+
+## Exceptions
+
+`depscan.api.ScanError` is raised by `scan` when a stage stops the scan, and by `load_scan` and `explain` when their input lacks what they need; the message always names the reason. `scan_options` raises `TypeError` for an unknown option name.
