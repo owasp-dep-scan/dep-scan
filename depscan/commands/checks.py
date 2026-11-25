@@ -31,8 +31,8 @@ class CheckSpec:
     ``capability`` is the doctor capability row the gate consults; None means
     the check has no gate (vulnerabilities always runs, whatever the machine
     holds). ``project_type`` and ``technique`` are appended to the internal
-    lists when the check runs, and ``risk_audit`` turns the package risk
-    audit on.
+    lists when the check runs, and ``risk_audit`` turns the supply-chain
+    audit (cdx-audit) on.
     """
 
     capability: Optional[str] = None

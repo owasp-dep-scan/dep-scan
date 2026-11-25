@@ -1,0 +1,224 @@
+{
+ "generatedAt": "2026-11-25T12:00:00.000Z",
+ "groupedResults": [],
+ "inputs": [
+  "sbom-python.cdx.json"
+ ],
+ "results": [
+  {
+   "assessment": {
+    "categoryCounts": {
+     "ci-permission": 2
+    },
+    "attackTacticCount": 1,
+    "attackTechniqueCount": 1,
+    "confidence": 0.95,
+    "confidenceLabel": "high",
+    "ciCompromiseSignalCount": 0,
+    "ciHygieneSignalCount": 2,
+    "distinctCategoryCount": 1,
+    "findingsCount": 2,
+    "formulationSignalCount": 2,
+    "packageIntegrityCompromiseSignalCount": 0,
+    "packageIntegrityHygieneSignalCount": 0,
+    "priorityCorroborationCount": 0,
+    "reasons": [
+     "2 CI hygiene signal(s) were observed in GitHub Actions or privileged workflow configuration.",
+     "1 ATT&CK tactic(s) and 1 ATT&CK technique(s) were implicated by the audit findings.",
+     "Registry provenance or trusted-publishing evidence reduced the final predictive score."
+    ],
+    "score": 32,
+    "severity": "medium",
+    "strongSignalCount": 0
+   },
+   "cacheHit": false,
+   "findings": [
+    {
+     "attack": {
+      "tactics": [
+       "TA0001"
+      ],
+      "techniques": [
+       "T1195.001"
+      ]
+     },
+     "attackTactics": [
+      "TA0001"
+     ],
+     "attackTechniques": [
+      "T1195.001"
+     ],
+     "ruleId": "CI-003",
+     "name": "Action pinned to mutable tag",
+     "description": "GitHub Actions pinned to tags (vs SHA) can change behavior unexpectedly if tag is moved",
+     "severity": "medium",
+     "category": "ci-permission",
+     "message": "GitHub Action 'actions/checkout@v5' pinned to mutable tag (not SHA)",
+     "mitigation": "Consider pinning to full commit SHA for immutability: actions/setup-node@<full-sha>",
+     "location": {
+      "bomRef": "pkg:github/actions/checkout@v5",
+      "purl": "pkg:github/actions/checkout@v5"
+     },
+     "evidence": {
+      "currentVersion": "v5",
+      "isOfficial": "true"
+     }
+    }
+   ],
+   "licenseViolations": [],
+   "repoUrl": "https://github.com/sehmaschine/django-grappelli",
+   "resolution": {
+    "type": "pypi",
+    "registry": "https://pypi.org/pypi/",
+    "repoUrl": "https://github.com/sehmaschine/django-grappelli",
+    "version": "5.0.1",
+    "namespace": null,
+    "name": "django-grappelli"
+   },
+   "scanDir": "/var/folders/sj/g0xj1gyn05qcvc6r3j3syg6h0000gn/T/pypi-django-grappelli-5-0-1-bf6fdc8dcfa1-hS5nBo",
+   "sourceDirectoryConfidence": "medium",
+   "status": "audited",
+   "target": {
+    "bomRef": "pkg:pypi/django-grappelli@5.0.1",
+    "buildOnlyWorkspace": false,
+    "name": "django-grappelli",
+    "namespace": null,
+    "purl": "pkg:pypi/django-grappelli@5.0.1",
+    "properties": [
+     {
+      "name": "cdx:license:category",
+      "value": "Unstated License"
+     },
+     {
+      "name": "cdx:pypi:artifactDigestBlake2b256",
+      "value": "40f240eba7b8a614e23a9b943a68ceeae954768f300a0f5018b1c40f126c0e1b, e68b885242eb925e25e3e6b49fa4e6341d38b5af260a11767da2de8734542994"
+     },
+     {
+      "name": "cdx:pypi:artifactDigestMd5",
+      "value": "f37f56f6c8a9550b79b4d46069deca41, 3bde92cf0d8f15c898a0c562df1cd52a"
+     },
+     {
+      "name": "cdx:pypi:artifactDigestSha256",
+      "value": "299d301f109d2aec91027f9e40a0b254d2cfe9da0db18271a07a8c2e07173943, f291d5c596b0e1fc1e0e1bf819f472503c194a4ae3dfdd35b5b4c0a3bb67c101"
+     }
+    ],
+    "qualifiers": null,
+    "directDependency": true,
+    "explicitRequiredScope": true,
+    "developmentOnly": false,
+    "occurrenceCount": 19,
+    "platformSpecific": false,
+    "required": true,
+    "runtimeFacingCargo": false,
+    "scope": "required",
+    "source": "/private/tmp/p21-data/oras/dejacode/sbom-python.cdx.json",
+    "trustedPublishing": false,
+    "type": "pypi",
+    "version": "5.0.1",
+    "bomRefs": [
+     "pkg:pypi/django-grappelli@5.0.1"
+    ],
+    "sources": [
+     "/private/tmp/p21-data/oras/dejacode/sbom-python.cdx.json"
+    ],
+    "normalizedName": "django-grappelli"
+   }
+  },
+  {
+   "assessment": {
+    "categoryCounts": {},
+    "confidence": 0.35,
+    "confidenceLabel": "low",
+    "distinctCategoryCount": 0,
+    "findingsCount": 0,
+    "formulationSignalCount": 0,
+    "reasons": [
+     "Unable to resolve repository URL from purl metadata."
+    ],
+    "score": 0,
+    "severity": "none",
+    "strongSignalCount": 0
+   },
+   "error": "Unable to resolve repository URL from purl metadata.",
+   "findings": [],
+   "status": "skipped",
+   "target": {
+    "bomRef": "pkg:pypi/django-otp@1.7.5",
+    "buildOnlyWorkspace": false,
+    "name": "django-otp",
+    "namespace": null,
+    "purl": "pkg:pypi/django-otp@1.7.5",
+    "properties": [
+     {
+      "name": "cdx:pypi:registry",
+      "value": "thirdparty/dist"
+     },
+     {
+      "name": "cdx:python:requires_python",
+      "value": ">=3.8"
+     }
+    ],
+    "qualifiers": null,
+    "directDependency": true,
+    "explicitRequiredScope": true,
+    "developmentOnly": false,
+    "occurrenceCount": 49,
+    "platformSpecific": true,
+    "required": true,
+    "runtimeFacingCargo": false,
+    "scope": "required",
+    "source": "/private/tmp/p21-data/oras/dejacode/sbom-python.cdx.json",
+    "trustedPublishing": false,
+    "type": "pypi",
+    "version": "1.7.5",
+    "bomRefs": [
+     "pkg:pypi/django-otp@1.7.5"
+    ],
+    "sources": [
+     "/private/tmp/p21-data/oras/dejacode/sbom-python.cdx.json"
+    ],
+    "normalizedName": "django-otp"
+   }
+  }
+ ],
+ "skipped": [
+  {
+   "reason": "unsupported-ecosystem",
+   "source": "sbom-python.cdx.json",
+   "purl": "pkg:golang/github.com/x/mod@1.0.0",
+   "bomRef": "pkg:golang/github.com/x/mod@1.0.0",
+   "name": "mod",
+   "type": "golang"
+  }
+ ],
+ "summary": {
+  "analysisErrorCounts": {},
+  "erroredTargets": 0,
+  "inputBomCount": 1,
+  "scannedTargets": 4,
+  "severityCounts": {
+   "critical": 0,
+   "high": 0,
+   "low": 0,
+   "medium": 3,
+   "none": 2
+  },
+  "skippedTargets": 1,
+  "totalTargets": 5,
+  "groupedResultCount": 5,
+  "groupedSeverityCounts": {
+   "critical": 0,
+   "high": 0,
+   "low": 0,
+   "medium": 3,
+   "none": 2
+  },
+  "targetCapTruncated": 12,
+  "timeBudgetExhausted": true
+ },
+ "tool": {
+  "name": "cdx-audit",
+  "version": "13.10.0"
+ },
+ "version": 1
+}

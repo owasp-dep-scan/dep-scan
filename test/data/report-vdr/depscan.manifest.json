@@ -57,7 +57,7 @@
       "status": "skipped",
       "capabilities": [],
       "projectType": "universal",
-      "reason": "the risk audit was not requested"
+      "reason": "the supply-chain audit was not requested"
     },
     {
       "name": "enrichment",

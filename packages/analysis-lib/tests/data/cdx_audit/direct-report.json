@@ -1,0 +1,106 @@
+{
+ "auditMode": "direct",
+ "generatedAt": "2026-11-25T12:00:00.000Z",
+ "inputs": [
+  "sbom-python.cdx.json"
+ ],
+ "results": [
+  {
+   "auditOptions": {
+    "bomAuditMinSeverity": "low",
+    "directBomAudit": true
+   },
+   "bomFormat": "CycloneDX",
+   "findings": [
+    {
+     "attack": {
+      "tactics": [
+       "TA0006"
+      ],
+      "techniques": [
+       "T1528"
+      ]
+     },
+     "attackTactics": [
+      "TA0006"
+     ],
+     "attackTechniques": [
+      "T1528"
+     ],
+     "ruleId": "CI-002",
+     "name": "OIDC token issuance to non-official action",
+     "description": "Workflows or jobs granting id-token:write to third-party actions may enable token exfiltration",
+     "severity": "high",
+     "category": "ci-permission",
+     "message": "Workflow grants OIDC token access to non-official action 'pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e'",
+     "mitigation": "Restrict id-token scope or use only verified/official actions for OIDC operations",
+     "location": {
+      "bomRef": "pkg:github/pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e",
+      "purl": "pkg:github/pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e",
+      "file": ".github/workflows/publish-pypi-release-aboutcode-api-auth.yml"
+     },
+     "evidence": {
+      "isVerified": "false",
+      "actionGroup": "pypa",
+      "jobHasIdTokenWrite": "true",
+      "workflowHasIdTokenWrite": "true"
+     }
+    },
+    {
+     "attack": {
+      "tactics": [],
+      "techniques": []
+     },
+     "attackTactics": [],
+     "attackTechniques": [],
+     "ruleId": "PKG-006",
+     "name": "Python dependency from non-approved registry",
+     "description": "PyPI packages from unapproved registries may introduce unvetted code",
+     "severity": "low",
+     "category": "dependency-source",
+     "message": "Python package 'altcha' sourced from non-default registry: thirdparty/dist",
+     "mitigation": "Verify registry trustworthiness",
+     "location": {
+      "bomRef": "pkg:pypi/altcha@1.0.0",
+      "purl": "pkg:pypi/altcha@1.0.0"
+     },
+     "evidence": {
+      "registry": "thirdparty/dist",
+      "resolvedFrom": null
+     }
+    }
+   ],
+   "serialNumber": "urn:uuid:59e7b709-955a-410e-9e03-91dc28edefb3",
+   "source": "sbom-python.cdx.json",
+   "specVersion": "1.7",
+   "status": "audited",
+   "summary": {
+    "findingsBySeverity": {
+     "critical": 0,
+     "high": 1,
+     "low": 1,
+     "medium": 0
+    },
+    "findingsCount": 2,
+    "maxSeverity": "high"
+   }
+  }
+ ],
+ "summary": {
+  "findingsBySeverity": {
+   "critical": 0,
+   "high": 1,
+   "low": 1,
+   "medium": 0
+  },
+  "inputBomCount": 1,
+  "maxSeverity": "high",
+  "totalFindings": 2,
+  "bomsWithFindings": 1
+ },
+ "tool": {
+  "name": "cdx-audit",
+  "version": "13.10.0"
+ },
+ "version": 1
+}

@@ -36,6 +36,7 @@ import json
 import os
 import secrets
 import socket
+import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
@@ -48,7 +49,6 @@ from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_file
 from analysis_lib.output import (
     exploitability_grade_stats,
     licenses_risk_table,
-    pkg_risks_table,
     summary_stats,
 )
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
@@ -67,12 +67,11 @@ from vdb.lib.utils import parse_purl
 from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
-from depscan.lib import binary_review, explainer, utils
+from depscan.lib import binary_review, cdx_audit, explainer, utils
 from depscan.lib.exclusions import ExclusionSet
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
-from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
     ScanFailureError,
     annotate_vdr,
@@ -83,7 +82,6 @@ from depscan.lib.bom import (
     determine_spec_version,
     discover_reachability_reports,
     export_bom,
-    get_pkg_by_type,
     reachability_slice_files,
 )
 from depscan.lib.config import (
@@ -91,7 +89,6 @@ from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
     VDB_USE_SHARDS,
     license_data_dir,
-    pkg_max_risk_score,
     spdx_license_list,
     write_vdb_image_marker,
 )
@@ -111,11 +108,12 @@ REACHABILITY_PRODUCERS = ("atom", "rusi", "golem", "kosi", "dosai")
 
 #: The producers whose adapters collect evidence without grading
 #: reachability: the BOM's own usage evidence and annotations (cdxgen), the
-#: binary review (blint) and the runtime trace (tracebom). Their records
-#: reach the evidence store and the exploitability inputs, and nothing else:
-#: they are not reachability analyzers, so the manifest's analyzer entries
-#: never list them and their records never count as reached.
-EVIDENCE_PRODUCERS = ("blint", "cdxgen", "tracebom")
+#: binary review (blint), the runtime trace (tracebom) and the supply-chain
+#: audit (cdx-audit). Their records reach the evidence store and the
+#: exploitability inputs, and nothing else: they are not reachability
+#: analyzers, so the manifest's analyzer entries never list them and their
+#: records never count as reached.
+EVIDENCE_PRODUCERS = ("blint", "cdxgen", "tracebom", "cdx-audit")
 
 SERVER_LIB = None
 try:
@@ -163,11 +161,20 @@ class TypeScan:
     container_bom_file: Optional[str] = None
     operations_bom_file: Optional[str] = None
     target_bom_file: Optional[str] = None
-    risk_report_file: Optional[str] = None
-    # Why the risk audit failed when it ran and degraded; the scan goes on.
+    # Why the supply-chain audit failed when it ran and degraded; the scan
+    # goes on.
     risk_error: Optional[str] = None
-    # Why a requested risk audit had nothing it could audit for this type.
+    # Why a requested supply-chain audit had nothing it could audit for
+    # this type.
     risk_not_assessed: Optional[str] = None
+    #: The cdx-audit report files this type's audit wrote, for the risk
+    #: stage's manifest outputs.
+    audit_output_files: List[str] = field(default_factory=list)
+    #: How many coverage caveats the audit reported (skipped or failed
+    #: targets, a target cap or time budget that cut the queue).
+    audit_caveat_count: int = 0
+    #: How many findings the audit's own summary states.
+    audit_findings_count: int = 0
     #: How many of this type's packages carried no license data at all, as
     #: the notAssessed line the licenses stage records; None when the stage
     #: did not run or every package carried license data.
@@ -904,6 +911,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
             get_version(),
             exploitability=ctx.exploitability,
             blint_reviews=_scan_requested_blint_reviews(ctx),
+            supply_chain=ctx.perform_risk_audit,
             evidence_records=ctx.evidence_records,
             usage_not_assessed=ctx.usage_not_assessed,
         )
@@ -1273,7 +1281,6 @@ def _produce_boms(ctx, scan):
     # generator, never evidence that a document exists, so nothing below
     # reads it - `bom_files` holds what was actually produced.
     scan.target_bom_file = os.path.join(ctx.reports_dir, f"sbom-{scan.project_type}.cdx.json")
-    scan.risk_report_file = os.path.join(ctx.reports_dir, f"depscan-risk-{scan.project_type}.json")
     # Every BOM document available for this project type. An empty list is
     # a normal state (purl scans), not a failure.
     scan.bom_files = []
@@ -1537,69 +1544,218 @@ def stage_analysis_licenses(ctx, scan) -> bool:
     return True
 
 
-#: The purl types the risk audit reads package-manager metadata for, with
-#: the risk_audit_map key that audits them.
-RISK_AUDIT_PURL_TYPES = (("npm", "npm"), ("pypi", "pypi"), ("cargo", "cargo"))
+#: The direct-audit categories a supply-chain check runs. Source and BOM
+#: scans audit the package-level packs that replace the retired registry
+#: audit; container scans add the image hardening packs.
+DIRECT_AUDIT_CATEGORIES = ("package-integrity", "dependency-source")
+CONTAINER_AUDIT_CATEGORIES = (
+    *DIRECT_AUDIT_CATEGORIES,
+    "container-risk",
+    "rootfs-hardening",
+    "cbom-security",
+)
+
+#: The predictive audit runs under the deep and research profiles only,
+#: over the required dependencies, bounded by a target cap and a time
+#: budget so a scan stays finite.
+PREDICTIVE_PROFILES = ("deep", "research")
+PREDICTIVE_MAX_TARGETS = 25
+PREDICTIVE_TIME_BUDGET_MINUTES = 30
 
 
-def _risk_audit_groups(scan):
-    """The (audit type, packages) pairs the risk audit can run on.
+def _audit_categories(ctx, scan) -> tuple:
+    """The direct-audit categories for this type scan."""
+    args = ctx.args
+    types = set(ctx.project_types) | {scan.project_type}
+    if types & {"container", "oci", "docker"}:
+        return CONTAINER_AUDIT_CATEGORIES
+    return DIRECT_AUDIT_CATEGORIES
 
-    A type the audit knows (npm, python, cargo and their aliases) audits its
-    whole package list. Any other type, such as ``universal`` for a source
-    scan or ``bom``, audits the packages whose purl type the audit reads.
-    """
-    if scan.project_type in risk_audit_map:
-        return [(scan.project_type, scan.pkg_list)] if scan.pkg_list else []
-    groups = []
-    for purl_type, audit_type in RISK_AUDIT_PURL_TYPES:
-        packages = get_pkg_by_type(scan.pkg_list, purl_type)
-        if packages:
-            groups.append((audit_type, packages))
-    return groups
+
+def _purl_bom_file(ctx, scan) -> Optional[str]:
+    """A minimal CycloneDX document holding the scan's packages, for a purl
+    scan that generated no BOM. cdx-audit reads a BOM, not a package list;
+    the document names each package's purl as a component so the audit has
+    something to read. Returns None when the scan holds no packages."""
+    packages = scan.pkg_list or ctx.purl_pkg_list
+    if not packages:
+        return None
+    components = []
+    for pkg in packages:
+        purl = pkg.get("purl") if isinstance(pkg, dict) else None
+        if not purl:
+            continue
+        components.append(
+            {
+                "type": "library",
+                "bom-ref": purl,
+                "name": pkg.get("name", purl),
+                "version": pkg.get("version", ""),
+                "purl": purl,
+            }
+        )
+    if not components:
+        return None
+    bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "metadata": {"component": {"type": "application", "name": "purl-scan"}},
+        "components": components,
+    }
+    path = os.path.join(ctx.reports_dir, f"sbom-{scan.project_type}-purls.cdx.json")
+    file_write(path, json.dumps(bom, indent=2))
+    return path
+
+
+def _audit_bom_file(ctx, scan) -> Optional[str]:
+    """The BOM cdx-audit audits for this type scan.
+
+    The document the inventory nominated, else the first document the type
+    produced, else, for a purl scan that generated no BOM, a minimal
+    document built from the scan's packages. A type whose inventory found
+    no document and whose packages the audit does not read (a universal
+    scan holding only Maven packages, say) returns None and the stage
+    records why it did not run."""
+    if scan.nominated_bom_file:
+        return scan.nominated_bom_file
+    for bom_file in scan.bom_files or []:
+        if bom_file and os.path.isfile(bom_file):
+            return bom_file
+    if getattr(ctx.args, "search_purl", None):
+        return _purl_bom_file(ctx, scan)
+    return None
 
 
 def stage_analysis_risk(ctx, scan) -> bool:
-    """Run the OSS risk audit for the package managers that support it.
+    """Run cdxgen's cdx-audit over this type scan's BOM.
 
-    Returns False when the audit did not run. When it was requested but the
-    scan holds no npm, PyPI or Cargo packages, ``scan.risk_not_assessed``
-    says so, and the stage is recorded as not assessed rather than skipped.
+    The direct audit always runs under the supply-chain check, with the
+    categories that fit the scan type. The predictive audit runs only
+    under the deep and research profiles, over the required dependencies
+    and inside a target cap and time budget, and never when the scan runs
+    offline: an offline scan passes ``--offline`` to the direct audit, so
+    it makes no registry, git or OCI request at all.
+
+    Returns False when the audit did not run. A missing or too-old
+    cdx-audit, or a scan with no BOM to audit, records why in
+    ``scan.risk_not_assessed`` rather than reading as a clean result. The
+    report's skipped and failed targets and its shortfalls (a target cap
+    or time budget that cut the queue) become coverage caveats on every
+    record, so the findings never read as a complete audit.
     """
     args = ctx.args
     if not ctx.perform_risk_audit:
         return False
-    groups = _risk_audit_groups(scan)
-    if not groups:
+    cmd = cdx_audit.find_cdx_audit_cmd()
+    if not cmd:
         scan.risk_not_assessed = (
-            f"the risk audit was requested, but the {scan.project_type} scan "
-            "has no npm, PyPI or Cargo packages, the only ecosystems it audits"
+            "cdx-audit was not found; install the cdxgen npm package (which ships it) "
+            "or set CDX_AUDIT_CMD, and check `depscan doctor`"
         )
         return False
-    total = sum(len(packages) for _, packages in groups)
-    if total > 1:
-        LOG.info("Running the OSS risk audit for %d packages.", total)
-    report_rows = []
+    version = cdx_audit.cdx_audit_version(cmd)
+    if not cdx_audit.check_cdx_audit_version(version):
+        scan.risk_not_assessed = (
+            f"cdx-audit {version or 'of an unknown version'} predates the options this "
+            f"scan needs; cdxgen {cdx_audit.CDX_AUDIT_MIN_VERSION} or newer is required"
+        )
+        return False
+    bom_file = _audit_bom_file(ctx, scan)
+    if not bom_file:
+        scan.risk_not_assessed = (
+            f"the supply-chain audit was requested, but the {scan.project_type} scan "
+            "produced no BOM and holds no packages to build one from"
+        )
+        return False
+    offline = bool(
+        args.profile == "offline" or ctx.depscan_options.get("vdb_offline", False)
+    )
+    predictive = args.profile in PREDICTIVE_PROFILES and not offline
+    categories = list(_audit_categories(ctx, scan))
+    private_ns = getattr(args, "private_ns", None)
+    report_file = os.path.join(ctx.reports_dir, f"cdx-audit-{scan.project_type}.json")
+    runs = [
+        (
+            "direct",
+            cdx_audit.build_audit_args(
+                bom_file,
+                report_file,
+                direct=True,
+                categories=categories,
+                private_ns=private_ns,
+                offline=offline,
+            ),
+            report_file,
+        ),
+    ]
+    if predictive:
+        predictive_report_file = os.path.join(
+            ctx.reports_dir, f"cdx-audit-predictive-{scan.project_type}.json"
+        )
+        runs.append(
+            (
+                "predictive",
+                cdx_audit.build_audit_args(
+                    bom_file,
+                    predictive_report_file,
+                    direct=False,
+                    private_ns=private_ns,
+                    predictive=True,
+                    scope_required=True,
+                    max_targets=PREDICTIVE_MAX_TARGETS,
+                    time_budget_minutes=PREDICTIVE_TIME_BUDGET_MINUTES,
+                ),
+                predictive_report_file,
+            ),
+        )
+    records = []
+    caveats = []
+    producer_version = version
+    written_outputs = []
+    total_findings = 0
     try:
-        for audit_type, packages in groups:
-            risk_results = risk_audit(audit_type, scan.scoped_pkgs, args.private_ns, packages)
-            rtable, report_data = pkg_risks_table(
-                audit_type,
-                scan.scoped_pkgs,
-                risk_results,
-                pkg_max_risk_score=pkg_max_risk_score,
+        from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
+
+        for name, run_args, run_report_file in runs:
+            result = cdx_audit.run_cdx_audit(cmd, run_args)
+            if result.report_version is None:
+                raise cdx_audit.CdxAuditError(
+                    "the cdx-audit report names no shape version; cdxgen "
+                    f"{cdx_audit.CDX_AUDIT_MIN_VERSION} or newer is required"
+                )
+            written_outputs.append(run_report_file)
+            adapter_result = cdx_audit_extract(
+                result.report,
+                source=os.path.basename(run_report_file),
+                producer_version=producer_version,
+                source_root=ctx.source_root or ctx.src_dir,
+                mode=name,
             )
-            if report_data:
-                report_rows.extend(report_data)
-            if not args.no_vuln_table and report_data and rtable:
-                console.print(rtable)
-        if report_rows and scan.risk_report_file:
-            # The risk audit findings are stored as one JSON array of rows.
-            file_write(scan.risk_report_file, json.dumps(report_rows, indent=2))
-    except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
+            records.extend(adapter_result.records)
+            caveats.extend(adapter_result.caveats)
+            total_findings += result.findings_count
+    except (cdx_audit.CdxAuditError, subprocess.TimeoutExpired, OSError) as e:
         LOG.error(e)
-        LOG.error("Risk audit was not successful")
-        scan.risk_error = f"the risk audit was not successful: {e}"
+        LOG.error("The supply-chain audit was not successful")
+        scan.risk_error = f"the supply-chain audit was not successful: {e}"
+        return True
+    scan.audit_output_files = written_outputs
+    scan.audit_caveat_count = len(caveats)
+    scan.audit_findings_count = total_findings
+    if records or caveats:
+        from analysis_lib.evidence.adapters import AdapterResult, STATUS_COMPLETED
+
+        scan.adapter_results["cdx-audit"] = AdapterResult(
+            status=STATUS_COMPLETED, records=records, caveats=caveats
+        )
+    log_console.print(
+        f"[green]Supply-chain audit[/green] ({scan.project_type}): "
+        f"{total_findings} finding(s) from cdx-audit {version}"
+        + (f", {len(caveats)} coverage caveat(s)" if caveats else "")
+    )
+    for caveat in caveats:
+        LOG.info("Audit coverage caveat: %s", caveat.detail)
     return True
 
 

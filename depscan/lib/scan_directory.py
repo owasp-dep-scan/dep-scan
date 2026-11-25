@@ -365,7 +365,11 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         else:
             entry.update(role="bom", producer="user")
         return entry
-    if name in _REPORT_FILES or name.startswith("depscan-risk-") or name.startswith("license-"):
+    if (
+        name in _REPORT_FILES
+        or name.startswith("cdx-audit-")
+        or name.startswith("license-")
+    ):
         entry.update(role="report", producer="dep-scan")
         return entry
     if name.endswith(".json") and is_cyclonedx is not None:
@@ -631,11 +635,12 @@ def write_findings(
     depscan_version: str,
     exploitability: Optional[Dict[Any, Any]] = None,
     blint_reviews: bool = False,
+    supply_chain: bool = False,
     evidence_records: Optional[Iterable[Any]] = None,
     usage_not_assessed: Optional[Dict[str, str]] = None,
 ):
-    """Write ``depscan.findings.json`` from the scan's VDR entries and the
-    blint binary review.
+    """Write ``depscan.findings.json`` from the scan's VDR entries, the blint
+    binary review and the cdx-audit supply-chain audit.
 
     A scan with no vulnerabilities writes the file with an empty findings
     array, so a reader can tell an assessed-empty scan from a directory
@@ -643,9 +648,11 @@ def write_findings(
     Exploitability map the scan graded; each vulnerability finding records
     its assessment from it. ``blint_reviews`` says this scan asked for
     blint's review; without it the blint records among ``evidence_records``
-    are not this scan's findings and are ignored. The binary-hardening
-    findings are built from the blint records this scan's adapter produced,
-    with the producer version the records carry. ``usage_not_assessed``
+    are not this scan's findings and are ignored. ``supply_chain`` says this
+    scan ran the cdx-audit supply-chain check; its findings are built from
+    the annotation records the audit's adapter produced, with the producer
+    version the records carry. The binary-hardening findings are built from
+    the blint records this scan's adapter produced. ``usage_not_assessed``
     maps a comparable purl to the reason usage evidence of that package in
     a BOM of the scan was not assessed; every vulnerability finding of
     that package that carries an exploitability assessment names the
@@ -653,6 +660,7 @@ def write_findings(
     Returns the document written.
     """
     from analysis_lib.findings.blint_convert import findings_from_blint_records
+    from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
     from analysis_lib.findings.vdr_convert import findings_from_vdr
 
     findings = findings_from_vdr(
@@ -663,6 +671,8 @@ def write_findings(
     )
     if blint_reviews:
         findings.extend(findings_from_blint_records(evidence_records))
+    if supply_chain:
+        findings.extend(findings_from_cdx_audit_records(evidence_records))
     document = {
         "schemaVersion": FINDINGS_SCHEMA_VERSION,
         "findings": [finding.to_dict() for finding in findings],

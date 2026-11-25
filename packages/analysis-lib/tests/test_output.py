@@ -495,69 +495,6 @@ def test_license_report_file_holds_plain_json_rows(tmp_path):
     ]
 
 
-def test_risk_report_file_holds_plain_json_rows(tmp_path):
-    """The risk report file is one JSON array of plain values: the risk
-    score is a number, the identified risks are a list instead of strings
-    joined with a separator, and a detail line the producer states twice
-    appears once."""
-    from analysis_lib.output import pkg_risks_table
-
-    report_file = tmp_path / "depscan-risk-npm.json"
-    table, report_data = pkg_risks_table(
-        "npm",
-        {"required": ["npm:demo"]},
-        {
-            "demo": {
-                "scope": "required",
-                "risk_metrics": {
-                    "risk_score": 0.63,
-                    "pkg_includes_binary_risk": True,
-                    "pkg_includes_binary_info": "Binary commands:\ndemo: bin/demo\ndemo: bin/demo",
-                },
-            }
-        },
-        risk_report_file=str(report_file),
-    )
-    assert table is not None
-    assert report_data is not None
-    expected = ["Includes binary", "Binary commands:", "demo: bin/demo"]
-    assert report_data[0]["Identified Risks"] == expected
-    rows = json.loads(report_file.read_text())
-    assert rows == [
-        {
-            "Package": "demo",
-            "Used?": "Yes",
-            "Risk Score": 0.63,
-            "Identified Risks": expected,
-        }
-    ]
-
-
-def test_risk_report_leaves_out_a_package_with_only_an_attestation(tmp_path):
-    """A low-scoring package is not a row just because its registry entry
-    carries a provenance attestation, which is not a risk."""
-    from analysis_lib.output import pkg_risks_table
-
-    report_file = tmp_path / "depscan-risk-npm.json"
-    _, report_data = pkg_risks_table(
-        "npm",
-        {"required": ["npm:demo"]},
-        {
-            "demo": {
-                "scope": "required",
-                "risk_metrics": {
-                    "risk_score": 0.1,
-                    "pkg_attested_check": True,
-                    "pkg_attested_info": "SHA256:abc",
-                },
-            }
-        },
-        risk_report_file=str(report_file),
-    )
-    assert report_data == []
-    assert not report_file.exists()
-
-
 def test_license_report_file_is_valid_json_when_no_package_has_license_data(tmp_path):
     """A scan whose packages carry no license data still writes a license
     report, and the file is the empty JSON array rather than an empty file."""

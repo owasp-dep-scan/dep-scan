@@ -31,7 +31,7 @@ import pytest
 
 from analysis_lib.findings.schemas import validate
 from depscan import api
-from depscan.lib import doctor as doctor_mod
+from depscan.lib import cdx_audit, doctor as doctor_mod
 from depscan.lib import pipeline, scan_directory, vdb_setup
 from depscan.lib import report as report_lib
 from depscan.lib.scan_directory import (
@@ -940,25 +940,20 @@ def test_interrupted_scan_writes_a_manifest_naming_the_failed_stage(
     assert "matching stage did not complete" in str(excinfo.value)
 
 
-@pytest.mark.parametrize(
-    "purl,expected",
-    [
-        ("pkg:maven/com.google/guava@1.0", "not-assessed"),
-        ("pkg:pypi/requests@2.32.1", "completed"),
-    ],
-)
 def test_a_requested_risk_audit_records_what_it_could_audit(
-    scan_stubs, monkeypatch, tmp_path, purl, expected
+    scan_stubs, monkeypatch, tmp_path
 ):
-    """A BOM with only Maven packages cannot be audited; one with PyPI can.
-
-    The requested audit that had nothing to read is recorded as not
-    assessed with its reason, never as "not requested".
+    """A BOM the audit reads and one holding only packages cdx-audit skips
+    both complete: the skip is the audit's own coverage reporting, not
+    dep-scan's. A machine without cdx-audit records the requested audit as
+    not assessed with its reason, never as "not requested".
     """
-    monkeypatch.setattr(pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], []))
-    monkeypatch.setattr(pipeline, "risk_audit", lambda *a: {})
+    from test.conftest import fake_cdx_audit
+
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
+    calls = {"risk": []}
+    fake_cdx_audit(monkeypatch, calls)
     api.scan(
         api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True, risk_audit=True),
         render=False,
@@ -966,9 +961,24 @@ def test_a_requested_risk_audit_records_what_it_could_audit(
     manifest = _manifest_of(reports)
     validate("depscan-manifest", manifest)
     risk = next(stage for stage in manifest["stages"] if stage["name"] == "risk")
-    assert risk["status"] == expected
-    if expected == "not-assessed":
-        assert "no npm, PyPI or Cargo packages" in risk["reason"]
+    assert risk["status"] == "completed"
+    assert calls["risk"], "the audit stub ran"
+    outputs = [entry["file"] for entry in risk.get("outputs", [])]
+    assert outputs == ["cdx-audit-bom.json"]
+
+    reports_missing = tmp_path / "reports-missing"
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: None)
+    api.scan(
+        api.scan_options(
+            bom=bom, reports_dir=str(reports_missing), no_banner=True, risk_audit=True
+        ),
+        render=False,
+    )
+    manifest = _manifest_of(reports_missing)
+    validate("depscan-manifest", manifest)
+    risk = next(stage for stage in manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == "not-assessed"
+    assert "cdx-audit was not found" in risk["reason"]
 
 
 def test_interrupted_manifest_write_keeps_the_previous_content(tmp_path, monkeypatch):
@@ -1151,15 +1161,12 @@ def test_an_unexpected_error_still_leaves_a_manifest(scan_stubs, monkeypatch, tm
 
 
 def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monkeypatch, tmp_path):
-    def audit_fails(*args, **kwargs):
-        raise RuntimeError("the registry did not answer")
+    def audit_fails(cmd, args):
+        raise cdx_audit.CdxAuditError("cdx-audit wrote no report at all (exit 1)")
 
-    monkeypatch.setattr(pipeline, "risk_audit", audit_fails)
-    monkeypatch.setattr(
-        pipeline,
-        "get_pkg_list",
-        lambda f: ([{"purl": "pkg:npm/left-pad@1.3.0", "name": "left-pad"}], []),
-    )
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", audit_fails)
     bom = _write_bom(tmp_path / "given.cdx.json")
     result = api.scan(
         api.scan_options(
@@ -1170,7 +1177,7 @@ def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monk
     assert result.manifest is not None
     risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
     assert risk["status"] == "failed"
-    assert "the registry did not answer" in risk["reason"]
+    assert "cdx-audit wrote no report" in risk["reason"]
     matching = next(stage for stage in result.manifest["stages"] if stage["name"] == "matching")
     assert matching["status"] == "completed", "a degraded audit does not stop the scan"
 
@@ -1537,7 +1544,7 @@ def test_classify_file_roles():
         "python-openapi.json": {"projectType": "python"},
         "report.csaf.json": {"role": "csaf"},
         "license-npm.json": {"role": "report"},
-        "depscan-risk-npm.json": {"role": "report"},
+        "cdx-audit-npm.json": {"role": "report"},
         "depscan.toml.sample": {"role": "report"},
         "csaf.toml.sample": {"role": "report"},
         "depscan.html": {"role": "report"},

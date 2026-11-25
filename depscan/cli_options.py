@@ -201,7 +201,7 @@ def build_parser():
         action="store_true",
         default=os.getenv("ENABLE_OSS_RISK", "") in ("true", "1"),
         dest="risk_audit",
-        help="Perform package risk audit (slow operation). Supported for npm, pypi, and cargo.",
+        help="Run the supply-chain audit through cdx-audit (the supply-chain check sets this).",
     )
     parser.add_argument(
         "--fail-on-error",

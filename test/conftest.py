@@ -111,3 +111,49 @@ def _isolate_vdb_data_dir(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(vdb_config, "VDB_BIN_INDEX", os.path.join(home, "data.index.vdb7"))
     monkeypatch.setattr(vdb_config, "VDB_METADATA_FILE", os.path.join(home, "vdb.meta"))
     monkeypatch.setattr(vdb_config, "VDB_SHARDS_DIR", os.path.join(home, "shards"))
+
+
+#: The smallest cdx-audit report a completed direct audit writes: no
+#: findings, the shape version the reports carry since dep-scan started
+#: reading them.
+EMPTY_AUDIT_REPORT = {
+    "version": 1,
+    "auditMode": "direct",
+    "results": [],
+    "summary": {"totalFindings": 0, "skippedTargets": 0, "erroredTargets": 0},
+}
+
+
+def fake_cdx_audit(monkeypatch, calls, report=None, version="13.10.0"):
+    """Stub the cdx-audit runner the risk stage calls.
+
+    The stage's positive control: a scan whose supply-chain check ran
+    records the run in ``calls["risk"]`` with the argument list it handed
+    the runner. The stub writes ``report`` (the empty report unless a test
+    passes its own) to the ``--report-file`` path the stage chose, exactly
+    what a real run leaves behind.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    from depscan.lib import cdx_audit as cdx_audit_module
+
+    audit_report = report or EMPTY_AUDIT_REPORT
+
+    def fake_run(cmd, args):
+        calls.setdefault("risk", []).append(list(args))
+        path = args[args.index("--report-file") + 1]
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(audit_report))
+        return cdx_audit_module.CdxAuditResult(
+            report=audit_report,
+            report_version=audit_report.get("version"),
+            findings_count=(audit_report.get("summary") or {}).get("totalFindings", 0),
+            results=audit_report.get("results") or [],
+        )
+
+    monkeypatch.setattr(cdx_audit_module, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit_module, "cdx_audit_version", lambda cmd: version)
+    monkeypatch.setattr(cdx_audit_module, "run_cdx_audit", fake_run)
+    return calls

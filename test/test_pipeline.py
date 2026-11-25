@@ -16,7 +16,7 @@ from types import SimpleNamespace
 import pytest
 
 from depscan.cli_options import build_parser
-from depscan.lib import pipeline, vdb_setup
+from depscan.lib import cdx_audit, pipeline, vdb_setup
 from depscan.lib.bom import BomResult
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -445,92 +445,111 @@ def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(tmp_path
     )
 
 
-def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch):
-    calls = {}
+def test_stage_analysis_risk_runs_cdx_audit_on_the_type_bom(tmp_path, monkeypatch):
+    """The direct audit runs on the BOM the type scan nominated, with the
+    categories that fit the scan and the namespaces the user passed, and
+    the records it produced land in the scan's adapter results for the
+    evidence store."""
+    captured = {}
+    real_report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
 
-    def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
-        calls["audit"] = (project_type, list(pkg_list))
-        return {
-            "fsevents": {
-                "scope": "required",
-                "risk_metrics": {
-                    "risk_score": 0.7,
-                    "pkg_deprecated_risk": True,
-                },
-            }
-        }
+    def fake_run(cmd, args):
+        captured["cmd"] = cmd
+        captured["args"] = args
+        report_file = args[args.index("--report-file") + 1]
+        Path(report_file).write_text(json.dumps(real_report))
+        return cdx_audit.CdxAuditResult(
+            report=real_report,
+            report_version=real_report["version"],
+            findings_count=real_report["summary"]["totalFindings"],
+            results=real_report["results"],
+        )
 
-    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
+    ctx.args.private_ns = "@mycorp"
     scan = pipeline.TypeScan(project_type="npm")
-    scan.pkg_list = [{"name": "fsevents", "version": "1.2.0", "purl": "pkg:npm/fsevents@1.2.0"}]
-    scan.scoped_pkgs = {"required": ["pkg:npm/fsevents@1.2.0"]}
-    scan.risk_report_file = os.path.join(ctx.reports_dir, "depscan-risk-npm.json")
-
-    pipeline.stage_analysis_risk(ctx, scan)
-
-    # Positive control: the audit ran for this project type and packages.
-    assert calls["audit"][0] == "npm"
-    assert calls["audit"][1] == scan.pkg_list
-    risk_report = Path(ctx.reports_dir) / "depscan-risk-npm.json"
-    assert risk_report.is_file()
-    rows = json.loads(risk_report.read_text())
-    assert rows[0]["Package"] == "fsevents"
-    assert "Deprecated" in rows[0]["Identified Risks"]
-
-
-def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path, monkeypatch):
-    """A source scan is typed universal; its npm and PyPI packages are audited.
-
-    The maven package is left out because the audit reads no Maven metadata,
-    and both ecosystems' rows land in the one risk report.
-    """
-    calls = []
-
-    def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
-        calls.append((project_type, [pkg["purl"] for pkg in pkg_list]))
-        name = pkg_list[0]["name"]
-        return {
-            name: {
-                "scope": "required",
-                "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True},
-            }
-        }
-
-    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
-    ctx = _ctx(tmp_path, ["-t", "universal"])
-    ctx.perform_risk_audit = True
-    scan = pipeline.TypeScan(project_type="universal")
-    scan.pkg_list = [
-        {"name": "left-pad", "version": "1.0.0", "purl": "pkg:npm/left-pad@1.0.0"},
-        {"name": "requests", "version": "2.0.0", "purl": "pkg:pypi/requests@2.0.0"},
-        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"},
-    ]
-    scan.risk_report_file = os.path.join(ctx.reports_dir, "depscan-risk-universal.json")
+    bom = Path(ctx.reports_dir) / "sbom-npm.cdx.json"
+    bom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
+    scan.nominated_bom_file = str(bom)
 
     assert pipeline.stage_analysis_risk(ctx, scan) is True
-
-    assert calls == [
-        ("npm", ["pkg:npm/left-pad@1.0.0"]),
-        ("pypi", ["pkg:pypi/requests@2.0.0"]),
-    ]
+    assert captured["cmd"] == "cdx-audit-fake"
+    args = captured["args"]
+    assert "--direct-bom-audit" in args
+    assert args[args.index("--categories") + 1] == "package-integrity,dependency-source"
+    assert args[args.index("--private-namespace") + 1] == "@mycorp"
+    assert "--offline" not in args
+    assert scan.risk_error is None
     assert scan.risk_not_assessed is None
-    rows = json.loads(Path(scan.risk_report_file).read_text())
-    assert [row["Package"] for row in rows] == ["left-pad", "requests"]
+    assert scan.audit_findings_count == 2
+    result = scan.adapter_results["cdx-audit"]
+    assert result.status == "completed"
+    assert len(result.records) == 2
+    assert {record.producer.name for record in result.records} == {"cdx-audit"}
 
 
-def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
-    tmp_path, monkeypatch
-):
-    """Only Maven packages: the audit was requested and could not run.
+def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monkeypatch):
+    """The offline profile runs the direct audit with --offline and never a
+    predictive one; the deep profile runs both, with the predictive audit
+    bounded to the required scope, a target cap and a time budget."""
+    runs = []
+    real_report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
 
-    Positive control: the same scan with the audit off returns False with no
-    not-assessed reason, which the manifest records as skipped.
+    def fake_run(cmd, args):
+        runs.append(args)
+        report_file = args[args.index("--report-file") + 1]
+        Path(report_file).write_text(json.dumps(real_report))
+        return cdx_audit.CdxAuditResult(
+            report=real_report,
+            report_version=real_report["version"],
+            findings_count=real_report["summary"]["totalFindings"],
+            results=real_report["results"],
+        )
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    ctx.args.profile = "offline"
+    scan = pipeline.TypeScan(project_type="npm")
+    bom = Path(ctx.reports_dir) / "sbom-npm.cdx.json"
+    bom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
+    scan.nominated_bom_file = str(bom)
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(runs) == 1
+    assert "--offline" in runs[0]
+    assert "--direct-bom-audit" in runs[0]
+
+    runs.clear()
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    ctx.args.profile = "deep"
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = str(bom)
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(runs) == 2
+    predictive_args = runs[1]
+    assert "--direct-bom-audit" not in predictive_args
+    assert predictive_args[predictive_args.index("--scope") + 1] == "required"
+    assert "--max-targets" in predictive_args
+    assert "--time-budget-minutes" in predictive_args
+    assert "--offline" not in predictive_args
+
+
+def test_stage_analysis_risk_names_why_it_could_not_run(tmp_path, monkeypatch):
+    """A missing cdx-audit and a scan with no BOM to audit each record why
+    the requested audit did not run, and the audit off stays a plain skip.
+
+    Positive control for the run path: the same scan with the audit
+    available runs instead of recording a reason.
     """
-    monkeypatch.setattr(
-        pipeline, "risk_audit", lambda *a: pytest.fail("nothing here can be audited")
-    )
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: None)
     ctx = _ctx(tmp_path, ["-t", "universal"])
     scan = pipeline.TypeScan(project_type="universal")
     scan.pkg_list = [{"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}]
@@ -540,7 +559,13 @@ def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
     ctx.perform_risk_audit = True
     assert pipeline.stage_analysis_risk(ctx, scan) is False
     reason = scan.risk_not_assessed or ""
-    assert "no npm, PyPI or Cargo packages" in reason
+    assert "cdx-audit was not found" in reason
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    assert pipeline.stage_analysis_risk(ctx, scan) is False
+    reason = scan.risk_not_assessed or ""
+    assert "produced no BOM" in reason
     assert "universal" in reason
 
 
@@ -931,6 +956,7 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         shards_connected=False,
         evidence_records=records,
         usage_not_assessed=usage_not_assessed,
+        perform_risk_audit=False,
         # One produced result, so the findings file is written at all; a scan
         # whose every type failed writes none.
         scans=[object()],
@@ -974,6 +1000,7 @@ def test_a_scan_with_no_matched_type_writes_a_findings_file_only_for_a_review(
         shards_connected=False,
         evidence_records=[object()],
         usage_not_assessed={},
+        perform_risk_audit=False,
         scans=[],
         blint_review_ran=review_ran,
     )

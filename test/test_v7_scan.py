@@ -130,11 +130,9 @@ def scan_stubs(monkeypatch):
     monkeypatch.setattr(pipeline.console, "save_html", lambda *a, **k: None)
     monkeypatch.setattr(pipeline.console, "save_text", lambda *a, **k: None)
 
-    def fake_risk_audit(*args, **kwargs):
-        calls["risk"].append(1)
-        return {}
+    from test.conftest import fake_cdx_audit
 
-    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
+    fake_cdx_audit(monkeypatch, calls)
 
     def fake_exec_tool(args, *a, **k):
         calls["cdxgen"].append(list(args))
@@ -162,6 +160,7 @@ def scan_stubs(monkeypatch):
 # the version line the fake prints, exactly as the doctor tests fake them.
 FAKE_TOOLS = {
     "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0"),
+    "cdx-audit": ("CDX_AUDIT_CMD", "CycloneDX Generator 13.10.0"),
     "golem": ("GOLEM_CMD", "golem 9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef"),

@@ -211,14 +211,6 @@ def test_spinners_enabled_follows_stderr():
     assert logger.spinners_enabled(_FakeTty()) is True
 
 
-def test_progress_disabled_keeps_the_small_run_rule(monkeypatch):
-    import depscan.lib.package_query.metadata as metadata
-
-    monkeypatch.setattr(metadata, "spinners_enabled", lambda: True)
-    assert metadata._progress_disabled(9) is True
-    assert metadata._progress_disabled(10) is False
-
-
 def test_console_status_is_quiet_for_a_redirected_stderr(monkeypatch):
     drawn = []
 

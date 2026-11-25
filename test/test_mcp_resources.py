@@ -118,7 +118,9 @@ def scan_env(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline.ReportGenerator, "parse_and_generate_report", lambda self: None)
     monkeypatch.setattr(pipeline.console, "save_html", lambda *a, **k: None)
     monkeypatch.setattr(pipeline.console, "save_text", lambda *a, **k: None)
-    monkeypatch.setattr(pipeline, "risk_audit", lambda *a, **k: {})
+    from test.conftest import fake_cdx_audit
+
+    fake_cdx_audit(monkeypatch, {})
 
     class StubVDRAnalyzer:
         success = True
