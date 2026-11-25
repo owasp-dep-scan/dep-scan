@@ -1,0 +1,74 @@
+---
+sidebar_position: 2
+title: Development setup
+---
+
+# Development setup
+
+dep-scan is a uv workspace of five packages: the `depscan` CLI, and the libraries `analysis-lib`, `xbom-lib`, `reporting-lib` and `server-lib` under `packages/`. Python 3.11 is the minimum, and the tests run on every supported version up to 3.14.
+
+## The environment
+
+```bash
+git clone https://github.com/owasp-dep-scan/dep-scan
+cd dep-scan
+uv sync --all-extras --all-packages --dev
+uv run depscan --help
+uv run pytest
+uv run pyrefly check
+```
+
+Type checking uses [pyrefly](https://pyrefly.org), configured under `[tool.pyrefly]` in `pyproject.toml`, and the check is expected to report zero errors. `uv run ruff check` is the lint.
+
+cdxgen is a required tool for every scan, so install it globally as [the installation page](../start/installation) describes, or point `CDXGEN_CMD` at a local build. When cdxgen reports a missing package manager for a language you scanned, install that language's manager; `export CDXGEN_DEBUG_MODE=debug` names what it looked for.
+
+## The vulnerability database
+
+A development scan downloads the database like any other. To refresh it deliberately:
+
+```bash
+uv run depscan vdb download --flavor app-only
+# For container and OS scans:
+uv run depscan vdb download --flavor full
+```
+
+## Scanning dep-scan itself
+
+```bash
+uv run depscan scan --config .config/depscan-dev.toml
+```
+
+The repository carries its own scan configuration in `.config/depscan-dev.toml`. A scan reads `.config/depscan.toml` by default, which the repository does not have, so the command passes the file with `--config`.
+
+## devenv
+
+A [devenv](https://devenv.sh/getting-started/) shell sets up the language toolchains the analyzers need:
+
+```bash
+devenv shell
+uv sync --all-extras --all-packages --dev
+uv run pytest
+```
+
+Language-specific profiles select the toolchain set:
+
+```bash
+devenv --option config.profile:string ruby shell
+devenv --option config.profile:string dotnet shell
+devenv --option config.profile:string android shell
+devenv --option config.profile:string flutter shell
+```
+
+## Where the code lives
+
+| Path | What it holds |
+| --- | --- |
+| `depscan/commands/` | one module per verb |
+| `depscan/lib/pipeline.py` | the scan stages |
+| `depscan/lib/bom.py` | BOM generation and the reachability tool runners |
+| `packages/analysis-lib/src/analysis_lib/findings/` | the finding and evidence models and their schemas |
+| `packages/analysis-lib/src/analysis_lib/evidence/` | the evidence store and the producer adapters |
+| `packages/analysis-lib/src/analysis_lib/reachability.py` | the shared reachability engine |
+| `documentation/` | this site, built with Docusaurus |
+
+The [contributing page](contributing) covers the process; [the debugging page](debugging) covers pointing a debugger at a scan.

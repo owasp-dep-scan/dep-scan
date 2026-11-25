@@ -9,8 +9,11 @@ environment variable or the default. Precedence: command line, then the
 checks and profile, then the TOML file, then environment-backed defaults,
 then defaults.
 
-``config init`` writes ``./depscan.toml`` with the same content a scan writes
-to ``depscan.toml.sample`` and refuses to overwrite an existing file.
+``config init`` writes the file the next scan reads by default, which is
+``$DEPSCAN_CONFIG`` when that variable is set and ``.config/depscan.toml``
+under the current directory otherwise, creating its directory when needed.
+The content is the same a scan writes to ``depscan.toml.sample``, and the
+command refuses to overwrite an existing file.
 
 In json format each subcommand writes exactly one document to stdout:
 ``{"options": ...}`` for show and ``{"written": ...}`` for init, with
@@ -79,7 +82,10 @@ def register(subparsers) -> None:
     add_scan_options(show)
     init = sub.add_parser(
         "init",
-        help="Write ./depscan.toml with the effective scan options.",
+        help=(
+            "Write the effective scan options to the file a scan reads by default: "
+            "$DEPSCAN_CONFIG, or .config/depscan.toml in the current directory."
+        ),
     )
     init.add_argument(
         "--format",
@@ -205,8 +211,20 @@ def _run_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def default_config_path() -> str:
+    """The configuration file a scan reads when ``--config`` is not given.
+
+    This mirrors the ``--config`` default of the internal parser, so the file
+    ``config init`` writes is the one the next scan in the same directory and
+    environment loads.
+    """
+    return os.path.abspath(
+        os.getenv("DEPSCAN_CONFIG") or os.path.join(os.getcwd(), ".config", "depscan.toml")
+    )
+
+
 def _run_init(args: argparse.Namespace) -> int:
-    path = os.path.join(os.getcwd(), "depscan.toml")
+    path = default_config_path()
     if os.path.exists(path):
         message = f"depscan config init: {path} already exists; not overwriting it."
         if args.format == "json":
@@ -215,7 +233,13 @@ def _run_init(args: argparse.Namespace) -> int:
             print(message, file=sys.stderr)
         return EXIT_FAILURE
     internal = build_parser().parse_args(internal_argv(args))
-    if not pipeline.write_config_file(vars(internal), path):
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    except OSError:
+        written = False
+    else:
+        written = pipeline.write_config_file(vars(internal), path)
+    if not written:
         message = f"depscan config init: {path} could not be written."
         if args.format == "json":
             print_error_document(EXIT_FAILURE, "config", message, {"path": json_path(path)})

@@ -1,0 +1,5 @@
+database flavor: full
+inventory stage: completed
+component types: apk
+findings:
+component types: deb, gem

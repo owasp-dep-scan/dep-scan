@@ -58,7 +58,7 @@ def test_the_exit_code_table_lists_the_four_codes_with_their_meanings():
 
 def test_the_documented_exit_code_table_is_the_generated_one():
     """The cli-usage page embeds exit_code_table_markdown() between markers."""
-    page = Path(__file__).parent.parent / "documentation" / "docs" / "cli-usage.mdx"
+    page = Path(__file__).parent.parent / "documentation" / "docs" / "reference" / "cli.mdx"
     text = page.read_text(encoding="utf-8")
     start = text.find("<!-- exit code table start -->\n")
     end = text.find("<!-- exit code table end -->")

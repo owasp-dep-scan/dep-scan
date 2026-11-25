@@ -731,6 +731,12 @@ def stage_setup(ctx):
     # User has not provided an explicit reports_dir. Reuse the bom_dir
     if not reports_dir and args.bom_dir:
         reports_dir = os.path.realpath(args.bom_dir)
+    # A relative value resolves against this process's working directory for
+    # dep-scan's own writes, but the BOM path rides into the cdxgen argument
+    # list, and cdxgen resolves it against the directory it analyses, which
+    # puts the BOM inside the scanned tree. A scan must not write into the
+    # project it scans, so the reports directory is absolute from here on.
+    reports_dir = os.path.abspath(reports_dir)
     ctx.reports_dir = reports_dir
     # Are we running for a BOM directory the *user* supplied? This must be
     # captured before the lifecycle branch in stage_inventory repurposes the

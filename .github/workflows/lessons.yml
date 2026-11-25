@@ -1,0 +1,111 @@
+# Runs every documentation lesson against its pinned inputs, on a schedule.
+#
+# Each lesson's script lives in documentation/lessons/<name>/run.sh with an
+# expect.txt of output lines the lesson page quotes. A lesson fails the job
+# when its script exits non-zero or when an expectation line stops appearing
+# in its output, which is how the pages stay true to what dep-scan actually
+# prints. The depscan the scripts run is this checkout's, installed with uv.
+# The scripts keep their clones and scan directories under the runner's
+# temporary directory, outside the checkout, and the vulnerability database
+# is pre-fetched in the flavor the lesson's scans name.
+#
+# Lessons run on workflow_dispatch and once a week. They never run on pull
+# requests: their jobs clone third-party repositories and pull container
+# images, which is not something an unvetted branch should drive.
+
+name: Lessons
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Sundays at 03:00 UTC.
+    - cron: "0 3 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  lessons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lesson: 01-node-source-reachability
+            flavor: app-only
+          - lesson: 02-go-service-golem
+            flavor: app-only
+          - lesson: 03-container-image
+            flavor: full
+          - lesson: 04-binaries-blint
+            flavor: app-only
+          - lesson: 05-memory-safety-c
+            flavor: app-only
+          - lesson: 06-supply-chain-licence
+            flavor: app-only
+          - lesson: 07-ci-gating
+            flavor: app-only
+          - lesson: 08-agent-workflow
+            flavor: app-only
+          - lesson: 09-vulnerable-repos
+            flavor: app-only
+    name: lesson ${{ matrix.lesson }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Trim CI agent
+        run: |
+          chmod +x contrib/free_disk_space.sh
+          ./contrib/free_disk_space.sh
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: 24
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
+        with:
+          go-version: stable
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+
+      - name: Install the toolchain
+        run: |
+          uv sync --all-extras --all-packages
+          echo "${{ github.workspace }}/.venv/bin" >> "$GITHUB_PATH"
+          npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom@4.0.3
+          sudo apt-get update
+          sudo apt-get install -y php-cli ruby
+
+      - name: Prefetch the vulnerability database
+        run: depscan vdb download --flavor ${{ matrix.flavor }}
+
+      - name: Run the lesson
+        shell: bash
+        env:
+          WORK: ${{ runner.temp }}/lesson-${{ matrix.lesson }}
+        run: |
+          bash documentation/lessons/${{ matrix.lesson }}/run.sh 2>&1 \
+            | tee "${{ runner.temp }}/lesson-output.txt"
+
+      - name: Check the quoted output lines
+        shell: bash
+        run: |
+          missing=0
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            if ! grep -F -q -- "$line" "${{ runner.temp }}/lesson-output.txt"; then
+              echo "MISSING from the lesson output: $line"
+              missing=1
+            fi
+          done < documentation/lessons/${{ matrix.lesson }}/expect.txt
+          exit $missing
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: lesson-${{ matrix.lesson }}-output
+          path: ${{ runner.temp }}/lesson-output.txt

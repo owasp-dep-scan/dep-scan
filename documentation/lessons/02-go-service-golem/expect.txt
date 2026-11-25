@@ -1,0 +1,8 @@
+project: shop-golang-microservices 76c34f1ab7e428f6106c5cf291570502df4ff257
+golem analyzer status: completed
+reached finding: GHSA-jq35-85cj-fj4p on pkg:golang/github.com/docker/docker@v24.0.5
+grade: moderate (rule reached)
+presence: proven, reach: likely
+witness kind: reached-flow from golem
+first hop: (*github.com/docker/docker/client.Client).setupHijackConn
+unassessed: exposure, barrier

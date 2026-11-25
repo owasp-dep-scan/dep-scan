@@ -1,0 +1,84 @@
+---
+sidebar_position: 2
+title: Configuration
+---
+
+# Configuration: the file and the environment
+
+Every scan option can come from four places, checked in this order: the command line, then the configuration file (`depscan.toml`), then an environment variable, then the defaults. A value that `--profile` or `--checks` sets sits between the command line and the file: an explicit option still wins over it, and it wins over the file. This page lists the file's keys and every environment variable, and says where each is the better choice. `depscan config show` prints the merged result with the source of every value, so when two of them disagree the command names which one won:
+
+```bash
+depscan config show --reports-dir reports
+```
+
+## The configuration file
+
+The file holds flat keys named after the long options: `vdb_flavor = "app-only"`, `reports_dir = "reports"`, `reachability_analyzer = "SemanticReachability"`, and the rest of `depscan scan --help`. By default dep-scan reads the file that the `DEPSCAN_CONFIG` environment variable names, or `.config/depscan.toml` in the current directory when the variable is unset; `--config` names another path for one scan. `depscan config init` writes the effective options to that same default file (creating `.config/` when needed) and refuses to overwrite one that exists, so the next scan in the same directory and environment picks it up. Every scan also writes a `depscan.toml.sample` into the reports directory, carrying the options it ran with, which is the fastest way to start a project's file:
+
+```toml
+# .config/depscan.toml
+vdb_flavor = "app-only"
+vdb_compression = "zst"
+```
+
+The database options (`vdb_flavor`, `vdb_compression`, `vdb_image`) and the check and analyzer options are the ones most often persisted. Two keys have no command-line option: `source_image` and `build_dir`, the lifecycle inputs, are set in the configuration file or through the `DEPSCAN_SOURCE_IMAGE` and `DEPSCAN_BUILD_DIR` variables, and for these two the environment variable wins over the file key. The `serve` verb takes no `--config`; its options come from the command line and environment only.
+
+## The vulnerability database
+
+The database selection lives on the `depscan vdb` command for downloads and on `depscan scan` for scans; [the database page](../start/vulnerability-database) explains the flavors. The environment variables below are the overrides automation uses:
+
+| Variable | Meaning |
+| --- | --- |
+| `VDB_HOME` | Directory for the cached database. For container runs, mount a host directory and point this at the mount. |
+| `VDB_DATABASE_URL` | Override the database OCI image URL verbatim. When set, no automatic flavor selection runs; its registry and tag also seed the derived flavor URLs, so a mirror override applies to every flavor. |
+| `VDB_AGE_HOURS` | Age threshold before the database is re-downloaded. Default 48. In shard mode the threshold applies per shard. |
+| `VDB_DOWNLOAD_RETRIES` | Attempts for a download that fails mid-stream. Default 3. |
+| `VDB_USE_SHARDS` | `true` or `1` scans with type shards instead of a complete database; uncovered purl types are reported as coverage gaps. |
+| `VDB_SHARDS_DIR` | Shard store directory. Defaults to `$VDB_HOME/shards`. vdb's own variable; dep-scan reads it. |
+| `VDB_INCLUDE_METADATA` | `true` uses the extended metadata tables during the scan. Set automatically when `--severity` is given without a pinned image or chosen flavor. |
+| `USE_VDB_10Y` | Deprecated. The env spelling of `--vdb-time 10y`; pass `--vdb-flavor full-10y` instead. |
+
+## Scan behaviour
+
+| Variable | Meaning |
+| --- | --- |
+| `DEPSCAN_CONFIG` | Path of the configuration file a scan reads when `--config` is not given, and the file `depscan config init` writes. Defaults to `.config/depscan.toml` in the current directory. |
+| `DEPSCAN_TEMP_DIR` | Temporary directory to use. |
+| `CDXGEN_TIMEOUT_MS` | Time budget for each cdxgen invocation, 30 minutes by default. dep-scan stops cdxgen at the budget once five more minutes have passed; the failure reason names the budget without claiming it was the cause. Raise it for a large tree. |
+| `CDXGEN_ARGS` | Alternative to `--cdxgen-args`. Its `--exclude` patterns also apply to dep-scan's own walks. |
+| `DEPSCAN_SOURCE_DIR_IMAGE` | The source directory or image a scan uses when the scan verb is given no target. Defaults to the current directory. |
+| `DEPSCAN_REPORTS_DIR` | Alternative to `--reports-dir`. |
+| `DEPSCAN_SEVERITY` | Alternative to `--severity`: `low`, `medium`, `high` or `critical`. With no pinned image or chosen flavor it also selects the metadata flavor. |
+| `DEPSCAN_FAIL_ON_ERROR` | Alternative to `--fail-on-error`. `true` or `1` aborts on failed tools, unreadable reports, empty slices or empty package lists instead of silently degrading. |
+| `OSV_EXCLUDE_MALWARE` | `true` or `1` excludes malware (`MAL-*`) advisories from the results. |
+| `DEPSCAN_SOURCE_IMAGE` | Source image name for lifecycle analysis; also the `source_image` config key. |
+| `DEPSCAN_BUILD_DIR` | Build directory for lifecycle analysis; blint's SBOM command runs against it. Defaults to the scanned source directory; also the `build_dir` config key. |
+| `FETCH_LICENSE` | Set to `true` by the `license` check and by URL-based searches. Set it yourself to force cdxgen to populate licence data on every scan. |
+
+## The server
+
+| Variable | Meaning |
+| --- | --- |
+| `DEPSCAN_SERVER_API_KEY` | API key required for all requests when authentication is on. Sent as `X-API-Key` or `Authorization: Bearer <key>`. |
+| `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND` | `true` binds the server to a non-local address without authentication. Set it only for a trusted, short-lived setup. |
+| `DEPSCAN_SERVER_ALLOWED_GIT_SCHEMES` | Comma-separated URL schemes the server may scan. Defaults to `http,https,git,git+http,git+https`. |
+| `DEPSCAN_SERVER_ALLOW_PRIVATE_URLS` | `true` allows URL scans that resolve to private, loopback or link-local addresses. Leave unset for the safer default. |
+| `DEPSCAN_SERVER_TRUSTED_HOST_NAMES` | Comma-separated host names a client may use in the `Host` header against an unauthenticated server; `localhost`, `*.localhost` and IP addresses are always accepted, and other names are refused to stop DNS rebinding. Not needed when an API key is set. |
+| `DEPSCAN_SERVER_MAX_CONTENT_LENGTH` | Maximum request body size in bytes, uploads included. Defaults to `104857600` (100 MiB). |
+
+## Colour and terminals
+
+Colour follows the stream unless the environment asks otherwise, and each console decides for its own stream, so a redirected stderr receives plain text by default:
+
+| Variable | Meaning |
+| --- | --- |
+| `NO_COLOR` | Any non-empty value turns colour off on both consoles, including a real terminal. |
+| `FORCE_COLOR` | Any non-empty value turns colour on even when the stream is not a terminal. |
+| `CONSOLE_COLOR_SCHEME` | `auto` (default), `standard`, `256`, `truecolor` or `windows`. A named scheme forces colour and selects it, on redirected streams too; an unknown value falls back to dep-scan's detection with colour forced. |
+| `DISABLE_CONSOLE_EMOJI` | `true` or `1` turns emoji shortcodes off. Emoji are also off when the stream is not a terminal. |
+
+Progress bars and spinners draw only when stderr is a terminal; `FORCE_COLOR` does not turn them on, because redrawing on a redirected stream would only fill the file a script is capturing. With none of the variables set, redirected output on either stream carries no ANSI escape sequences, so a parser never strips them.
+
+## Debugging
+
+`SCAN_DEBUG_MODE=debug` turns on the full log surface, including the tool invocations and the reasons a reachability analyzer did not run, which is the first step for every "why did nothing run" question ([the debugging page](../Develop/debugging)).

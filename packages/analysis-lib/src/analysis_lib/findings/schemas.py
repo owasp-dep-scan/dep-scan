@@ -168,6 +168,18 @@ def schema_summaries() -> List[Dict[str, str]]:
     return summaries
 
 
+def schema_table_markdown() -> str:
+    """Every published schema as the markdown table the schemas page embeds.
+
+    Rows come from :func:`schema_summaries`, so the page cannot name a schema
+    the loader does not serve, or lose one.
+    """
+    lines = ["| Name | Title |", "| --- | --- |"]
+    for summary in schema_summaries():
+        lines.append(f"| `{summary['name']}` | {summary['title']} |")
+    return "\n".join(lines) + "\n"
+
+
 def _read(filename: str) -> Dict[str, Any]:
     package = _EVIDENCE_SCHEMA_PACKAGE if filename == _EVIDENCE_SCHEMA_FILE else _SCHEMA_PACKAGE
     schema_path = resources.files(package).joinpath(_SCHEMA_DIR).joinpath(filename)

@@ -1,0 +1,59 @@
+---
+sidebar_position: 5
+title: Coverage and not assessed
+---
+
+# Coverage and "not assessed"
+
+The most dangerous sentence in a security report is "no findings". It is only meaningful next to the statement of what was actually checked. dep-scan keeps the two apart everywhere: a scan that assessed everything and found nothing, and a scan where an analyzer never ran, are different states in every output, and neither can quietly borrow the other's authority.
+
+## The states
+
+| State | Meaning | Where it shows |
+| --- | --- | --- |
+| `assessed` | The analysis that owns the finding ran to completion. `assessed` with no findings is a clean result. | The finding's `coverage` block; the manifest's stage entries. |
+| `not_assessed` | The analysis did not run, failed, hit a budget or lacked data, and the reason is recorded. | The manifest's stage and analyzer entries; the console and the coverage view; on a finding, the `not_assessed` exploitability axes and the `exploitability.unassessed` list. |
+
+The states exist at three levels. A finding's `coverage` block has a `not_assessed` state in the schema, but in this version every finding the scan writes reads `assessed`, because a finding only exists when the matching or review that produced it ran; a blint finding may still list `coverage.reasons` for units blint failed or skipped. What a finding cannot claim shows on its exploitability axes instead, as `not_assessed`. A stage in the manifest carries `completed`, `failed`, `skipped` or `not-assessed`, each with its reason. A capability (a check a scan could run) is `available` or carries the reason it is not, in the `depscan doctor` report and in the manifest's copy of it. A policy gate, a VEX statement or a summary must never turn the first state into the second; in this version, where findings do not yet change the exit code, the equivalent discipline is yours to keep: a gate that counts findings should read the coverage block or the manifest stages first.
+
+## The signals a scan leaves
+
+Four signals say what did not run, and reading them together answers the question on any scan. Stages carry `skipped` with the reason when nothing needed doing (a licence or risk check that was not requested, an explanation that was not asked for). Analyzer entries under the enrichment stage carry `not-assessed` when a reachability report was missing or unreadable. Checks `all` had to leave off are recorded as `check-<name>` stages with status `not-assessed`. And the one check with no stage of its own: the binary review only runs when it was requested (the `binary` check, a binary or apk target, or the `BlintGenerator` engine), so a scan that did not ask for it shows no `binary-review` stage at all, which is the record of it not running.
+
+## What makes an analysis not assessed
+
+Every reason names the thing that stopped it, so the fix is usually one install or one flag away:
+
+- A tool is missing: the golem binary or the Go toolchain is not installed, so Go reachability cannot run. The doctor names the capability and the missing requirement.
+- A report is missing or unreadable: cdxgen produced no atom report for the project type, or the report on disk is damaged. The manifest's analyzer entry names what it looked for.
+- A budget was hit: atom or golem was stopped by its timeout, or a slice cap cut paths. The caveat names the budget.
+- The database lacks the data: a shard is missing or stale, or the metadata tables a feature needs are absent from the chosen flavor.
+
+A finding on a component the skipped analysis would have covered is still written, but it makes no claim the analysis would have backed. Its coverage block still reads `{"state": "assessed"}`, because the matching that produced it ran; the skipped axis reads `not_assessed` and is listed in the finding's `exploitability.unassessed` (for example `reach`), and the reason itself is in the manifest, on the enrichment stage's `analyzers[].reason`. Nothing disappears: when matching produces rows that name no component, or records that grade nothing, the manifest's `notAssessed` lines count them.
+
+## Reading coverage on a scan
+
+Two views answer "what did not run?". The manifest is the record of the scan:
+
+```bash
+python3 -c "
+import json
+m = json.load(open('reports/depscan.manifest.json'))
+for stage in m['stages']:
+    print(stage['name'], stage.get('projectType'), stage['status'], stage.get('reason', ''))
+    for entry in stage.get('notAssessed', []):
+        print('  ', entry)
+"
+```
+
+And `depscan doctor` answers the same question about the machine, before a scan runs, with one row per capability:
+
+```bash
+depscan doctor --require reachability:go
+```
+
+Exit code 4 with the unmet capability named means the scan cannot run that analysis here; exit 2 names an unknown capability. The `--checks all` expansion consults the same table: every check whose capability is available is enabled, and each unavailable one is recorded as a `check-<name>` stage with status `not-assessed` and the doctor's reason, so the scan says what it left off rather than pretending the check ran.
+
+## The checks that are not implemented yet
+
+Four named checks have no analysis behind them in this version: `memory-safety`, `mobile`, `code` and `crypto`. Naming one explicitly stops the scan with exit code 4 and the issue that tracks it, before any work runs; `--checks all` leaves them off and records the reason. [The memory safety page](../targets/memory-safety) and [the mobile apps page](../targets/mobile-apps) say what to use instead today.

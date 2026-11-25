@@ -1,0 +1,7 @@
+project: C23-examples 46ecae4927f761ca434077bfd22270ae0360647a
+exit code: 4
+memory-safety findings:
+rule: MS-
+location: C23-examples/c23/unreachable.c:
+flow roles:
+parse report entries:

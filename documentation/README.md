@@ -1,41 +1,28 @@
-# Website
+# dep-scan documentation site
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+The documentation site, built with [Docusaurus](https://docusaurus.io/) 3.7. The pages live in `docs/`, organized in reading order: Start, Understand the results, Scan your software, Run it in CI and with agents, Reference, Upgrade, Develop, and the lesson Tutorials.
 
-### Installation
+## Build
 
-```
-$ yarn
-```
-
-### Local Development
-
-```
-$ yarn start
+```bash
+npm ci
+npm run build
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+The build treats broken links as errors (`onBrokenLinks` and `onBrokenMarkdownLinks` are `throw`), so a page that moves must carry its redirect in `docusaurus.config.ts`.
 
-### Build
+## Generated content
 
-```
-$ yarn build
-```
+Several pages embed content the code generates, each between HTML-comment markers, with a test under `test/` that compares the region to the generator:
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+| Page | Markers | Generator |
+| --- | --- | --- |
+| `docs/reference/cli.mdx` | help blocks, exit-code table | the built argparse parsers; `depscan.commands.output.exit_code_table_markdown` |
+| `docs/integrate/agents.mdx` | exit-code table | the same exit-code helper |
+| `docs/integrate/ci.mdx` | exit-code table | the same exit-code helper |
+| `docs/start/vulnerability-database.mdx` | flavor table, legacy flavor table | `depscan.lib.config.flavor_table_markdown`, `legacy_flavor_table_markdown` |
+| `docs/reference/schemas.mdx` | schema table | `analysis_lib.findings.schemas.schema_table_markdown` |
+| `docs/results/scan-directory.mdx` | manifest field tables | `depscan.lib.scan_directory.manifest_fields_markdown` |
+| `docs/lessons/*.mdx` | whole page | `documentation/lessons/<name>/run.sh`, compared by `test/test_docs_lessons.py` |
 
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
-```
-
-Not using SSH:
-
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The README's help block is generated the same way and checked by `test/test_docs_cli.py`. When such a test fails, regenerate the embedded block from the named helper; do not edit the expectation.

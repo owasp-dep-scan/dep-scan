@@ -31,7 +31,7 @@ EXIT_USAGE = 2
 #: Exit code: a requested capability that cannot run here.
 EXIT_REQUIREMENT_NOT_MET = 4
 
-#: The exit codes and their meanings, as ``cli-usage.mdx`` and the agents
+#: The exit codes and their meanings, as the CLI usage page and the agents
 #: page embed them through :func:`exit_code_table_markdown`. Findings never
 #: change the exit code in this version.
 EXIT_CODES = (

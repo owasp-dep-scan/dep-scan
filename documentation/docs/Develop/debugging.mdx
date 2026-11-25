@@ -1,66 +1,54 @@
 ---
-position: 3
+sidebar_position: 3
 title: Debugging
 ---
 
-# Debugging
+# Debugging a scan
 
-This page teachs users to setup python debugger for dep-scan project.
+Most scan questions are answered before a debugger is needed: `SCAN_DEBUG_MODE=debug` turns on the full log surface, including each tool invocation, the reports the adapters looked for and the reasons a stage or analyzer did not run. The doctor report answers the same question about the machine. This page covers the two debugger setups and the two log sources.
 
-## Debugging using Pycharm
+## The logs
 
-1. Open `dep-scan` using pycharm, when you open the project for the first time it will take some time initializing everything.
-   ![1](/img/develop/debug/1.png)
-2. Procede by updating your python environment set in Pycharm.
-   a. Click on Python3.x on the bottom right corner of Pycharm
-   b. Choose "Add New Interpreter" > "Add Local Interpreter".
-   c. Choose `Virtualenv Environment` and existing and find the `venv` folder inside of dep-scan.(Can be different depending on your system)
-   ![1](/img/develop/debug/2.png)
-3. You may add a debugger point to any part of dep-scan code. For example we are pointing it to `main()` function in `dep-scan/cli.py` as this is activated whenever we run dep-scan using the cli.
-   ![1](/img/develop/debug/3.png)
-4. Go to Pycharms top bar and click on "Current File" > "Edit Configurations...".
-   ![1](/img/develop/debug/4.png)
-5. Add a new configurations and choose "Python".
-   ![1](/img/develop/debug/5.png)
-6. In the following dialog:
-   a. add a name to your config
-   b. then next to script button choose the `cli.py` file.
-   c. add arguments that you want to test.
-   d. finally click on save.
-   ![1](/img/develop/debug/6.png)
-7. Press the debug button.
-   ![1](/img/develop/debug/7.png)
-8. Success!! 🥳
-   ![1](/img/develop/debug/8.png)
+A scan writes two streams, and knowing which is which settles half the confusion: results and JSON go to stdout, and every log line, warning and progress display goes to stderr. Run a scan with stderr visible and `SCAN_DEBUG_MODE=debug`:
 
-## Debugging using Eclipse Theia
+```bash
+SCAN_DEBUG_MODE=debug uv run depscan scan ./my-project --reports-dir reports --debug
+```
 
-Use the below launch.json configuration.
+## Visual Studio Code and debugpy
+
+A `launch.json` configuration runs the CLI in the debugger:
 
 ```json
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug depscan cli",
-            "type": "debugpy",
-            "request": "launch",
-            "env": {
-                "SCAN_DEBUG_MODE": "info"
-            },
-            "program": "${workspaceFolder}/depscan/cli.py",
-            "console": "integratedTerminal",
-            "args": [
-                "scan",
-                "source directory",
-                "--reports-dir",
-                "reports directory",
-                "-t",
-                "project type"
-            ]
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug depscan CLI",
+      "type": "debugpy",
+      "request": "launch",
+      "env": {
+        "SCAN_DEBUG_MODE": "debug"
+      },
+      "module": "depscan.cli",
+      "console": "integratedTerminal",
+      "args": [
+        "scan",
+        "/work/project",
+        "--reports-dir",
+        "/work/reports"
+      ]
+    }
+  ]
 }
 ```
 
-Replace "source directory", "reports directory", and "project type" with valid values.
+Set a breakpoint in `depscan/lib/pipeline.py` for the scan stages, in `depscan/lib/bom.py` for BOM generation and the analyzer runners, and in the adapter under `packages/analysis-lib/src/analysis_lib/evidence/adapters/` for how a producer's report becomes records.
+
+## PyCharm
+
+Open the repository, select the `.venv` interpreter that `uv sync` created, and add a run configuration of module `depscan.cli` with the same arguments as above; the entry point is `depscan/cli.py` and the verb registry builds the parser in `depscan/commands/__init__.py`.
+
+## When a tool misbehaves, not dep-scan
+
+The analyzers are separate processes. To see what one of them was given and what it answered, the debug log prints the command line, and the raw reports stay in the scan directory under `analysis/<tool>/` (or as the `*-semantics.slices.json` files cdxgen wrote), which is the input the adapter actually read. Re-running the tool's command by hand reproduces its side of the conversation.

@@ -1,0 +1,154 @@
+---
+sidebar_position: 7
+title: The scan directory
+description: The layout a scan writes, its manifest and findings files, and how to read a saved scan back.
+---
+
+# The scan directory
+
+Every scan writes one directory, and everything that reads a scan afterwards reads only that directory: `depscan report`, the MCP server, the Python API and any script. The directory is self-describing. Its manifest records what the scan read, which tools ran, which did not and why, so a scan directory can be interpreted, filtered or diffed without re-running anything, on another machine, months later.
+
+The directory is the reports directory named by `-o`/`--reports-dir` or `DEPSCAN_REPORTS_DIR`, `reports` under the current directory by default. One case reuses an existing directory: when the scan's only target is a single BOM directory and no reports directory was named, that BOM directory is the reports directory, so the manifest, the findings file and the VDR land next to the BOMs. Several targets write `<reports-dir>/<n>-<name>/` per target.
+
+## The layout
+
+```text
+reports/
+├── depscan.manifest.json          the manifest, written last of every file
+├── depscan.findings.json          one finding per advisory and component
+├── evidence.jsonl                 the evidence store, one record per line
+├── evidence.index.json            record ids by component purl and by finding
+├── sbom-python.cdx.json           the BOM documents, named as before
+├── depscan-universal.vdr.json     the VDR files, named as before
+├── python-reachables.slices.json  the slice files cdxgen writes
+├── analysis/
+│   ├── rusi/rusi.json             raw reports of the tools dep-scan runs itself
+│   ├── golem/golem.json
+│   ├── dosai/dotnet-methods.json, dotnet-dataflows.json
+│   ├── blint/findings.json        the binary review's reports
+│   └── tracebom/                  a trace BOM the scan directory holds
+├── license-python.json            the license and risk reports
+├── depscan-risk-python.json
+├── depscan.html, depscan.txt      the rendered reports
+└── report.csaf.json               the CSAF VEX document, with --csaf
+    csaf.toml.sample               the starter CSAF metadata, with --csaf
+```
+
+A scan writes only the files that apply to it: a package URL target has no BOM, so its scan writes no BOM and no VDR, and its findings are in `depscan.findings.json` alone. Files that scripts already read keep the names and places they have always had: the BOM and VDR files, and cdxgen's slice files, are untouched by the scan directory layout. The manifest's `files` array carries one entry for every file at the top of the directory and under `analysis/`, with its path relative to the directory (always forward slashes), a `role`, the producer, and the SHA-256 digest of the bytes, so a copied directory can be checked file by file.
+
+| Role | Files | Written by |
+| --- | --- | --- |
+| `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | cdxgen, or blint for any BOM blint wrote; `user` for a BOM the user placed here |
+| `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
+| `findings` | `depscan.findings.json` | dep-scan |
+| `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |
+| `slices` | `*.slices.json` | cdxgen |
+| `raw-report` | everything under `analysis/<producer>/` | the tool named by the directory |
+| `csaf` | `*.csaf.json` | dep-scan |
+| `report` | `depscan.html`, `depscan.txt`, the license and risk reports, the sample toml files, a template report | dep-scan |
+| `other` | everything else, for example `*-openapi.json` | varies |
+
+## The findings file
+
+`depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
+
+## The manifest
+
+The manifest is written last, through a temporary file and a rename, so a directory with a manifest lists files that exist. It holds the inputs with their digests, the doctor report's tools and capabilities, the database flavor and shards used, one entry per stage with its status, the parsed options with secret-valued options redacted, and the `files` array. The tables below are generated from the schema (regenerate with `uv run python -c "from depscan.lib.scan_directory import manifest_fields_markdown; print(manifest_fields_markdown())"` when it changes).
+
+<!-- manifest fields start -->
+
+### Manifest fields
+
+| Field | What it holds |
+| --- | --- |
+| `layoutVersion` | The scan directory layout version as major.minor. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows and refuses any other major. |
+| `depscanVersion` | The version of dep-scan that ran the scan. |
+| `startUtc` | When the scan started, in UTC, as an RFC 3339 date-time. |
+| `endUtc` | When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end. |
+| `inputs` | Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place an absolute path, a username or a hostname may appear. |
+| `tools` | The doctor report's tool entries, collected once for this scan. |
+| `platform` | The doctor report's platform entry: os, arch and, on Linux, libc. |
+| `capabilities` | The doctor report's evaluated capability table, collected once for this scan. |
+| `database` | The doctor report's database inspection, plus the flavor and shards the matching stage actually used. |
+| `stages` | One entry per stage, in the order the stages ran. A stage that stopped the scan is recorded as failed with its reason; the stages after it are absent. |
+| `options` | The parsed scan options. Options whose name can hold a secret are recorded as the string "&lt;redacted&gt;" when they were set, and path-valued options are recorded in inputs instead, so no absolute path appears here. |
+| `files` | Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes. |
+
+### input fields
+
+| Field | What it holds |
+| --- | --- |
+| `type` | dir is a directory the scan read, file a single BOM or template file, purl a package URL search. |
+| `path` | The path or package URL as the user gave it. |
+| `sha256` | The SHA-256 digest of a file input. |
+| `git` |  |
+
+### database fields
+
+| Field | What it holds |
+| --- | --- |
+| `vulnerabilityDatabase` | The doctor report's read-only database inspection. |
+| `flavorUsed` | The database flavor the matching stage actually used for this scan. |
+| `shardsUsed` | The shard names the matching stage actually connected, empty when shard mode was off. |
+
+### stage fields
+
+| Field | What it holds |
+| --- | --- |
+| `name` | The stage name, for example setup, database, inventory, enrichment, matching, analysis or render. |
+| `projectType` | The project type the stage ran for, for stages that run once per type. |
+| `status` | completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason. |
+| `reason` | Why the status is failed, skipped or not-assessed. Absent for completed. |
+| `capabilities` | The capability names the stage needed, named the way depscan doctor names them. |
+| `notAssessed` | Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran. |
+| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the analyzer's evidence adapter read a report. |
+| `outputs` | The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently. |
+
+### analyzer fields
+
+| Field | What it holds |
+| --- | --- |
+| `name` | The analyzer name, for example atom, golem, rusi or dosai. |
+| `capability` | The capability the analyzer satisfies, named the way depscan doctor names it. |
+| `status` | completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the reason the adapter gave: what was wrong with the report it found, or, when it found none, the doctor's reason when the capability is unavailable on this machine and otherwise the report names it looked for. The doctor's reason stands in only when no adapter ran. |
+| `reason` | For not-assessed, the adapter's reason (a report it could not read, or the report names it looked for), or the doctor's reason the capability cannot run here when the adapter gave none or no adapter ran. |
+| `caveats` | The producer-level caveats the analyzer's adapter reported for this scan, the same kinds an evidence record carries. Absent when the analyzer completed with nothing to flag. |
+
+### stageOutput fields
+
+| Field | What it holds |
+| --- | --- |
+| `file` | The output file's name in the scan directory layout. |
+| `status` | completed when this version writes the file. not-assessed when it does not, with the reason. |
+| `reason` | For not-assessed, why this version does not produce the file. |
+
+### file fields
+
+| Field | What it holds |
+| --- | --- |
+| `path` | The path relative to the scan directory, always with forward slashes. |
+| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index. |
+| `producer` | The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here. |
+| `projectType` | The project type the file belongs to, when the name carries one. |
+| `sha256` | The SHA-256 digest of the file's bytes. |
+<!-- manifest fields end -->
+
+One naming detail prevents a common misreading: options are recorded under their internal names, and both `--bom-profile` and `--profile` land on the same key, `profile`. A manifest from a scan run with `--bom-profile research` alone shows `profile: research` although no scan profile was set. Which checks ran is not an options key at all: the stage list is the record, with a `licenses`, `risk` or `explain` stage skipped when a check or explanation was not requested, and a `check-<name>` stage per check `--checks all` had to leave off.
+
+No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
+
+## Loading a directory back
+
+`depscan.api.load_scan(reports_dir)` and `depscan report` both read the manifest first: the project types, the files and the stage results come from it, the vulnerabilities from the VDR files it lists, and the findings from the findings file. A project type that found no vulnerabilities loads as an empty result, because the manifest shows its matching stage completed. A type whose matching was skipped or failed is listed but gets no result, a manifest in which no matching stage completed is refused rather than loaded as clean, and a manifest whose layout major this dep-scan does not know is refused with both versions named. A directory without a manifest is still read the way scans before the scan directory wrote them, recognised by the VDR file names; a directory with neither a manifest nor a VDR is refused rather than reported as clean.
+
+The version rule: `layoutVersion` is a `major.minor` string, and a reader accepts any minor version of a major it knows. Layout 2.0 introduced the evidence store; a manifest whose major is 1 predates it and is refused with an error naming both versions.
+
+## `depscan report`
+
+```bash
+depscan report reports
+depscan report reports --explain --explanation-mode EndpointsAndReachables
+```
+
+`depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database, so it is fast and safe to run anywhere. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.

@@ -1,0 +1,130 @@
+---
+title: "Lesson 8: an agent reads a scan"
+sidebar_position: 08
+---
+
+# Lesson 8: an agent reads a scan
+
+This lesson starts `depscan mcp`, the Model Context Protocol server, and drives it the way an MCP client does, with the inspector's CLI mode standing in for an agent: list the tools, summarise a saved scan, filter its findings, and read one finding back by its fingerprint. The agent never runs a scan and never parses console text; it reads the same documents the CLI writes.
+
+The inputs are pinned: a scan of `pkg:pypi/requests@2.31.0` saved to a scan directory, dep-scan 7.0.0a3 with the `mcp` extra and the `app-only` database flavor, and version 2.16.0 of the MCP inspector from npm. The output below is from a run on 2026-11-25 with those versions. The server is started with `--allow-dir` naming only the scan directory, which is the whole of what the session may read.
+
+## The script
+
+The commands live in `documentation/lessons/08-agent-workflow/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 08: an agent answering a real question about a scan, through the
+# MCP server.
+#
+# Saves a scan, starts `depscan mcp` over stdio, and drives it the way an
+# MCP client does, with the MCP inspector's CLI mode: the summary, the
+# findings filter for reached findings, and one finding read back.
+#
+# Needs: dep-scan with the mcp extra (pip install "owasp-depscan[mcp]"),
+# Node.js with npx for the inspector, and an app-only database.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-08}"
+SCANS="$WORK/scans"
+mkdir -p "$SCANS"
+
+### Save a scan for the agent to read
+depscan scan pkg:pypi/requests@2.31.0 --profile ci --vdb-flavor app-only --no-banner \
+  -o "$SCANS/reports"
+
+### List the tools an MCP client sees
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
+  --method tools/list > "$SCANS/tools.json"
+python3 -c "
+import json
+doc = json.load(open('$SCANS/tools.json'))
+names = sorted(t['name'] for t in doc['tools'])
+read = [n for n in names if n != 'run_scan']
+print(f'tools: {len(names)}')
+print(f'read tools ({len(read)}):', ', '.join(read))
+print('scan tool:', ', '.join(n for n in names if n == 'run_scan'))
+"
+
+### Ask for the summary
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
+  --method tools/call --tool-name scan_summary \
+  --tool-arg scan_dir="$SCANS/reports" > "$SCANS/summary.json"
+python3 -c "
+import json
+doc = json.load(open('$SCANS/summary.json'))
+state = json.loads(doc['content'][0]['text'])
+print('findingCount:', state['findingCount'])
+print('countsBySeverity:', json.dumps(state['countsBySeverity']))
+"
+
+### Ask for the medium-severity findings
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
+  --method tools/call --tool-name list_findings \
+  --tool-arg scan_dir="$SCANS/reports" --tool-arg severity=medium > "$SCANS/medium.json"
+python3 -c "
+import json
+doc = json.load(open('$SCANS/medium.json'))
+state = json.loads(doc['content'][0]['text'])
+findings = state.get('findings', [])
+print('medium findings:', len(findings))
+for x in findings:
+    axes = x.get('exploitability', {}).get('axes', {})
+    print(' ', x['rule'], x['severity'], 'reach', axes.get('reach'))
+"
+
+### Read one finding back by its fingerprint
+python3 -c "
+import json
+doc = json.load(open('$SCANS/medium.json'))
+state = json.loads(doc['content'][0]['text'])
+finding = state['findings'][0]
+print(fingerprint := finding['id'])
+" > "$SCANS/fingerprint.txt"
+npx -y @modelcontextprotocol/inspector@2.16.0 --cli depscan mcp --allow-dir "$SCANS" \
+  --method tools/call --tool-name get_finding \
+  --tool-arg scan_dir="$SCANS/reports" \
+  --tool-arg finding_id="$(cat "$SCANS/fingerprint.txt")" > "$SCANS/finding.json"
+python3 -c "
+import json
+doc = json.load(open('$SCANS/finding.json'))
+state = json.loads(doc['content'][0]['text'])
+print('read back:', state['rule'], 'fix', state.get('fix', {}).get('fixed_versions'))
+"
+```
+
+## Reading the run
+
+The server offers ten tools: nine read tools, and `run_scan`, which only reports the scan it would run unless the server was started with `--allow-scans` and the call asks to execute:
+
+```text
+tools: 10
+read tools (9): coverage, diff_scans, doctor, explain_finding, get_finding, list_components, list_findings, scan_summary, vdb_status
+scan tool: run_scan
+```
+
+The summary call answers "what is in this scan" without reading a table:
+
+```text
+findingCount: 3
+countsBySeverity: {"medium": 3}
+```
+
+A filtered query is one call. The lesson asks for the medium-severity findings, and each comes back with its axes, so the agent can answer the follow-up question ("which of these is actually reached?") from the same page of results:
+
+```text
+medium findings: 3
+  CVE-2026-25645 medium reach not_assessed
+  CVE-2024-47081 medium reach not_assessed
+  CVE-2024-35195 medium reach not_assessed
+read back: CVE-2026-25645 fix ['2.33.0']
+```
+
+The last call reads one finding by its fingerprint id, and the `fix` field is the upgrade the agent would propose. Note what the axes say on a purl scan: reach is `not_assessed`, because a package URL has no source for an analyzer to trace, and the server reports that rather than letting an agent infer "not reachable". The safety rules the server enforces are on [its page](../integrate/mcp): confined roots, dry-run scans until the operator allows them, and no tool argument that widens what the session may read.
+
+## Takeaways
+
+- `depscan mcp` gives an agent the scan directory through ten tools with published schemas; no console parsing.
+- Filters (`severity`, `grade`, `reachable`, `purl`) are tool arguments, so the agent asks precise questions.
+- The server reports what it cannot know (`not_assessed` reach on a purl scan) with the same discipline the CLI does.

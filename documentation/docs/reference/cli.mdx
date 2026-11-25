@@ -1,0 +1,485 @@
+---
+sidebar_position: 1
+title: CLI reference
+---
+
+# The dep-scan command line
+
+This page is the reference for the verbs, their options and the sections of behaviour a reader needs to look up: what each target kind means, what each check runs, how the JSON output is shaped and the rest. The pages under Start and Scan your software explain the same options as part of a task; here they are the whole truth in one place.
+
+## The verbs
+
+The dep-scan 7 command line starts with a verb: `depscan scan`, `depscan vdb`, `depscan serve` and so on. Each verb owns its options, and `depscan <verb> --help` prints them.
+
+| Verb | What it does |
+| --- | --- |
+| `scan` | Scan a project, BOM, purl or container image for vulnerabilities. |
+| `report` | Render the console tables and explanations of a saved scan. |
+| `vdb` | Download and inspect the vdb vulnerability database. |
+| `doctor` | Report the tools, data and capabilities a scan can use here. |
+| `schema` | Print the published finding schemas. |
+| `config` | Show the effective scan options or write a config file. |
+| `serve` | Run depscan as a server. |
+| `mcp` | Run the MCP server over stdio for agents and MCP clients. |
+| `validate` | Validate CSAF VEX or CycloneDX VDR/VEX documents against their schema. |
+| `version` | Print the dep-scan version, with tool versions as JSON. |
+| `help` | Show the top-level help, or one verb's help. |
+
+The table rows are the verbs' own help descriptions. The two blocks below are the parsers' own help output, printed at a fixed terminal width (`COLUMNS=200 uv run depscan --help` and `COLUMNS=200 uv run depscan scan --help`); a test regenerates them from the built parsers, so they cannot drift:
+
+```text
+usage: depscan [-h] {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help} ...
+
+Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
+
+positional arguments:
+  {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help}
+    scan                Scan a project, BOM, purl or container image for vulnerabilities.
+    report              Render the console tables and explanations of a saved scan.
+    vdb                 Download and inspect the vdb vulnerability database.
+    doctor              Report the tools, data and capabilities a scan can use here.
+    schema              Print the published finding schemas.
+    config              Show the effective scan options or write a config file.
+    serve               Run depscan as a server.
+    mcp                 Run the MCP server over stdio for agents and MCP clients.
+    validate            Validate CSAF VEX or CycloneDX VDR/VEX documents against their schema.
+    version             Print the dep-scan version, with tool versions as JSON.
+    help                Show the top-level help, or one verb's help.
+
+options:
+  -h, --help            show this help message and exit
+
+Visit https://github.com/owasp-dep-scan/dep-scan to learn more
+```
+
+The scan verb carries every scan option:
+
+```text
+usage: depscan scan [-h] [--target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}] [--checks CHECKS] [--profile {quick,ci,deep,research,offline}]
+                    [--bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}] [--exclude-type TYPE]
+                    [--format {text,json}] [--config CONFIG] [--no-banner] [-o REPORTS_DIR] [--debug] [-q | --explain] [--csaf] [--csaf-version {2.0,2.1}] [--custom-data CUSTOM_DATA]
+                    [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
+                    [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
+                    [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}]
+                    [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS] [--cdxgen-server CDXGEN_SERVER]
+                    [--rust-analyzer-backend {stable,compiler}] [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo] [--exploitability-rules EXPLOITABILITY_RULES] [--no-suggest]
+                    [--fail-on-error] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}]
+                    [--severity {low,medium,high,critical}] [--malware-only]
+                    [--vdb-flavor {full,full-extended,full-2y,full-2y-extended,full-10y,full-10y-extended,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}]
+                    [--vdb-scope {app,app+os}] [--vdb-time {2y,default,10y}] [--vdb-extended] [--vdb-compression {xz,zst}] [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}]
+                    [--vdb-image VDB_IMAGE] [--no-universal] [--no-vuln-table] [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}] [--annotate]
+                    [target ...]
+
+positional arguments:
+  target                What to scan: a source directory, git URL, container image reference, BOM file, BOM directory, purl or binary. The kind is detected; pass --target-kind to force one. Multiple
+                        targets run one scan each.
+
+options:
+  -h, --help            show this help message and exit
+  --target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}
+                        Force the kind of every target instead of detecting it. firmware is accepted only to be refused: it has no inventory path in this version.
+  --checks CHECKS       Comma-separated list of checks to run: all, vulnerabilities, reachability, license, supply-chain, binary, memory-safety, mobile, code, crypto. An explicit list defines the
+                        whole optional set; vulnerabilities always runs.
+  --profile {quick,ci,deep,research,offline}
+                        Scan profile: quick (vulnerabilities only), ci (vulnerabilities and reachability, no explanations), deep (adds license and supply-chain with semantic reachability), research
+                        (deep plus cdxgen's research BOM profile), offline (no database download, no remote cdxgen). Explicit options win over the profile.
+  --bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}
+                        Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.
+  --exclude-type TYPE   Project type dropped from the detected list before any stage runs, so no inventory or scan runs for it (an excluded os or docker type stops the OS and container scans), and
+                        passed to cdxgen as a repeated --exclude-type argument so the BOM contents are filtered the same way. Repeatable; comma-separated values are accepted.
+  --format {text,json}  text for people, json for scripts (default: text)
+  --config CONFIG       Path to the configuration file. Default: $PWD/.config/depscan.toml
+  --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
+  -o, --reports-dir REPORTS_DIR
+                        Reports directory
+  --debug               Run depscan in debug mode.
+  -q, --quiet           Makes depscan quiet.
+  --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
+  --csaf                Generate a OASIS CSAF VEX document
+  --csaf-version {2.0,2.1}
+                        CSAF schema version to target (default: 2.1). CSAF 2.1 retains CVSS v4 scores; 2.0 drops them because the schema has no cvss_v4 slot.
+  --custom-data CUSTOM_DATA
+                        Path to directory containing custom vulnerability data (JSON/YAML/TOML) to override/augment results.
+  --report-template REPORT_TEMPLATE
+                        Jinja template file used for rendering a custom report
+  --report-name REPORT_NAME
+                        Filename of the custom report written to the --reports-dir
+  --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
+                        Product lifecycle for the generated BOM. Multiple values allowed.
+  --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
+                        Analysis technique to use for BOM generation. Multiple values allowed.
+  --bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator}
+                        BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
+  --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}
+                        Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.
+  --reachability-analyzer {off,FrameworkReachability,SemanticReachability}
+                        Reachability analyzer to use. Default FrameworkReachability.
+  --spec-version SPEC_VERSION
+                        CycloneDX specification version to request from cdxgen. Choices: 1.4, 1.5, 1.6, 1.7, 2.0. Defaults to 1.6 (1.7 is not yet supported by Dependency-Track and some other
+                        consumers).
+  --cdxgen-args CDXGEN_ARGS
+                        Additional arguments to pass to cdxgen
+  --cdxgen-server CDXGEN_SERVER
+                        cdxgen server url. Eg: http://cdxgen:9090
+  --rust-analyzer-backend {stable,compiler}
+                        rusi (Rust Source Inspector) backend for Rust reachability. ``stable`` (default) is syn-based parsing with no cargo/rustc build and is safe on untrusted repos. ``compiler``
+                        embeds nightly rustc and builds the target for higher fidelity -- only use on trusted input (see rusi THREAT_MODEL). Implied by --deep for Rust projects. Set
+                        DEPSCAN_RUSI_BINARY to point at a non-PATH rusi binary.
+  --go-analyzer-network {auto,offline}
+                        Network mode for golem (Go Source Inspector) reachability. golem runs with cgo off, so packages that need cgo are not loaded and their reachability is missing; pass --go-
+                        analyzer-cgo to enable cgo for trusted input. ``auto`` (default) allows golem's package loader to download missing modules per the user's Go env (GOFLAGS=-mod=readonly is
+                        still set to prevent go.mod rewrites). ``offline`` sets GOPROXY=off to forbid all downloads -- requires a warm module cache (GOMODCACHE). Set DEPSCAN_GOLEM_BINARY to point at
+                        a non-PATH golem binary.
+  --go-analyzer-cgo     Allow cgo while golem loads Go packages. Default is cgo off: packages that need cgo are not loaded and their reachability is missing. With this flag the C compiler runs with
+                        flags taken from the scanned code and its dependencies, so use it only for input you trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.
+  --exploitability-rules EXPLOITABILITY_RULES
+                        Path to a replacement exploitability rule table (YAML), validated against the depscan-exploitability-rules schema before the scan starts; an invalid file is a usage error.
+                        Default: the bundled table, analysis_lib/data/exploitability_rules.yaml.
+  --no-suggest          Disable suggest mode
+  --fail-on-error       Abort the scan with a non-zero exit code instead of silently degrading. Passed through to cdxgen so extractor failures fail BOM generation, and applied to blint, rusi, golem,
+                        and dosai failures, unreadable reachability reports, empty slices, and empty package lists.
+  -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
+                        Override project types if auto-detection is incorrect. Multiple values supported.
+  --private-ns PRIVATE_NS
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
+  --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
+  --fuzzy-search        Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.
+  --search-order {purl,pcu,cpe,cpu,url}
+                        Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).
+  --severity {low,medium,high,critical}
+                        Minimum severity threshold to report (low, medium, high, critical). Only advisories at or above this severity are returned. depscan applies this floor to the final VDR on any
+                        database; on the extended vdb (VDB_INCLUDE_METADATA) it is additionally pushed down into the search for speed. Findings with no rated severity are kept.
+  --malware-only        Report only malware advisories (MAL-*). Works on the default vdb because is_malware is always populated via the MAL- fallback.
+  --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
+  --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
+  --explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}
+                        Style of explanation needed. Defaults to Endpoints and Reachables.
+  --annotate            Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.
+
+vulnerability database selection:
+  Select which published vdb database the scan downloads. These can also be persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An explicit VDB_DATABASE_URL env pin always wins.
+  The `depscan vdb download` command shares the same options for pre-fetching.
+
+  --vdb-flavor {full,full-extended,full-2y,full-2y-extended,full-10y,full-10y-extended,app-only,app-extended,app-2y,app-2y-extended,app-10y,app-10y-extended}
+                        Which published database flavor to use: 'full' (app+OS, NVD 2020+) or 'app-only' (application ecosystems, NVD 2020+), each with a '-2y' (NVD 2024+, smaller) and '-10y' (NVD
+                        2016+) variant, and an '-extended' form of all three that adds the metadata tables for severity, text, alias, reference, symbol and date search (full-extended, app-extended,
+                        full-2y-extended, ...). Default: full.
+  --vdb-scope {app,app+os}
+                        Deprecated alias for --vdb-flavor: 'app' maps to app-only and 'app+os' to full, or to their 2y, 10y or -extended flavor with the other deprecated options. Default: app+os.
+  --vdb-time {2y,default,10y}
+                        Deprecated alias for --vdb-flavor: '2y' selects the two-year and '10y' the 10-year flavor of the chosen scope. Default: default.
+  --vdb-extended        Deprecated alias selecting the -extended (metadata) flavor of the chosen scope and window, needed for severity, text, alias, reference, symbol, and date search. Auto-selected
+                        when --severity is set.
+  --vdb-compression {xz,zst}
+                        Compression format. 'xz' (tar.xz) always works; 'zst' (zstd) is faster to decompress but needs a zstd decompressor. Default: xz.
+  --vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}
+                        Rejected: vdb 7 publishes no per-distro complete database. Pass --vdb-flavor full and scan the distro packages, or fetch type shards with `depscan vdb download`.
+  --vdb-image VDB_IMAGE
+                        Override the vdb image URL verbatim (bypasses the resolver). Equivalent to setting VDB_DATABASE_URL.
+```
+
+## Exit codes
+
+The table is generated from the exit-code constant in `depscan/commands/output.py`, and a test keeps the page in step with it:
+
+<!-- exit code table start -->
+| Code | Meaning |
+| --- | --- |
+| 0 | Success. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database or a source target that does not exist. |
+| 2 | A usage error, including any dep-scan 6 command line. |
+| 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
+<!-- exit code table end -->
+
+Findings never change the exit code in this version: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
+
+## Target detection
+
+The scan verb takes what to scan as positional targets, and detects each target's kind: a source directory, git URL, container image reference or archive, BOM file, BOM directory, purl, binary or app package.
+
+| Kind | Detected as | What the scan uses |
+| --- | --- | --- |
+| `purl` | a string starting with `pkg:` | the purl search |
+| `git` | a git URL (`http://`, `https://`, `git://`, `ssh://` or `git@`) that does not end in an archive extension | the remote source |
+| `container` | a string that is not an existing path and has the shape of an image reference (`name:tag`, `registry/name[:tag]` with lowercase path components, or `name@sha256:<digest>`), a `.tar` or `.tar.gz` archive file, or a directory holding an `oci-layout` file | the container image |
+| `bom` | an existing JSON file whose document is a CycloneDX BOM | that BOM |
+| `bom-dir` | an existing directory whose JSON files are all CycloneDX documents, not counting the `*.slices.json` reachability slices and dep-scan's own `depscan.manifest.json` and `depscan.findings.json` | every BOM in the directory |
+| `binary` | an existing file that starts with an ELF, PE or Mach-O header | blint binary analysis |
+| `android` | an existing `.apk` or `.aab` file | blint app analysis |
+| `ios` | an existing `.ipa` file | refused (see below) |
+| `source` | an existing path no more specific kind names, or any other string | the source tree |
+
+An existing path beats a same-shaped image reference: a string that is both a possible image reference and an existing path is scanned as the path, whatever kind the path itself gives.
+
+`--target-kind KIND` forces the kind of every target instead of detecting it. `ios` and `firmware` have no inventory path in this version: naming either (or scanning a `.ipa` file) stops the scan with exit 4 and the reason on stderr. A `source` target that does not exist is refused with exit 1, and so is an `http://` or `https://` URL to an archive file, which dep-scan does not download. A path such as `./app`, `/srv/app` or `~/app` is never read as an image reference. A directory that holds other JSON files next to its BOMs is detected as a source directory; pass `--target-kind bom-dir` for it. Detection logs, on stderr, the kind chosen for each target and the evidence behind it.
+
+When the user passed no `-t`, the kind names the project type too: a `container` target scans as `docker`, a `binary` target as `binary` and an `android` target as `apk`.
+
+## The checks
+
+`--checks` takes a comma-separated list of check names: `all`, `vulnerabilities`, `reachability`, `license`, `supply-chain`, `binary`, `memory-safety`, `mobile`, `code`, `crypto`.
+
+| Check | What it maps onto | Capability gate |
+| --- | --- | --- |
+| `vulnerabilities` | vulnerability matching, including the malware advisory reporting | none: always assessed |
+| `reachability` | keeps the reachability analyzers on | `reachability` |
+| `license` | appends the `license` pseudo type, which triggers the license analysis | `license` |
+| `supply-chain` | the package risk audit | `supply-chain` |
+| `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, a source target keeps its cdxgen inventory with blint's security review running beside it, and a container target today gives the review no units to attempt | `binary` (needs the blint package) |
+| `memory-safety` | not implemented in this version | exits 4 when named explicitly |
+| `mobile` | not implemented in this version | exits 4 when named explicitly |
+| `code` | not implemented in this version | exits 4 when named explicitly |
+| `crypto` | not implemented in this version | exits 4 when named explicitly |
+
+An explicit `--checks` list defines the whole optional set: checks not named are off, so `--checks vulnerabilities` turns reachability off. The `vulnerabilities` check always runs, named or not. A check named explicitly whose capability cannot run on the machine stops the scan with exit 4 before any work, printing the doctor's reason on stderr. `--checks all` selects every check whose capability is available, turns the unavailable ones off, and records each of them in the manifest as a `check-<name>` stage with status `not-assessed` and the doctor's reason. A scan whose every target is a BOM file or BOM directory produces no BOM, so neither the gate nor `all` holds a missing cdxgen or language plugin (golem, rusi, dosai, kosi, and the Go and .NET runtimes) against it: reachability reads the slices beside the BOMs, and an analyzer with no slices there is recorded as not assessed.
+
+Without `--checks` and without `--profile` the set is `vulnerabilities,reachability`, and it is never gated.
+
+The binary check on a source scan never replaces the scan's own inventory: the cdxgen BOM keeps every source component and its vulnerability findings, and blint's review reports land under `analysis/blint/` with each review result in `depscan.findings.json` as a `binary-hardening` finding. A review that fails is recorded as a failed `binary-review` stage on the manifest, with blint's reason.
+
+## The profiles
+
+`--profile` names one of five scan profiles. Each sets a check set and analyzer settings; an explicitly passed option always wins over the profile, so `--profile quick --reachability-analyzer FrameworkReachability` keeps framework reachability on.
+
+| Profile | Checks | Other settings |
+| --- | --- | --- |
+| `quick` | `vulnerabilities` | reachability off |
+| `ci` | `vulnerabilities,reachability` | explanations off, so no LLM prompt file is ever written |
+| `deep` | `vulnerabilities,reachability,license,supply-chain` | semantic reachability (`SemanticReachability`) |
+| `research` | `deep` plus cdxgen's research BOM profile | `--bom-profile research` implied |
+| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen only, golem offline, no risk audit |
+
+## BOM profiles and excluded types
+
+`--bom-profile` is cdxgen's own BOM profile flag (`appsec`, `research`, `operational`, `threat-modeling`, `license-compliance` and the machine-learning profiles), the option v6 called `--profile`. It shapes the BOM cdxgen generates; the v7 `--profile` (above) shapes the scan instead.
+
+`--exclude-type` drops a project type from the detected list before any stage runs, so no inventory or scan runs for it: excluding `os` or `docker` stops the OS and container scans. The type is also passed to cdxgen as a repeated `--exclude-type` argument, so the BOM contents are filtered the same way. The option is repeatable and accepts comma-separated values.
+
+```bash
+depscan scan . --exclude-type os --exclude-type docker
+```
+
+## Excluding trees from a scan
+
+A source scan reads the whole tree it is given, test fixtures and build material included, so a tree such as `test/` can add components and findings that are not part of the product. Name the trees to leave out with `--exclude` patterns in `--cdxgen-args` (or the `CDXGEN_ARGS` environment variable):
+
+```bash
+depscan scan /absolute/path/to/project --cdxgen-args "--exclude 'test/**' --exclude 'ci/**'" -o /absolute/path/to/reports
+```
+
+The patterns follow cdxgen's rules. They are globs anchored at the scanned path, never at the working directory, and `*` matches one path segment. `test/**` leaves out the `test` directory at the scanned root only; a leading `**/` is needed only to reach same-named directories nested below the root. Quote each pattern so the shell does not expand it, and give one `--exclude` per tree.
+
+dep-scan reads the same patterns once and applies them to every walk it starts itself, so a tree that is excluded for cdxgen is excluded everywhere: the targets of blint's binary review and of the post-build BOM, and the targets of the golem, rusi, kosi and dosai runs dep-scan makes when cdxgen left no report. dosai, and a blint that accepts an exclusion parameter, receive the patterns. blint is always handed only the directories and files the patterns keep. golem, rusi and kosi analyse one project directory per run and take no exclusion argument, so dep-scan starts each on the one project root the patterns leave (a scan path that is itself a project stays the target). When the patterns remove every project of that language, or remove some of several projects so that more than one remains, no run starts: the tool's reachability is reported as not assessed with that reason, and the fix is to scan one project directory or to exclude none of them. A scan whose patterns leave blint nothing to inventory fails with a reason saying so. No separate option exists for this. Excluding `test/**` from a scan of a tree that keeps `.nupkg` fixtures there removes their NuGet components, the vulnerability findings on them and the binary-hardening findings blint reported for them.
+
+A source scan of a tree that holds Dockerfiles or compose files also reads every image those files name. cdxgen pulls the images the local daemon lacks and extracts their layers, whatever the scan type, so a tree whose container files are build or CI material turns a scan into a long image-pulling run whose result depends on the daemon's state. Look for container files before scanning a large tree, and exclude the folders that hold CI or build images (for example `--exclude 'ci/**' --exclude 'contrib/**'`) when they are not product content. Container files under an excluded tree add no image pulls. A scan that outruns cdxgen's time budget fails with a reason naming the budget; `CDXGEN_TIMEOUT_MS` raises it (see [the environment variables](configuration)).
+
+## JSON output
+
+`--format json` selects the output on every verb: the verb writes exactly one JSON document on stdout, followed by a newline, and nothing else on stdout, whatever the exit code. The banner is suppressed, and the tables, progress and logs move to stderr, so `depscan scan . --format json | jq` sees exactly the document. A failing verb also prints its message on stderr as one plain text line.
+
+The scan verb prints `{"scans": [...]}`, one entry per given target, also for a single target and for zero targets. A scanned entry carries `target`, `kind`, `scanDir`, `manifest` and `findings`; a target the detection refused gets `{"target", "kind": null, "error"}` with the reason, so no target is silently dropped. When a verb stops with a failure that ends it as a whole, stdout carries the error document `{"error": {"exitCode", "verb", "message", "details"}}` instead; per-target failures do not, so a scan with a refused target and a validate with an invalid document keep their own documents and exit 1. Every verb's document has a published JSON Schema, and `depscan schema` lists the names. The full contract, the per-verb documents and one runnable example per verb are on [the agents page](../integrate/agents).
+
+```bash
+depscan scan . --format json
+```
+
+## Several targets
+
+Passing more than one target runs one scan per target, each writing into `<reports-dir>/<n>-<name>/`, where `n` is the target's 1-based position and `<name>` its basename for an existing path, or the reference with `/`, `\`, `:` and `@` replaced by `-`, for a purl, URL or image reference; every name is truncated to 60 characters, and a name that comes out empty becomes `target`. The exit code is the highest of the scans.
+
+```bash
+depscan scan app/src app/bom.json --reports-dir reports
+```
+
+Zero or one target uses `--reports-dir` as given.
+
+## dep-scan 6 command lines are refused
+
+A command line that starts with an option, as every dep-scan 6 invocation did, is not run. dep-scan translates it, prints the equivalent v7 command and a link to the migration guide on stderr, and exits 2.
+
+```text
+$ depscan --src .
+depscan: this is a dep-scan 6 command line, which dep-scan 7 no longer runs.
+The equivalent v7 command is: depscan scan .
+See the migration guide: https://depscan.readthedocs.io/upgrade/migrate-v6-to-v7/
+```
+
+Bare `depscan` is a usage error too; use `depscan scan` to scan the current directory. `depscan -h` and `depscan --help` still print the help and exit 0.
+
+## Scanning container images
+
+Scan an image reference, a digest reference, or an archive saved with `docker save`:
+
+```bash
+depscan scan shiftleft/scan-slim -o containertests
+depscan scan redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests
+docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
+# podman save --format oci-archive -o /tmp/scanslim.tar shiftleft/scan-slim:latest
+depscan scan /tmp/scanslim.tar -o reports
+```
+
+The container target is detected from the reference shape, so `-t docker` is not needed. [The container images page](../targets/container-images) explains what an image scan reads and what it cannot see.
+
+## Specify the BOM engine
+
+The supported values of `--bom-engine` are `auto`, `CdxgenGenerator`, `CdxgenServerGenerator`, `CdxgenImageBasedGenerator` and `BlintGenerator`:
+
+- **auto**: Uses the cdxgen server (`CdxgenServerGenerator`) when `--cdxgen-server` is passed, and the local cdxgen CLI (`CdxgenGenerator`) for a container image, OS or hardware project type (`docker`, `podman`, `oci`, `os` or `hardware`). For every other project it takes the first of these that applies: the cdxgen bundled inside the standalone dep-scan executable; the local cdxgen CLI when `CDXGEN_CMD` is set or a cdxgen found on the machine meets the minimum version; the cdxgen container image (`CdxgenImageBasedGenerator`) when the Docker command (`DOCKER_CMD`, `docker` by default) is on `PATH` and the platform is not Windows; and otherwise the local cdxgen CLI. A local cdxgen below the minimum version is refused with the command that installs a supported one.
+- **CdxgenGenerator**: Always uses the local cdxgen CLI. Install cdxgen using the npm command or download the standalone executable.
+- **CdxgenServerGenerator**: Uses the cdxgen server. Specify the URL using the `--cdxgen-server` argument.
+- **CdxgenImageBasedGenerator**: Generates a BOM using the official cdxgen container images. You can customize the image name using `CDXGEN_IMAGE_{project_type}` and `CDXGEN_IMAGE_VERSION`. Container image-based generation is more suitable for enterprise applications that require specific build tools and OS libraries for successful BOM generation. This approach is resource-intensive but typically has a higher success rate.
+- **BlintGenerator**: Uses the OWASP [blint](https://github.com/owasp-dep-scan/blint) library for post-build and binary inventories. This requires the `ext` extra:
+
+    ```bash
+    pip install owasp-depscan[ext]
+    ```
+
+### Customize the cdxgen container image
+
+Container images used by `CdxgenImageBasedGenerator` can be customized using environment variables prefixed with `CDXGEN_IMAGE_`. For example, to use a custom cdxgen image for Java, set the environment variable `CDXGEN_IMAGE_JAVA`.
+
+## Specify the vulnerability analyzer
+
+The supported values of `--vulnerability-analyzer` are `auto`, `VDRAnalyzer` and `LifecycleAnalyzer`:
+
+- **auto**: Uses LifecycleAnalyzer when the target is a BOM directory containing multiple xBOMs; otherwise, it defaults to VDRAnalyzer.
+- **VDRAnalyzer**: Matches the vulnerabilities of a single BOM and a single lifecycle phase.
+- **LifecycleAnalyzer**: Generates and analyses BOMs for several lifecycle phases (pre-build, build, post-build) by repeatedly invoking cdxgen (and blint for post-build), which is what the lifecycle and semantic reachability workflows read. Use the environment variable `DEPSCAN_SOURCE_IMAGE` to specify the image for container BOM generation, and `DEPSCAN_BUILD_DIR` for the build output directory.
+
+## Configuration file
+
+Scan options persist in a configuration file. By default, depscan reads the file the `DEPSCAN_CONFIG` environment variable names, or `.config/depscan.toml` in the current directory when the variable is unset, and `depscan scan --config <path>` names another file for one scan. A sample file named `depscan.toml.sample` is generated in the reports directory on every scan. Copy the sample into `.config/` to run depscan without repeating the arguments.
+
+`depscan config show` prints every scan option with its value and where the value came from (the command line, `depscan.toml`, an environment variable or the default), and `depscan config init` writes the effective options to the same default file (`$DEPSCAN_CONFIG`, or `.config/depscan.toml`, creating `.config/` when needed), refusing to overwrite one that exists. The file holds flat keys matching the long option names (`vdb_flavor = "app-only"`, `reachability_analyzer = "SemanticReachability"`); [the configuration page](configuration) lists the details and the environment variables.
+
+## The other verbs
+
+```bash
+# Run dep-scan as a server (the --server-* options live here; there is no --config on serve)
+depscan serve --server-host 127.0.0.1 --server-port 7070
+
+# Download or inspect the vulnerability database
+depscan vdb download --flavor app-only
+
+# Validate a VDR, VEX or CSAF document against its schema
+depscan validate reports/sbom-build.vdr.json
+
+# Print the published finding schemas
+depscan schema finding
+
+# Print the version, plus every tool version as JSON
+depscan version --format json
+
+# Show every scan option with its value and where it came from
+depscan config show --reports-dir reports
+```
+
+`depscan doctor` reports the tools, database and capabilities a scan can use on this machine, and `depscan report` re-renders a saved scan directory. Both have their own pages: [depscan doctor](doctor) and [the scan directory](../results/scan-directory).
+
+## Vulnerability database management (depscan vdb)
+
+The `depscan vdb` command selects, downloads, and inspects any published vdb flavor or shard set. See [the vulnerability database page](../start/vulnerability-database) for the full flavor matrix.
+
+```bash
+# Default full (app+OS) flavor
+depscan vdb download
+
+# Smaller app-only flavor
+depscan vdb download --flavor app-only
+
+# Extended flavor (for severity and metadata search)
+depscan vdb download --flavor app-extended
+
+# Type shards for a scoped workload
+depscan vdb download --shards pypi npm
+```
+
+`depscan vdb info` prints the local database and shard store state, and `depscan vdb path` prints the `VDB_HOME` directory. The deprecated `--scope`/`--time`/`--extended` aliases still work on `download` with a warning naming the flavor they resolve to. There is no per-distro database on the v7 line; `--distro` is rejected with the flavors listed.
+
+## GitHub Security Advisory
+
+To download security advisories from GitHub, a personal access token with minimal permissions is necessary:
+
+- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+- Token (classic): Grant no permissions
+
+```bash
+export GITHUB_TOKEN="<PAT token>"
+```
+
+## Suggest mode
+
+Suggest mode is on by default and retrieves the optimal fix version for each vulnerability from the sources, so the fix version in the report is sometimes a later version than the first patched one, chosen to avoid landing on another known vulnerability. The optimal fix version may still not be the right version for your application; read it as a suggestion. Pass `--no-suggest` to disable the behaviour.
+
+## The package risk audit
+
+`--checks supply-chain` enables the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors. Packages that exceed the maximum risk score (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default) print as a table, and every audited row is written to `depscan-risk-<type>.json`. Use `--private-ns` to name the private namespaces that should never exist on a public registry:
+
+```bash
+depscan scan . --checks supply-chain --private-ns appthreat,shiftleft
+```
+
+| Risk category | Default weight | Reason |
+| --- | --- | --- |
+| pkg_private_on_public_registry | 4 | Private package is available on a public registry |
+| pkg_min_versions | 2 | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages |
+| mod_create_min_seconds | 1 | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
+| latest_now_min_seconds | 0.5 | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable |
+| latest_now_max_seconds | 0.5 | Package versions that are over 6 years old are in use. Such packages might have vulnerable dependencies that are known or yet to be found |
+| pkg_min_maintainers | 2 | Package has less than 2 maintainers. Many opensource projects have only 1 or 2 maintainers so special heuristics are used to ignore older stable packages |
+| pkg_min_users | 0.25 | Package has less than 2 npm users |
+| pkg_install_scripts | 2 | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm. |
+| pkg_node_version | 0.5 | Package supports outdated version of node such as 0.8, 0.10, 4 or 6.x. Such projects might have prototype pollution or closure related vulnerabilities |
+| pkg_scope | 4 or 0.5 | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score with a weight of 0.5 |
+| deprecated | 1 | Latest version is deprecated |
+
+A parameter called `created_now_quarantine_seconds` identifies packages safely past the quarantine period (1 year); risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past it, because a malicious package is unlikely to sit unnoticed on a registry for over a year. Every weight and threshold is configurable through its own environment variable: `PKG_MIN_VERSIONS_WEIGHT=4` raises the weight of the `pkg_min_versions` factor, while `PKG_MIN_VERSIONS=5` raises its threshold, the version count below which the factor applies. See [the configuration page](configuration).
+
+## Live OS scan
+
+`-t os` inventories a live operating system or VM: the OS packages and kernel information of the machine the scan runs on. `--deep` adds the application packages.
+
+```bash
+depscan scan . -t os -o reports
+depscan scan . -t os --deep -o reports
+```
+
+## Custom reports
+
+dep-scan renders a [Jinja](https://jinja.palletsprojects.com/en/3.1.x/) template with `--report-template` and writes the result with `--report-name`. A starter template is generated in the reports directory, and the repository ships examples under `contrib/report-templates`:
+
+```jinja
+{% if metadata -%}
+Report for {{ metadata.component.group }}:{{ metadata.component.name }}:{{ metadata.component.version }}
+{% endif -%}
+
+{% if vulnerabilities -%}
+There were {{ vulnerabilities | length }} issues identified:
+
+{% for vuln in vulnerabilities -%}
+* {{ vuln['bom-ref'] }} - {{ vuln.recommendation }}
+{% endfor -%}
+{% else -%}
+_No vulnerabilities found_
+{% endif -%}
+
+Severity counts:
+* Low: {{ summary.LOW }}
+* Medium: {{ summary.MEDIUM }}
+* High: {{ summary.HIGH }}
+* Critical: {{ summary.CRITICAL }}
+* Unspecified: {{ summary.UNSPECIFIED }}
+```
+
+The objects available to the template come from the CycloneDX `.vdr.json` the scan wrote: `metadata`, `vulnerabilities`, `components`, `dependencies` and `services`, plus `summary` (severity counts), `pkg_vulnerabilities` (the same vulnerabilities from the VDR) and `pkg_group_rows` (vulnerability id and dependency tree pairs).
+
+## Custom vulnerability data
+
+A directory of local vulnerability data can override and augment the downloaded database at runtime: add internal advisories that are not public, or mark specific versions unaffected where the public data is wrong for your use. Custom data follows the **CVE 5.2 JSON Schema**, in `.json`, `.yaml`, `.yml` or `.toml` files, named by `--custom-data`:
+
+```bash
+depscan scan pkg:npm/my-lib@1.0.0 --custom-data /path/to/custom/vulns
+depscan serve --custom-data /path/to/custom/vulns
+```
+
+A new vulnerability record uses the `cna` container. If a CVE id and package URL combination exists in the custom data, vdb uses it instead of the entry from the official database, which is how a false positive is corrected: append or dispute through an **ADP** container, marking the specific version `unaffected`. Where two records disagree, the custom data wins; the rest of the database is untouched.

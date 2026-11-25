@@ -1,0 +1,109 @@
+---
+title: "Lesson 6: a supply-chain and licence audit"
+sidebar_position: 06
+---
+
+# Lesson 6: a supply-chain and licence audit
+
+This lesson runs the supply-chain and licence checks over the same pinned Juice Shop commit as lesson 1 and reads the two reports they write. Neither check needs anything beyond cdxgen and the network a registry lookup uses, and both write plain JSON arrays into the scan directory, so the audit is a file a reviewer opens, not console output to scrape.
+
+The inputs are pinned: Juice Shop at commit `33518f5a0911`, the `app-only` database flavor, and the npm and PyPI registries the risk audit queries. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3 and cdxgen 13.9.0 from its master branch; the lesson's CI job installs the cdxgen 13.8.0 release instead.
+
+As in lesson 1, the commit pins the source but not the dependency tree: Juice Shop at this commit ships no lockfile (its `.npmrc` sets `package-lock=false`), so the dependencies are resolved at scan time and the counts below can drift between runs. The install writes `node_modules` and a `package-lock.json` into the clone, which is acceptable for the throwaway clone the script makes.
+
+## The script
+
+The commands live in `documentation/lessons/06-supply-chain-licence/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 06: a supply-chain and licence audit.
+#
+# Runs the supply-chain and licence checks over the same pinned Juice Shop
+# commit as lesson 01, and reads the risk report, the licence report and the
+# manifest stages that record what ran.
+#
+# Needs: dep-scan, cdxgen, Node.js, and an app-only vulnerability database.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-06}"
+SRC="$WORK/juice-shop"
+SCANS="$WORK/scans"
+COMMIT=33518f5a0911e25d9df747b1e70fb7af279a755c
+mkdir -p "$SCANS"
+
+### Pin the project
+if [ ! -d "$SRC/.git" ]; then
+  git clone --quiet https://github.com/juice-shop/juice-shop.git "$SRC"
+fi
+git -C "$SRC" checkout --quiet $COMMIT
+echo "project: juice-shop $COMMIT"
+
+### Run the supply-chain and licence checks
+depscan scan "$SRC" --checks supply-chain,license --vdb-flavor app-only --no-banner \
+  --cdxgen-args "--exclude 'Dockerfile' --exclude 'docker-compose*.yml'" \
+  -o "$SCANS/reports"
+
+### What ran, in the manifest's own words
+python3 - "$SCANS/reports" <<'PY'
+import json, sys
+d = sys.argv[1]
+m = json.load(open(f"{d}/depscan.manifest.json"))
+for s in m["stages"]:
+    if s["name"] in ("licenses", "risk"):
+        print(f"stage {s['name']}: {s['status']}")
+PY
+
+### Read the risk report
+# The report holds the packages the audit flagged: a risk score above the
+# threshold (0.5 unless PKG_MAX_RISK_SCORE says otherwise), or a deprecated,
+# missing, binary-carrying or private-on-public package. With nothing flagged,
+# the file is not written at all.
+python3 - "$SCANS/reports" <<'PY'
+import json, os, sys
+path = os.path.join(sys.argv[1], "depscan-risk-universal.json")
+if not os.path.exists(path):
+    print("flagged packages: 0 (no risk report written)")
+else:
+    rows = json.load(open(path))
+    print(f"flagged packages: {len(rows)}")
+    top = max(rows, key=lambda r: r["Risk Score"])
+    print("row shape: Package, Used?, Risk Score, Identified Risks")
+    print(f"highest score: {top['Risk Score']} ({len(top['Identified Risks'])} risks identified)")
+PY
+
+### Read the licence report
+python3 - "$SCANS/reports" <<'PY'
+import json, sys
+d = sys.argv[1]
+rows = json.load(open(f"{d}/license-universal.json"))
+print(f"licence rows: {len(rows)}")
+copyleft = [r for r in rows if "Same License" in r.get("License conditions", "")]
+print(f"copyleft conditions flagged: {len(copyleft)}")
+PY
+```
+
+## Reading the run
+
+The manifest names the two stages the checks add, beside the matching every scan does:
+
+```text
+project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
+stage licenses: completed
+stage risk: completed
+flagged packages: 382
+row shape: Package, Used?, Risk Score, Identified Risks
+highest score: 1 (2 risks identified)
+licence rows: 5
+copyleft conditions flagged: 2
+```
+
+The risk report, `depscan-risk-universal.json`, is not the whole audited list. It holds only the packages the audit flagged: a risk score above the threshold (0.5 unless `PKG_MAX_RISK_SCORE` sets another), or a package the audit marked as deprecated, as a deprecated or missing version, as carrying binaries, as private on a public registry, or as published with an npm provenance attestation. A row is plain JSON: the package, whether the scan's code uses it, the score, and the identified risks as a list. On the recorded run 325 of the 382 rows list "Has attestation" and 296 are there for the attestation alone, only 9 score above 0.5, and the highest, `@codemirror/streamparser` at 1, is there for having few versions and few maintainers. Read the identified risks, not the row count. The private-namespace check (`--private-ns`) is the same audit aimed at dependency confusion; name the namespaces your organisation registers and the audit flags any that appear in public.
+
+The licence report is deliberately small on this project: five rows resolved to licence ids with conditions, two of them copyleft. Packages whose BOM carries no licence data are counted on the manifest's licenses stage as not assessed rather than silently clean (282 of 2137 packages on the recorded run). A licence policy gate (allowed and denied lists in the config, violations as findings) is planned work; today the file is the audit, read the way you would read a spreadsheet.
+
+## Takeaways
+
+- `--checks supply-chain,license` adds two stages and two plain JSON reports to the scan directory.
+- The risk report lists flagged packages only, and a row's identified risks say why it was flagged; a score above 0.5 is one reason among several.
+- Missing licence data is counted as not assessed on the manifest, never folded into clean.

@@ -1,0 +1,6 @@
+project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
+stage licenses: completed
+stage risk: completed
+flagged packages:
+licence rows:
+copyleft conditions flagged:

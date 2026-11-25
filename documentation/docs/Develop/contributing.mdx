@@ -1,9 +1,28 @@
 ---
-position: 1
+sidebar_position: 1
 title: Contributing
 ---
 
-# Contriubting
-**Thank you for wanting to contribute to OWASP dep-scan!**
+# Contributing to dep-scan
 
-There are a lot of ways to contribute to dep-scan, we are in constant need for developers to help with writing bug fixes, additional documentation or writing blogs for our website.
+Thank you for wanting to improve OWASP dep-scan. Code, documentation, test fixtures, bug reports and reproduction cases are all contributions, and the pages under Develop cover the setup ([development](development-setup)) and the debugging ([debugging](debugging)); this page is the process.
+
+## Reporting a bug
+
+Open a GitHub issue with the template that fits: a general bug, a false positive (the template asks for the purl, so the report feeds the data-quality backlog directly), or a feature request. A report a contributor can reproduce is worth ten that cannot be: the dep-scan version from `depscan version --format json`, the command, and the scan directory's manifest (which holds no local paths outside its inputs array) are the reproducible set.
+
+## Changing the code
+
+1. Set up the environment as [the development page](development-setup) describes, and check that `uv run pytest` passes before starting.
+2. Keep the change small and reviewable. A fix and the test that pins it land together; a feature lands with tests that check its behaviour, including the not-assessed paths: a missing tool, a timeout and a coverage gap must be reported as such, never as zero findings.
+3. Keep the contracts true. A change to a finding, evidence, manifest or output shape updates the published schema and the tests that keep the documentation's generated blocks (help text, exit-code table, flavor and schema tables, lessons) in step with the code.
+4. Untrusted input stays untrusted. A scan must not run a scanned project's build scripts or package-manager installs, and never write into the tree it scans.
+5. Every commit builds, and the tests it touches pass.
+
+## Changing the documentation
+
+This site is built with Docusaurus from `documentation/docs/`. Pages that embed generated content carry markers with a comment naming the command that regenerates the block, and `test/test_docs_cli.py` and the tests beside it fail when a block drifts from the code, so the fix for such a failure is to regenerate the block, never to edit the expectation. Every sentence in a page is checked against the code before it is written there; the fastest way to fix a docs bug is an issue naming the sentence and the behaviour observed.
+
+## The project
+
+dep-scan is developed in the open under the OWASP Foundation, donated by AppThreat in August 2023. The [security policy](https://github.com/owasp-dep-scan/dep-scan/security/policy) covers private disclosure of vulnerabilities in dep-scan itself.

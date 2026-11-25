@@ -348,7 +348,9 @@ def test_the_occurrence_fail_safe_direct_insight_names_reach_not_assessed():
     assert "Reachable" not in rich and not any("Reachable" in i for i in plain), (
         f"no fail-safe output may claim reach; got {rich!r} and {plain}"
     )
-    assert reached.get(_FAIL_SAFE_PURL) == 1
+    # Not recorded as reached: a later advisory on the package must not read
+    # as Reachable without a traced flow.
+    assert reached.get(_FAIL_SAFE_PURL) is None
     assert counts.has_reachable_exploit_count == 1
 
 
@@ -382,8 +384,7 @@ def test_the_cve_fail_safe_direct_insight_names_reach_not_assessed():
     """analyze_cve_vuln used to render its fail-safe path (a direct or
     deployed dependency with known exploits, no traced flow) as "Reachable
     and Exploitable" in the console and the HTML. The insight must name
-    what it is, while the promotion, the count and the prioritization
-    stay."""
+    what it is, while the count and the prioritization stay."""
     from analysis_lib.prioritize import analyze_cve_vuln
 
     purl = "pkg:npm/postcss@8.4.31"
@@ -430,9 +431,10 @@ def test_the_cve_fail_safe_direct_insight_names_reach_not_assessed():
     assert "Reachable" not in rich and not any("Reachable" in i for i in plain), (
         f"no fail-safe output may claim reach; got {rich!r} and {plain}"
     )
-    # The fail-safe prioritization itself stays: the package is promoted and
-    # the finding remains flagged and prioritized.
-    assert reached.get(purl) == 1
+    # The fail-safe prioritization itself stays: the finding remains flagged
+    # and prioritized. The package is not recorded as reached, so a later
+    # advisory on it cannot read as Reachable without a traced flow.
+    assert reached == {}
     assert counts.has_reachable_exploit_count == 1
     assert add_to_pkg_group_rows is True
     properties = {p["name"]: p["value"] for p in vdict.get("properties") or []}

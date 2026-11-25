@@ -1,0 +1,117 @@
+---
+title: "Lesson 2: a Go service with call-graph reachability"
+sidebar_position: 02
+---
+
+# Lesson 2: a Go service with call-graph reachability
+
+This lesson replaces the old .NET walk-through with the same depth on a Go service: `shop-golang-microservices` at a pinned commit, scanned with golem, the Go call-graph analyzer. The shape is the lesson 1 shape, with one addition golem brings: its caveats, which say how complete the traced graph was.
+
+The inputs are pinned: `shop-golang-microservices` at commit `76c34f1ab7e` and the `app-only` database flavor. The output below is from a run on 2026-11-25 with dep-scan 7.0.0a3, cdxgen 13.9.0 from its master branch and golem 4.3.1 from cdxgen-plugins-bin 4.3.1; the lesson's CI job installs the cdxgen 13.8.0 release instead. The Go toolchain loads the modules; the first run lets golem download them through the local Go environment, which is its documented default.
+
+## The script
+
+The commands live in `documentation/lessons/02-go-service-golem/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 02: a Go service with call-graph reachability through golem.
+#
+# Scans a Go microservice project at a pinned commit, follows one reached
+# finding to the call path golem traced, and reads the budget caveat that
+# tempers the verdict.
+#
+# Needs: dep-scan, cdxgen, the Go toolchain, golem (from cdxgen-plugins-bin),
+# and an app-only vulnerability database. The first run lets golem download
+# the project's modules through the local Go environment.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-02}"
+SRC="$WORK/shop-golang-microservices"
+SCANS="$WORK/scans"
+COMMIT=76c34f1ab7e428f6106c5cf291570502df4ff257
+mkdir -p "$SCANS"
+
+### Pin the project
+if [ ! -d "$SRC/.git" ]; then
+  git clone --quiet https://github.com/meysamhadeli/shop-golang-microservices "$SRC"
+fi
+git -C "$SRC" checkout --quiet $COMMIT
+echo "project: shop-golang-microservices $COMMIT"
+
+### Scan with golem reachability
+# The typed scan (-t go) starts golem directly; semantic reachability also
+# attributes the reached services and endpoints.
+depscan scan "$SRC" -t go --bom-profile research --vdb-flavor app-only \
+  --reachability-analyzer SemanticReachability --no-banner \
+  -o "$SCANS/reports"
+
+### What the scan proved
+python3 - "$SCANS/reports" <<'PY'
+import json, sys
+d = sys.argv[1]
+m = json.load(open(f"{d}/depscan.manifest.json"))
+golem = [a for s in m["stages"] for a in s.get("analyzers", []) if a["name"] == "golem"][0]
+print(f"golem analyzer status: {golem['status']}")
+f = json.load(open(f"{d}/depscan.findings.json"))
+reached = [x for x in f["findings"]
+           if x.get("exploitability", {}).get("axes", {}).get("reach") in ("likely", "proven")]
+print(f"findings: {len(f['findings'])}, reached: {len(reached)}")
+# The lesson follows the docker client finding; naming it keeps the
+# walk-through stable.
+x = [r for r in reached if r["rule"] == "GHSA-jq35-85cj-fj4p"][0]
+print(f"reached finding: {x['rule']} on {x['components'][0]}")
+print(f"grade: {x['exploitability']['grade']} (rule {x['exploitability']['rule']})")
+print(f"presence: {x['exploitability']['axes']['presence']}, reach: {x['exploitability']['axes']['reach']}")
+witness = x["exploitability"]["witness"]
+for line in open(f"{d}/evidence.jsonl"):
+    r = json.loads(line)
+    if r["id"] == witness:
+        hop = r["path"][0]
+        print(f"witness kind: {r['kind']} from {r['producer']['name']} {r['producer']['version']}")
+        print(f"first hop: {hop['method']}")
+        for c in r.get("caveats", []):
+            print(f"caveat: {c['kind']}: {c['detail']}")
+        break
+PY
+
+### What stayed not assessed
+# Exposure and barrier are dosai's to assess, and dosai is a .NET analyzer.
+python3 - "$SCANS/reports" <<'PY'
+import json, sys
+d = sys.argv[1]
+f = json.load(open(f"{d}/depscan.findings.json"))
+reached = [x for x in f["findings"]
+           if x.get("exploitability", {}).get("axes", {}).get("reach") in ("likely", "proven")]
+x = [r for r in reached if r["rule"] == "GHSA-jq35-85cj-fj4p"][0]
+print("unassessed:", ", ".join(x["exploitability"]["unassessed"]))
+PY
+```
+
+## Reading the run
+
+golem reaches 77 of the 166 findings, and the lesson follows GHSA-jq35-85cj-fj4p on `github.com/docker/docker`, the module the service imports for its docker client. The advisory is about Docker's default container configuration: `/sys/devices/virtual/powercap` stayed readable inside containers, which exposes the host's Intel RAPL energy counters to them, and the fix landed in 24.0.7 (20.10.27 on the older line):
+
+```text
+project: shop-golang-microservices 76c34f1ab7e428f6106c5cf291570502df4ff257
+golem analyzer status: completed
+findings: 166, reached: 77
+reached finding: GHSA-jq35-85cj-fj4p on pkg:golang/github.com/docker/docker@v24.0.5%2Bincompatible
+grade: moderate (rule reached)
+presence: proven, reach: likely
+witness kind: reached-flow from golem 4.3.1
+first hop: (*github.com/docker/docker/client.Client).setupHijackConn
+caveat: budget: golem's slice reachability came back partial (no-entry-roots)
+caveat: location-outside-root: 1 file path(s) the producer named lie outside the source root and no package directory; the record leaves them out
+unassessed: exposure, barrier
+```
+
+Presence is `proven` here, not merely `likely`: golem's own records place the package's code on the paths it traced, and the sources block of the finding names golem beside vdb and cdxgen. The witness path starts inside the docker client's `setupHijackConn`. That is worth reading closely: the advisory concerns how the Docker daemon configures containers, and the service only uses the module as a client library, so the reached path proves the vulnerable module's code runs in this service, not that the daemon behaviour the advisory describes is exercised. The reach verdict is per module, and the reviewer decides from the advisory text whether the reached code is the affected code. The upgrade to 24.0.7 is still the fix the finding names.
+
+The budget caveat is the line a reader of a reachability claim should look for first. (The second caveat says one file path golem named lies outside the scanned tree, so the record leaves that hop's file out.) golem says its slice reachability came back partial, so the reached set carries that caveat with it, and a summary built from these records carries the caveat upward. A partial analysis is still evidence; it is evidence with its limits written on it.
+
+## Takeaways
+
+- A typed Go scan starts golem itself; a universal scan starts it only under semantic reachability.
+- Presence can be `proven` from the analyzer's own symbol evidence, not only from the database match.
+- The caveats on a witness record are part of the verdict; read them before trusting the reached count.

@@ -1,0 +1,57 @@
+---
+sidebar_position: 5
+title: Memory safety
+---
+
+# C and C++ memory safety
+
+Memory-safety defects, out-of-bounds writes, use-after-free and the rest, are the largest class of exploited vulnerabilities in native code, and most of them never get a CVE before they get exploited. A dependency scanner that only reports advisories says nothing about them, which is why dep-scan's plan adds memory-safety analysis as a check. In this version the check is not implemented yet, and this page shows what works today and how to get the answer anyway.
+
+## The check today
+
+Naming the check stops the scan before any work runs, with the reason and the issue that tracks it:
+
+```bash
+$ depscan scan ./my-c-project --checks memory-safety --no-banner
+ERROR The memory-safety check cannot run on this machine:
+      memory-safety is not implemented in this version
+      (https://github.com/owasp-dep-scan/dep-scan/issues/613)
+```
+
+The refusal is honest rather than a silently skipped check: `--checks all` also leaves the check off and records the reason in the manifest, so a scan never reads as memory-safe just because nobody asked ([coverage](../results/coverage)).
+
+## What to use today
+
+The analyzer behind the planned check already exists: `atom memory-safety`, the command from atom 4 (bundled with cdxgen) that checks C and C++ code for out-of-bounds, integer, allocation-state, null, format-string and the other rule families, writing JSON with a flow for each finding. The agent plugin's `depscan-memory-safety` skill drives it; run directly, the shape is:
+
+```bash
+atom memory-safety -l c ./my-c-project --auto-defines --no-build-tools \
+  --format json -o ./reports/ms.atom --parse-report ./reports/parse-report.json
+```
+
+The output is one JSON array of findings, each with its rule id (`MS-ALLOC-009` and the rest), CWE, severity, confidence, message and the flow that reached it:
+
+```json
+[
+  {
+    "rule": "MS-ALLOC-009",
+    "cwe": "CWE-680",
+    "kind": "overflow-sized-allocation",
+    "file": "c23/unreachable.c",
+    "line": 24,
+    "severity": "high",
+    "confidence": "low",
+    "message": "xy * xy * sizeof(struct Color): an allocation size computed from attacker-influenced arithmetic with no guard bounding an operand",
+    "flow": [
+      { "file": "c23/unreachable.c", "line": 24, "role": "length-argument" },
+      { "file": "c23/unreachable.c", "line": 24, "role": "memory-operation" }
+    ]
+  }
+]
+```
+
+Three rules keep the run safe and honest on untrusted code, and dep-scan's planned check passes them for you: `--no-build-tools` never runs the project's build system, `--auto-defines` changes what is analysed (a macro census defines the build-option macros that hide `#if` code), and the parse report names every file the front end left out or only partly read, so a project atom could not parse is never reported as free of defects. A compilation database (`--compile-commands compile_commands.json`) improves the results where one exists; the `--memory-api-config` and `--memory-api-profiles` options teach the allocator rules about in-house wrappers and known libraries.
+
+## Binary hardening in the meantime
+
+What a memory-safety bug can do is limited by the binary's hardening, and that half of the story is available now: the [binary check](binaries) reports PIE, RELRO, NX, stack canaries and the rest as `binary-hardening` findings, on a directory of binaries or, on a source scan, beside the inventory. Correlation between the advisories, the hardening facts and the planned memory-safety findings is [the plan's D6](https://github.com/owasp-dep-scan/dep-scan/issues/618).

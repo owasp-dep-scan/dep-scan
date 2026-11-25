@@ -1,0 +1,69 @@
+---
+title: VDR guide for analysts
+---
+
+# The Vulnerability Disclosure Report (VDR)
+
+## What the VDR is
+
+A Vulnerability Disclosure Report is a CycloneDX document that attaches vulnerability data to the components of a BOM. dep-scan writes the VDR alongside the BOM in the reports directory, deriving the filename from the BOM's base name. For a single-BOM scan of `sbom-dotnet.cdx.json`, the VDR is `sbom-dotnet.vdr.json`. For multi-BOM and lifecycle runs (a BOM directory target), the consolidated output is `depscan-universal.vdr.json`. The VDR is the file to ingest into an ASPM or vulnerability-management platform, because every prioritization and reachability verdict dep-scan computes is encoded in it as CycloneDX properties.
+
+## Anatomy of a VDR entry
+
+Each entry in the `vulnerabilities` array describes one CVE against one component. The structure is stable across languages because every slicer normalizes to the same purl-keyed shape. The key fields, drawn from the committed `test/data/jinja-report.vdr.json` fixture, are:
+
+```json
+{
+  "id": "CVE-2023-XXXX",
+  "source": {"name": "NVD", "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-XXXX"},
+  "ratings": [{"method": "CVSSv31", "severity": "high", "score": 7.5}],
+  "affects": [
+    {
+      "ref": "pkg:maven/io.netty/netty-codec-http2@4.1.94.Final?type=jar",
+      "versions": [
+        {"version": "4.1.94.Final", "status": "affected"},
+        {"version": "4.1.100.Final", "status": "unaffected"}
+      ]
+    }
+  ],
+  "analysis": {
+    "state": "in_triage",
+    "detail": "Dependency Tree: [\"pkg:maven/io.quarkus/quarkus-vertx@3.3.3?type=jar\", \"pkg:maven/io.netty/netty-codec-http2@4.1.94.Final?type=jar\"]"
+  },
+  "properties": [
+    {"name": "depscan:insights", "value": "Direct dependency"},
+    {"name": "depscan:prioritized", "value": "false"}
+  ]
+}
+```
+
+Three things in that entry are worth internalizing. The `affects[].ref` is the versioned purl of the installed component, and the `versions` block records both the affected version and the unaffected (fixed) version, which is where the fix version in the console comes from. The `analysis.detail` carries the dependency tree as a JSON-encoded list of purls, which is how the console renders the "Indirect dependency" path you see under each finding. And the `properties` array is where dep-scan's own verdicts live.
+
+## The depscan properties
+
+dep-scan attaches two properties to each vulnerability, and learning to filter on them is the fastest way to triage.
+
+`depscan:prioritized` is `true` or `false` and records whether the prioritization decided the finding requires attention. The conditions that set it, and the deliberate cases that leave it `false`, are [prioritization](../results/prioritization). The Top Priority table in the console is exactly the set of entries with `depscan:prioritized=true`, so filtering the `vulnerabilities` array on that property reproduces the console's focus list in a downstream tool.
+
+`depscan:insights` joins the plain-text insight labels with the two characters backslash and n (for example `"Indirect dependency\\nKnown Exploits"`), which is how every version back to v6 wrote it; `depscan report` splits the value on that separator to rebuild the insights column. The labels correspond directly to the tiers described in the prioritization chapter. "Reachable" means the purl is in `reached_purls`. "Endpoint-Reachable" means it is in `endpoint_reached_purls`. "Reachable and Exploitable" means the package has known exploits and is also reachable. "Direct dependency with known exploits, reach not assessed" and, for a package that is only deployed, "Deployed dependency with known exploits, reach not assessed" are the fail-safe promotion described in the prioritization chapter: a direct or deployed dependency with known exploits and no traced flow, still flagged and prioritized, with reach named as not assessed. "Reachable Bounty target" and "Endpoint-Reachable Bounty target" mark reachable findings that also carry proof-of-concept or bounty evidence. "Indirect dependency" and "Direct dependency" record whether the component was reached transitively or directly. "Exploitable", "Known Exploits", and "Has PoC" record exploit and proof-of-concept evidence independent of reachability. When you need to reconstruct why a finding was prioritized, read the `depscan:insights` value first.
+
+## The console report and the Top Priority table
+
+The console renders two things most analysts use. The first is the full Vulnerability Disclosure Report table, which lists every vulnerability with its dependency tree, insights, fix version, severity, and score. The tree column is how "Indirect dependency" insights are possible: the console traces a CVE back through transitive packages such as `Azure.Identity` to `Microsoft.Identity.Client`, so the row shows the path the finding sits on. The second is the Top Priority table, which lists only the packages whose CVEs earned `depscan:prioritized=true`, paired with their prioritized CVEs, a fix version when known, and a "Next Steps" column.
+
+The Next Steps column is generated per finding by `find_next_steps` in `analysis_lib/output.py`, and its wording encodes the reachability tier. A reachable, exploitable finding prompts you to add workarounds to make the CVEs non-reachable. An endpoint-reachable finding points you to framework validation options. A service-reachable finding suggests you confirm the package uses an allow-listed service. And the most severe branch, reserved for malware, escalates a malicious-and-reachable package to a "top-priority security incident". The upgrade advice in the first scan's example ("Update to version '2.33.0' and test for any functional defects") is the simplest branch of the same function.
+
+## Suggest mode and fix versions
+
+dep-scan runs in suggest mode by default, which retrieves the optimal fix version for each vulnerability from the sources. The `affects[].versions` block in the VDR is where those fix versions live: the entry with `"status": "unaffected"` is the suggested version. Suggest mode can find an optimal fix even when the obvious next version still carries known vulnerabilities, which is why the suggested version sometimes differs from the latest patch. Pass `--no-suggest` to disable the behavior, for example when you want only the raw version-matched findings without fix-version computation.
+
+## Custom report templates
+
+For reporting beyond the console and the VDR JSON, dep-scan can render a [Jinja](https://jinja.palletsprojects.com/) template with `--report-template <file>` and write the result with `--report-name <name>`. A starter template is generated in the reports directory, and the repository ships example templates under `contrib/report-templates`. This is useful when you need to produce a PDF or an organization-specific report format from the same VDR data. The full template workflow, including the variables available to templates, is covered in [the usage reference](../reference/cli#custom-reports).
+
+## Reading reachability in the VDR
+
+To extract the reachable subset of a VDR programmatically, filter the `vulnerabilities` array on entries whose `depscan:insights` property contains "Reachable" or "Endpoint-Reachable". To extract the prioritized subset, filter on `depscan:prioritized=true`. The two subsets usually overlap but are not identical: a finding can be prioritized for reasons other than reachability (many CVEs on one package, known exploits), and a reachable finding may not be prioritized if its severity is low. The committed `test/data/jinja-report.vdr.json` fixture, which carries `depscan:insights` of "Direct dependency" and `depscan:prioritized=false`, is a good example of an entry that appears in the full report but not in the Top Priority table.
+
+When you also generate a VEX document with `--csaf`, the same reachability maps drive the CSAF status, so a reached component becomes `known_affected` in the VEX while a component that was not observed on a reached path stays `under_investigation`. The two artifacts are consistent by construction, which matters when an analyst and a compliance reviewer are looking at the same scan. That mapping is the subject of the [CSAF VEX guide](vex-csaf).
+

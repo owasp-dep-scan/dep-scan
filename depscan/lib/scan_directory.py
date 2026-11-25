@@ -773,12 +773,22 @@ def matching_completed_types(manifest: Dict[str, Any]) -> List[str]:
 _DOCUMENTED_DEFS = ("input", "database", "stage", "analyzer", "stageOutput", "file")
 
 
+def _mdx_safe(text: str) -> str:
+    """Escape angle brackets outside code spans, so the markdown tables can
+    be embedded in the MDX documentation page, which parses ``<redacted>``
+    as a JSX element otherwise."""
+    parts = text.split("`")
+    for index in range(0, len(parts), 2):
+        parts[index] = parts[index].replace("<", "&lt;").replace(">", "&gt;")
+    return "`".join(parts)
+
+
 def _field_table(properties: Dict[str, Any]) -> List[str]:
     """One markdown table of field names and descriptions, from the schema."""
     lines = ["| Field | What it holds |", "| --- | --- |"]
     for name, spec in properties.items():
         description = str(spec.get("description") or "").strip()
-        lines.append(f"| `{name}` | {description} |")
+        lines.append(f"| `{name}` | {_mdx_safe(description)} |")
     return lines
 
 

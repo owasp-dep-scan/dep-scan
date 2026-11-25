@@ -1,0 +1,108 @@
+---
+title: "Lesson 4: binaries with the binary check"
+sidebar_position: 04
+---
+
+# Lesson 4: binaries with the binary check
+
+This lesson reviews a directory of real binaries with the binary check, blint's review, and reads the findings and the coverage line that says how complete the review was. The binaries are the analyzer binaries the cdxgen plugins package ships, so the lesson needs no binaries beyond the toolchain itself; the plugin version that doctor reports pins the input set.
+
+The inputs are the cdxgen-plugins-bin binaries (4.3.1, macOS arm64 build, on the run quoted below) and dep-scan 7.0.0a3 with blint 4.1.1 from the `ext` extra. The scan names the `app-only` database flavor, which is enough for the vulnerability matches the binaries' embedded package data produces. The output below is from a run on 2026-11-25 with those versions.
+
+## The script
+
+The commands live in `documentation/lessons/04-binaries-blint/run.sh` (and `expect.txt` beside it holds the output lines the lesson's CI job greps for). The page embeds the script verbatim, so the page and the script cannot differ:
+
+```bash
+#!/usr/bin/env bash
+# Lesson 04: a set of binaries with the binary check.
+#
+# Runs blint's binary review and hardening checks over the analyzer binaries
+# the cdxgen plugins package ships, and reads the findings and the coverage
+# line.
+#
+# Needs: dep-scan with the blint package (pip install "owasp-depscan[ext]"),
+# and cdxgen installed, whose plugins directory holds the binaries this
+# lesson reviews. No vulnerability database beyond the default download is
+# needed.
+set -euo pipefail
+
+WORK="${WORK:-/tmp/depscan-lesson-04}"
+SCANS="$WORK/scans"
+mkdir -p "$SCANS"
+
+### Find the binaries to review
+# The plugin binaries that cdxgen resolves are the same set on every
+# platform, pinned by the plugins package version doctor reports.
+PLUGINS="$(depscan doctor --format json | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+tool = next(t for t in report["tools"] if t["name"] == "cdxgen-plugins")
+print(tool["path"])
+')"
+depscan doctor --format json | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+tool = next(t for t in report["tools"] if t["name"] == "cdxgen-plugins")
+print("plugin binaries:", tool["version"])
+'
+
+### Scan the directory as binaries
+depscan scan "$PLUGINS" --target-kind binary --checks binary --vdb-flavor app-only \
+  --no-banner \
+  -o "$SCANS/binaries"
+
+### Read the findings and the coverage line
+python3 - "$SCANS/binaries" <<'PY'
+import json, sys
+d = sys.argv[1]
+f = json.load(open(f"{d}/depscan.findings.json"))
+cats = {}
+for x in f["findings"]:
+    cats[x["category"]] = cats.get(x["category"], 0) + 1
+print("categories:", ", ".join(f"{k}: {v}" for k, v in sorted(cats.items())))
+producers = sorted({f"{x['producer']['name']} {x['producer']['version']}"
+                    for x in f["findings"] if x["category"] == "binary-hardening"})
+print("hardening producer:", ", ".join(producers))
+x = [r for r in f["findings"] if r["category"] == "binary-hardening"][0]
+print(f"first hardening finding: {x['rule']} on {x['components'][0]}")
+print(f"binary: {x['locations'][0]['binary']}")
+cov = json.load(open(f"{d}/analysis/blint/analysis-coverage.json"))
+print("coverage report read:", bool(cov))
+PY
+```
+
+## Reading the run
+
+The review writes binary-hardening findings into the same findings file as everything else, with blint as the producer, and the console counts the review's coverage:
+
+```text
+plugin binaries: 4.3.1
+categories: binary-hardening: 11, vulnerability: 5
+hardening producer: blint 4.1.1
+first hardening finding: CHECK_UNUSED_DEPENDENCIES on pkg:generic/cdxrs-darwin-arm64
+binary: cdxrs/cdxrs-darwin-arm64
+coverage report read: True
+```
+
+One finding from the recorded run reads:
+
+```json
+{
+  "category": "binary-hardening",
+  "rule": "CHECK_UNUSED_DEPENDENCIES",
+  "title": "Declared Dependency Is Never Used (libiconv.2.dylib)",
+  "severity": "low",
+  "coverage": { "state": "assessed" },
+  "producer": { "name": "blint", "version": "4.1.1" },
+  "locations": [{ "binary": "cdxrs/cdxrs-darwin-arm64" }]
+}
+```
+
+The coverage line is the difference between a review and a glance: the console prints how many units blint attempted, succeeded, failed and skipped, and a failed or skipped unit becomes a coverage caveat on the findings it covers. blintdb, the tens-of-gigabytes similarity database that identifies libraries without version banners, is a deliberate download: where it is absent, that layer is reported as unavailable, and the lesson's verdicts stand without it.
+
+## Takeaways
+
+- `--target-kind binary --checks binary` reviews binaries, installers and drivers with blint, and reports its results as findings of the same model as every other check.
+- The coverage line is part of the finding: a partial review is named as partial.
+- blintdb is an optional layer; its absence is stated, never read as a clean result.

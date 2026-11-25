@@ -1,0 +1,6 @@
+pinned: juice-shop, DVWA, railsgoat
+juice-shop: reach assessed: True
+dvwa: reach assessed: False
+railsgoat: reach assessed: False
+dvwa: reach verdict is not_assessed; manifest: atom not-assessed:
+railsgoat: reach verdict is not_assessed; manifest: atom not-assessed:

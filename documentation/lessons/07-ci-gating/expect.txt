@@ -1,0 +1,8 @@
+scan exit code: 0
+one document, scans: 1
+target kind: purl
+findings in the entry:
+assessed critical findings:
+findings total:
+refused scan exit code: 4
+error verb: scan exitCode: 4

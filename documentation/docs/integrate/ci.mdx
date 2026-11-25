@@ -1,0 +1,130 @@
+---
+sidebar_position: 1
+title: CI
+---
+
+# dep-scan in CI
+
+A CI job asks a scan three questions: did the scan actually run, what is new against last time, and does this pull request cross the line. dep-scan answers all three from files, which is what makes it scriptable: the JSON output is one document, the exit codes are documented, and the scan directory carries everything a later step or a human needs. What it deliberately does not do yet is fail the build because findings exist; this page shows the honest way to gate today, and says plainly what is not built.
+
+## The image and the cache
+
+The published image carries the toolchain, so the runner installs nothing. The image runs as the unprivileged user `owasp`, so run it as the runner's user to let it write into the mounted checkout, with `HOME` pointed at a writable directory for the tools' caches:
+
+```yaml
+- name: Scan dependencies
+  run: |
+    mkdir -p reports
+    docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/app" \
+      ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a3 \
+      depscan scan /app --reports-dir /app/reports --profile ci
+```
+
+Pin the image to a dep-scan 7 tag such as `v7.0.0a3`. Only a final `vX.Y.Z` release moves the `latest` tag, so `latest` stays on dep-scan 6.x until 7.0.0 is released.
+
+Mount or cache a directory as `VDB_HOME` and the database survives between jobs; without it, every job downloads the flavor again. Pin the database flavor for the job (`depscan vdb download --flavor app-only` as a step, or `vdb_flavor` in the config file), because a job that resolves a different flavor than the cache holds re-downloads.
+
+## Profiles and what a CI scan runs
+
+`--profile ci` is the job-shaped scan: vulnerability matching with reachability, explanations off, so no prompt file is written and the console stays small. [The profiles table](../targets/source-repositories#the-profiles) shows all five and the rule that explicit options win over the profile. `--fail-on-error` is the flag that stops a degraded scan from masquerading as a clean one: a failed analyzer, an unreadable reachability report or empty slices aborts the scan with a non-zero exit instead of reporting what it managed.
+
+## Exit codes
+
+The table is generated from the exit-code constant, and a test keeps this page in step with it:
+
+<!-- exit code table start -->
+| Code | Meaning |
+| --- | --- |
+| 0 | Success. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database or a source target that does not exist. |
+| 2 | A usage error, including any dep-scan 6 command line. |
+| 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
+<!-- exit code table end -->
+
+A scan that reports vulnerabilities exits 0, and a clean scan exits 0: findings never change the exit code in this version, so exit code 0 means "the scan ran", never "everything is fine". A policy gate over findings, with its own exit code, is [planned work](https://github.com/owasp-dep-scan/dep-scan/issues/594).
+
+## Gating on findings today
+
+Gate in the workflow, on the findings file, and read the coverage block while doing it so a skipped analysis cannot pass the gate. The findings file is one JSON document, so the gate is a few lines of `jq`:
+
+```yaml
+- name: Fail on new critical findings
+  run: |
+    count=$(jq '[.findings[] | select(.category == "vulnerability" and .severity == "critical"
+      and .coverage.state == "assessed")] | length' reports/depscan.findings.json)
+    echo "assessed critical findings: $count"
+    test "$count" -eq 0
+```
+
+The `coverage.state` filter is the part that keeps the gate honest: a critical finding whose deciding analysis never ran is not a critical finding, and the files say which it is. The reach axis has a prerequisite worth restating: a scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby project answers reachability only when it runs cdxgen's research BOM profile (`--bom-profile research`, or `--profile research`), so a gate over `reach` on such a scan without it never fires. Go, Rust, Kotlin and .NET projects get reachability from a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) without the research profile, and Go, Rust and .NET also from `--profile deep` on a universal scan.
+
+## What changed since last time
+
+A baseline answers "is this pull request worse". Two scans of the same project compare through the Python API (`api.diff`) or the MCP server's `diff_scans` tool, which key each vulnerability by the pair of its advisory id and the affected component ref; there is no `depscan diff` verb in this version. The API form, usable from a workflow step that already has Python:
+
+```python
+from depscan import api
+old = api.load_scan("reports-base")
+new = api.load_scan("reports-pr")
+changes = api.diff(old, new)
+print(len(changes.new), "new,", len(changes.fixed), "fixed")
+```
+
+Each list holds entries keyed by the pair of advisory id and affected component, and `changed` carries the pairs whose severity moved. Store the base branch's scan directory as an artifact and check it out for the comparison, or scan the base branch in the same job: check the pull request out into one directory and the base branch into a sibling, so each scan's root holds only its own tree (a source scan reads the whole tree it is given, and a nested checkout would leak baseline findings into the pull request's scan).
+
+## Artifacts
+
+Upload the scan directory, not only the console output. Everything a reviewer, an agent or the next job needs is in it:
+
+```yaml
+- uses: actions/upload-artifact@v4
+  with:
+    name: depscan-results
+    path: reports/
+```
+
+## SARIF
+
+dep-scan writes no SARIF in this version. The VDR is the interchange document for vulnerability data ([the VDR guide](vdr)), the findings file is the contract for everything else ([the finding model](../results/finding-model)), and code scanning upload of the results is [planned work](https://github.com/owasp-dep-scan/dep-scan/issues/590). Until it lands, the artifact above is what a reviewer opens.
+
+## A pull request gate, end to end
+
+Putting it together: scan on the pull request with the CI profile, fail on a degraded scan, compare against the base branch's stored scan, and leave the scan directory for the reviewer:
+
+```yaml
+jobs:
+  depscan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pick a weekly cache key
+        id: week
+        run: echo "key=vdb-app-only-$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Restore the vulnerability database
+        uses: actions/cache@v4
+        with:
+          path: vdb-home
+          key: ${{ steps.week.outputs.key }}
+      - name: Scan
+        run: |
+          mkdir -p vdb-home reports
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e VDB_HOME=/db -v "$PWD/vdb-home:/db" \
+            -v "$PWD:/app" \
+            ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a3 \
+            depscan scan /app -t js --bom-profile research --profile ci \
+              --vdb-flavor app-only --reports-dir /app/reports --fail-on-error
+      - name: Gate on assessed critical findings
+        run: |
+          count=$(jq '[.findings[] | select(.severity == "critical"
+            and .coverage.state == "assessed")] | length' reports/depscan.findings.json)
+          test "$count" -eq 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: depscan-results
+          path: reports/
+```
+
+The cache key carries the ISO year and week, so the job starts from a fresh database at least once a week instead of reusing the first download forever, and the scan passes `--vdb-flavor app-only` so it reads the same flavor the key names (the default flavor is `full`). The `mkdir` line and the `--user` option matter because the image runs as the user `owasp`: without them the container cannot write into the directories Docker creates for the bind mounts, and `HOME=/tmp` gives the runner's user a writable home inside the container.
+
+The server mode is the other shape of CI integration, a long-running service that many pipelines post scans to; it keeps every check of the command line and adds API key authentication, host and path allowlists, and request size limits ([the server page](server)).

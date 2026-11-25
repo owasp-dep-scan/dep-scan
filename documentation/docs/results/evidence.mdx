@@ -1,0 +1,73 @@
+---
+sidebar_position: 4
+title: Evidence
+---
+
+# Evidence and the evidence store
+
+A verdict without its reasons is a number to argue with. dep-scan keeps the reasons: every claim an analyzer made during a scan is written to the scan's evidence store as a record that names the producer, what it observed, the confidence the producer stated, the witness path where there is one, and every caveat the producer reported. A finding's grade cites its witness records; a disputed verdict is settled by opening the record, not by re-running the scan.
+
+The store is two files at the top of the scan directory. `evidence.jsonl` holds one record per line, sorted by id, each a `depscan-evidence` schema object (`depscan schema depscan-evidence` prints it). `evidence.index.json` maps records to what they are about: `byComponent` from each component purl to the records whose subject includes it, and `byFinding` from each finding to the records that touch its component. Nothing in either file needs the source tree to be present, so a scan directory answers questions on another machine.
+
+## What a record looks like
+
+This is the record behind a reached finding from a scan of a Go service, `GHSA-jq35-85cj-fj4p`, an advisory against the `github.com/docker/docker` module whose client code the service calls (the same finding the [project README](https://github.com/owasp-dep-scan/dep-scan#readme) shows): the golem analyzer traced the docker client's hijack path, and the record keeps the call it found, the path from the entry, and golem's own caveats about the run:
+
+```json
+{
+  "id": "ev-ddf5445675cd9b7e",
+  "kind": "reached-flow",
+  "polarity": "positive",
+  "producer": { "name": "golem", "version": "4.3.1" },
+  "subject": { "purls": ["pkg:golang/github.com/docker/docker@v24.0.5%2Bincompatible"] },
+  "confidence": "medium",
+  "locations": [
+    { "file": "github.com/docker/docker@v24.0.5+incompatible/client/hijack.go", "line": 62, "method": "(*github.com/docker/docker/client.Client).setupHijackConn" }
+  ],
+  "path": [
+    { "file": "github.com/docker/docker@v24.0.5+incompatible/client/hijack.go", "line": 62, "method": "(*github.com/docker/docker/client.Client).setupHijackConn", "symbol": "net/http.(*Request)" },
+    { "line": 683, "method": "(*net/http/httputil.ClientConn).Do", "symbol": "fmt.Fprintf" }
+  ],
+  "caveats": [
+    { "kind": "budget", "detail": "golem's slice reachability came back partial (no-entry-roots)" },
+    { "kind": "location-outside-root", "detail": "1 file path(s) the producer named lie outside the source root and no package directory; the record leaves them out" }
+  ]
+}
+```
+
+Three details of that record are worth reading closely. The subject carries the versioned purl, which is what makes the record evidence about the installed version rather than a loose mention of a package name. The confidence is golem's own word, kept as stated. The caveats are the producer's statements about its own run: a budget it hit, call sites it could not resolve, a location it could not attribute. Caveats travel upward: a summary built from records carries the union of their caveats, so a report built from a partial analysis never reads as a complete one.
+
+## The kinds of records
+
+Each record's `kind` says what the producer claimed:
+
+| Kind | Meaning |
+| --- | --- |
+| `reached-flow` | A flow the producer traced from an entry point to the package. These count toward the reached set. |
+| `usage` | A use of the package in source. Counts as a direct use. |
+| `callsite` | A use site recorded without a traced path. Adds evidence, never reach. |
+| `entry-point` | A route or handler the analyzer recognized, with its exposure tier. |
+| `exploit-chain` | A path from an entry point to a dangerous call, with hop count and confidence. |
+| `sanitizer` | A flow the producer saw sanitized. Negative evidence: it never subtracts from the reached set, because a sanitized flow writes no reached record of its own. |
+| `dead-code` | Code the producer found unreachable. |
+| `occurrence`, `callstack`, `annotation` | What the BOM's own evidence recorded, read by the cdxgen adapter. |
+| `presence`, `introspection` | Presence observations and the build-introspection summary, read from the BOM's sidecar reports. |
+| `dependency`, `no-path`, `weakness`, `dangerous-api`, `runtime-trace` | A reachability verdict that does not count as reached, a negative verdict, and the binary, code-quality and traced-run observations. |
+
+## Who writes records
+
+The reachability producers (atom, rusi, golem, kosi, dosai) write the reached flows, entry points, exploit chains and sanitizers. Three more producers contribute without grading reachability:
+
+- The cdxgen adapter reads every BOM document the scan loaded, whatever the reachability setting: each component's `evidence.occurrences` and `evidence.callstack`, the document's annotations and the build introspection beside the BOM. The occurrence records of the top-level components are the direct uses behind `direct_purls`. Each document is gated on the cdxgen version it names: a newer minor adds a `schema-minor` caveat to its records, an unknown major leaves the document not assessed, so it gives no records. When the scan read other BOM documents that were accepted, their records carry a `record-skipped` caveat naming the refused document and the reason.
+- The blint adapter reads the binary review's findings, capability reviews and coverage report, and the coverage report's failed and skipped units become `coverage-gap` caveats on every blint record.
+- Trace BOMs a user supplies with a BOM directory scan are read by the tracebom adapter into `runtime-trace` records, which never count as reached: a traced run observes what the traced command loaded, and a library loaded at run time shows no code path from the application to it.
+
+## Reading the store
+
+The store is plain JSON lines, so the quickest look needs no dep-scan at all:
+
+```bash
+grep '"pkg:npm/jsonwebtoken@0.4.0"' evidence.jsonl | python3 -m json.tool --json-lines
+```
+
+From Python, `depscan.api.load_scan` opens the directory and the findings' `evidence` arrays name their records; the MCP server's `explain_finding` and `coverage` tools render the same files for an agent, and the server has no tool that returns one evidence record by id, so an agent that wants the witness record behind a finding reads the store directly, the way the `grep` command above does. The index answers the two questions readers actually ask: what proves anything about this component, and what backs this finding.

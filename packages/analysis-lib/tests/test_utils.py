@@ -990,3 +990,64 @@ def test_syft_duplicate_components_bom_has_overlapping_cves():
     # All bom-refs must be distinct
     bom_refs = [c["bom-ref"] for c in bom["components"]]
     assert len(bom_refs) == len(set(bom_refs))
+
+
+def test_exploit_on_a_direct_dependency_does_not_mark_the_package_reached(monkeypatch):
+    """A direct dependency with known exploits and no reachable flow is
+    prioritized and labelled as such, but it is not recorded as reached, so
+    a later advisory on the same package does not read as Reachable."""
+
+    def fake_cve_to_vdr(cve_record, vid):
+        exploits = cve_record["exploits"]
+        rating = {"method": "CVSSv31", "score": 7.5, "severity": "high"}
+        return ({}, [], [], [], "", "", rating, [], [], exploits, [], "")
+
+    monkeypatch.setattr(prioritize, "cve_to_vdr", fake_cve_to_vdr)
+    purl = "pkg:npm/demo@1.0.0"
+    reached_purls = {}
+    direct_purls = {purl: 1}
+
+    def analyze(cve_id, exploits):
+        counts = SimpleNamespace(
+            malicious_count=0,
+            pkg_attention_count=0,
+            fix_version_count=0,
+            critical_count=0,
+            has_reachable_poc_count=0,
+            has_reachable_exploit_count=0,
+            has_poc_count=0,
+            has_exploit_count=0,
+            wont_fix_version_count=0,
+            distro_packages_count=0,
+            has_os_packages=False,
+            ids_seen={},
+        )
+        return prioritize.analyze_cve_vuln(
+            {
+                "cve_id": cve_id,
+                "matched_by": purl,
+                "matching_vers": "",
+                "purl_prefix": "pkg:npm/demo",
+                "source_data": {"exploits": exploits},
+            },
+            reached_purls=reached_purls,
+            direct_purls=direct_purls,
+            reached_services={},
+            endpoint_reached_purls={},
+            optional_pkgs=[],
+            required_pkgs=[],
+            prebuild_purls={},
+            build_purls={},
+            postbuild_purls={},
+            purl_identities={},
+            bom_dependency_tree=[],
+            counts=counts,
+        )
+
+    _, first, _, _ = analyze("CVE-2024-0001", ["https://example.com/exploit"])
+    assert any(
+        "Direct dependency with known exploits, reach not assessed" in i for i in first["insights"]
+    )
+    assert reached_purls == {}
+    _, second, _, _ = analyze("CVE-2024-0002", [])
+    assert not any("Reachable" in i for i in second["insights"])

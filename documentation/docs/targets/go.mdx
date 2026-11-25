@@ -1,0 +1,114 @@
+---
+title: Go (golem)
+---
+
+# Go reachability with golem
+
+## What golem is and when to use it
+
+[golem (Go Source Inspector)](https://github.com/cdxgen/cdxgen-plugins-bin) is the native analyzer dep-scan uses for Go. It is shipped prebuilt via cdxgen-plugins-bin and emits a call graph, interprocedural source-to-sink data-flow slices, API endpoints, and symbol-usage evidence with purl attribution. dep-scan's golem adapter reads that report into the evidence store so the shared, purl-keyed reachability engine counts from records, so a vulnerable module whose functions are actually called (for example `pgx.Connect` in a SQL-injection CVE) is marked Reachable, while a module that is merely present in the BOM but never called is not. Reachability is on by default for Go once the analyzer report is present, so for most projects you scan with the research profile and read the Reachable insights.
+
+## Prerequisites
+
+golem loads packages through `golang.org/x/tools/go/packages` with full type and SSA information, so it needs a local Go toolchain to operate.
+
+- Go toolchain (`go`) on `PATH`, so golem can load the module's packages.
+- cdxgen and dep-scan, installed by `npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`.
+- The golem binary, resolved automatically (see below) or supplied explicitly.
+- A warm module cache (`GOMODCACHE`) if you intend to run fully offline.
+
+## How dep-scan runs golem
+
+When a Go project is detected (`-t go`) and reachability is on, dep-scan first reads the golem report cdxgen persisted under the research BOM profile, `go-semantics.slices.json` next to the BOM. When there is none, dep-scan runs golem itself and writes the report to `analysis/golem/golem.json`. A universal-typed scan, the default for every source tree, runs golem the same way when the BOM's components carry a `pkg:golang` purl and the reachability analyzer is SemanticReachability (the `deep` and `research` profiles, or an explicit `--reachability-analyzer SemanticReachability`). A default, `quick`, `ci` or offline scan starts no language tool this way, because running one over a large tree can take far longer than the rest of the scan; that scan leaves reach not assessed for these packages. When dep-scan runs golem itself, dep-scan's own run skips the trees that the `--exclude` patterns of `--cdxgen-args` name, as described in [excluding trees from a scan](source-repositories#excluding-trees-from-a-scan). golem requires the local Go toolchain to load packages, and dep-scan's own run always passes `--include-all-flows` so that dependency-internal flows, which are precisely where the CVE-reachability signal lives, are retained rather than pruned.
+
+```text
+  cdxgen (evinse) ──runs──▶ golem ──writes──▶ go-semantics.slices.json ─┐
+  dep-scan (when cdxgen wrote no report) ──runs (--include-all-flows)──▶ golem
+                                     ──writes──▶ analysis/golem/golem.json ─┤
+                                                                          read by
+                                                                            ▼
+                              golem adapter ──▶ evidence.jsonl ──▶ reached_purls
+       (golem needs `go` on PATH; --go-analyzer-network offline sets GOPROXY=off)
+```
+
+dep-scan resolves the golem binary the same way cdxgen does. It checks the `GOLEM_CMD` environment variable, then `DEPSCAN_GOLEM_BINARY`, then `golem` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/golem/golem-<platform>-<arch>` (a `binaryPath` in `plugins-manifest.json` takes precedence). `<pluginsDir>` is looked up in two steps. `CDXGEN_PLUGINS_DIR` is tried first when it is set. When it does not hold the binary, dep-scan uses the first plugins directory cdxgen would accept: `CDXGEN_PLUGINS_DIR` itself when it holds a `plugins-manifest.json` or a tool directory, and otherwise a `plugins` directory or `node_modules/@cdxgen/cdxgen-plugins-bin-<platform>-<arch>/plugins` in the install of the `cdxgen` command that `CDXGEN_CMD` or `PATH` resolves to. Symlinks are followed, and for the npm and pnpm shims on Windows (`cdxgen.cmd` and its `.ps1` and shell variants) the package the shim starts is searched too, including `node_modules/@cdxgen/cdxgen` and `node_modules/@cyclonedx/cdxgen` beside the shim. `depscan doctor` reports the same binary with the source `plugins-dir`. When cdxgen spawns, dep-scan propagates `GOLEM_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If golem or the Go toolchain cannot be found, Go reachability is skipped with a warning and never a crash, and other languages are unaffected.
+
+## Example invocations
+
+The hermetic fixtures under `test/data/golem/repos/` let you reproduce the reachable-versus-present contrast offline. The `real-cve-app` fixture vendors two real, historically vulnerable modules, `github.com/gorilla/mux` and `github.com/satori/go.uuid`, and its `main` calls `uuid.NewV4()` from the satori module.
+
+```shell
+# Reachable case: satori/go.uuid is imported and called
+depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --bom-profile research --explain
+
+# Point dep-scan at a specific golem binary
+DEPSCAN_GOLEM_BINARY=/path/to/golem depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --bom-profile research --explain
+
+# Forbid network access during analysis (requires warm module cache)
+depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --go-analyzer-network offline --explain
+```
+
+The control is `unreachable-app`, which declares `github.com/example/vuln-lib` in `go.mod` through a local `replace` directive but never calls its `ProcessQuery` function.
+
+```shell
+# Present-but-unreachable case: vuln-lib is declared but never called
+depscan scan ./test/data/golem/repos/unreachable-app -o ./reports -t go --bom-profile research --explain
+```
+
+Reachability is on by default (`--reachability-analyzer FrameworkReachability`). Switch to `SemanticReachability` only when you also want reached services and endpoints attributed.
+
+## Analysis walkthrough
+
+Consider the `real-cve-app` source. Its `main` imports `github.com/satori/go.uuid` and calls `uuid.NewV4()`, so the satori module is on a real call path. golem emits a call-graph edge from `main` to `NewV4` and a usage for the call site, and the adapter's reconciler maps both onto the BOM's versioned `pkg:golang/github.com/satori/go.uuid@v1.2.0`. That purl lands in `reached_purls`, so any advisory affecting `satori/go.uuid@v1.2.0` is tagged Reachable; `depscan:prioritized` needs one of the stronger signals [prioritization](../results/prioritization) lists on top of reach. The gorilla/mux module, by contrast, is imported with a blank import (`_ "github.com/gorilla/mux"`) and never called. golem records the blank import as an edge into `mux.init`, and the adapter makes no record of it, because golem's graph never reaches mux outside its init code, so mux stays out of `reached_purls`.
+
+The record below is the call-graph edge from `main` to `uuid.NewV4`, as the current golem adapter builds it from the committed golem 4.3.1 recording of that fixture (`packages/analysis-lib/tests/data/golem/golem-real-cve-app.json`), read with the fixture directory as the source root and with the `source` of a scan where dep-scan ran golem itself. It is the complete record, spread over several lines for reading; in `evidence.jsonl` it is one compact line.
+
+```json
+{
+  "schemaVersion": "1",
+  "id": "ev-7c644e4c1ee3ecfd",
+  "producer": {
+    "name": "golem",
+    "version": "4.3.1",
+    "reportSchemaVersion": "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6"
+  },
+  "kind": "reached-flow",
+  "polarity": "positive",
+  "subject": { "purls": ["pkg:golang/github.com/satori/go.uuid@v1.2.0"] },
+  "source": "analysis/golem/golem.json",
+  "locations": [
+    { "file": "vendor/github.com/satori/go.uuid/generator.go", "line": 64, "method": "github.com/satori/go.uuid.NewV4" }
+  ],
+  "caveats": [],
+  "path": [
+    { "method": "github.com/example/real-cve-app.main", "symbol": "github.com/example/real-cve-app.main" },
+    { "file": "vendor/github.com/satori/go.uuid/generator.go", "line": 64, "method": "github.com/satori/go.uuid.NewV4", "symbol": "github.com/satori/go.uuid.NewV4" }
+  ],
+  "attributes": {
+    "reachableFromRoots": true,
+    "minDepth": 1,
+    "rootIds": ["github.com/example/real-cve-app.main"],
+    "rootLabels": ["github.com/example/real-cve-app.main"],
+    "servicePurls": []
+  }
+}
+```
+
+The versioned purl in the subject is what the reconciler matched against the BOM component. Without that version, the record would be evidence of a call but not evidence that the *affected* version is the one installed. `reachableFromRoots`, `minDepth` and `rootIds` are golem's own statement about the callee: `NewV4` is reachable from the `main` root at depth 1. The same report also yields a `usage` record for the call site in `main.go` at line 12, and records for edges inside the vendored module, such as `NullUUID.Scan` calling `UUID.Scan`. Those internal edges carry `reachableFromRoots: false` because golem found no root that reaches their callee; they still name the satori purl, so they count toward `reached_purls` like the `main` edge does. Two data-flow slices that golem marked unreachable from every root, and the two call-graph edges into gorilla/mux, which golem's graph never reaches outside its init code, become no record; the adapter counts each group in a `record-skipped` caveat on its result.
+
+The contrast with `unreachable-app` is precise. That fixture declares `github.com/example/vuln-lib` through a `replace` directive but its `handleHealth` handler only writes "ok" and never calls `vulnlib.ProcessQuery`. golem produces no call-graph edge and no data-flow slice touching `vuln-lib`, so the adapter builds no record carrying its purl, `reached_purls` stays empty for that module, and the finding never earns the Reachable insight. The module is present in the BOM and would appear in the full Vulnerability Disclosure Report, but it carries `depscan:prioritized=false`, which is the triage signal to deprioritize it.
+
+## Safety and network behavior
+
+golem does not run the program and does not run `go:generate`. Package loading uses the local Go toolchain, so module downloads can occur depending on your Go environment, which matters when you scan untrusted repositories. dep-scan defaults to `GOFLAGS=-mod=readonly` to prevent `go.mod` rewrites on untrusted repos, so a scan will not silently mutate the module file. Use `--go-analyzer-network offline` to forbid all downloads; that flag sets `GOPROXY=off`, which requires a warm module cache (`GOMODCACHE`) so golem can resolve the packages it needs without touching the network. The offline mode is the right choice for CI on untrusted input, provided the image carries the modules golem will load.
+
+Package loading also compiles the cgo packages it finds, which means the C compiler and linker of the machine running the scan execute with flags taken from the scanned code and its dependencies: a package's `#cgo` directives, `.syso` files and `#cgo pkg-config:` lines all reach them. dep-scan therefore runs golem and every local cdxgen invocation with `CGO_ENABLED=0` and without the `CGO_*_ALLOW` variables, so packages that need cgo are not loaded and their reachability is missing. If those packages matter for your scan and you trust the input, pass `--go-analyzer-cgo` (or set `DEPSCAN_GO_ANALYZER_CGO`); the scan then keeps your `CGO_ENABLED` and `CGO_*_ALLOW` values, and dep-scan warns when the local Go toolchain predates go1.26.11 and go1.27.4, the releases that refuse the unsafe flags. The cdxgen container generator passes the same rule into the container; the cdxgen server mode is unaffected because dep-scan does not control that server's environment.
+
+## Reading the artifacts
+
+Three files in the reports directory tell the story. The `evidence.jsonl` at the top holds the records the adapter built, and the raw golem report they came from is `go-semantics.slices.json` when cdxgen wrote it, or `analysis/golem/golem.json` when dep-scan ran golem; check here first if no module is Reachable, because records without purls explain the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../integrate/vdr). When you generate a VEX document with `--csaf`, a reached module becomes `known_affected` while a module that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../integrate/vex-csaf).
+
+## Troubleshooting
+
+If golem reports that it cannot load packages, the usual cause is a missing Go toolchain or a cold module cache under offline mode. Confirm `go` is on `PATH`, and for `--go-analyzer-network offline` runs make sure `GOMODCACHE` contains the modules the project imports. If slices are generated but no module is Reachable, check that the BOM carries versioned `pkg:golang` purls; a vendored module without a resolved version can defeat the reconciler. If golem itself is not found, set `GOLEM_CMD` or `DEPSCAN_GOLEM_BINARY` to a known-good binary and rerun with `SCAN_DEBUG_MODE=debug` to see the resolution log.
+

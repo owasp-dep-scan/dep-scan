@@ -1,103 +1,118 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+// The site is organized around what a reader is trying to do: start, the
+// results of a scan, what to scan, how to run it in CI and with agents, the
+// reference pages, the upgrade guides, the contributor pages and the
+// tutorials. Page order within a category follows the reading order, so the
+// sidebar can be read as a short book on the tool.
 
-/**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
- */
 const sidebars: SidebarsConfig = {
   documentationSidebar: [
-    'dep-scan',
-    'getting-started',
-    'cli-usage',
-    'agents',
-    'mcp',
-    'agent-plugin',
-    'agent-skills-toolchain',
-    'doctor',
-    'python-api',
-    'vulnerability-database',
-    'server-usage',
-    'reachability-analysis',
-    'supported-languages',
     {
       type: 'category',
-      collapsible: true,
-      label: 'Reachability Concepts',
+      collapsible: false,
+      label: 'Start',
       items: [
-        'concepts/reachability-model',
-        'concepts/exploitability',
-        'concepts/prioritization',
-        'concepts/sbom-and-evidence'
-      ]
+        'start/overview',
+        'start/installation',
+        'start/first-scan',
+        'start/vulnerability-database',
+      ],
     },
     {
       type: 'category',
       collapsible: true,
-      label: 'Language Guides',
+      label: 'Understand the results',
       items: [
-        'languages/rust-reachability',
-        'languages/go-reachability',
-        'languages/dotnet-reachability',
-        'languages/jvm-js-python-php-reachability'
-      ]
+        'results/finding-model',
+        'results/reachability',
+        'results/exploitability',
+        'results/evidence',
+        'results/coverage',
+        'results/prioritization',
+        'results/scan-directory',
+      ],
     },
     {
       type: 'category',
       collapsible: true,
-      label: 'Analyzers',
+      label: 'Scan your software',
       items: [
-        'analyzers/framework-reachability',
-        'analyzers/semantic-reachability'
-      ]
+        'targets/source-repositories',
+        'targets/java-javascript-python-php',
+        'targets/rust',
+        'targets/go',
+        'targets/dotnet',
+        'targets/container-images',
+        'targets/binaries',
+        'targets/mobile-apps',
+        'targets/memory-safety',
+        'targets/supply-chain',
+        'targets/licences',
+      ],
     },
     {
       type: 'category',
       collapsible: true,
-      label: 'Reports and Compliance',
+      label: 'Run it in CI and with agents',
       items: [
-        'output/scan-directory',
-        'output/vdr-guide',
-        'output/vex-csaf-guide',
-        'output/validate-command'
-      ]
+        'integrate/ci',
+        'integrate/agents',
+        'integrate/mcp',
+        'integrate/agent-plugin',
+        'integrate/agent-skills-toolchain',
+        'integrate/python-api',
+        'integrate/server',
+        'integrate/vdr',
+        'integrate/vex-csaf',
+      ],
     },
-    'env-var',
-    'adv-usage',
-    'migrate-v6-to-v7',
-    'migrate-v5-to-v6',
+    {
+      type: 'category',
+      collapsible: true,
+      label: 'Reference',
+      items: [
+        'reference/cli',
+        'reference/configuration',
+        'reference/schemas',
+        'reference/doctor',
+        'reference/validate',
+      ],
+    },
+    {
+      type: 'category',
+      collapsible: true,
+      label: 'Upgrade',
+      items: [
+        'upgrade/migrate-v6-to-v7',
+        'upgrade/migrate-v5-to-v6',
+      ],
+    },
     {
       type: 'category',
       collapsible: true,
       label: 'Develop',
-      // link: {
-      //   type: 'doc',
-      //   id: 'Develop/develop'
-      // },
       items: [
         'Develop/contributing',
-        'Develop/getting-started-development',
+        'Develop/development-setup',
         'Develop/debugging',
-        // 'Develop/core-concepts',
-        // 'Develop/testing-quality',
-        // 'Develop/help'
-      ]
+      ],
     },
     {
       type: 'category',
       collapsible: true,
       label: 'Tutorials',
       items: [
-        'Lessons/java-semantic-analysis',
-        'Lessons/dotnet-framework-analysis'
-      ]
+        'lessons/01-node-source-reachability',
+        'lessons/02-go-service-golem',
+        'lessons/03-container-image',
+        'lessons/04-binaries-blint',
+        'lessons/05-memory-safety-c',
+        'lessons/06-supply-chain-licence',
+        'lessons/07-ci-gating',
+        'lessons/08-agent-workflow',
+        'lessons/09-vulnerable-repos',
+      ],
     },
   ],
 };

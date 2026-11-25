@@ -44,7 +44,7 @@ from analysis_lib.findings.schemas import (
 from depscan.lib import scan_directory
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "agents.mdx"
+AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "integrate" / "agents.mdx"
 SCAN_DIRECTORY_FIXTURE = REPO_ROOT / "test" / "data" / "scan-directory"
 VALID_VDR_FIXTURE = REPO_ROOT / "test" / "data" / "jinja-report.vdr.json"
 
@@ -575,7 +575,8 @@ def _prepare_source_file(scratch):
 
 def _prepare_config_file(scratch):
     """A configuration file the next config init must refuse to overwrite."""
-    (scratch / "depscan.toml").write_text('severity = "high"\n', encoding="utf-8")
+    (scratch / ".config").mkdir(exist_ok=True)
+    (scratch / ".config" / "depscan.toml").write_text('severity = "high"\n', encoding="utf-8")
 
 
 def _check_matching_ran(calls, scratch):
@@ -1077,11 +1078,12 @@ def _assert_case_document(case, document, scratch):
             os.sep, "/"
         )
     elif case.case_id == "config-init":
-        assert document["written"] == str(scratch / "depscan.toml").replace(os.sep, "/")
-        assert (scratch / "depscan.toml").is_file()
+        written = scratch / ".config" / "depscan.toml"
+        assert document["written"] == str(written).replace(os.sep, "/")
+        assert written.is_file()
     elif case.case_id == "config-init-refuses-existing":
         assert document["error"]["details"] == {
-            "path": str(scratch / "depscan.toml").replace(os.sep, "/")
+            "path": str(scratch / ".config" / "depscan.toml").replace(os.sep, "/")
         }
     elif case.case_id == "serve-success":
         assert document["serving"] == {
