@@ -888,7 +888,6 @@ class CapabilitySpec:
 #: scans instead of refusing over a tool the scan would never call.
 BOM_PRODUCER_REQUIREMENTS: Tuple[str, ...] = (
     "tool:cdxgen",
-    "tool:cdx-audit",
     "tool:golem",
     "tool:go",
     "tool:rusi",
