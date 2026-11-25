@@ -573,7 +573,7 @@ def test_an_image_reference_that_is_an_existing_path_is_the_path(
     weird = make_path(tmp_path)
     (weird / "main.py").write_text("pass\n")
     reports = tmp_path / "reports"
-    with caplog.at_level(logging.INFO, logger=LOG.name):
+    with caplog.at_level(logging.DEBUG, logger=LOG.name):
         code = run_main(
             monkeypatch,
             [
@@ -599,17 +599,22 @@ def test_an_image_reference_that_is_an_existing_path_is_the_path(
 def test_detection_logs_the_kind_and_reason_for_each_target(
     scan_stubs, monkeypatch, caplog, tmp_path
 ):
+    """The detected kind and its reason are a debug line: the manifest's
+    inputs record the target, and the console stays quiet about it."""
     bom = _write_bom(tmp_path / "given.cdx.json")
-    with caplog.at_level(logging.INFO, logger=LOG.name):
+    with caplog.at_level(logging.DEBUG, logger=LOG.name):
         code = run_main(
             monkeypatch, ["scan", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner"]
         )
     assert code == 0
-    lines = [record.getMessage() for record in caplog.records]
-    assert any(
-        bom in line and "kind bom" in line and "JSON document is CycloneDX" in line
-        for line in lines
-    ), lines
+    detected = [
+        record
+        for record in caplog.records
+        if bom in record.getMessage()
+        and "kind bom" in record.getMessage()
+        and "JSON document is CycloneDX" in record.getMessage()
+    ]
+    assert [record.levelname for record in detected] == ["DEBUG"], caplog.text
 
 
 # ---------------------------------------------------------------------------

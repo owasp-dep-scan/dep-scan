@@ -292,8 +292,7 @@ def cmd_download(args):
     image_url = resolve_vdb_image_url(
         flavor=flavor, compression=args.compression, image=args.image
     )
-    LOG.info("vdb image: %s", image_url)
-    LOG.info("Target directory: %s", data_dir)
+    LOG.info("Downloading the vdb image %s into %s", image_url, data_dir)
     failure_message, _result = _run_download(args, lambda: download_vdb_with_retries(image_url))
     if failure_message is not None:
         return _vdb_failure(

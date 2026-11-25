@@ -791,7 +791,7 @@ def _resolve_targets(args: argparse.Namespace):
             LOG.error(message)
             entries.append((target, None, message))
             continue
-        LOG.info("Target %s: kind %s (%s)", target, kind, reason)
+        LOG.debug("Target %s: kind %s (%s)", target, kind, reason)
         entries.append((target, kind, None))
     return entries, None
 

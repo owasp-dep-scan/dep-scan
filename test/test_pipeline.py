@@ -771,7 +771,9 @@ def test_stage_analysis_vdr_writes_the_vdr_and_aggregates(tmp_path):
     assert ctx.all_pkg_group_rows == {"group": [vuln]}
 
 
-def test_stage_analysis_vdr_reports_no_vulnerabilities(tmp_path, caplog):
+def test_stage_analysis_vdr_reports_no_vulnerabilities(tmp_path, capfd, caplog):
+    """The clean result is a result line: it prints on stdout, where the
+    results go, and is not a log record."""
     bom = _write_bom(tmp_path / "sbom.cdx.json")
     ctx = _ctx(tmp_path, ["--bom", bom])
     scan = pipeline.TypeScan(project_type="bom")
@@ -782,7 +784,10 @@ def test_stage_analysis_vdr_reports_no_vulnerabilities(tmp_path, caplog):
     )
     with caplog.at_level("INFO", logger=pipeline.LOG.name):
         pipeline.stage_analysis_vdr(ctx, scan)
-    assert any("No vulnerabilities found" in r.message for r in caplog.records)
+    captured = capfd.readouterr()
+    assert "No vulnerabilities found." in captured.out
+    assert "No vulnerabilities found" not in captured.err
+    assert not any("No vulnerabilities found" in r.message for r in caplog.records)
 
 
 # ---------------------------------------------------------------------------
@@ -1159,3 +1164,108 @@ def test_matching_not_assessed_counts_rows_that_named_no_component():
         api._matching_not_assessed(SimpleNamespace(ungraded_usage_records=0, vdr_result=None))
         == []
     )
+
+
+# ---------------------------------------------------------------------------
+# console noise: one line for each gap the user can act on
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "argv,warns",
+    [
+        # The default profile on a purl or a source target never promised
+        # atom's slices, so their absence is a debug line.
+        (["--purl", "pkg:pypi/requests@2.31.0"], False),
+        (["--src", "{src}"], False),
+        # The research BOM profile asks for them on a source target only.
+        (["--src", "{src}", "--profile", "research"], True),
+        (["--purl", "pkg:pypi/requests@2.31.0", "--profile", "research"], False),
+        # Semantic reachability asks for them on any target.
+        (["--src", "{src}", "--reachability-analyzer", "SemanticReachability"], True),
+        (
+            [
+                "--purl",
+                "pkg:pypi/requests@2.31.0",
+                "--reachability-analyzer",
+                "SemanticReachability",
+            ],
+            True,
+        ),
+    ],
+)
+def test_missing_atom_slices_warn_only_when_the_scan_asked_for_them(tmp_path, caplog, argv, warns):
+    src = tmp_path / "src"
+    src.mkdir()
+    args = _args([a.replace("{src}", str(src)) for a in argv])
+    ctx = SimpleNamespace(args=args, atom_results={}, doctor_report=None, source_root=str(src))
+    scan = pipeline.TypeScan(project_type="python")
+    options = SimpleNamespace(slices_files=[], openapi_spec_files=[], bom_dir=str(tmp_path))
+    with caplog.at_level("DEBUG", logger=pipeline.LOG.name):
+        result = pipeline._atom_adapter_result(ctx, scan, options)
+    # Positive control: atom was not assessed in every case, and the
+    # manifest's status comes from this result either way.
+    assert result.status == "not-assessed"
+    lines = [r for r in caplog.records if "atom reachability was not assessed" in r.getMessage()]
+    assert len(lines) == 1
+    assert lines[0].levelname == ("WARNING" if warns else "DEBUG")
+    assert "adapter" not in lines[0].getMessage()
+
+
+@pytest.mark.parametrize(
+    "failure_reason,expected",
+    [
+        (
+            "cdxgen exited with status 3 while generating the project BOM, so no "
+            "document was written. Rerun with --debug to see cdxgen's output.",
+            "cdxgen exited with status 3",
+        ),
+        (None, "the BOM for the python type was not created"),
+    ],
+)
+def test_a_failed_bom_gives_one_error_line(
+    tmp_path, monkeypatch, caplog, failure_reason, expected
+):
+    """A failed BOM generation is one error line: the generator's reason and
+    where to look next, with no second warning about the same BOM."""
+    src = tmp_path / "src"
+    src.mkdir()
+    ctx = _ctx(tmp_path, ["--src", str(src)])
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: BomResult(success=False, failure_reason=failure_reason),
+    )
+    scan = pipeline.TypeScan(project_type="python")
+    with caplog.at_level("DEBUG", logger=pipeline.LOG.name):
+        assert pipeline._produce_boms(ctx, scan) is False
+    # Positive control: the reason reached the manifest's inventory error.
+    assert expected in (scan.inventory_error or "")
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert len(errors) == 1, errors
+    assert expected in errors[0]
+    assert errors[0].count("--debug") == 1
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+    assert "SCAN_DEBUG_MODE" not in caplog.text
+
+
+def test_unreadable_cdxgen_documents_give_one_line(tmp_path, caplog):
+    """Several BOM documents the cdxgen adapter refuses for the same reason
+    are named in one warning, not one warning each."""
+    names = ["a.cdx.json", "b.cdx.json", "c.cdx.json"]
+    for name in names:
+        (tmp_path / name).write_text("[1, 2]")
+    good = _write_bom(tmp_path / "good.cdx.json")
+    scan = pipeline.TypeScan(project_type="python")
+    scan.bom_files = [str(tmp_path / name) for name in names] + [good]
+    ctx = SimpleNamespace(reports_dir=str(tmp_path), source_root=str(tmp_path))
+    with caplog.at_level("WARNING", logger=pipeline.LOG.name):
+        result = pipeline._cdxgen_adapter_result(ctx, scan)
+    # Positive control: every refused document was read and refused.
+    refused = [r for r in scan.cdxgen_reads.values() if r.status != "completed"]
+    assert len(refused) == 3
+    assert result is not None
+    lines = [r.getMessage() for r in caplog.records if "cdxgen evidence" in r.getMessage()]
+    assert len(lines) == 1, lines
+    assert "a.cdx.json, b.cdx.json, c.cdx.json" in lines[0]
+    assert "good.cdx.json" not in lines[0]

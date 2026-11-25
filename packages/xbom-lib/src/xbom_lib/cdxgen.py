@@ -336,13 +336,10 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
                 )
             )
             if not os.path.exists(local_bin):
+                # Callers try the ``use_bin=False`` lookup next, which warns
+                # when that fails too.
                 if logger:
-                    logger.info(
-                        "%s command not found. Please install using npm install "
-                        "%s or set PATH variable",
-                        cdxgen_cmd,
-                        CDXGEN_NPM_PACKAGE,
-                    )
+                    logger.debug("%s command not found on PATH.", cdxgen_cmd)
                 return False
             cdxgen_cmd = local_bin
             # Defensive: ensure the bundled cdxgen SEA binary is executable.
@@ -371,9 +368,9 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
         )
         if not os.path.exists(local_bin):
             if logger:
-                logger.info(
-                    "%s command not found. Please install using npm install "
-                    "%s or set PATH variable",
+                logger.warning(
+                    "cdxgen command not found on PATH or at %s. Install it with "
+                    "`npm install -g %s`, or point CDXGEN_CMD at it.",
                     local_bin,
                     CDXGEN_NPM_PACKAGE,
                 )
@@ -466,9 +463,7 @@ def is_remote_source(source_dir, options: Optional[Dict] = None) -> bool:
     candidate = url if isinstance(url, str) and url else str(source_dir or "")
     if os.path.exists(candidate):
         return False
-    return candidate.startswith(
-        ("http://", "https://", "git://", "ssh://", "git@", "atom://")
-    )
+    return candidate.startswith(("http://", "https://", "git://", "ssh://", "git@", "atom://"))
 
 
 def is_server_scan(options: Optional[Dict] = None) -> bool:

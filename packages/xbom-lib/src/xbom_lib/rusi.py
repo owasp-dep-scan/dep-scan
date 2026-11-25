@@ -194,7 +194,8 @@ def run_rusi(
     binary = find_rusi_binary(logger=logger)
     if not binary:
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 "rusi binary not found (set %s or install cdxgen-plugins-bin). "
                 "Rust reachability via rusi will be skipped.",
                 RUSI_BINARY_ENV,

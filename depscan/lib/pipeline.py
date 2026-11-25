@@ -1075,13 +1075,16 @@ def finalize_setup(ctx):
     args = ctx.args
     pkg_list, project_types_list = set_project_types(args, ctx.src_dir)
     if args.custom_data:
-        LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
+        # The manifest's inputs record the custom data path and its digest.
+        LOG.debug("Loading custom vulnerability data from %s", args.custom_data)
         search.load_custom_data(args.custom_data)
     ctx.purl_pkg_list = pkg_list
     exclusions = ExclusionSet.from_options(ctx.depscan_options)
     if exclusions:
         # The patterns bound dep-scan's own walks as well as cdxgen's; naming
-        # them (and where they came from) shows what a scan left out.
+        # them (and where they came from) shows what a scan left out. The
+        # manifest does not record them (``--cdxgen-args`` is redacted there),
+        # so this line stays on the console.
         LOG.info("Exclude patterns applied to this scan's walks: %s", exclusions.describe())
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
@@ -1114,14 +1117,7 @@ def finalize_setup(ctx):
         # having been detected, so remove it only when it is there.
         if "license" in ctx.project_types:
             ctx.project_types.remove("license")
-        log_console.print(
-            Panel(
-                "License audit is enabled for this scan. This would increase "
-                "the time by up to 10 minutes.",
-                title="License Audit",
-                expand=False,
-            )
-        )
+        LOG.info("License audit is enabled for this scan.")
     _write_sample_config(ctx, run_config_file)
 
 
@@ -1178,19 +1174,15 @@ def _prepare_lifecycle_paths(ctx, scan):
         if args.reachability_analyzer == "SemanticReachability":
             if not scan.bom_dir:
                 LOG.info(
-                    "Semantic Reachability analysis requested for project type '%s'. This might take a while ...",
-                    scan.project_type,
+                    "Semantic reachability analysis for project type '%s'.", scan.project_type
                 )
             else:
-                LOG.info(
-                    "Attempting semantic analysis using existing data at '%s'",
-                    scan.bom_dir,
-                )
+                LOG.info("Semantic reachability analysis using the data at '%s'.", scan.bom_dir)
         else:
-            LOG.info(
-                "Lifecycle-based vulnerability analysis requested for project type '%s'. This might take a while ...",
-                scan.project_type,
-            )
+            # A BOM directory scan picks lifecycle analysis on its own, so
+            # saying so on every such scan is noise.
+            log = LOG.debug if ctx.bom_dir_mode else LOG.info
+            log("Lifecycle-based vulnerability analysis for project type '%s'.", scan.project_type)
         reports_dir = ctx.reports_dir
         scan.prebuild_bom_file = os.path.join(
             reports_dir, f"sbom-prebuild-{scan.project_type}.cdx.json"
@@ -1340,17 +1332,21 @@ def _produce_boms(ctx, scan):
         scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
         scan.review_not_assessed = list(getattr(bom_result, "review_not_assessed", None) or [])
     if not creation_status:
-        LOG.warning(
-            "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
-            scan.target_bom_file,
-        )
         # The generator's own reason, when it gave one, says more than the
         # generic line: a cdxgen failure names its exit status and the
-        # CDXGEN_TIMEOUT_MS budget that was in effect.
+        # CDXGEN_TIMEOUT_MS budget that was in effect. This is the one error
+        # line for the failed BOM; the generator does not log the reason too.
+        failure_reason = getattr(bom_result, "failure_reason", None)
         scan.inventory_error = (
-            getattr(bom_result, "failure_reason", None)
+            failure_reason
             or f"the BOM for the {scan.project_type} type was not created; the type's "
             "packages were not scanned"
+        )
+        LOG.error(
+            "No BOM for project type '%s': %s%s",
+            scan.project_type,
+            scan.inventory_error,
+            "" if failure_reason else ". Rerun with --debug to see why.",
         )
         if ctx.args.fail_on_error:
             LOG.error("--fail-on-error is set; aborting the scan because BOM generation failed.")
@@ -1434,12 +1430,6 @@ def _load_packages(ctx, scan):
     # We are working with a single BOM file and will collect all packages from it accordingly.
     elif scan.bom_file:
         LOG.debug("Scanning using the bom file %s", scan.bom_file)
-        if not ctx.args.bom:
-            LOG.info(
-                "To improve performance, cache the bom file and invoke "
-                "depscan with --bom %s instead of -i",
-                scan.bom_file,
-            )
         scan.pkg_list, _ = get_pkg_list(scan.bom_file)
     # An empty package list is reported whatever its source. Matching zero
     # packages would print "No vulnerabilities found", which reads as clean.
@@ -1454,8 +1444,10 @@ def _load_packages(ctx, scan):
                 f"No packages were found for project type '{scan.project_type}' "
                 "and --fail-on-error is set."
             )
-        LOG.info(
-            "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
+        LOG.warning(
+            "No packages were found for project type '%s'. Generate the BOM separately "
+            "and pass it as the target, or try `--bom-engine CdxgenImageBasedGenerator`.",
+            scan.project_type,
         )
         return False
     # Depending on the SBOM tool used, there may be details about component usage and scopes. Let’s analyze and interpret that information.
@@ -1586,15 +1578,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
         return False
     total = sum(len(packages) for _, packages in groups)
     if total > 1:
-        log_console.print(
-            Panel(
-                f"Performing OSS Risk Audit for packages from "
-                f"{ctx.src_dir}\nNo of packages [bold]{total}"
-                f"[/bold]. This will take a while ...",
-                title="OSS Risk Audit",
-                expand=False,
-            )
-        )
+        LOG.info("Running the OSS risk audit for %d packages.", total)
     report_rows = []
     try:
         for audit_type, packages in groups:
@@ -1628,20 +1612,11 @@ def announce_scan_targets(ctx, scan):
     # returns nothing. Those advisories are served from the local VDB via
     # the purl search path instead.
     if len(scan.pkg_list) > 1:
-        if scan.project_type == "bom":
-            LOG.info("Scanning CycloneDX xBOMs and atom slices")
-        elif args.bom:
-            LOG.info(
-                "Scanning %s with type %s",
-                args.bom,
-                scan.project_type,
-            )
-        else:
-            LOG.info(
-                "Scanning %s with type %s",
-                ctx.src_dir,
-                scan.project_type,
-            )
+        LOG.debug(
+            "Scanning %s with type %s",
+            args.bom or scan.bom_dir or ctx.src_dir,
+            scan.project_type,
+        )
     # `bom_files` was resolved once, above, from what actually exists.
     if not scan.pkg_list and not scan.bom_files:
         LOG.debug("Empty package search attempted!")
@@ -1793,8 +1768,27 @@ def _atom_adapter_result(ctx, scan, options):
                 caveats=caveats,
             )
     if result.status != "completed":
-        LOG.warning("atom reachability was not assessed: %s", result.reason)
+        # The manifest records atom's status either way. The console warns
+        # only when the scan asked for what atom provides: semantic
+        # reachability, or the research BOM profile on a source target.
+        log = LOG.warning if _atom_gap_applies(ctx.args) else LOG.debug
+        log("atom reachability was not assessed: %s", result.reason)
     return result
+
+
+def _atom_gap_applies(args) -> bool:
+    """Whether a missing atom result is a gap this scan asked to fill.
+
+    A default or ci scan, or a purl, BOM or BOM directory target, never
+    promised atom's slices, so their absence is not worth a warning there."""
+    if getattr(args, "reachability_analyzer", None) == "SemanticReachability":
+        return True
+    source_target = not (
+        getattr(args, "bom_dir", None)
+        or getattr(args, "bom", None)
+        or getattr(args, "search_purl", None)
+    )
+    return source_target and getattr(args, "profile", None) == "research"
 
 
 def _atom_producer_version(ctx, scan, options) -> str:
@@ -1971,12 +1965,10 @@ def _cdxgen_adapter_result(ctx, scan):
         scan.cdxgen_reads[str(bom_file)] = read
         reads.append((source, read))
         if os.path.realpath(bom_file) in gate_missed:
-            _log_introspection_tier(read, introspection_source, introspection_file)
+            _log_introspection_tier(read, bom_file, introspection_source, introspection_file)
     if not reads:
         return None
-    for source, read in reads:
-        if read.status != "completed":
-            LOG.warning("cdxgen evidence from %s was not assessed: %s", source, read.reason)
+    _log_unassessed_sources("cdxgen evidence", reads)
     result = _merge_adapter_results(reads)
     if result.status == "completed":
         LOG.debug(
@@ -1987,9 +1979,31 @@ def _cdxgen_adapter_result(ctx, scan):
     return result
 
 
-def _log_introspection_tier(read, introspection_source: str, introspection_file: str) -> None:
-    """Log the fidelity tier and score of one BOM from the introspection
-    record cdxgen's adapter built for it."""
+def _log_unassessed_sources(what: str, reads: List[Tuple[str, Any]]) -> None:
+    """One warning for every file of one producer that was not assessed.
+
+    The files are grouped by reason, so a directory of unreadable trace BOMs
+    gives one line naming them all instead of one line each."""
+    by_reason: Dict[str, List[str]] = {}
+    for source, read in reads:
+        if read.status != "completed":
+            by_reason.setdefault(str(read.reason), []).append(source)
+    if not by_reason:
+        return
+    LOG.warning(
+        "%s was not assessed for %s",
+        what,
+        "; ".join(f"{', '.join(sources)} ({reason})" for reason, sources in by_reason.items()),
+    )
+
+
+def _log_introspection_tier(
+    read, bom_file: str, introspection_source: str, introspection_file: str
+) -> None:
+    """Log the fidelity tier and score of one BOM cdxgen wrote below its
+    introspection gate, from the introspection record cdxgen's adapter built
+    for it. This is the one console line for that BOM: the generator logs
+    cdxgen's exit status 4 at debug level only."""
     overall = None
     if introspection_source:
         for record in read.records:
@@ -1999,13 +2013,19 @@ def _log_introspection_tier(read, introspection_source: str, introspection_file:
                 break
     if overall:
         LOG.warning(
-            "Introspection: overall tier %s, score %s/100 (report: %s).",
+            "cdxgen fidelity for %s: tier %s, score %s/100, below the gate (see %s).",
+            os.path.basename(str(bom_file)),
             overall.get("tier"),
             overall.get("score"),
             introspection_file,
         )
     else:
-        LOG.warning("Introspection report %s was missing or unreadable.", introspection_file)
+        LOG.warning(
+            "cdxgen fidelity for %s is below the gate, but its introspection report %s "
+            "was missing or unreadable.",
+            os.path.basename(str(bom_file)),
+            introspection_file,
+        )
 
 
 def _blint_adapter_result(ctx, scan):
@@ -2204,9 +2224,7 @@ def _tracebom_adapter_result(ctx, scan):
         )
     if not reads:
         return None
-    for source, read in reads:
-        if read.status != "completed":
-            LOG.warning("tracebom evidence from %s was not assessed: %s", source, read.reason)
+    _log_unassessed_sources("tracebom evidence", reads)
     result = _merge_adapter_results(reads)
     if result.status == "completed":
         LOG.debug(
@@ -2398,7 +2416,8 @@ def _usage_records(ctx, scan) -> List[Any]:
                 ungraded += 1
     scan.ungraded_usage_records = ungraded
     if ungraded:
-        LOG.info(
+        # The matching stage records this count in its notAssessed list.
+        LOG.debug(
             "%d cdxgen usage records grade nothing: their components are not "
             "in the loaded package list",
             ungraded,
@@ -2494,10 +2513,12 @@ def stage_analysis_vdr(ctx, scan):
             LOG.debug(f"VDR file '{vdr_file}' was not created for the type {scan.project_type}.")
         summary = summary_stats(pkg_vulnerabilities)
     elif scan.bom_dir or scan.bom_file or scan.pkg_list:
+        # A result line, so it goes where the results go: the stdout console,
+        # as ``depscan report`` prints it.
         if scan.project_type != "bom":
-            LOG.info("No vulnerabilities found for project type '%s'!", scan.project_type)
+            console.print(f"No vulnerabilities found for project type '{scan.project_type}'.")
         else:
-            LOG.info("No vulnerabilities found!")
+            console.print("No vulnerabilities found.")
     scan.summary = summary
     if vdr_result.pkg_vulnerabilities:
         ctx.all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities

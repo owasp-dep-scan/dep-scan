@@ -429,7 +429,8 @@ def run_dosai(
     binary = find_dosai_binary(logger=logger)
     if not binary:
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 "dosai binary not found (set %s or install cdxgen-plugins-bin). "
                 ".NET reachability via dosai will be skipped.",
                 DOSAI_BINARY_ENV,
@@ -438,7 +439,8 @@ def run_dosai(
 
     if not dotnet_runtime_available(binary=binary, logger=logger):
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 ".NET runtime not found ('dotnet' not on PATH and %s is not a "
                 "self-contained '-full' build). dosai requires .NET to run. "
                 ".NET reachability will be skipped. Use the cdxgen dotnet "

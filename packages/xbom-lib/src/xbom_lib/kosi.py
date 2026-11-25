@@ -164,7 +164,8 @@ def run_kosi(
     binary = find_kosi_binary(logger=logger)
     if not binary:
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 "kosi binary not found (set %s or install cdxgen-plugins-bin). "
                 "Kotlin reachability via kosi will be skipped.",
                 KOSI_BINARY_ENV,

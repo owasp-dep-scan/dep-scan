@@ -528,7 +528,8 @@ def run_golem(
     binary = find_golem_binary(logger=logger)
     if not binary:
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 "golem binary not found (set %s or install cdxgen-plugins-bin). "
                 "Go reachability via golem will be skipped.",
                 GOLEM_BINARY_ENV,
@@ -537,7 +538,8 @@ def run_golem(
 
     if not go_toolchain_available(logger=logger):
         if logger:
-            logger.warning(
+            # dep-scan warns once, with the doctor's reason, when this skips a scan.
+            logger.debug(
                 "Go toolchain ('go') not found on PATH. golem requires a local "
                 "Go installation to load packages. Go reachability will be skipped."
             )
