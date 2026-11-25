@@ -441,7 +441,6 @@ def process_vuln_occ(
             )
             plain_insights.append("Direct dependency with known exploits, reach not assessed")
             counts.has_reachable_exploit_count += 1
-            reached_purls[purl] = 1
         elif has_flagged_cwe:
             if (vendor and vendor in ("gnu",)) or (
                 purl_obj and purl_obj.get("name") in ("glibc", "openssl")
@@ -783,11 +782,6 @@ def analyze_cve_vuln(
                 if "Endpoint-Reachable" in plain_insights:
                     plain_insights.remove("Endpoint-Reachable")
             counts.has_reachable_exploit_count += 1
-            # Fail safe. Packages with exploits and direct usage without
-            # a reachable flow are still considered reachable to reduce
-            # false negatives
-            if not reached_purls.get(purl):
-                reached_purls[purl] = 1
         # A flagged CWE
         elif has_flagged_cwe:
             if (vendor and vendor in ("gnu",)) or (
