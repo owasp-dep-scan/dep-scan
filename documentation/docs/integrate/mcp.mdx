@@ -147,7 +147,7 @@ Resources expose a scan directory's documents by URI. Three templates are regist
 | `depscan://scan/{scan_dir}/findings` | The scan directory's findings document. |
 | `depscan://scan/{scan_dir}/findings/{finding_id}` | One finding, by its fingerprint id. |
 
-`{scan_dir}` is the absolute path of the scan directory, percent-encoded as the URI requires, so `/path/to/scan-dir` becomes `%2Fpath%2Fto%2Fscan-dir`; the finding id is percent-encoded the same way, `dsf1%3A` followed by the digest. A URI whose path does not resolve inside the allowed roots is refused, under the same rule the tools apply. Reading a resource returns the document as JSON text.
+`{scan_dir}` is the absolute path of the scan directory, percent-encoded as the URI requires, so `/path/to/scan-dir` becomes `%2Fpath%2Fto%2Fscan-dir`; the finding id is percent-encoded the same way, `dsf1%3A` followed by the digest. The templates are not listed by a `resources/list` call: a client resolves one by building the URI for the scan directory it knows. A URI whose path does not resolve inside the allowed roots is refused, under the same rule the tools apply. Reading a resource returns the document as JSON text.
 
 ## Prompts
 

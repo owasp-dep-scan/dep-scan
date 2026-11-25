@@ -59,7 +59,7 @@ The fields, and what each is for:
 
 ## The fingerprint
 
-Two copies of the same vulnerable package, two versions of one advisory, or a file that moved all produce stable ids: the digest covers the rule id, the component purl without its version, the relative file, the enclosing function and the API names on the evidence path, never the line numbers. The id is what a baseline compares and what `get_finding` on the MCP server takes. Because the version is stripped, one advisory hitting two versions of a package shares one id; the evidence index keys its second level on the component purl, so the two stay distinguishable there.
+Two copies of the same vulnerable package, two versions of one advisory, or a file that moved all produce stable ids: the digest covers the rule id, the component purl without its version, the relative file, the enclosing function and the API names on the evidence path, never the line numbers. The id is what a baseline compares and what `get_finding` on the MCP server takes. Because the version is stripped, one advisory hitting two versions of a package shares one id; the evidence index keys its second level on the component purl, so the two stay distinguishable there. For an advisory finding the fingerprint is the rule and the component alone, with no file or function to name, so the id is the same whether the package is reached or not: a baseline that gates on reach compares the findings' reach axis across the two scans, not only their ids.
 
 ## Where findings live and who reads them
 
