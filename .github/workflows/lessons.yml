@@ -1,0 +1,99 @@
+# Runs every documentation lesson against its pinned inputs, on a schedule.
+#
+# Each lesson's script lives in documentation/lessons/<name>/run.sh with an
+# expect.txt of output lines the lesson page quotes. A lesson fails the job
+# when its script exits non-zero or when an expectation line stops appearing
+# in its output, which is how the pages stay true to what dep-scan actually
+# prints. The scripts cache their clones under the job's workspace, and the
+# vulnerability database is pre-fetched in the flavor the lesson names.
+#
+# Lessons run on workflow_dispatch and once a week. They never run on pull
+# requests: their jobs clone third-party repositories and pull container
+# images, which is not something an unvetted branch should drive.
+
+name: Lessons
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Sundays at 03:00 UTC.
+    - cron: "0 3 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  lessons:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lesson: 01-node-source-reachability
+            flavor: app-only
+          - lesson: 02-go-service-golem
+            flavor: app-only
+          - lesson: 03-container-image
+            flavor: full
+          - lesson: 04-binaries-blint
+            flavor: app-only
+          - lesson: 05-memory-safety-c
+            flavor: app-only
+          - lesson: 06-supply-chain-licence
+            flavor: app-only
+          - lesson: 07-ci-gating
+            flavor: app-only
+          - lesson: 08-agent-workflow
+            flavor: app-only
+          - lesson: 09-vulnerable-repos
+            flavor: app-only
+    name: lesson ${{ matrix.lesson }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install the toolchain
+        run: |
+          npm install -g @cdxgen/cdxgen
+          pip install "owasp-depscan[ext,mcp]"
+          sudo apt-get update
+          sudo apt-get install -y php-cli ruby
+
+      - name: Prefetch the vulnerability database
+        run: depscan vdb download --flavor ${{ matrix.flavor }}
+
+      - name: Run the lesson
+        env:
+          WORK: ${{ github.workspace }}/lesson-${{ matrix.lesson }}
+        run: |
+          bash documentation/lessons/${{ matrix.lesson }}/run.sh \
+            | tee "${{ github.workspace }}/lesson-output.txt"
+
+      - name: Check the quoted output lines
+        run: |
+          missing=0
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            if ! grep -F -q -- "$line" lesson-output.txt; then
+              echo "MISSING from the lesson output: $line"
+              missing=1
+            fi
+          done < documentation/lessons/${{ matrix.lesson }}/expect.txt
+          exit $missing
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lesson-${{ matrix.lesson }}-output
+          path: lesson-output.txt
