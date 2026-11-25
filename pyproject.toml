@@ -68,7 +68,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["depscan", "depscan.commands", "depscan.lib", "depscan.lib.package_query", "depscan.mcp_server", "vendor", "vendor.spdx.json"]
+packages = ["depscan", "depscan.commands", "depscan.lib", "depscan.mcp_server", "vendor", "vendor.spdx.json"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
