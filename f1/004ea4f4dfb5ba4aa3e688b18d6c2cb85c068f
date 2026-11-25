@@ -1,0 +1,32 @@
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_5f434a533ccd3b 146
+documentation/docs/targets/supply-chain.mdx
+  s_7318da1b9edd46::t_5f434a533ccd3b 21,23-24
+  s_7318da1b9edd46::t_02ee43c1d34620 16
+test/test_pkg_query.py
+  s_7318da1b9edd46::t_b53b095b2e6fb1 247-249,262-264,272-274
+packages/analysis-lib/tests/test_output.py
+  s_7318da1b9edd46::t_7194d75dfe8348 417-418,431,439-440,447,452-474
+  s_7318da1b9edd46::t_094ce58b450287 475-476
+packages/analysis-lib/src/analysis_lib/output.py
+  s_7318da1b9edd46::t_b53b095b2e6fb1 1053-1054
+documentation/docs/lessons/06-supply-chain-licence.mdx
+  s_7318da1b9edd46::t_5f9e2695039818 101
+  s_7318da1b9edd46::t_34574ad91ed0ef 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1004ea4f4dfb5ba4aa3e688b18d6c2cb85c068f",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
