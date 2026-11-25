@@ -515,7 +515,7 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
-    ctx.args.profile = "offline"
+    ctx.depscan_options["scan_profile"] = "offline"
     scan = pipeline.TypeScan(project_type="npm")
     bom = Path(ctx.reports_dir) / "sbom-npm.cdx.json"
     bom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
@@ -529,7 +529,7 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
     runs.clear()
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
-    ctx.args.profile = "deep"
+    ctx.depscan_options["scan_profile"] = "deep"
     scan = pipeline.TypeScan(project_type="npm")
     scan.nominated_bom_file = str(bom)
     assert pipeline.stage_analysis_risk(ctx, scan) is True

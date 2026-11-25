@@ -169,6 +169,11 @@ def resolve(
         options.update(dict(profile.options))
         if not names:
             names = list(profile.checks)
+        # The profile's name rides with its options: the scan profile and
+        # the cdxgen BOM profile are different dests on the internal
+        # namespace, and a stage that behaves per profile (the supply-chain
+        # audit's predictive mode) reads this key.
+        options["scan_profile"] = profile_name
     if not checks_defined:
         # Neither --checks nor --profile: the v6 default set, never gated.
         names = ["vulnerabilities", "reachability"]

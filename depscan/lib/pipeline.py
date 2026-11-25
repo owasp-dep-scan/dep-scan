@@ -1564,11 +1564,20 @@ PREDICTIVE_TIME_BUDGET_MINUTES = 30
 
 
 def _audit_categories(ctx, scan) -> tuple:
-    """The direct-audit categories for this type scan."""
-    args = ctx.args
+    """The direct-audit categories for this type scan.
+
+    A BOM that carries Cargo crates also gets the cargo-security pack,
+    which holds the crate rules (vendored native libraries, alternate
+    registries, proc-macro crates) the package-integrity pack lacks."""
     types = set(ctx.project_types) | {scan.project_type}
     if types & {"container", "oci", "docker"}:
         return CONTAINER_AUDIT_CATEGORIES
+    packages = scan.pkg_list or ctx.purl_pkg_list
+    if any(
+        isinstance(pkg, dict) and str(pkg.get("purl", "")).startswith("pkg:cargo/")
+        for pkg in packages
+    ):
+        return (*DIRECT_AUDIT_CATEGORIES, "cargo-security")
     return DIRECT_AUDIT_CATEGORIES
 
 
@@ -1668,10 +1677,11 @@ def stage_analysis_risk(ctx, scan) -> bool:
             "produced no BOM and holds no packages to build one from"
         )
         return False
+    scan_profile = ctx.depscan_options.get("scan_profile")
     offline = bool(
-        args.profile == "offline" or ctx.depscan_options.get("vdb_offline", False)
+        scan_profile == "offline" or ctx.depscan_options.get("vdb_offline", False)
     )
-    predictive = args.profile in PREDICTIVE_PROFILES and not offline
+    predictive = scan_profile in PREDICTIVE_PROFILES and not offline
     categories = list(_audit_categories(ctx, scan))
     private_ns = getattr(args, "private_ns", None)
     report_file = os.path.join(ctx.reports_dir, f"cdx-audit-{scan.project_type}.json")
