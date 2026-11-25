@@ -1,0 +1,22 @@
+.github/workflows/lessons.yml
+  s_c4594e2defc52e::t_6eaa843dbf00a3 1-99
+test/test_docs_lessons.py
+  s_c4594e2defc52e::t_b78b98b14d007b 68-70,80-81
+  s_c4594e2defc52e::t_46be8d73837ddb 1-67,71-79,82-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d06ee4557aa4e2186b0b8822ef5ed8c533f2bd2",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
