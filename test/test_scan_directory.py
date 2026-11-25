@@ -1863,9 +1863,11 @@ def test_documented_manifest_fields_match_the_schema():
     assert scan_directory.manifest_fields_markdown() in page.read_text(encoding="utf-8")
 
 
-def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_path):
+def test_a_bom_directory_scan_keeps_its_vdr_in_the_scan_directory(scan_stubs, tmp_path):
     """A BOM directory scan with its own reports directory writes the VDR
-    next to the BOMs; the scan directory must not load as clean."""
+    there, never next to the BOMs, and the directory loads with its finding.
+    A manifest from an older scan that recorded the VDR as written outside
+    the directory still refuses to load as clean."""
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
     _write_bom(bom_dir / "a.cdx.json", name="a")
@@ -1876,9 +1878,17 @@ def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_p
         render=False,
     )
     assert result.vulnerabilities, "the scan itself found the stubbed vulnerability"
+    assert sorted(p.name for p in bom_dir.iterdir()) == ["a.cdx.json", "b.cdx.json"]
     vdr_stage = next(s for s in (result.manifest or {})["stages"] if s["name"] == "vdr")
-    assert vdr_stage["outputs"][0]["status"] == "not-assessed"
-    assert not os.path.isabs(vdr_stage["outputs"][0]["file"])
+    assert vdr_stage["outputs"] == [{"file": "depscan-universal.vdr.json", "status": "completed"}]
+    assert api.load_scan(str(reports)).vulnerabilities
+    # The refusal for an older manifest stays.
+    manifest_path = reports / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    next(s for s in manifest["stages"] if s["name"] == "vdr")["outputs"] = [
+        {"file": "depscan-universal.vdr.json", "status": "not-assessed", "reason": "outside"}
+    ]
+    manifest_path.write_text(json.dumps(manifest))
     with pytest.raises(api.ScanError, match="outside the scan directory"):
         api.load_scan(str(reports))
 

@@ -1,0 +1,109 @@
+{
+  "byComponent": {
+    "pkg:pypi/certifi@2026.11.20": [
+      "ev-9ff86e80311fa6a4"
+    ],
+    "pkg:pypi/charset-normalizer@3.5.3": [
+      "ev-193e17cde63ee7de"
+    ],
+    "pkg:pypi/click@8.5.1": [
+      "ev-fcdcc157df8317da"
+    ],
+    "pkg:pypi/flask@2.2.0": [
+      "ev-5cb1f679112c794d",
+      "ev-a75f0977c38ceea7",
+      "ev-a948f122013d5ca5",
+      "ev-a948f122013d5ca5-2",
+      "ev-c46043de08e86fbc"
+    ],
+    "pkg:pypi/flask@3.1.3": [
+      "ev-1fd6a9ee604773f5",
+      "ev-1fd6a9ee604773f5-2",
+      "ev-20e546c967b2a984",
+      "ev-20e546c967b2a984-2",
+      "ev-9ce1fa2942d0ab67",
+      "ev-9ce1fa2942d0ab67-2",
+      "ev-e3a3eb2a11bf5c62",
+      "ev-e3a3eb2a11bf5c62-2"
+    ],
+    "pkg:pypi/idna@3.20": [
+      "ev-7f4b30e45410b674"
+    ],
+    "pkg:pypi/itsdangerous@2.2.0": [
+      "ev-265d23ed57d7a855"
+    ],
+    "pkg:pypi/jinja2@3.1.6": [
+      "ev-26a2ee93df0b5e7b"
+    ],
+    "pkg:pypi/markupsafe@3.0.4": [
+      "ev-410d759cbdaea256"
+    ],
+    "pkg:pypi/pyproj@latest": [
+      "ev-9ea02d4a072c76d3",
+      "ev-dd471e3dd9e1fc0b"
+    ],
+    "pkg:pypi/requests@2.31.0": [
+      "ev-31fa5f2da50c4688",
+      "ev-31fa5f2da50c4688-2",
+      "ev-4fec978c2d07cfc1",
+      "ev-61efae42fe1a419c",
+      "ev-61efae42fe1a419c-2",
+      "ev-b0ba6e5f756110cc",
+      "ev-b0ba6e5f756110cc-2",
+      "ev-c2af61d5932cdd5f"
+    ],
+    "pkg:pypi/urllib3@2.8.0": [
+      "ev-f64643b9423fc213"
+    ],
+    "pkg:pypi/werkzeug@3.1.9": [
+      "ev-1840cdd25808ae74"
+    ]
+  },
+  "byFinding": {
+    "dsf1:046da451c14f053f08e941dc9eeae8ece490449f0ee10c591ded382b59aa80f4 pkg:pypi/requests@2.31.0": [
+      "ev-31fa5f2da50c4688",
+      "ev-31fa5f2da50c4688-2",
+      "ev-4fec978c2d07cfc1",
+      "ev-61efae42fe1a419c",
+      "ev-61efae42fe1a419c-2",
+      "ev-b0ba6e5f756110cc",
+      "ev-b0ba6e5f756110cc-2",
+      "ev-c2af61d5932cdd5f"
+    ],
+    "dsf1:051156050d1997a2cb9f0d66fde02338813c7838215cb72355144d5ffad42828 pkg:pypi/requests@2.31.0": [
+      "ev-31fa5f2da50c4688",
+      "ev-31fa5f2da50c4688-2",
+      "ev-4fec978c2d07cfc1",
+      "ev-61efae42fe1a419c",
+      "ev-61efae42fe1a419c-2",
+      "ev-b0ba6e5f756110cc",
+      "ev-b0ba6e5f756110cc-2",
+      "ev-c2af61d5932cdd5f"
+    ],
+    "dsf1:58c46916ab0bc992999b54c20af8aa89e0e10f6f0b606c3831a071226ca46cec pkg:pypi/flask@2.2.0": [
+      "ev-5cb1f679112c794d",
+      "ev-a75f0977c38ceea7",
+      "ev-a948f122013d5ca5",
+      "ev-a948f122013d5ca5-2",
+      "ev-c46043de08e86fbc"
+    ],
+    "dsf1:b5efe2b71170b3bd29c7a6edf83a963a903a9f7b936a0d40781fbed46a6fde94 pkg:pypi/requests@2.31.0": [
+      "ev-31fa5f2da50c4688",
+      "ev-31fa5f2da50c4688-2",
+      "ev-4fec978c2d07cfc1",
+      "ev-61efae42fe1a419c",
+      "ev-61efae42fe1a419c-2",
+      "ev-b0ba6e5f756110cc",
+      "ev-b0ba6e5f756110cc-2",
+      "ev-c2af61d5932cdd5f"
+    ],
+    "dsf1:d38e5e3db1457dffa0ac88cfa725dbbf04bf035271d93250da692922fc88595f pkg:pypi/flask@2.2.0": [
+      "ev-5cb1f679112c794d",
+      "ev-a75f0977c38ceea7",
+      "ev-a948f122013d5ca5",
+      "ev-a948f122013d5ca5-2",
+      "ev-c46043de08e86fbc"
+    ]
+  },
+  "schemaVersion": "1"
+}

@@ -1663,7 +1663,9 @@ def stage_enrichment(ctx, scan):
         # atom's slices are its own native output; its adapter runs here, over
         # the slices and OpenAPI files the scan holds. The language tools'
         # results are already on the type scan from the BOM step.
-        scan.adapter_results["atom"] = _atom_adapter_result(ctx, scan, reachability_options)
+        scan.adapter_results["atom"] = _attribute_atom_result(
+            scan, _atom_adapter_result(ctx, scan, reachability_options)
+        )
     # The evidence producers ran in the inventory stage whatever the
     # reachability setting: the BOM's own usage evidence drives the presence
     # axis even when nothing grades reach, so a scan with reachability off
@@ -1682,6 +1684,48 @@ def stage_enrichment(ctx, scan):
         scan.reached_services = reach_result.reached_services
         scan.endpoint_reached_purls = reach_result.endpoint_reached_purls
     console.record = True
+
+
+def _attribute_atom_result(scan, result):
+    """atom's adapter result with dep-scan's attributed usage records added.
+
+    atom's usage records name no package. The join to the packages cdxgen
+    recorded in the same file (:func:`analysis_lib.reachability.attribute_atom_usages`)
+    is written as new records of the atom producer, so they reach the
+    evidence store and the findings cite records that exist there. The
+    declared version of a package whose BOM entry only inferred a version
+    (:func:`analysis_lib.reachability.version_aliases`) is the purl they
+    carry. The result the adapter returned may be shared with another project
+    type's scan, so a new result is returned and the original is not changed.
+    """
+    from analysis_lib.evidence.adapters import AdapterResult
+    from analysis_lib.reachability import (
+        alias_records,
+        attribute_atom_usages,
+        declared_modules,
+        load_documents,
+        version_aliases,
+    )
+
+    if result is None or result.status != "completed":
+        return result
+    cdxgen = scan.adapter_results.get("cdxgen")
+    if cdxgen is None:
+        return result
+    documents = load_documents(getattr(scan, "bom_files", None))
+    aliases = version_aliases(documents)
+    modules = declared_modules(documents, aliases)
+    attributed = attribute_atom_usages(
+        alias_records([*cdxgen.records, *result.records], aliases), modules
+    )
+    if not attributed:
+        return result
+    return AdapterResult(
+        status=result.status,
+        reason=result.reason,
+        records=[*result.records, *attributed],
+        caveats=list(result.caveats),
+    )
 
 
 def _atom_adapter_result(ctx, scan, options):
@@ -2308,10 +2352,13 @@ def _exploitability_inputs(ctx, scan):
     The analyzers named are the reachability producers whose adapter
     completed for this type; the evidence producers are not reachability
     analyzers and never enter the scope. The reached sets and purl types
-    come from the same adapter results' records. An analyzer that completed
-    without a reached-counted record gets an empty reached set, so it
-    observed nothing; the engine's reached map, which counts the whole
-    store, never stands in for it. When reachability was off, failed or
+    come from the same adapter results' records, atom's included: its usage
+    records name a package only through the records dep-scan attributed
+    (:func:`_attribute_atom_result`), which are in the store. An analyzer
+    that completed without a reached-counted record gets an empty reached
+    set, so it observed nothing; the engine's reached and endpoint maps,
+    which count the whole store and join OpenAPI usage targets to
+    occurrences, never stand in for it. When reachability was off, failed or
     produced no purls, the scope says so and every finding of the type
     records ``reach`` as not assessed. The records carry the usage,
     exposure and witness evidence of every producer, so nothing but the
@@ -2331,6 +2378,7 @@ def _exploitability_inputs(ctx, scan):
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
+    from analysis_lib.reachability import alias_records, load_documents, version_aliases
 
     results = scan.adapter_results or {}
     analyzers = [
@@ -2348,15 +2396,18 @@ def _exploitability_inputs(ctx, scan):
                 if not (record.producer.name == "cdxgen" and record.kind in USAGE_KINDS)
             )
     records.extend(_usage_records(ctx, scan))
+    # A package the BOMs hold at an inferred and at a declared version is
+    # graded under the declared purl, as the console counts it.
+    aliases = version_aliases(load_documents(getattr(scan, "bom_files", None)))
+    records = alias_records(records, aliases)
     by_analyzer = reached_by_analyzer(records)
+    reached_by = {name: set(by_analyzer.get(name, {}).get("purls", set())) for name in analyzers}
     scope = ReachScope(
         analyzers=analyzers,
         reached=set((scan.reached_purls or {}).keys()),
         succeeded=scan.reachability_succeeded,
         analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
-        reached_by={
-            name: set(by_analyzer.get(name, {}).get("purls", set())) for name in analyzers
-        },
+        reached_by=reached_by,
     )
     return ExploitabilityInputs(
         rules=ctx.grading_rules,
@@ -2470,6 +2521,30 @@ def _collect_exploitability(ctx, vdr_result):
             ctx.exploitability[key] = exploitability
 
 
+def _vdr_file_path(ctx, scan):
+    """The path of the VDR file one project type's scan writes.
+
+    The file always goes into the reports directory, never into an input
+    directory. The BOM of the universal profile and a BOM directory scan share
+    one name, ``DEPSCAN_DEFAULT_VDR_FILE``, so the file is the same whichever
+    profile produced the BOMs. Any other BOM gets its own name with the
+    ``.cdx.json`` (or any other) suffix replaced by ``.vdr.json``.
+    """
+    if scan.bom_file:
+        base = os.path.basename(scan.bom_file)
+        if base == f"sbom-{UNIVERSAL_SCAN_TYPE}.cdx.json":
+            return os.path.join(ctx.reports_dir, DEPSCAN_DEFAULT_VDR_FILE)
+        # A BOM given with another suffix (bom.json) must not name its VDR
+        # after itself, or the VDR would overwrite the input.
+        stem = (
+            base[: -len(".cdx.json")] if base.endswith(".cdx.json") else os.path.splitext(base)[0]
+        )
+        return os.path.join(ctx.reports_dir, f"{stem}.vdr.json")
+    if scan.bom_dir:
+        return os.path.join(ctx.reports_dir, DEPSCAN_DEFAULT_VDR_FILE)
+    return None
+
+
 def stage_analysis_vdr(ctx, scan):
     """Write the VDR file and summarize this type's findings.
 
@@ -2479,13 +2554,7 @@ def stage_analysis_vdr(ctx, scan):
     pkg_vulnerabilities = []
     summary = {}
     ds_version = get_version()
-    # Set vdr_file in report folder
-    vdr_file = (
-        os.path.join(ctx.reports_dir, os.path.basename(scan.bom_file)) if scan.bom_file else None
-    )
-    vdr_file = vdr_file.replace(".cdx.json", ".vdr.json") if vdr_file else None
-    if not vdr_file and scan.bom_dir:
-        vdr_file = os.path.join(scan.bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
+    vdr_file = _vdr_file_path(ctx, scan)
     scan.vdr_file = vdr_file
     if vdr_result.success:
         pkg_vulnerabilities = vdr_result.pkg_vulnerabilities

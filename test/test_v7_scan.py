@@ -291,6 +291,28 @@ def test_scan_runs_a_source_directory(scan_stubs, monkeypatch, tmp_path):
     assert scan_stubs["database"], "the database guard never ran"
 
 
+def test_a_default_scan_names_its_vdr_like_the_bom_directory_scan(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """The universal BOM's VDR carries the name a BOM directory scan writes."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.py").write_text("import requests\n")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        ["scan", str(src), "--bom-engine", "CdxgenGenerator", "--reports-dir", str(reports)]
+        + ["--no-banner"],
+    )
+    assert code == 0
+    assert (reports / "sbom-universal.cdx.json").is_file()
+    assert (reports / "depscan-universal.vdr.json").is_file()
+    assert not (reports / "sbom-universal.vdr.json").exists()
+    # Positive control: the scan went through cdxgen and matching.
+    assert scan_stubs["cdxgen"] and scan_stubs["matching"]
+    assert len(api.load_scan(str(reports)).vulnerabilities) == 1
+
+
 def test_scan_runs_a_bom_file(scan_stubs, monkeypatch, tmp_path):
     """A CycloneDX file scans as the bom kind: no cdxgen, the file's packages."""
     bom = _write_bom(tmp_path / "given.cdx.json")
@@ -302,6 +324,21 @@ def test_scan_runs_a_bom_file(scan_stubs, monkeypatch, tmp_path):
     assert scan_stubs["matching"], "the matching stage never ran"
     assert scan_stubs["matching"][0].bom_file == bom
     assert scan_stubs["cdxgen"] == [], "a BOM scan must not generate a BOM"
+
+
+def test_a_bom_without_the_cdx_suffix_is_not_overwritten_by_its_vdr(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A BOM named bom.json, scanned into its own directory, keeps its
+    content: the VDR is bom.vdr.json beside it, not the same file name."""
+    bom = _write_bom(tmp_path / "bom.json")
+    original = (tmp_path / "bom.json").read_bytes()
+    code = run_main(monkeypatch, ["scan", bom, "--reports-dir", str(tmp_path), "--no-banner"])
+    assert code == 0
+    # Positive control: matching ran on the given file.
+    assert scan_stubs["matching"] and scan_stubs["matching"][0].bom_file == bom
+    assert (tmp_path / "bom.json").read_bytes() == original
+    assert (tmp_path / "bom.vdr.json").is_file()
 
 
 def test_scan_runs_a_bom_directory(scan_stubs, monkeypatch, tmp_path):
@@ -361,6 +398,29 @@ def test_a_lone_bom_directory_target_reuses_itself_as_the_reports_directory(
     loaded = api.load_scan(str(bom_dir))
     assert len(loaded.vulnerabilities) == 1
     assert report_lib.run_report_command([str(bom_dir)]) == 0
+
+
+def test_a_bom_directory_scan_writes_nothing_into_the_input_directory(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """With --reports-dir the VDR lands in the reports directory, the input
+    directory is left as it was, and the scan directory loads back."""
+    monkeypatch.delenv("DEPSCAN_REPORTS_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    bom_dir = _bom_directory(tmp_path)
+    before = sorted(entry.name for entry in bom_dir.iterdir())
+    reports = tmp_path / "elsewhere"
+    code = run_main(
+        monkeypatch, ["scan", str(bom_dir), "--reports-dir", str(reports), "--no-banner"]
+    )
+    assert code == 0
+    assert sorted(entry.name for entry in bom_dir.iterdir()) == before
+    assert (reports / "depscan-universal.vdr.json").is_file()
+    vdr_stage = next(stage for stage in _manifest_of(reports)["stages"] if stage["name"] == "vdr")
+    assert vdr_stage["outputs"] == [{"file": "depscan-universal.vdr.json", "status": "completed"}]
+    # Positive control: matching ran and the directory loads back with its finding.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    assert len(api.load_scan(str(reports)).vulnerabilities) == 1
 
 
 def test_an_explicit_or_shared_reports_dir_beats_the_bom_directory_reuse(

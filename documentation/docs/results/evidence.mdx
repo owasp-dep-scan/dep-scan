@@ -62,6 +62,8 @@ The reachability producers (atom, rusi, golem, kosi, dosai) write the reached fl
 - The blint adapter reads the binary review's findings, capability reviews and coverage report, and the coverage report's failed and skipped units become `coverage-gap` caveats on every blint record.
 - Trace BOMs a user supplies with a BOM directory scan are read by the tracebom adapter into `runtime-trace` records, which never count as reached: a traced run observes what the traced command loaded, and a library loaded at run time shows no code path from the application to it.
 
+atom's usage slices name resolved methods such as `flask.Flask.route` and no package. dep-scan joins each usage to the packages it is about: a package qualifies when cdxgen recorded it in the usage's file and the first segment of a method on the usage's path is a module name of the package. The module names are the package name (lower case, with `-` and `.` read as `_`) and the names cdxgen writes on the BOM component, in `internal:ImportedModules` (comma-separated, from the source scan) and `internal:Namespaces` (the top-level modules of a PyPI distribution, one per line), so PyYAML is found by `yaml` and beautifulsoup4 by `bs4`. The caveat names the module that matched. Each join is written as its own `usage` record. It keeps atom as the producer, the original record's locations and path, and the attributed purls, and carries an `attributed` caveat that says dep-scan made the join. The record's id differs from the original's and is the same on every scan of the same input. A usage no package qualifies for is left as atom wrote it, with no purl.
+
 ## Reading the store
 
 The store is plain JSON lines, so the quickest look needs no dep-scan at all:

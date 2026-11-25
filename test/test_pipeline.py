@@ -1021,6 +1021,160 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
 
 
+def test_findings_grade_reach_from_atom_usages_joined_to_the_declared_packages(tmp_path):
+    """atom's usage slices name resolved methods and no purl. A finding on a
+    package whose module a usage names, in a file cdxgen recorded the package
+    in, grades reach as reached and names the usage as its witness, even when
+    cdxgen filed the occurrences under an inferred version of the package; a
+    package atom covers and never reached grades not observed."""
+    from analysis_lib.evidence.adapters import atom as atom_adapter
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+    from analysis_lib.findings.exploitability import exploitability_for, load_rules
+    from analysis_lib.findings.vdr_convert import assess_reach, reach_axis
+
+    def component(purl, name, identity, occurrences):
+        return {
+            "type": "library",
+            "name": name,
+            "purl": purl,
+            "bom-ref": purl,
+            "evidence": {"identity": identity, "occurrences": occurrences},
+        }
+
+    declared = [
+        {
+            "field": "purl",
+            "methods": [{"technique": "manifest-analysis", "confidence": 0.5, "value": "r.txt"}],
+        }
+    ]
+    inferred = [
+        {
+            "field": "version",
+            "methods": [{"technique": "source-code-analysis", "confidence": 0.5, "value": "x"}],
+        }
+    ]
+    bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "components": [
+            component(
+                "pkg:pypi/flask@2.2.0", "Flask", declared, [{"location": "requirements.txt"}]
+            ),
+            component(
+                "pkg:pypi/flask@3.1.3", "Flask", inferred, [{"location": "app.py", "line": 1}]
+            ),
+            component(
+                "pkg:pypi/requests@2.31.0",
+                "requests",
+                declared,
+                [{"location": "app.py", "line": 6}],
+            ),
+            component("pkg:pypi/idna@3.0", "idna", declared, [{"location": "requirements.txt"}]),
+        ],
+    }
+    bom_file = tmp_path / "sbom-prebuild-universal.cdx.json"
+    bom_file.write_text(json.dumps(bom))
+    cdxgen_read = cdxgen_adapter.extract(
+        bom_file.read_text(), source="sbom-prebuild-universal.cdx.json"
+    )
+    usages = tmp_path / "universal-usages.slices.json"
+
+    def usage(line, method):
+        target = {"name": "x", "resolvedMethod": method, "lineNumber": line, "label": "CALL"}
+        return {
+            "fullName": "app",
+            "fileName": "app.py",
+            "lineNumber": line,
+            "usages": [{"targetObj": target, "definedBy": target}],
+        }
+
+    usages.write_text(
+        json.dumps({"objectSlices": [usage(1, "flask.Flask.route"), usage(6, "requests.get")]})
+    )
+    atom = atom_adapter.extract([], usages_files=[str(usages)])
+    assert atom.status == "completed"
+    scan = SimpleNamespace(
+        project_type="universal",
+        reachability_succeeded=True,
+        reached_purls={},
+        adapter_results={"atom": atom, "cdxgen": cdxgen_read},
+        pkg_list=[
+            {"purl": "pkg:pypi/flask@2.2.0"},
+            {"purl": "pkg:pypi/flask@3.1.3"},
+            {"purl": "pkg:pypi/requests@2.31.0"},
+            {"purl": "pkg:pypi/idna@3.0"},
+        ],
+        bom_dir=str(tmp_path),
+        bom_files=[str(bom_file)],
+        cdxgen_reads={"sbom-prebuild-universal.cdx.json": cdxgen_read},
+    )
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
+    scan.adapter_results["atom"] = pipeline._attribute_atom_result(scan, atom)
+    attributed = [r for r in scan.adapter_results["atom"].records if r not in atom.records]
+    assert sorted(r.subject.purls[0] for r in attributed) == [
+        "pkg:pypi/flask@2.2.0",
+        "pkg:pypi/requests@2.31.0",
+    ]
+    assert all(r.producer.name == "atom" and r.path for r in attributed)
+    assert all(r.caveats[-1].kind == "attributed" for r in attributed)
+    assert not {r.id for r in attributed} & {r.id for r in atom.records}
+    # The ids are the same on every scan of the same input.
+    again = pipeline._attribute_atom_result(scan, atom)
+    assert sorted(r.id for r in again.records) == sorted(
+        r.id for r in scan.adapter_results["atom"].records
+    )
+    inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs is not None and inputs.scope is not None
+    assert inputs.scope.analyzers == ["atom"]
+    assert reach_axis(inputs.scope, "pkg:pypi/flask@2.2.0") == "likely"
+    assert reach_axis(inputs.scope, "pkg:pypi/requests@2.31.0") == "likely"
+    assert assess_reach(inputs.scope, "pkg:pypi/idna@3.0") == ("unknown", ["atom"])
+    for ref in ("pkg:pypi/flask@2.2.0", "pkg:pypi/requests@2.31.0"):
+        graded = exploitability_for(inputs.evidence_for(ref), load_rules())
+        assert graded.axes.reach == "likely"
+        assert graded.witness in {r.id for r in attributed}, f"{ref} names no stored witness"
+
+
+def test_every_witness_and_index_entry_of_a_research_scan_is_in_the_store():
+    """The scan directory contract: each record id a finding or the index
+    names exists in ``evidence.jsonl``. The directory is a real research scan
+    whose findings cite atom usage records dep-scan attributed to packages."""
+    data = Path(__file__).parent / "data" / "research-scan-store"
+    stored = {
+        json.loads(line)["id"]
+        for line in (data / "evidence.jsonl").read_text().splitlines()
+        if line.strip()
+    }
+    cited = set()
+
+    def collect(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                collect(value)
+        elif isinstance(node, list):
+            for value in node:
+                collect(value)
+        elif isinstance(node, str) and node.startswith("ev-"):
+            cited.add(node)
+
+    collect(json.loads((data / "evidence.index.json").read_text()))
+    findings = json.loads((data / "depscan.findings.json").read_text())["findings"]
+    witnesses = {
+        f["exploitability"]["witness"]
+        for f in findings
+        if (f.get("exploitability") or {}).get("witness")
+    }
+    # Positive controls: the scan cited witnesses and index entries, and some
+    # stored record is one dep-scan attributed.
+    assert witnesses and cited
+    assert any(
+        '"kind":"attributed"' in line
+        for line in (data / "evidence.jsonl").read_text().splitlines()
+    )
+    assert witnesses <= stored
+    assert cited <= stored
+
+
 def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
     from analysis_lib.evidence.adapters import atom as atom_adapter

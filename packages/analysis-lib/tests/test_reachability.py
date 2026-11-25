@@ -35,7 +35,7 @@ from pathlib import Path
 import pytest
 
 from analysis_lib import ReachabilityAnalysisKV
-from analysis_lib.evidence import EvidenceProducer
+from analysis_lib.evidence import EvidenceLocation, EvidencePathNode, EvidenceProducer
 from analysis_lib.evidence.adapters import build_record
 from analysis_lib.evidence.adapters.atom import extract as atom_extract
 from analysis_lib.evidence.store import merge, read as read_store, write as write_store
@@ -473,6 +473,238 @@ def test_direct_purls_count_the_occurrence_records_of_the_given_boms(tmp_path, a
     res = analyzer(_options(other, records, bom_files=[])).process()
     assert dict(res.direct_purls or {}) == {}
     assert res.success is False
+
+
+def _flask_bom(path):
+    """The shape of a default Python scan's pre-build BOM: Flask declared at
+    2.2.0 in requirements.txt, and again at 3.1.3, the newest release, which
+    cdxgen picked for the ``import flask`` lines because the source does not
+    say which release it uses. Trimmed from a real scan."""
+    return _write(
+        path,
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.6",
+            "metadata": {"lifecycles": [{"phase": "pre-build"}]},
+            "components": [
+                {
+                    "type": "framework",
+                    "name": "Flask",
+                    "version": "2.2.0",
+                    "purl": "pkg:pypi/flask@2.2.0",
+                    "bom-ref": "pkg:pypi/flask@2.2.0",
+                    "evidence": {
+                        "identity": [
+                            {
+                                "field": "purl",
+                                "confidence": 0.5,
+                                "methods": [
+                                    {
+                                        "technique": "manifest-analysis",
+                                        "confidence": 0.5,
+                                        "value": "requirements.txt",
+                                    }
+                                ],
+                            }
+                        ],
+                        "occurrences": [{"location": "requirements.txt"}],
+                    },
+                },
+                {
+                    "type": "framework",
+                    "name": "Flask",
+                    "version": "3.1.3",
+                    "purl": "pkg:pypi/flask@3.1.3",
+                    "bom-ref": "pkg:pypi/flask@3.1.3",
+                    "evidence": {
+                        "identity": [
+                            {
+                                "field": "version",
+                                "confidence": 0.5,
+                                "methods": [
+                                    {
+                                        "technique": "source-code-analysis",
+                                        "confidence": 0.5,
+                                        "value": "PyPI package: Flask",
+                                    }
+                                ],
+                            }
+                        ],
+                        "occurrences": [
+                            {"location": "app.py", "line": 1},
+                            {"location": "app.py", "line": 5},
+                        ],
+                    },
+                },
+            ],
+        },
+    )
+
+
+@pytest.mark.parametrize("analyzer", [FrameworkReachability, SemanticReachability])
+def test_an_inferred_version_is_counted_under_the_declared_one(tmp_path, analyzer):
+    """The occurrences and reached flows cdxgen recorded against Flask 3.1.3,
+    a version it inferred from the imports, belong to the Flask 2.2.0 the
+    project declares and the findings name."""
+    bom = _flask_bom(tmp_path / "bom.cdx.json")
+    openapi = _write(
+        tmp_path / "openapi.json",
+        {"paths": {"/x": {"x-atom-usages": {"call": {"app.py": [5]}}}}},
+    )
+    records = [
+        _record(["pkg:pypi/flask@3.1.3"], discriminator="d1"),
+        *_cdxgen_records(bom, tmp_path),
+    ]
+    options = _options(tmp_path, records, bom_files=[bom], openapi=[openapi])
+    res = analyzer(options).process()
+    assert (res.direct_purls or {}) == {"pkg:pypi/flask@2.2.0": 3}
+    assert (res.reached_purls or {}) == {"pkg:pypi/flask@2.2.0": 1}
+    if analyzer is SemanticReachability:
+        assert (res.endpoint_reached_purls or {}) == {"pkg:pypi/flask@2.2.0": 3}
+
+
+def test_two_declared_versions_keep_the_inferred_one_apart(tmp_path):
+    """With two declared versions there is no one component the inferred
+    version belongs to, so its purl is left alone."""
+    bom = _flask_bom(tmp_path / "bom.cdx.json")
+    document = json.loads(bom.read_text(encoding="utf-8"))
+    extra = json.loads(json.dumps(document["components"][0]))
+    extra["purl"] = extra["bom-ref"] = "pkg:pypi/flask@2.1.0"
+    document["components"].append(extra)
+    _write(bom, document)
+    records = [_record(["pkg:pypi/flask@3.1.3"], discriminator="d1")]
+    res = SemanticReachability(_options(tmp_path, records, bom_files=[bom])).process()
+    assert (res.reached_purls or {}) == {"pkg:pypi/flask@3.1.3": 1}
+
+
+@pytest.mark.parametrize("analyzer", [FrameworkReachability, SemanticReachability])
+def test_one_occurrence_listed_by_two_lifecycle_boms_is_one_use(tmp_path, analyzer):
+    """A default research scan writes a pre-build and a build BOM that list
+    the same occurrences. "Used in N locations" counts each place once, while
+    an occurrence a single document lists twice stays two uses."""
+    first = _usage_bom(tmp_path / "sbom-prebuild-universal.cdx.json")
+    second = _usage_bom(tmp_path / "sbom-build-universal.cdx.json")
+    records = [*_cdxgen_records(first, tmp_path), *_cdxgen_records(second, tmp_path)]
+    assert len(records) == 4
+    res = analyzer(_options(tmp_path, records, bom_files=[first, second])).process()
+    assert dict(res.direct_purls or {}) == {"pkg:npm/used@1": 2}
+    # The same package seen at a place only the second document lists counts.
+    third = _usage_bom(tmp_path / "sbom-postbuild-universal.cdx.json", location="src/new.js")
+    more = [*records, *_cdxgen_records(third, tmp_path)]
+    res = analyzer(_options(tmp_path, more, bom_files=[first, second, third])).process()
+    assert dict(res.direct_purls or {}) == {"pkg:npm/used@1": 3}
+
+
+def test_atom_usages_are_attributed_to_the_packages_they_call(tmp_path):
+    """A usage whose path calls ``flask.Flask.route`` is about the package
+    that occurs in the usage's file and is imported as ``flask``; a package
+    in the file that no path names, and a file no package occurs in, get
+    nothing."""
+    from analysis_lib.reachability import attribute_atom_usages
+
+    bom = _write(
+        tmp_path / "bom.cdx.json",
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.6",
+            "components": [
+                {
+                    "type": "library",
+                    "purl": f"pkg:pypi/{name}@1.0",
+                    "bom-ref": f"pkg:pypi/{name}@1.0",
+                    "evidence": {"occurrences": [{"location": "app.py", "line": 1}]},
+                }
+                for name in ("flask", "requests")
+            ],
+        },
+    )
+
+    def usage(file, discriminator):
+        return build_record(
+            source="universal-usages.slices.json",
+            producer=_producer("atom"),
+            kind="usage",
+            discriminator=discriminator,
+            purls=(),
+            locations=(EvidenceLocation(file=file, line=1),),
+            path=(EvidencePathNode(symbol="route", method="flask.Flask.route"),),
+        )
+
+    here, elsewhere = usage("app.py", "u"), usage("other.py", "v")
+    attributed = attribute_atom_usages([*_cdxgen_records(bom, tmp_path), here, elsewhere])
+    assert [(r.subject.purls, r.path[0].method) for r in attributed] == [
+        (["pkg:pypi/flask@1.0"], "flask.Flask.route")
+    ]
+    assert attributed[0].id != here.id
+
+
+def test_atom_usages_are_attributed_by_the_module_names_cdxgen_declares(tmp_path):
+    """PyYAML is imported as ``yaml`` and beautifulsoup4 as ``bs4``; cdxgen
+    writes those names on the component as it does for a real scan
+    (``internal:Namespaces`` one per line, ``internal:ImportedModules``
+    comma-separated with symbols, and ``cdx:pypi:modulesFrom`` for where they
+    came from). A usage of a module no component declares stays unattributed."""
+    from analysis_lib.reachability import attribute_atom_usages, declared_modules
+
+    def component(name, props):
+        purl = f"pkg:pypi/{name}@1.0"
+        return {
+            "type": "library",
+            "name": name,
+            "purl": purl,
+            "bom-ref": purl,
+            "properties": [{"name": k, "value": v} for k, v in props.items()],
+            "evidence": {"occurrences": [{"location": "app.py", "line": 1}]},
+        }
+
+    document = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "components": [
+            component(
+                "PyYAML",
+                {
+                    "internal:Namespaces": "yaml",
+                    "cdx:pypi:modulesFrom": "alias-map,distribution-name",
+                },
+            ),
+            component(
+                "beautifulsoup4",
+                {
+                    "internal:ImportedModules": "bs4.BeautifulSoup,bs4",
+                    "internal:Namespaces": "bs4",
+                },
+            ),
+        ],
+    }
+    bom = _write(tmp_path / "bom.cdx.json", document)
+
+    def usage(method, discriminator):
+        return build_record(
+            source="universal-usages.slices.json",
+            producer=_producer("atom"),
+            kind="usage",
+            discriminator=discriminator,
+            purls=(),
+            locations=(EvidenceLocation(file="app.py", line=1),),
+            path=(EvidencePathNode(symbol="x", method=method),),
+        )
+
+    records = [
+        *_cdxgen_records(bom, tmp_path),
+        usage("yaml.safe_load", "a"),
+        usage("bs4.BeautifulSoup", "b"),
+        usage("toml.loads", "c"),
+    ]
+    # Without the declared names the purl name alone finds neither package.
+    assert attribute_atom_usages(records) == []
+    attributed = attribute_atom_usages(records, declared_modules([document]))
+    assert sorted((r.path[0].method, r.subject.purls[0].lower()) for r in attributed) == [
+        ("bs4.BeautifulSoup", "pkg:pypi/beautifulsoup4@1.0"),
+        ("yaml.safe_load", "pkg:pypi/pyyaml@1.0"),
+    ]
+    assert all(r.caveats[-1].kind == "attributed" for r in attributed)
+    assert any("the module yaml" in r.caveats[-1].detail for r in attributed)
 
 
 def test_binary_reachability_still_reaches_post_build_frameworks(tmp_path):
