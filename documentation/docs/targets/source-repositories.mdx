@@ -21,7 +21,7 @@ cdxgen builds the inventory for every ecosystem it knows; the reachability analy
 | Language / ecosystem | purl type | Reachability analyzer | What it needs installed |
 | --- | --- | --- | --- |
 | Java / JVM (Groovy, Kotlin, Scala) | `pkg:maven` | atom; kosi beside it for Kotlin and Android | JDK 21 or newer for large projects, Maven or Gradle |
-| JavaScript / TypeScript | `pkg:npm` | atom | Node.js 20 or newer, a lockfile |
+| JavaScript / TypeScript | `pkg:npm` | atom | Node.js 24 or newer (cdxgen 13.8 requires 24), a lockfile |
 | Python | `pkg:pypi` | atom | Python 3.10 or newer |
 | PHP | `pkg:composer` | atom | PHP 7.4 or newer (or the container image) |
 | Rust | `pkg:cargo` | rusi | Rust and Cargo, with a populated `Cargo.lock` |

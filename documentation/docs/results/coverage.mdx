@@ -16,6 +16,10 @@ The most dangerous sentence in a security report is "no findings". It is only me
 
 The states exist at three levels. A finding whose deciding analysis did not run carries `not_assessed` with at least one reason. A stage in the manifest carries `completed`, `failed`, `skipped` or `not-assessed`, each with its reason. A capability (a check a scan could run) is `available` or carries the reason it is not, in the `depscan doctor` report and in the manifest's copy of it. A policy gate, a VEX statement or a summary must never turn the first state into the second; in this version, where findings do not yet change the exit code, the equivalent discipline is yours to keep: a gate that counts findings should read the coverage block or the manifest stages first.
 
+## The signals a scan leaves
+
+Four signals say what did not run, and reading them together answers the question on any scan. Stages carry `skipped` with the reason when nothing needed doing (a licence or risk check that was not requested, an explanation that was not asked for). Analyzer entries under the enrichment stage carry `not-assessed` when a reachability report was missing or unreadable. Checks `all` had to leave off are recorded as `check-<name>` stages with status `not-assessed`. And the one check with no stage of its own: the binary review only runs when it was requested (the `binary` check, a binary or apk target, or the `BlintGenerator` engine), so a scan that did not ask for it shows no `binary-review` stage at all, which is the record of it not running.
+
 ## What makes an analysis not assessed
 
 Every reason names the thing that stopped it, so the fix is usually one install or one flag away:

@@ -9,24 +9,37 @@ A hundred findings is not a work list. dep-scan marks the small set that needs a
 
 ## The prioritized property
 
-Every vulnerability carries a CycloneDX property named `depscan:prioritized` with the value `true` or `false`. The decision reads the reachability maps of [the reachability model](reachability): a package in the reached set requires attention, and so does one that is reachable through a route that is itself exposed, at high or critical severity. The Top Priority table in the console is exactly the set of entries with `depscan:prioritized=true`, so filtering the VDR's `vulnerabilities` array on that property reproduces the console's focus list downstream. During deduplication a prioritized entry is preferred over a colliding unprioritized one, so a merge never drops the finding that matters.
+Every vulnerability carries a CycloneDX property named `depscan:prioritized` with the value `true` or `false`. The Top Priority table in the console is exactly the set of entries with `depscan:prioritized=true`, so filtering the VDR's `vulnerabilities` array on that property reproduces the console's focus list downstream. During deduplication a prioritized entry is preferred over a colliding unprioritized one, so a merge never drops the finding that matters.
 
-## The tiers
+Reach alone does not set the property, and the distinction matters when you read a report. A package the analyzers reached earns the `Reachable` insight and its reach axis on [the exploitability assessment](exploitability), but `prioritized` stays `false` unless one of the stronger conditions below also holds. The conditions that set `prioritized=true` today are:
 
-The verdicts form a ladder, from the bottom up:
+- a malicious-package verdict;
+- known exploits behind the package, when it is also reached, endpoint-reached, or a direct or deployed dependency (the "Reachable and Exploitable" combination, including the fail-safe promotion of a direct or deployed dependency whose reach no analyzer observed);
+- a proof-of-concept or bounty target that is also reached or endpoint-reached;
+- an endpoint-reached package at critical or high severity;
+- a critical finding that carries a proof of concept;
+- a flagged-CWE finding on the core platform libraries the code names (glibc, openssl, curl, wget, git and GNU vendor entries);
+- the package-level burdens the console shows in the Top Priority table (a large advisory burden on one package with known exploitable members).
+
+Known exploits with no usage evidence are deliberately not prioritized ("just known exploits without usage is not a priority", as the code puts it), and neither is a reached finding with none of the stronger signals. That is a defensible choice to argue with, and the point of the axes is that the data to argue with is on the finding: reach says `likely`, the grade names its rule, and `prioritized` names the automation's answer.
+
+## The insights
+
+The console and the VDR carry the verdict as insight labels on the `depscan:insights` property, and those form a ladder of their own, from the bottom up:
 
 ```text
-  MALICIOUS + REACHABLE    a malware advisory on a reached package:
-                           a top-priority security incident, above any CVE
-  ENDPOINT-REACHABLE       reached through a route that is itself exposed
-  REACHABLE                the vulnerable code is on a traced path
-  PRESENT (imported)       in the report, depscan:prioritized = false
+  MALICIOUS + REACHABLE            a malware advisory on a reached package:
+                                   a top-priority security incident, above any CVE
+  REACHABLE AND EXPLOITABLE        known exploits behind a reached or deployed package
+  ENDPOINT-REACHABLE               reached through a route that is itself exposed
+  REACHABLE                        the vulnerable code is on a traced path
+  PRESENT (imported)               in the report, no reachable insight
 ```
 
-Two fail-safes are worth knowing. A direct or deployed dependency with known exploits and no traced flow is kept flagged and prioritized, to avoid a false negative, but the insight says what the records show: "Direct dependency with known exploits, reach not assessed" (or "Deployed dependency ..." for a package only a post-build inventory lists). The console never claims reach no analyzer observed, and the same honesty is on [the exploitability axes](exploitability). Service reachability points the other way: a package that talks only to an allow-listed service is usually a reason to lower priority, not raise it.
+The fail-safe is worth knowing: a direct or deployed dependency with known exploits and no traced flow is still promoted into the reached set, to avoid a false negative, but the insight says what the records show: "Direct dependency with known exploits, reach not assessed" (or "Deployed dependency ..." for a package only a post-build inventory lists). The console never claims reach no analyzer observed, and the same honesty is on [the exploitability axes](exploitability). Service reachability points the other way: a package that talks only to an allow-listed service is usually a reason to lower priority, not raise it.
 
 ## Reading the verdicts
 
 The `depscan:insights` property joins the plain-text labels behind the verdict ("Reachable", "Endpoint-Reachable", "Reachable and Exploitable", "Indirect dependency", "Known Exploits", and the fail-safe sentences above). Reading it first explains why a finding was prioritized; the [VDR guide](../integrate/vdr) walks the file's anatomy. The console's Next Steps column renders the same tier as guidance, from "add workarounds and validations" for a reachable exploit finding to the upgrade advice for a many-CVE package with a known fix version.
 
-What puts a finding in the Top Priority table is reach, exploit evidence, malware verdicts or a large advisory burden on one package. A present-but-unreachable dependency never earns the table: it stays in the full report with `depscan:prioritized=false` and no reachable insight, which is the signal to move on. Where the reach analysis itself did not run, the finding keeps its severity and its fail-safe handling, and its reach axis reads `not_assessed` rather than borrowing a verdict ([coverage](coverage)).
+A present-but-unreachable dependency earns neither the table nor a reachable insight: it stays in the full report with `depscan:prioritized=false`, which is the signal to move on unless its severity alone argues otherwise. Where the reach analysis itself did not run, the finding keeps its severity and its fail-safe handling, and its reach axis reads `not_assessed` rather than borrowing a verdict ([coverage](coverage)). When the console's summary box and a finding's axes disagree in your reading, trust the finding: the box summarises the prioritized set, and the axes carry the evidence.

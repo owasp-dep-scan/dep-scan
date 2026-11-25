@@ -15,7 +15,7 @@ For Kotlin and Android projects (a pure-Java Gradle project is left to atom) dep
 The prerequisites are per-language because atom loads and slices real source.
 
 - Java projects need a JDK (21 or newer for large modern projects) plus Maven or Gradle, so dependencies resolve and the BOM carries versioned `pkg:maven` purls.
-- JavaScript and TypeScript projects need Node.js (20 or newer recommended) and a lockfile or installed `node_modules`.
+- JavaScript and TypeScript projects need Node.js (24 or newer, what cdxgen 13.8 requires) and a lockfile or installed `node_modules`.
 - Python projects need Python 3.10 or newer; cdxgen resolves `pkg:pypi` purls from requirements, Poetry, uv, and Pipfile inputs.
 - PHP projects need PHP 7.4 or newer installed locally, though dep-scan supports scanning PHP 5.2 through 8.3. Alternatively, use the dep-scan container image, which carries the PHP runtime.
 
@@ -43,7 +43,7 @@ For some project types, notably Docker images and OS packages, add `--deep` so c
 
 ## Analysis walkthrough: reachable versus present
 
-The atom flow shape is the same one the native slicers are normalized to. Each flow object carries a `purls` array, and a purl lands in `reached_purls` when it sits on a flow atom traced from a real entry point. The `direct_purls` set comes from `component.evidence.occurrences` on the BOM, so a component with occurrences is imported in source while a component without them is merely declared. These two sets drive the same prioritization described in [How dep-scan prioritizes](../results/prioritization): a reachable finding earns `depscan:prioritized` and a Reachable insight, while a present-but-unreachable finding keeps `depscan:prioritized=false`.
+The atom flow shape is the same one the native slicers are normalized to. Each flow object carries a `purls` array, and a purl lands in `reached_purls` when it sits on a flow atom traced from a real entry point. The `direct_purls` set comes from `component.evidence.occurrences` on the BOM, so a component with occurrences is imported in source while a component without them is merely declared. These two sets drive the prioritization described in [How dep-scan prioritizes](../results/prioritization): a reachable finding earns the Reachable insight and its reach axis, while a present-but-unreachable finding keeps `depscan:prioritized=false`. Reach alone does not set the property; the exploit, bounty and endpoint conditions on that page do.
 
 The committed `test/data/reachables.slices.json` fixture is a large atom slice you can inspect to see the shape. A flow in that file looks, in essence, like a source node (an HTTP parameter, a file read, a framework entry point) connected through intermediate nodes to a sink node that carries the vulnerable package's purl in its tags. When the slicer can trace that path, the purl is reached; when the package is imported but the vulnerable function is never on a traced path, the purl stays in `direct_purls` only and the finding is not Reachable.
 

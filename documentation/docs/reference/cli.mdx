@@ -225,7 +225,7 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 | `reachability` | keeps the reachability analyzers on | `reachability` |
 | `license` | appends the `license` pseudo type, which triggers the license analysis | `license` |
 | `supply-chain` | the package risk audit | `supply-chain` |
-| `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, and any other target keeps its cdxgen inventory with blint's security review running beside it | `binary` (needs the blint package) |
+| `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, a source target keeps its cdxgen inventory with blint's security review running beside it, and a container target today gives the review no units to attempt | `binary` (needs the blint package) |
 | `memory-safety` | not implemented in this version | exits 4 when named explicitly |
 | `mobile` | not implemented in this version | exits 4 when named explicitly |
 | `code` | not implemented in this version | exits 4 when named explicitly |

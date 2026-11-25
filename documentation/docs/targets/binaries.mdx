@@ -15,7 +15,7 @@ A file that starts with an ELF, PE or Mach-O header is detected as a binary targ
 depscan scan ./binaries --target-kind binary --checks binary --reports-dir reports
 ```
 
-`--checks binary` needs blint, which ships with the `ext` extra or the container image. The check adds the `binary-analysis` technique: a binary target is inventoried through blint's own analysis, and on a source scan the review runs beside the cdxgen inventory without replacing it, so a source tree's findings are never displaced by its build output's.
+`--checks binary` needs blint, which ships with the `ext` extra or the container image. The check adds the `binary-analysis` technique: a binary or app target is inventoried through blint's own analysis, and a source scan keeps its cdxgen inventory with the review running beside it, so a source tree's findings are never displaced by its build output's. A container-image target is neither: its packages come from the OS databases, and the review today attempts no units on it, which the console states as zero units attempted rather than as a clean review.
 
 The console counts the review's results and its coverage:
 

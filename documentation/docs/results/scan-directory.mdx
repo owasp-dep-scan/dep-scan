@@ -134,6 +134,8 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | `sha256` | The SHA-256 digest of the file's bytes. |
 <!-- manifest fields end -->
 
+One naming detail prevents a common misreading: options are recorded under their internal names, and both `--bom-profile` and `--profile` land on the same key, `profile`. A manifest from a scan run with `--bom-profile research` alone shows `profile: research` although no scan profile was set. Which checks ran is not an options key at all: the stage list is the record, with a `licenses`, `risk` or `explain` stage skipped when a check or explanation was not requested, and a `check-<name>` stage per check `--checks all` had to leave off.
+
 No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
 
 ## Loading a directory back

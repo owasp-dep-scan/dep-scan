@@ -51,6 +51,7 @@ Each record's `kind` says what the producer claimed:
 | `sanitizer` | A flow the producer saw sanitized. Negative evidence: it never subtracts from the reached set, because a sanitized flow writes no reached record of its own. |
 | `dead-code` | Code the producer found unreachable. |
 | `occurrence`, `callstack`, `annotation` | What the BOM's own evidence recorded, read by the cdxgen adapter. |
+| `presence`, `introspection` | Presence observations and the build-introspection summary, read from the BOM's sidecar reports. |
 | `dependency`, `no-path`, `weakness`, `dangerous-api`, `runtime-trace` | A reachability verdict that does not count as reached, a negative verdict, and the binary, code-quality and traced-run observations. |
 
 ## Who writes records
@@ -69,4 +70,4 @@ The store is plain JSON lines, so the quickest look needs no dep-scan at all:
 grep '"pkg:npm/jsonwebtoken@0.4.0"' evidence.jsonl | python3 -m json.tool --json-lines
 ```
 
-From Python, `depscan.api.load_scan` opens the directory and the findings' `evidence` arrays name their records; the MCP server's `explain_finding` and `coverage` tools render the same files for an agent. The index answers the two questions readers actually ask: what proves anything about this component, and what backs this finding.
+From Python, `depscan.api.load_scan` opens the directory and the findings' `evidence` arrays name their records; the MCP server's `explain_finding` and `coverage` tools render the same files for an agent, and the server has no tool that returns one evidence record by id, so an agent that wants the witness record behind a finding reads the store directly, exactly as below. The index answers the two questions readers actually ask: what proves anything about this component, and what backs this finding.
