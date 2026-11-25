@@ -52,7 +52,10 @@ def test_find_prefers_the_env_command(monkeypatch):
     assert cdx_audit.find_cdx_audit_cmd() == "/opt/tools/cdx-audit"
 
 
-def test_version_check_against_the_minimum():
+def test_version_check_against_the_minimum(monkeypatch):
+    # The documented default, whatever the run's environment overrode it to
+    # for the tests that run the real worktree build.
+    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.10.0")
     assert cdx_audit.check_cdx_audit_version("13.10.0")
     assert cdx_audit.check_cdx_audit_version("14.0.1")
     assert not cdx_audit.check_cdx_audit_version("13.9.0")
