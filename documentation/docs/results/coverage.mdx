@@ -12,9 +12,9 @@ The most dangerous sentence in a security report is "no findings". It is only me
 | State | Meaning | Where it shows |
 | --- | --- | --- |
 | `assessed` | The analysis that owns the finding ran to completion. `assessed` with no findings is a clean result. | The finding's `coverage` block; the manifest's stage entries. |
-| `not_assessed` | The analysis did not run, failed, hit a budget or lacked data, and the reason is recorded. | The finding's `coverage.reasons`; the manifest's stage and analyzer entries; the console and the coverage view. |
+| `not_assessed` | The analysis did not run, failed, hit a budget or lacked data, and the reason is recorded. | The manifest's stage and analyzer entries; the console and the coverage view; on a finding, the `not_assessed` exploitability axes and the `exploitability.unassessed` list. |
 
-The states exist at three levels. A finding whose deciding analysis did not run carries `not_assessed` with at least one reason. A stage in the manifest carries `completed`, `failed`, `skipped` or `not-assessed`, each with its reason. A capability (a check a scan could run) is `available` or carries the reason it is not, in the `depscan doctor` report and in the manifest's copy of it. A policy gate, a VEX statement or a summary must never turn the first state into the second; in this version, where findings do not yet change the exit code, the equivalent discipline is yours to keep: a gate that counts findings should read the coverage block or the manifest stages first.
+The states exist at three levels. A finding's `coverage` block has a `not_assessed` state in the schema, but in this version every finding the scan writes reads `assessed`, because a finding only exists when the matching or review that produced it ran; a blint finding may still list `coverage.reasons` for units blint failed or skipped. What a finding cannot claim shows on its exploitability axes instead, as `not_assessed`. A stage in the manifest carries `completed`, `failed`, `skipped` or `not-assessed`, each with its reason. A capability (a check a scan could run) is `available` or carries the reason it is not, in the `depscan doctor` report and in the manifest's copy of it. A policy gate, a VEX statement or a summary must never turn the first state into the second; in this version, where findings do not yet change the exit code, the equivalent discipline is yours to keep: a gate that counts findings should read the coverage block or the manifest stages first.
 
 ## The signals a scan leaves
 
@@ -29,7 +29,7 @@ Every reason names the thing that stopped it, so the fix is usually one install 
 - A budget was hit: atom or golem was stopped by its timeout, or a slice cap cut paths. The caveat names the budget.
 - The database lacks the data: a shard is missing or stale, or the metadata tables a feature needs are absent from the chosen flavor.
 
-A finding on a component the skipped analysis covered carries the reason in its coverage block, so the finding is still visible but its reach claim, say, is not. Nothing disappears: when matching produces rows that name no component, or records that grade nothing, the manifest's `notAssessed` lines count them.
+A finding on a component the skipped analysis would have covered is still written, but it makes no claim the analysis would have backed. Its coverage block still reads `{"state": "assessed"}`, because the matching that produced it ran; the skipped axis reads `not_assessed` and is listed in the finding's `exploitability.unassessed` (for example `reach`), and the reason itself is in the manifest, on the enrichment stage's `analyzers[].reason`. Nothing disappears: when matching produces rows that name no component, or records that grade nothing, the manifest's `notAssessed` lines count them.
 
 ## Reading coverage on a scan
 

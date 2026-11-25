@@ -5,7 +5,7 @@ title: Container images
 
 # Scanning container images and root filesystems
 
-Much of what runs in production was never compiled on your machine. A container image carries an OS package database, application packages, language runtimes and standalone binaries, and an image scan inventories all of it and matches it against the database's OS-plus-application flavor. Point the scan verb at an image reference, an archive or an unpacked root filesystem; the kind is detected.
+Much of what runs in production was never compiled on your machine. A container image carries an OS package database, application packages, language runtimes and standalone binaries, and an image scan inventories all of it and matches it against the database's OS-plus-application flavor. Point the scan verb at an image reference or an archive and the kind is detected; an unpacked root filesystem is a directory like any other, so it needs `-t rootfs` to be read as one.
 
 ## What you can scan
 
@@ -14,7 +14,7 @@ Much of what runs in production was never compiled on your machine. A container 
 | an image reference | `nginx:alpine` | pulled with the local daemon (`docker`, `podman` or `nerdctl`) and unpacked |
 | an image by digest | `redmine@sha256:c3c9da04...` | the digest pins the bytes, which is what a reproducible scan wants |
 | an archive | `/tmp/image.tar` from `docker save`, or an OCI layout directory | unpacked locally, no pull |
-| a root filesystem | a directory holding `/etc/os-release` and `/lib/apk/db/...` | inventoried in place |
+| a root filesystem | `depscan scan ./rootfs -t rootfs` for a directory holding `etc/os-release` and `lib/apk/db/...` | inventoried in place by cdxgen's `rootfs` project type; without `-t rootfs` the directory scans as source |
 | Kubernetes manifests | `-t yaml-manifest` | the manifest files, not a cluster |
 
 A digest reference is the honest form for CI: a tag moves, a digest does not.

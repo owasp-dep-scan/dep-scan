@@ -13,7 +13,7 @@ git clone https://github.com/owasp-dep-scan/dep-scan
 docker compose up
 ```
 
-The bundled `docker-compose.yml` now configures the dep-scan service with a development API key by default so the server can bind to `0.0.0.0`. Override `DEPSCAN_SERVER_API_KEY` before starting the stack if you do not want to use the placeholder value.
+The bundled `docker-compose.yml` sets a placeholder development API key (`dev-only-change-me`) for the dep-scan service, which is what lets the server bind to `0.0.0.0`. Set `DEPSCAN_SERVER_API_KEY` to a secret of your own before starting the stack.
 
 Alternatively, start the server directly:
 
@@ -21,7 +21,7 @@ Alternatively, start the server directly:
 depscan serve --server-host 127.0.0.1 --server-port 7070
 ```
 
-Local-only binds such as `127.0.0.1` continue to work without additional configuration.
+A local-only bind such as `127.0.0.1` needs no further configuration.
 
 To bind the dep-scan server to a non-local address, set an API key first.
 
@@ -32,10 +32,11 @@ depscan serve --server-host 0.0.0.0 --server-port 7070
 
 All authenticated requests can then supply the key using either `X-API-Key` or `Authorization: Bearer ...`.
 
-> [!IMPORTANT]
-> dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
+:::warning
+dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
+:::
 
-If you need the old behavior for a short-lived trusted development setup, opt in explicitly:
+For a short-lived, trusted development setup that needs a non-local bind without a key, opt in explicitly:
 
 ```bash
 export DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true
@@ -77,8 +78,9 @@ curl \
 
 **Example: Scanning a remote Git repository**
 
-> [!NOTE]
-> cdxgen must be running in server mode for the below to work.
+:::note
+cdxgen must be running in server mode, and the dep-scan server started with `--cdxgen-server`, for this request to work.
+:::
 
 ```bash
 curl \
@@ -98,8 +100,9 @@ curl -X POST \
   http://127.0.0.1:7070/scan?type=js
 ```
 
-> [!WARNING]
-> The dep-scan server is designed for trusted environments. It executes build tools and analysis logic based on the provided source code or SBOM. Deploying it in an untrusted network without additional security boundaries (e.g., network segmentation, containerization, WAF) is strongly discouraged.
+:::warning
+The dep-scan server is designed for trusted environments. It executes build tools and analysis logic based on the provided source code or SBOM. Deploying it in an untrusted network without additional security boundaries (e.g., network segmentation, containerization, WAF) is strongly discouraged.
+:::
 
 ## Security Configuration
 
@@ -123,7 +126,7 @@ depscan serve \
   --server-allowed-paths /scan_input /scan_output
 ```
 
-When a scan request includes a `path` parameter, the server resolves it to its absolute path using `realpath` and verifies that it falls under one of the specified `--allowed-paths`. Requests for paths outside this allowlist are rejected with a `403 Forbidden` response.
+When a scan request includes a `path` parameter, the server resolves it to its absolute path using `realpath` and verifies that it falls under one of the specified `--server-allowed-paths`. Requests for paths outside this allowlist are rejected with a `403 Forbidden` response.
 
 ```
 Client Request Path: /input/../secret.txt

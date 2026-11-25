@@ -50,13 +50,17 @@ The console prints the prioritized findings first, then the full table. This is 
 Exploitability grades for project type 'pypi': moderate: 3
 ```
 
-The Grade column carries the exploitability grade over the rule that produced it; the summaries after the tables count the grades. A default scan matches vulnerabilities and keeps reachability on where evidence allows it. Source slicing, which turns "the package is present" into "the vulnerable function is called", needs cdxgen's research BOM profile, so a source scan that should answer reachability questions names it:
+The Grade column carries the exploitability grade over the rule that produced it; the summaries after the tables count the grades. A default scan matches vulnerabilities and keeps reachability on where evidence allows it. Call-level reachability, which turns "the package is present" into "the vulnerable function is called", depends on the language:
+
+- For the languages atom slices (Java and other JVM languages including Scala, JavaScript and TypeScript, Python, PHP and Ruby), the BOM must be generated with cdxgen's research profile. `--bom-profile` defaults to `generic`, so pass `--bom-profile research`, or use the `research` scan profile (`--profile research`), which also adds the license and supply-chain checks.
+- For Go, Rust, Kotlin and .NET, dep-scan runs golem, rusi, kosi or dosai itself on a typed scan (`-t go`, `-t rust`, `-t kotlin`, `-t dotnet`), or on a universal scan with `--profile deep` when the BOM lists packages of those types.
+- A lifecycle scan (`--lifecycle`) generates its build-stage BOM with the research profile on its own whenever reachability is not turned off.
 
 ```bash
 depscan scan --reports-dir reports --bom-profile research
 ```
 
-Without it the scan is still correct: the findings are there, and each one's reach axis reads `not_assessed` with the reason. [The source repositories page](../targets/source-repositories) explains what each profile turns on.
+Without the research BOM a scan of those atom languages is still correct: the findings are there, and each one's reach axis reads `not_assessed`. The finding lists `reach` in its `exploitability.unassessed` array, and the manifest's enrichment stage names each analyzer with the reason it did not assess (`analyzers[].reason`). [The source repositories page](../targets/source-repositories) explains what each profile turns on.
 
 ## What the scan wrote
 
@@ -85,7 +89,7 @@ The manifest is the honesty record: the inputs with their digests, the tool vers
 depscan report reports
 ```
 
-Scripts and agents read the same files: `depscan.findings.json` holds the findings of [the finding model](../results/finding-model), and every verb prints one JSON document under `--format json` ([the agents page](../integrate/agents)). A scan directory copied to another machine reads back the same way; nothing in it points outside the directory.
+Scripts and agents read the same files: `depscan.findings.json` holds the findings of [the finding model](../results/finding-model), and every verb except `depscan mcp`, which runs a server and has no `--format` option, prints one JSON document under `--format json` ([the agents page](../integrate/agents)). A scan directory copied to another machine reads back the same way; nothing in it points outside the directory.
 
 ## What can run here
 

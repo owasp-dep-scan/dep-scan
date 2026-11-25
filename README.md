@@ -2,9 +2,9 @@
 
 OWASP dep-scan audits the software you ship for what can actually hurt it: known vulnerabilities in your dependencies and their transitive tree, malicious packages, unsafe native code, weak binary hardening, risky supply-chain practices and licence limits. It scans source repositories, container images, binaries and package lists, and it runs everything locally: the matching happens against a database you hold, and your code never leaves the machine.
 
-<img src="depscan-logo.png" width="200" height="auto" />
+<img src="https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/master/depscan-logo.png" width="200" height="auto" />
 
-[![SBOM](https://img.shields.io/badge/SBOM-with_%E2%9D%A4%EF%B8%8F_by_cdxgen-FF753D)](https://github.com/cdxgen/cdxgen) [![release](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml)
+[![SBOM](https://img.shields.io/badge/SBOM-by_cdxgen-FF753D)](https://github.com/cdxgen/cdxgen) [![release](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml)
 
 ## What dep-scan 7 does that a plain vulnerability scanner does not
 
@@ -14,7 +14,7 @@ Every result is one finding shape, whatever produced it: an advisory match, a me
 
 A scan is also honest about what it did not check. "Assessed and nothing found" and "not assessed" are different states in every output, because an analyzer that did not run is not a clean result. A missing tool, a timeout or a gap in the database shows up in the scan manifest and the report, never as a silent zero.
 
-Here is one finding from a real scan of a Go service (`GHSA-jq35-85cj-fj4p`, a net/http vulnerability reachable through the docker client), trimmed to the fields that matter:
+Here is one finding from a real scan of a Go service (`GHSA-jq35-85cj-fj4p`, an advisory against the `github.com/docker/docker` module, whose client code the service calls), trimmed to the fields that matter:
 
 ```json
 {
@@ -85,7 +85,7 @@ Standalone binaries for Linux, musl, macOS and Windows are attached to each [rel
 
 ## The first three commands
 
-Scan a project. Reachability needs cdxgen's research BOM profile for the source slicing, so pass it when you want call-level answers:
+Scan a project. For Java and the other JVM languages, JavaScript and TypeScript, Python, PHP and Ruby, call-level reachability needs cdxgen's research BOM profile for the source slicing (`--bom-profile` defaults to `generic`), so pass it when you want call-level answers, or use `--profile research`, which also adds the license and supply-chain checks. For Go, Rust, Kotlin and .NET, dep-scan runs its own analyzers on a typed scan such as `-t go`, or on a universal scan with `--profile deep`:
 
 ```bash
 depscan scan ./my-project --reports-dir ./reports --bom-profile research

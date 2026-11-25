@@ -77,8 +77,12 @@ The schemas are ordinary files inside the installed package, so a validator need
 from analysis_lib.findings.schemas import validate, schema_names
 import json
 
-document = json.load(open("reports/depscan.findings.json"))
-validate("depscan-manifest", document["manifest"])
+with open("reports/depscan.manifest.json") as handle:
+    validate("depscan-manifest", json.load(handle))
+with open("reports/depscan.findings.json") as handle:
+    document = json.load(handle)
+for finding in document["findings"]:
+    validate("depscan-finding", finding)
 print(schema_names())
 ```
 

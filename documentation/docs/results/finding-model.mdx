@@ -5,7 +5,7 @@ title: The finding model
 
 # The finding model
 
-Every result dep-scan writes, whatever produced it, is a finding of one shape. An advisory match, a memory-safety defect, a binary-hardening gap, a licence conflict, a malicious package and a project-health note are all findings, in one file, with one schema. That is what makes the rest of the tool uniform: filters, suppressions-ready fingerprints, the MCP server's queries and the policy-shaped questions a CI job asks all work the same way over every category, and adding an analyzer adds findings of the same shape rather than a new report format.
+Every result dep-scan writes, whatever produced it, is a finding of one shape. An advisory match, a memory-safety defect, a binary-hardening gap, a licence conflict, a malicious package and a project-health note are all findings, in one file, with one schema. That is what makes the rest of the tool uniform: filters, fingerprints that stay stable across scans, the MCP server's queries and the policy-shaped questions a CI job asks all work the same way over every category, and adding an analyzer adds findings of the same shape rather than a new report format.
 
 The schema is published. `depscan schema finding` prints it (or `depscan schema` for the list of every published schema), and `depscan.findings.json` in the scan directory holds one finding per entry, validated against it.
 
@@ -39,7 +39,7 @@ The fields, and what each is for:
 
 | Field | What it holds |
 | --- | --- |
-| `id` | The fingerprint: `dsf1:` followed by a SHA-256 digest. It never contains line or column numbers, so baselines and suppression lists survive unrelated edits. |
+| `id` | The fingerprint: `dsf1:` followed by a SHA-256 digest. It never contains line or column numbers, so it is a stable id a script can compare across scans, and unrelated edits do not change it. |
 | `category` | One of `vulnerability`, `malware`, `memory-safety`, `supply-chain`, `binary-hardening`, `mobile`, `code`, `license`, `crypto`, `health`. |
 | `rule` | The advisory id or the analyzer rule id that fired: `CVE-2021-23337`, `GHSA-p6mc-m468-83gw`, `MS-BOUND-001`, or the id of a cdxgen audit rule. |
 | `title` | A short statement of the finding. It never copies source text or environment values. |
@@ -48,7 +48,7 @@ The fields, and what each is for:
 | `cwes` | The CWE numbers that classify the defect. |
 | `components` | The affected components as package URLs, versions included. |
 | `locations` | Where the finding applies: file, line, function, or a binary and an offset. Findings without source (a vulnerable package, a hardening gap) point at the manifest or lockfile that declares the component. |
-| `coverage` | Whether the analysis that owns this finding ran, and why not when it did not; see [coverage](coverage). |
+| `coverage` | Whether the analysis that owns this finding ran, with reasons when a producer records them. Advisory findings always read `assessed`; a reach analysis that did not run shows up in `exploitability.unassessed` and in the manifest instead; see [coverage](coverage). |
 | `exploitability` | The four axes, the grade, the rule id that produced the grade and the producers that filled each axis; see [exploitability](exploitability). |
 | `triage` | Reserved for the human decision about the finding; not written in this version. |
 | `fix` | The versions that fix the finding, when the producer knows them. |
@@ -59,8 +59,8 @@ The fields, and what each is for:
 
 ## The fingerprint
 
-Two copies of the same vulnerable package, two versions of one advisory, or a file that moved all produce stable ids: the digest covers the rule id, the component purl without its version, the relative file, the enclosing function and the API names on the evidence path, never the line numbers. The id is what a baseline compares and what `get_finding` on the MCP server takes. Because the version is stripped, one advisory hitting two versions of a package shares one id; the evidence index keys its second level on the component purl, so the two stay distinguishable there. For an advisory finding the fingerprint is the rule and the component alone, with no file or function to name, so the id is the same whether the package is reached or not: a baseline that gates on reach compares the findings' reach axis across the two scans, not only their ids.
+Two copies of the same vulnerable package, two versions of one advisory, or a file that moved all produce stable ids: the digest covers the rule id, the component purl without its version, the relative file, the enclosing function and the API names on the evidence path, never the line numbers. The id is what a script compares between two scans and what `get_finding` on the MCP server takes. Because the version is stripped, one advisory hitting two versions of a package shares one id; the evidence index keys each `byFinding` entry on the id and the finding's first component purl joined by one space (`"<id> <purl>"`), so the two stay distinguishable there. For an advisory finding the fingerprint is the rule and the component alone, with no file or function to name, so the id is the same whether the package is reached or not: a script that compares reach between two scans reads the findings' reach axis across the two scans, not only their ids.
 
 ## Where findings live and who reads them
 
-`depscan.findings.json` is the contract file. The console tables, the HTML report, the CSAF and VDR documents, the MCP server and the Python API all read from it (the VDR keeps only the advisory-shaped findings, as CycloneDX requires). A scan that assessed everything and found nothing writes the file with an empty array, so an assessed-clean scan stays distinguishable from a directory nobody scanned; a scan where nothing at all was assessed writes no findings file, and its manifest shows why.
+`depscan.findings.json` is the contract file for tools that read a finished scan. The scan derives it from the same results the VDR carries: the console tables, the HTML report, the VDR and the CSAF document render from those results, and the findings file converts each VDR entry into a finding and adds the findings that have no advisory shape, such as blint's binary-hardening findings. The MCP server and the Python API read the findings file. A scan that assessed everything and found nothing writes the file with an empty array, so an assessed-clean scan stays distinguishable from a directory nobody scanned; a scan where nothing at all was assessed writes no findings file, and its manifest shows why.

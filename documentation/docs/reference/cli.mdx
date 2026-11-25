@@ -324,7 +324,7 @@ The container target is detected from the reference shape, so `-t docker` is not
 
 The supported values of `--bom-engine` are `auto`, `CdxgenGenerator`, `CdxgenServerGenerator`, `CdxgenImageBasedGenerator` and `BlintGenerator`:
 
-- **auto**: Uses the container-image-based cdxgen generator (`CdxgenImageBasedGenerator`) if the Docker command is available and the project type specified is not an oci image type (such as docker, podman, and oci). Otherwise, it uses the local cdxgen CLI via `CdxgenGenerator` or the local cdxgen server `CdxgenServerGenerator` if you pass the `--cdxgen-server` argument.
+- **auto**: Uses the cdxgen server (`CdxgenServerGenerator`) when `--cdxgen-server` is passed, and the local cdxgen CLI (`CdxgenGenerator`) for a container image, OS or hardware project type (`docker`, `podman`, `oci`, `os` or `hardware`). For every other project it takes the first of these that applies: the cdxgen bundled inside the standalone dep-scan executable; the local cdxgen CLI when `CDXGEN_CMD` is set or a cdxgen found on the machine meets the minimum version; the cdxgen container image (`CdxgenImageBasedGenerator`) when the Docker command (`DOCKER_CMD`, `docker` by default) is on `PATH` and the platform is not Windows; and otherwise the local cdxgen CLI. A local cdxgen below the minimum version is refused with the command that installs a supported one.
 - **CdxgenGenerator**: Always uses the local cdxgen CLI. Install cdxgen using the npm command or download the standalone executable.
 - **CdxgenServerGenerator**: Uses the cdxgen server. Specify the URL using the `--cdxgen-server` argument.
 - **CdxgenImageBasedGenerator**: Generates a BOM using the official cdxgen container images. You can customize the image name using `CDXGEN_IMAGE_{project_type}` and `CDXGEN_IMAGE_VERSION`. Container image-based generation is more suitable for enterprise applications that require specific build tools and OS libraries for successful BOM generation. This approach is resource-intensive but typically has a higher success rate.
@@ -348,9 +348,9 @@ The supported values of `--vulnerability-analyzer` are `auto`, `VDRAnalyzer` and
 
 ## Configuration file
 
-Scan options persist in a configuration file with `depscan scan --config`. By default, depscan looks for `.config/depscan.toml` in the current directory, and a sample file named `depscan.toml.sample` is generated in the reports directory on every scan. Copy the sample into `.config/` to run depscan without repeating the arguments.
+Scan options persist in a configuration file. By default, depscan reads the file the `DEPSCAN_CONFIG` environment variable names, or `.config/depscan.toml` in the current directory when the variable is unset, and `depscan scan --config <path>` names another file for one scan. A sample file named `depscan.toml.sample` is generated in the reports directory on every scan. Copy the sample into `.config/` to run depscan without repeating the arguments.
 
-`depscan config show` prints every scan option with its value and where the value came from (the command line, `depscan.toml`, an environment variable or the default), and `depscan config init` writes the effective options to `./depscan.toml`. The file holds flat keys matching the long option names (`vdb_flavor = "app-only"`, `reachability_analyzer = "SemanticReachability"`); [the configuration page](configuration) lists the details and the environment variables.
+`depscan config show` prints every scan option with its value and where the value came from (the command line, `depscan.toml`, an environment variable or the default), and `depscan config init` writes the effective options to the same default file (`$DEPSCAN_CONFIG`, or `.config/depscan.toml`, creating `.config/` when needed), refusing to overwrite one that exists. The file holds flat keys matching the long option names (`vdb_flavor = "app-only"`, `reachability_analyzer = "SemanticReachability"`); [the configuration page](configuration) lists the details and the environment variables.
 
 ## The other verbs
 
@@ -413,7 +413,7 @@ Suggest mode is on by default and retrieves the optimal fix version for each vul
 
 ## The package risk audit
 
-`--checks supply-chain` enables the package risk audit, which queries registry metadata for npm and PyPI packages and scores each against weighted risk factors. Packages that exceed the configured maximum risk score (`pkg_max_risk_score` in the config) print as a table, and every audited row is written to `depscan-risk-<type>.json`. Use `--private-ns` to name the private namespaces that should never exist on a public registry:
+`--checks supply-chain` enables the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors. Packages that exceed the maximum risk score (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default) print as a table, and every audited row is written to `depscan-risk-<type>.json`. Use `--private-ns` to name the private namespaces that should never exist on a public registry:
 
 ```bash
 depscan scan . --checks supply-chain --private-ns appthreat,shiftleft
@@ -430,10 +430,10 @@ depscan scan . --checks supply-chain --private-ns appthreat,shiftleft
 | pkg_min_users | 0.25 | Package has less than 2 npm users |
 | pkg_install_scripts | 2 | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm. |
 | pkg_node_version | 0.5 | Package supports outdated version of node such as 0.8, 0.10, 4 or 6.x. Such projects might have prototype pollution or closure related vulnerabilities |
-| pkg_scope | 4 or 0.5 | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.25 |
+| pkg_scope | 4 or 0.5 | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score with a weight of 0.5 |
 | deprecated | 1 | Latest version is deprecated |
 
-A parameter called `created_now_quarantine_seconds` identifies packages safely past the quarantine period (1 year); risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past it, because a malicious package is unlikely to sit unnoticed on a registry for over a year. Every weight is configurable through its own environment variable (for example `PKG_MIN_VERSIONS=4`); see [the configuration page](configuration).
+A parameter called `created_now_quarantine_seconds` identifies packages safely past the quarantine period (1 year); risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past it, because a malicious package is unlikely to sit unnoticed on a registry for over a year. Every weight and threshold is configurable through its own environment variable: `PKG_MIN_VERSIONS_WEIGHT=4` raises the weight of the `pkg_min_versions` factor, while `PKG_MIN_VERSIONS=5` raises its threshold, the version count below which the factor applies. See [the configuration page](configuration).
 
 ## Live OS scan
 

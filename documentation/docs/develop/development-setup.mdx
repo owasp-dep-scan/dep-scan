@@ -38,7 +38,7 @@ uv run depscan vdb download --flavor full
 uv run depscan scan --config .config/depscan-dev.toml
 ```
 
-The repository carries its own scan configuration in `.config/depscan.toml`, which the command picks up by default.
+The repository carries its own scan configuration in `.config/depscan-dev.toml`. A scan reads `.config/depscan.toml` by default, which the repository does not have, so the command passes the file with `--config`.
 
 ## devenv
 

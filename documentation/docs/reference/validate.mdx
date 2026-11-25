@@ -15,7 +15,7 @@ The command handles the two document families dep-scan works with and detects wh
 - **CSAF VEX**, validated against the bundled CSAF 2.0 or 2.1 JSON Schema (with a real RFC 3339 `date-time` check) plus the CSAF §6.1 mandatory semantic tests. The CSAF version is read from `document.csaf_version` unless you override it.
 - **CycloneDX VDR/VEX**, validated against the bundled CycloneDX JSON Schema matching the document's `specVersion` (1.4 through 1.7).
 
-Detection uses the document contents: a `bomFormat` of `CycloneDX` (or a `specVersion` field) selects CycloneDX, while a `document` object with a `csaf_version` or `category` selects CSAF. Pass `--format csaf` or `--format cyclonedx` to force one when a file cannot be auto-detected or when you want to validate against a specific family.
+Detection uses the document contents: a `bomFormat` of `CycloneDX` (or a `specVersion` field) selects CycloneDX, while a `document` object with a `csaf_version` or `category` selects CSAF. Pass `--input-format csaf` or `--input-format cyclonedx` to force one when a file cannot be auto-detected or when you want to validate against a specific family; the default, `--input-format auto`, detects each file.
 
 ## Usage
 
@@ -28,7 +28,7 @@ depscan validate reports/sbom-build.csaf.json reports/sbom-build.vdr.json
 Force a format, or a CSAF version:
 
 ```shell
-depscan validate --format csaf --csaf-version 2.0 path/to/document.json
+depscan validate --input-format csaf --csaf-version 2.0 path/to/document.json
 ```
 
 Print only a summary line per file (suppress the individual errors):
@@ -45,7 +45,7 @@ depscan validate reports/sbom-build.csaf.json || exit 1
 
 ## JSON output
 
-`--format json` changes the output, not the validation: the document format stays auto-detected, and instead of the text lines the command prints one JSON document, an array with one entry per file (`file`, `format`, `valid`, `errors`), on stdout. The exit status is the same as in text mode.
+`--format json` changes the output, not the validation: the document format is still detected per file unless `--input-format` names one, and instead of the text lines the command prints one JSON document on stdout, an object whose `results` array holds one entry per file (`file`, `format`, `valid`, `errors`). The exit status is the same as in text mode.
 
 ```shell
 depscan validate --format json reports/*.json

@@ -9,19 +9,18 @@ A hundred findings is not a work list. dep-scan marks the small set that needs a
 
 ## The prioritized property
 
-Every vulnerability carries a CycloneDX property named `depscan:prioritized` with the value `true` or `false`. The Top Priority table in the console is exactly the set of entries with `depscan:prioritized=true`, so filtering the VDR's `vulnerabilities` array on that property reproduces the console's focus list downstream. During deduplication a prioritized entry is preferred over a colliding unprioritized one, so a merge never drops the finding that matters.
+Every vulnerability carries a CycloneDX property named `depscan:prioritized` with the value `true` or `false`, and filtering the VDR's `vulnerabilities` array on that property reproduces the console's focus list downstream. The Top Priority table in the console is the set of entries with `depscan:prioritized=true`, minus two kinds of entry the table leaves out: likely false positives (a `pkg:generic` match with no version, or an advisory with no fix that the database marks as not fixed) and packages on the list of purls that are safe to drop from endpoint filtering (`SAFE_ENDPOINT_REACHABLE_PURLS`). During deduplication a prioritized entry is preferred over a colliding unprioritized one, so a merge never drops the finding that matters.
 
 Reach alone does not set the property, and the distinction matters when you read a report. A package the analyzers reached earns the `Reachable` insight and its reach axis on [the exploitability assessment](exploitability), but `prioritized` stays `false` unless one of the stronger conditions below also holds. The conditions that set `prioritized=true` today are:
 
 - a malicious-package verdict;
-- known exploits behind the package, when it is also reached, endpoint-reached, or a direct or deployed dependency (the "Reachable and Exploitable" combination, including the fail-safe promotion of a direct or deployed dependency whose reach no analyzer observed);
-- a proof-of-concept or bounty target that is also reached or endpoint-reached;
-- an endpoint-reached package at critical or high severity;
-- a critical finding that carries a proof of concept;
-- a flagged-CWE finding on the core platform libraries the code names (glibc, openssl, curl, wget, git and GNU vendor entries);
-- the package-level burdens the console shows in the Top Priority table (a large advisory burden on one package with known exploitable members).
+- a deployed dependency (one a post-build inventory lists) at critical severity;
+- a proof of concept or bounty for an advisory whose package is reached or endpoint-reached;
+- a proof of concept or bounty for an advisory at critical severity;
+- an endpoint-reached application package (not an OS package) at critical or high severity;
+- known exploits for the advisory, unless the drop described below applies.
 
-Known exploits with no usage evidence are deliberately not prioritized ("just known exploits without usage is not a priority", as the code puts it), and neither is a reached finding with none of the stronger signals. That is a defensible choice to argue with, and the point of the axes is that the data to argue with is on the finding: reach says `likely`, the grade names its rule, and `prioritized` names the automation's answer.
+Known exploits on a package that is neither reached, endpoint-reached, a direct dependency nor deployed are not prioritized when the scan collected usage data, that is, when any package in the scan was reached or counted as directly used ("just known exploits without usage is not a priority", as the code puts it). The drop also clears any earlier condition in the list for that advisory. On a scan with no usage data at all, such as a purl scan or a source scan without slices, the same advisory stays prioritized, because there is nothing to separate used packages from unused ones. A reached finding with none of the stronger signals is not prioritized either. That is a defensible choice to argue with, and the point of the axes is that the data to argue with is on the finding: reach says `likely`, the grade names its rule, and `prioritized` names the automation's answer.
 
 ## The insights
 
@@ -30,13 +29,13 @@ The console and the VDR carry the verdict as insight labels on the `depscan:insi
 ```text
   MALICIOUS + REACHABLE            a malware advisory on a reached package:
                                    a top-priority security incident, above any CVE
-  REACHABLE AND EXPLOITABLE        known exploits behind a reached or deployed package
+  REACHABLE AND EXPLOITABLE        known exploits behind a reached package
   ENDPOINT-REACHABLE               reached through a route that is itself exposed
   REACHABLE                        the vulnerable code is on a traced path
   PRESENT (imported)               in the report, no reachable insight
 ```
 
-The fail-safe is worth knowing: a direct or deployed dependency with known exploits and no traced flow is still promoted into the reached set, to avoid a false negative, but the insight says what the records show: "Direct dependency with known exploits, reach not assessed" (or "Deployed dependency ..." for a package only a post-build inventory lists). The console never claims reach no analyzer observed, and the same honesty is on [the exploitability axes](exploitability). Service reachability points the other way: a package that talks only to an allow-listed service is usually a reason to lower priority, not raise it.
+A direct or deployed dependency with known exploits and no traced flow is still prioritized, to avoid a false negative, but it is not added to the reached set, and the insight says what the records show: "Direct dependency with known exploits, reach not assessed" (or "Deployed dependency with known exploits, reach not assessed" for a package only a post-build inventory lists). The console never claims reach no analyzer observed, and the same honesty is on [the exploitability axes](exploitability). Service reachability points the other way: a package that talks only to an allow-listed service is usually a reason to lower priority, not raise it.
 
 ## Reading the verdicts
 

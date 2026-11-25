@@ -20,12 +20,12 @@ Findings carry the result as the reach axis of [the exploitability assessment](e
 
 ## Two layers, one record shape
 
-The first layer is a per-language analyzer that reads the source (and, for .NET, the assemblies) and writes its own report: call graphs, data-flow slices, entry points, each with package attribution. Five analyzers cover the seven ecosystems: atom for Java and the JVM, JavaScript and TypeScript, Python and PHP; kosi alongside atom for Kotlin and Android; rusi for Rust; golem for Go; dosai for .NET. The second layer is the shared, purl-keyed engine that reads the evidence store and counts the reached purls. Each producer has one adapter, the only code that knows that report's format, and the adapter's central job is the purl reconciler: native tools often emit versionless purls, which are mapped by name onto the BOM's versioned purls so a flow can prove that the *installed* version is the affected one.
+The first layer is a per-language analyzer that reads the source (and, for .NET, the assemblies) and writes its own report: call graphs, data-flow slices, entry points, each with package attribution. Five analyzers share the work: atom for Java and the JVM languages including Scala, JavaScript and TypeScript, Python, PHP and Ruby; kosi alongside atom for Kotlin and Android; rusi for Rust; golem for Go; dosai for .NET. The second layer is the shared, purl-keyed engine that reads the evidence store and counts the reached purls. Each producer has one adapter, the only code that knows that report's format, and the adapter's central job is the purl reconciler: native tools often emit versionless purls, which are mapped by name onto the BOM's versioned purls so a flow can prove that the *installed* version is the affected one.
 
 ```mermaid
 flowchart TD
     subgraph L1["Per-language analyzers"]
-        atom["atom<br/>(JVM, JS/TS, Python, PHP)"]
+        atom["atom<br/>(JVM, JS/TS, Python, PHP, Ruby)"]
         kosi["kosi (Kotlin, Android)"]
         rusi["rusi (Rust)"]
         golem["golem (Go)"]

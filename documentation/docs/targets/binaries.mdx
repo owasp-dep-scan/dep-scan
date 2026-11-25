@@ -9,7 +9,7 @@ A binary is the form most software reaches its users in, and the form a source s
 
 ## The scan
 
-A file that starts with an ELF, PE or Mach-O header is detected as a binary target, as is a directory of them:
+A file that starts with an ELF, PE or Mach-O header is detected as a binary target. A directory of binaries is not detected: without an option it scans as a source tree, so pass `--target-kind binary` to inventory it with blint:
 
 ```bash
 depscan scan ./binaries --target-kind binary --checks binary --reports-dir reports

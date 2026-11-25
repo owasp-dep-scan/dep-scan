@@ -5,7 +5,7 @@ title: Configuration
 
 # Configuration: the file and the environment
 
-Every scan option can come from three places, checked in this order: the command line, then an environment variable, then the configuration file (`depscan.toml`), then the defaults. This page lists the file's keys and every environment variable, and says where each is the better choice. `depscan config show` prints the merged result with the source of every value, so when two of them disagree the command names which one won:
+Every scan option can come from four places, checked in this order: the command line, then the configuration file (`depscan.toml`), then an environment variable, then the defaults. A value that `--profile` or `--checks` sets sits between the command line and the file: an explicit option still wins over it, and it wins over the file. This page lists the file's keys and every environment variable, and says where each is the better choice. `depscan config show` prints the merged result with the source of every value, so when two of them disagree the command names which one won:
 
 ```bash
 depscan config show --reports-dir reports
@@ -13,7 +13,7 @@ depscan config show --reports-dir reports
 
 ## The configuration file
 
-The file holds flat keys named after the long options: `vdb_flavor = "app-only"`, `reports_dir = "reports"`, `reachability_analyzer = "SemanticReachability"`, and the rest of `depscan scan --help`. By default dep-scan reads `.config/depscan.toml` from the current directory; `--config` names another path, and `depscan config init` writes the effective options to `./depscan.toml`. Every scan also writes a `depscan.toml.sample` into the reports directory, carrying the options it ran with, which is the fastest way to start a project's file:
+The file holds flat keys named after the long options: `vdb_flavor = "app-only"`, `reports_dir = "reports"`, `reachability_analyzer = "SemanticReachability"`, and the rest of `depscan scan --help`. By default dep-scan reads the file that the `DEPSCAN_CONFIG` environment variable names, or `.config/depscan.toml` in the current directory when the variable is unset; `--config` names another path for one scan. `depscan config init` writes the effective options to that same default file (creating `.config/` when needed) and refuses to overwrite one that exists, so the next scan in the same directory and environment picks it up. Every scan also writes a `depscan.toml.sample` into the reports directory, carrying the options it ran with, which is the fastest way to start a project's file:
 
 ```toml
 # .config/depscan.toml
@@ -21,7 +21,7 @@ vdb_flavor = "app-only"
 vdb_compression = "zst"
 ```
 
-The database options (`vdb_flavor`, `vdb_compression`, `vdb_image`) and the check and analyzer options are the ones most often persisted. One key does not exist on the command line: `source_image` and `build_dir`, the lifecycle inputs, are configuration-file keys (or the `DEPSCAN_SOURCE_IMAGE` and `DEPSCAN_BUILD_DIR` variables). The `serve` verb takes no `--config`; its options come from the command line and environment only.
+The database options (`vdb_flavor`, `vdb_compression`, `vdb_image`) and the check and analyzer options are the ones most often persisted. Two keys have no command-line option: `source_image` and `build_dir`, the lifecycle inputs, are set in the configuration file or through the `DEPSCAN_SOURCE_IMAGE` and `DEPSCAN_BUILD_DIR` variables, and for these two the environment variable wins over the file key. The `serve` verb takes no `--config`; its options come from the command line and environment only.
 
 ## The vulnerability database
 
@@ -42,6 +42,7 @@ The database selection lives on the `depscan vdb` command for downloads and on `
 
 | Variable | Meaning |
 | --- | --- |
+| `DEPSCAN_CONFIG` | Path of the configuration file a scan reads when `--config` is not given, and the file `depscan config init` writes. Defaults to `.config/depscan.toml` in the current directory. |
 | `DEPSCAN_TEMP_DIR` | Temporary directory to use. |
 | `CDXGEN_TIMEOUT_MS` | Time budget for each cdxgen invocation, 30 minutes by default. dep-scan stops cdxgen at the budget once five more minutes have passed; the failure reason names the budget without claiming it was the cause. Raise it for a large tree. |
 | `CDXGEN_ARGS` | Alternative to `--cdxgen-args`. Its `--exclude` patterns also apply to dep-scan's own walks. |
@@ -80,4 +81,4 @@ Progress bars and spinners draw only when stderr is a terminal; `FORCE_COLOR` do
 
 ## Debugging
 
-`SCAN_DEBUG_MODE=debug` turns on the full log surface, including the tool invocations and the reasons a reachability analyzer did not run, which is the first step for every "why did nothing run" question ([the debugging page](../develop/debugging)).
+`SCAN_DEBUG_MODE=debug` turns on the full log surface, including the tool invocations and the reasons a reachability analyzer did not run, which is the first step for every "why did nothing run" question ([the debugging page](../Develop/debugging)).

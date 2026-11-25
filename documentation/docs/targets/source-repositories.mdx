@@ -32,13 +32,13 @@ cdxgen generates BOMs for many more project types (Docker, Jenkins, Terraform an
 
 ## Turning reachability on
 
-The analyzers read the slice files cdxgen persists under its research BOM profile, so a source scan that should answer reachability questions passes `--bom-profile research`:
+The prerequisite depends on the language. For the languages atom analyzes (Java and the other JVM languages including Scala, JavaScript and TypeScript, Python, PHP and Ruby), the analyzers read the slice files cdxgen persists under its research BOM profile, so a scan of such a project that should answer reachability questions passes `--bom-profile research` (or `--profile research`, which sets it):
 
 ```bash
 depscan scan ./my-project --reports-dir reports --bom-profile research
 ```
 
-Without it the scan still matches vulnerabilities and reads the BOM's own occurrence evidence, and every reach axis reads `not_assessed` with the reason. Reachability is the default analyzer (framework reachability); `--reachability-analyzer off` turns it off, and [the semantic analyzer](#the-semantic-analyzer) goes further. `--explain` adds the human-readable breakdown of the flows to the report.
+Without it the scan of these languages still matches vulnerabilities and reads the BOM's own occurrence evidence, and their reach axis reads `not_assessed` with the reason. Go, Rust, Kotlin and .NET do not need the research profile: a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) runs golem, rusi, kosi or dosai directly when cdxgen persisted no report, and a universal scan runs golem, rusi and dosai under `--profile deep` (or `--profile research`) when the BOM carries their package type. kosi has no package type of its own to look for, because Kotlin and Java share Maven coordinates, so Kotlin reachability needs the typed scan. Reachability is the default analyzer (framework reachability); `--reachability-analyzer off` turns it off, and [the semantic analyzer](#the-semantic-analyzer) goes further. `--explain` adds the human-readable breakdown of the flows to the report.
 
 A project whose detected type does not match reality (a JavaScript project cdxgen reads as something else) is scanned typed:
 

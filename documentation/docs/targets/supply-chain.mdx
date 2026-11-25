@@ -13,7 +13,7 @@ Most compromises of the last few years did not exploit a CVE. They came through 
 depscan scan ./my-project --checks supply-chain --reports-dir reports
 ```
 
-The check runs the package risk audit, which queries registry metadata for npm and PyPI packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). Rows whose score crosses the configured ceiling print as a table, and every audited package is written to `depscan-risk-<type>.json` in the scan directory as one JSON array of row objects with plain values:
+The check runs the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). Rows whose score crosses the ceiling (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default) print as a table, and every audited package is written to `depscan-risk-<type>.json` in the scan directory as one JSON array of row objects with plain values:
 
 ```json
 [
@@ -30,7 +30,7 @@ Two things the check always does, whatever else runs: malicious-package advisori
 
 ## Where the check stops
 
-The registry audit covers npm and PyPI; other ecosystems are audited as advisories only. The deeper supply-chain rules, install-script policy, CI workflow permissions, dependency sources, provenance and AI-component inventory, exist as rule packs in cdxgen's `cdx-audit`, and wiring them into dep-scan's findings is [the supply-chain plan](https://github.com/owasp-dep-scan/dep-scan/issues/606). In this version nothing in the audit claims more than registry metadata supports, and a registry lookup that cannot run (offline mode, no network) is reported as not assessed with the reason, never as "no risk".
+The registry audit covers npm, PyPI and crates.io; other ecosystems are audited as advisories only. The deeper supply-chain rules, install-script policy, CI workflow permissions, dependency sources, provenance and AI-component inventory, exist as rule packs in cdxgen's `cdx-audit`, and wiring them into dep-scan's findings is [the supply-chain plan](https://github.com/owasp-dep-scan/dep-scan/issues/606). In this version nothing in the audit claims more than registry metadata supports, and a registry lookup that cannot run (offline mode, no network) is reported as not assessed with the reason, never as "no risk".
 
 ## AI and agent components
 

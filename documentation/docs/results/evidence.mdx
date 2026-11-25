@@ -11,7 +11,7 @@ The store is two files at the top of the scan directory. `evidence.jsonl` holds 
 
 ## What a record looks like
 
-This is the record behind the reached finding shown on the [exploitability page](exploitability): the golem analyzer traced the docker client's hijack path, and the record keeps the call it found, the path from the entry, and golem's own caveats about the run:
+This is the record behind a reached finding from a scan of a Go service, `GHSA-jq35-85cj-fj4p`, an advisory against the `github.com/docker/docker` module whose client code the service calls (the same finding the [project README](https://github.com/owasp-dep-scan/dep-scan#readme) shows): the golem analyzer traced the docker client's hijack path, and the record keeps the call it found, the path from the entry, and golem's own caveats about the run:
 
 ```json
 {
@@ -58,7 +58,7 @@ Each record's `kind` says what the producer claimed:
 
 The reachability producers (atom, rusi, golem, kosi, dosai) write the reached flows, entry points, exploit chains and sanitizers. Three more producers contribute without grading reachability:
 
-- The cdxgen adapter reads every BOM document the scan loaded, whatever the reachability setting: each component's `evidence.occurrences` and `evidence.callstack`, the document's annotations and the build introspection beside the BOM. The occurrence records of the top-level components are the direct uses behind `direct_purls`. Each document is gated on the cdxgen version it names: a newer minor adds a `schema-minor` caveat to its records, an unknown major leaves the document not assessed, and the reason lands in the coverage of every finding that named the document.
+- The cdxgen adapter reads every BOM document the scan loaded, whatever the reachability setting: each component's `evidence.occurrences` and `evidence.callstack`, the document's annotations and the build introspection beside the BOM. The occurrence records of the top-level components are the direct uses behind `direct_purls`. Each document is gated on the cdxgen version it names: a newer minor adds a `schema-minor` caveat to its records, an unknown major leaves the document not assessed, so it gives no records. When the scan read other BOM documents that were accepted, their records carry a `record-skipped` caveat naming the refused document and the reason.
 - The blint adapter reads the binary review's findings, capability reviews and coverage report, and the coverage report's failed and skipped units become `coverage-gap` caveats on every blint record.
 - Trace BOMs a user supplies with a BOM directory scan are read by the tracebom adapter into `runtime-trace` records, which never count as reached: a traced run observes what the traced command loaded, and a library loaded at run time shows no code path from the application to it.
 
@@ -70,4 +70,4 @@ The store is plain JSON lines, so the quickest look needs no dep-scan at all:
 grep '"pkg:npm/jsonwebtoken@0.4.0"' evidence.jsonl | python3 -m json.tool --json-lines
 ```
 
-From Python, `depscan.api.load_scan` opens the directory and the findings' `evidence` arrays name their records; the MCP server's `explain_finding` and `coverage` tools render the same files for an agent, and the server has no tool that returns one evidence record by id, so an agent that wants the witness record behind a finding reads the store directly, exactly as below. The index answers the two questions readers actually ask: what proves anything about this component, and what backs this finding.
+From Python, `depscan.api.load_scan` opens the directory and the findings' `evidence` arrays name their records; the MCP server's `explain_finding` and `coverage` tools render the same files for an agent, and the server has no tool that returns one evidence record by id, so an agent that wants the witness record behind a finding reads the store directly, the way the `grep` command above does. The index answers the two questions readers actually ask: what proves anything about this component, and what backs this finding.
