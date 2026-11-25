@@ -1,0 +1,101 @@
+packages/analysis-lib/tests/test_vdr.py
+  s_7318da1b9edd46::t_c5eb73899cf921 217,222,228,274-277,279
+  s_7318da1b9edd46::t_8a1d06a9d156d0 344,422,903
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_7318da1b9edd46::t_4b45600488ff65 432-433,442-443
+packages/analysis-lib/tests/test_search.py
+  s_7318da1b9edd46::t_569e608a856982 407-431
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_7318da1b9edd46::t_6d0717f96a8f0c 184-185
+depscan/lib/package_query/metadata.py
+  s_7318da1b9edd46::t_2976c43f8a8188 160-163
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_6a4b53ffcc1032 234-237
+  s_7318da1b9edd46::t_d7608c6d7e0b86 256-258,573-579,685-686,1894,1905-1909,1984-1986
+  s_7318da1b9edd46::t_85fa46d43ae8e9 1738-1748
+  s_7318da1b9edd46::t_81242f520e7b8f 205-206,210-220,676,2016-2024,2042,2055,2069-2073,2135-2136,2149-2155
+  s_7318da1b9edd46::t_6d0717f96a8f0c 462
+  s_7318da1b9edd46::t_13db39cefceca9 617-619,621-622,624
+  s_7318da1b9edd46::t_0c31b63fa3bf08 597-603
+  s_7318da1b9edd46::t_374dd30a2d4c1a 826-860,889,932,960,1002
+packages/analysis-lib/src/analysis_lib/evidence/adapters/atom.py
+  s_7318da1b9edd46::t_c06813367ba3b5 242,750
+packages/xbom-lib/src/xbom_lib/kosi.py
+  s_7318da1b9edd46::t_4b45600488ff65 167-168
+test/test_v7_scan.py
+  s_7318da1b9edd46::t_acd169d729bfd4 576,602-603,605,610-617
+test/test_scan_directory.py
+  s_7318da1b9edd46::t_964230b4c33369 624,1301-1303,1336,1383-1386
+  s_7318da1b9edd46::t_2cae0c2a883c45 823,826-832,834-886
+  s_7318da1b9edd46::t_6f5667b4b3ff5b 824-825,833
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_7318da1b9edd46::t_4b45600488ff65 197-198
+depscan/vdb_cli.py
+  s_7318da1b9edd46::t_3b723ac1f53a9a 295
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_7318da1b9edd46::t_2e7929e112e714 339-340,342,371-373
+  s_7318da1b9edd46::t_964230b4c33369 466
+test/test_bom.py
+  s_7318da1b9edd46::t_ef6821afb1d918 629
+  s_7318da1b9edd46::t_c5eb73899cf921 613-615
+  s_7318da1b9edd46::t_83fe265efa551a 1045
+  s_7318da1b9edd46::t_70c63c3700f5cc 1070-1074,1076-1079,1081,1087,1089
+  s_7318da1b9edd46::t_3ec97f4841ccd9 970-1044,1046-1069,1075,1080,1082-1086,1088,1090-1091
+test/test_cdxgen_contract.py
+  s_7318da1b9edd46::t_ae539e3d33b628 445
+  s_7318da1b9edd46::t_c5eb73899cf921 509-511
+  s_7318da1b9edd46::t_6a4b53ffcc1032 401,405-408,420,422-423
+  s_7318da1b9edd46::t_ef6821afb1d918 506-508
+  s_7318da1b9edd46::t_81242f520e7b8f 307
+packages/analysis-lib/src/analysis_lib/search.py
+  s_7318da1b9edd46::t_126804e63b12c9 22-23,27-32,48-49,51
+packages/analysis-lib/src/analysis_lib/vex/emit.py
+  s_7318da1b9edd46::t_6d0717f96a8f0c 290,295
+test/test_scan_internals.py
+  s_7318da1b9edd46::t_8a1d06a9d156d0 226,229
+  s_7318da1b9edd46::t_7f7e4825d38620 482-484,502-503,508-509
+depscan/lib/vdb_setup.py
+  s_7318da1b9edd46::t_126804e63b12c9 376-379
+  s_7318da1b9edd46::t_3b723ac1f53a9a 175-179,205-207,230,232-234
+test/test_pipeline.py
+  s_7318da1b9edd46::t_8a1d06a9d156d0 1197,1201
+  s_7318da1b9edd46::t_afede4b203cf99 774-776,787-790
+  s_7318da1b9edd46::t_897e10d54b8285 1167-1196,1198-1200,1202-1242,1244-1259,1261-1271
+  s_7318da1b9edd46::t_ef6821afb1d918 1243,1260
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_a42777152f3b0e 2419-2420
+  s_7318da1b9edd46::t_0c31b63fa3bf08 1337-1338,1345-1348
+  s_7318da1b9edd46::t_a1177a82daa309 1350,1968,1971,1982-2006,2016-2017,2023-2028,2227
+  s_7318da1b9edd46::t_964230b4c33369 1177
+  s_7318da1b9edd46::t_396520eee506cc 1180,1182-1185
+  s_7318da1b9edd46::t_29a730c67f8588 2516-2517,2519,2521
+  s_7318da1b9edd46::t_766c1ccd950106 1339,1341,1349
+  s_7318da1b9edd46::t_784bfb77beef39 1615-1619
+  s_7318da1b9edd46::t_6c4a892786ebdc 1120
+  s_7318da1b9edd46::t_f8d0a847aae35f 1581
+  s_7318da1b9edd46::t_065ee5ffb0ffc9 1447-1450
+  s_7318da1b9edd46::t_c06813367ba3b5 1771-1775,1779-1791
+  s_7318da1b9edd46::t_810fca3d593fb3 1086-1087
+  s_7318da1b9edd46::t_2fe679ff12e016 1078-1079,1085
+  s_7318da1b9edd46::t_b0acac444411c2 1792-1793
+depscan/commands/scan.py
+  s_7318da1b9edd46::t_2772e5072f9a3e 794
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_7318da1b9edd46::t_4b45600488ff65 531-532,541-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9dfc809d6a819c241a7b4728cbfc682c812d49d",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

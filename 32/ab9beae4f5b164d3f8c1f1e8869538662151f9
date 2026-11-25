@@ -1,0 +1,94 @@
+test/test_scan_directory.py
+  s_7318da1b9edd46::t_fe4f359dfe5bfb 1866,1868-1870,1881,1883-1891
+documentation/docs/results/evidence.mdx
+  s_7318da1b9edd46::t_728bddf62b3bc2 66
+  s_7318da1b9edd46::t_2b26a6b81e8601 65
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_7318da1b9edd46::t_e266197f2a14f9 65,81
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_e1c509813f14e3 2531,2535,2537-2542
+  s_7318da1b9edd46::t_2b26a6b81e8601 1705,1715-1720
+  s_7318da1b9edd46::t_82348f44a18ae3 2399,2402,2404,2410
+  s_7318da1b9edd46::t_7319b6f2a7c51e 1666-1668,1689-1704,1706-1714,1721-1728
+  s_7318da1b9edd46::t_0991db8198af0e 2524-2530,2532-2534,2536,2543-2547,2557
+  s_7318da1b9edd46::t_eda7af84022329 2355-2361,2381,2400
+  s_7318da1b9edd46::t_45505ae5e9ddc0 2401
+  s_7318da1b9edd46::t_73b5d97cd2aa62 1729-1730
+packages/analysis-lib/src/analysis_lib/evidence/__init__.py
+  s_7318da1b9edd46::t_728bddf62b3bc2 113
+documentation/docs/results/scan-directory.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 11-13,24
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 138
+  s_7318da1b9edd46::t_f422df65127bc6 142
+packages/analysis-lib/tests/test_reachability.py
+  s_7318da1b9edd46::t_ccbb0121a9bc72 563
+  s_7318da1b9edd46::t_2b26a6b81e8601 641-707
+  s_7318da1b9edd46::t_05864196880672 580-620,635-637,639-640
+  s_7318da1b9edd46::t_b40fc46298a81b 478-562,564-579
+  s_7318da1b9edd46::t_0a14016e2f862a 38,621-634,638
+  s_7318da1b9edd46::t_8e92cb2a5e3e76 708-709
+test/data/research-scan-store/README.md
+  s_7318da1b9edd46::t_faed310d65c581 1-5
+packages/analysis-lib/src/analysis_lib/evidence/schemas/depscan-evidence.schema.json
+  s_7318da1b9edd46::t_fe5cb61e8d329f 216-217,219
+test/data/research-scan-store/evidence.jsonl
+  s_7318da1b9edd46::t_faed310d65c581 1-14,17-29,31-35,38-46
+  s_7318da1b9edd46::t_4217ad5f7adc46 15-16,30,36-37
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_7318da1b9edd46::t_8849b9b882d8c0 252-253,430,522
+  s_7318da1b9edd46::t_2b26a6b81e8601 284-322,329-331,355-357,360-368,373-374
+  s_7318da1b9edd46::t_8913cddd8a0a40 548-552,559,612,630
+  s_7318da1b9edd46::t_728bddf62b3bc2 29,323,326-328,332-335,354,358-359,369-372,376-392,394
+  s_7318da1b9edd46::t_3aa7919ffb525a 34,37,247-251,254-283,324-325,336-353,375,393,395-397,439,444,617
+  s_7318da1b9edd46::t_54971c14b6d37f 175-231,233-246,449
+  s_7318da1b9edd46::t_f9dcbecc79dd02 28
+  s_7318da1b9edd46::t_f48635ea48d2d4 232,433,440-443,547,613-616
+test/data/research-scan-store/evidence.index.json
+  s_7318da1b9edd46::t_faed310d65c581 1-109
+packages/analysis-lib/src/analysis_lib/output.py
+  s_7318da1b9edd46::t_7f448e309e871a 523-525
+  s_7318da1b9edd46::t_bb8ab734ec5f05 481-486,540
+  s_7318da1b9edd46::t_3ae71c1f236b2d 395-401,415,417-423,445-448,487-488,490,492,605,635,694,702-703,722
+test/test_pipeline.py
+  s_7318da1b9edd46::t_fae2d7316ea726 1024-1099,1101-1111,1126-1130,1132-1134,1176-1177
+  s_7318da1b9edd46::t_e8f575fa2fb573 1131
+  s_7318da1b9edd46::t_faed310d65c581 1121-1125,1136-1175
+  s_7318da1b9edd46::t_f9dcbecc79dd02 1100,1112-1120,1135
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_7318da1b9edd46::t_f48635ea48d2d4 182-183,188
+  s_7318da1b9edd46::t_7e3e2dae4c7cd4 189-190
+documentation/docs/integrate/vdr.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 9
+documentation/docs/integrate/python-api.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 61
+test/data/research-scan-store/depscan.findings.json
+  s_7318da1b9edd46::t_faed310d65c581 1-511
+depscan/api.py
+  s_7318da1b9edd46::t_e4c90acce8d92b 589,591
+test/test_v7_scan.py
+  s_7318da1b9edd46::t_b4ac14050e9ce5 329-341
+  s_7318da1b9edd46::t_3ddad605e16602 294-315
+  s_7318da1b9edd46::t_1a0ba5812c0e7e 403-423
+  s_7318da1b9edd46::t_4c5a60dae26086 342-343,424-425
+packages/analysis-lib/tests/test_output.py
+  s_7318da1b9edd46::t_ab2ee73baf0651 125-128,286,360-381,384,386-387,389-393,395-396,411-440
+  s_7318da1b9edd46::t_cd3f6ae31da7cc 382-383,385,388,394,397-410
+  s_7318da1b9edd46::t_228ccdeb65712c 441-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ab9beae4f5b164d3f8c1f1e8869538662151f9",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

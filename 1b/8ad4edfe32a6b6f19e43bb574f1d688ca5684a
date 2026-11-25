@@ -1,0 +1,28 @@
+documentation/docs/integrate/agents.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 122
+depscan/lib/logger.py
+  s_7318da1b9edd46::t_50cee9a176ec16 159
+  s_7318da1b9edd46::t_95046b5edb0c06 7,113-158,183
+documentation/docs/reference/configuration.mdx
+  s_7318da1b9edd46::t_e266197f2a14f9 78
+test/test_v7_colour_terminals.py
+  s_7318da1b9edd46::t_f943a0b2a93226 194
+  s_7318da1b9edd46::t_49e3a52a211aa3 203
+  s_7318da1b9edd46::t_f665615910dae6 8-9,100-102,165-166,173-193,195-202,204-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1b8ad4edfe32a6b6f19e43bb574f1d688ca5684a",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
