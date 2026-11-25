@@ -1,0 +1,19 @@
+documentation/README.md
+  s_c4594e2defc52e::t_1c71e69c48ccea 1,3,5,7-9,12,14,16,18-26,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7715c271f28e1c41ac90d40bf150bd608986d915",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

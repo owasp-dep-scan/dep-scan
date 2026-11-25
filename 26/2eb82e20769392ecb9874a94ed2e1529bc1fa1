@@ -1,0 +1,21 @@
+documentation/docs/integrate/mcp.mdx
+  s_c4594e2defc52e::t_c47c5909f8e27d 150
+documentation/docs/results/finding-model.mdx
+  s_c4594e2defc52e::t_43e548350b370f 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "262eb82e20769392ecb9874a94ed2e1529bc1fa1",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

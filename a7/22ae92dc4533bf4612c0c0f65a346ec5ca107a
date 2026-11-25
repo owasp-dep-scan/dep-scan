@@ -1,0 +1,226 @@
+documentation/docs/targets/go.mdx
+  s_c4594e2defc52e::t_3dea6fee46cb1c 1-114
+documentation/docs/reference/configuration.mdx
+  s_c4594e2defc52e::t_541680030b6ef2 2-83
+documentation/lessons/08-agent-workflow/run.sh
+  s_c4594e2defc52e::t_2af41b03d30a96 1-42,44-45,47-48,50-51,53,56-60,62-75
+  s_c4594e2defc52e::t_e4db972a5fe783 43,46,49,52,54-55,61
+documentation/docs/integrate/ci.mdx
+  s_c4594e2defc52e::t_11b0e392137b01 103-108
+  s_c4594e2defc52e::t_3c438a26a7141a 1-15,20-102,109-120
+  s_c4594e2defc52e::t_96c0d188fa74e6 16-19
+documentation/docs/results/exploitability.mdx
+  s_c4594e2defc52e::t_8f6370913e775c 2-58
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_c4594e2defc52e::t_4153f9e678dc12 171-182
+documentation/docs/integrate/agents.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-224
+documentation/docs/targets/source-repositories.mdx
+  s_c4594e2defc52e::t_9160802066f8e3 2-92
+documentation/docs/lessons/04-binaries-blint.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-105
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+documentation/docs/integrate/agent-plugin.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-156
+documentation/docs/targets/memory-safety.mdx
+  s_c4594e2defc52e::t_e90971859d12f3 1-57
+documentation/lessons/01-node-source-reachability/run.sh
+  s_c4594e2defc52e::t_8cf13eee49296f 50-51,66,86
+  s_c4594e2defc52e::t_0295cb34452cea 1-49,52-65,67-85,87-90
+documentation/lessons/06-supply-chain-licence/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-8
+documentation/docs/reference/cli.mdx
+  s_c4594e2defc52e::t_6bec600f24e554 2-485
+documentation/docs/targets/rust.mdx
+  s_c4594e2defc52e::t_3dea6fee46cb1c 1-107
+documentation/lessons/08-agent-workflow/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-6
+documentation/docs/targets/licences.mdx
+  s_c4594e2defc52e::t_8eb3feb0367de4 1-35
+documentation/sidebars.ts
+  s_c4594e2defc52e::t_c0d83309fb33dd 3-7,11-35,39,41-52,57,59-68,73,75-80,85,87-89,96-99,106-115
+documentation/docs/targets/container-images.mdx
+  s_c4594e2defc52e::t_7c665acb45c17c 1-30,32-49
+  s_c4594e2defc52e::t_ddba75caeb6828 31
+documentation/docs/lessons/03-container-image.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-92
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+test/test_doctor.py
+  s_c4594e2defc52e::t_45473b2481ece8 952
+documentation/docs/lessons/07-ci-gating.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-108
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+documentation/docs/start/overview.mdx
+  s_c4594e2defc52e::t_3b8a93d94bf474 4-28,31-38
+  s_c4594e2defc52e::t_021ba2813268e0 29-30
+documentation/docs/lessons/06-supply-chain-licence.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-104
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+documentation/lessons/05-memory-safety-c/run.sh
+  s_c4594e2defc52e::t_6eec3d350c99bd 38-41
+  s_c4594e2defc52e::t_956f95c7b1ed67 1-37,42-57
+documentation/docs/integrate/python-api.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-118
+documentation/lessons/03-container-image/run.sh
+  s_c4594e2defc52e::t_ee9b8c05239cd2 1-49
+documentation/lessons/05-memory-safety-c/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-7
+documentation/docusaurus.config.ts
+  s_c4594e2defc52e::t_c989994bc88d5d 17-18,24-60,67-73
+  s_c4594e2defc52e::t_2852bd1b5867ae 61-66
+  s_c4594e2defc52e::t_b86a6f0e6cf8d9 92-95
+documentation/lessons/09-vulnerable-repos/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-7
+documentation/docs/results/scan-directory.mdx
+  s_c4594e2defc52e::t_893f1f3d6453f2 2-59,135-152
+  s_c4594e2defc52e::t_524f17b9380a29 75-113
+depscan/lib/scan_directory.py
+  s_c4594e2defc52e::t_ff7f36c59c542a 776-785,791
+documentation/docs/results/finding-model.mdx
+  s_c4594e2defc52e::t_4b36570c8bdef3 1-66
+documentation/docs/targets/mobile-apps.mdx
+  s_c4594e2defc52e::t_bfe8daaf431984 1-30
+test/test_v7_output_contract.py
+  s_c4594e2defc52e::t_45473b2481ece8 47
+documentation/lessons/02-go-service-golem/run.sh
+  s_c4594e2defc52e::t_ee9b8c05239cd2 1-20,22-72
+  s_c4594e2defc52e::t_b0ab8f27eda876 21
+test/test_scan_directory.py
+  s_c4594e2defc52e::t_45473b2481ece8 1798
+documentation/lessons/06-supply-chain-licence/run.sh
+  s_c4594e2defc52e::t_9257426824121c 1-62
+depscan/commands/output.py
+  s_c4594e2defc52e::t_176bf8f5cdba7e 34
+documentation/docs/start/installation.mdx
+  s_c4594e2defc52e::t_e62ac5f59762ce 1-95
+documentation/lessons/09-vulnerable-repos/run.sh
+  s_c4594e2defc52e::t_2af41b03d30a96 1-45,51
+  s_c4594e2defc52e::t_113a2af1c36cb2 46-50
+documentation/docs/integrate/agent-skills-toolchain.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-100
+documentation/docs/develop/contributing.mdx
+  s_c4594e2defc52e::t_505083bb5eb426 2,6,8-28
+depscan/lib/config.py
+  s_c4594e2defc52e::t_e931209a459e00 243-245
+  s_c4594e2defc52e::t_a6bed6e56b62a7 230-242,246-273
+documentation/lessons/03-container-image/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-5
+documentation/docs/lessons/01-node-source-reachability.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-113,115-133
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+  s_c4594e2defc52e::t_aca793d3b5ae28 114
+documentation/lessons/01-node-source-reachability/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-9
+documentation/docs/lessons/05-memory-safety-c.mdx
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-103
+documentation/docs/reference/validate.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-60
+documentation/docs/lessons/08-agent-workflow.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-126
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+documentation/docs/lessons/09-vulnerable-repos.mdx
+  s_c4594e2defc52e::t_aca793d3b5ae28 75
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-74,76-82,84-89
+  s_c4594e2defc52e::t_2ab8ba521d7035 83
+documentation/lessons/07-ci-gating/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-8
+documentation/docs/integrate/vex-csaf.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-150
+test/test_docs_cli.py
+  s_c4594e2defc52e::t_796c81826a3497 59-60,62-72
+  s_c4594e2defc52e::t_22635ea6aef1bf 200-204,220-257
+  s_c4594e2defc52e::t_c19f87508ac266 309-323
+  s_c4594e2defc52e::t_ab8e4d9eccc508 31-34
+  s_c4594e2defc52e::t_c2e4b957c7ec57 4-6
+  s_c4594e2defc52e::t_b3603af7b7ad91 176-189
+  s_c4594e2defc52e::t_7a5a86a89435e2 291
+  s_c4594e2defc52e::t_f350fadf48f1f0 258-259
+documentation/lessons/07-ci-gating/run.sh
+  s_c4594e2defc52e::t_9257426824121c 1-58
+documentation/docs/start/vulnerability-database.mdx
+  s_c4594e2defc52e::t_76d0ad5d29db77 3-119
+documentation/docs/results/evidence.mdx
+  s_c4594e2defc52e::t_5f972cd64bbda7 2-70
+  s_c4594e2defc52e::t_da120278233274 72
+  s_c4594e2defc52e::t_114d8c11b10631 1
+  s_c4594e2defc52e::t_f68dcb521ac3cb 71
+documentation/docs/targets/dotnet.mdx
+  s_c4594e2defc52e::t_3dea6fee46cb1c 1-157,159
+  s_c4594e2defc52e::t_7546f6f8dd435b 158
+test/test_v7_output_core.py
+  s_c4594e2defc52e::t_45473b2481ece8 61
+documentation/docs/develop/development-setup.mdx
+  s_c4594e2defc52e::t_505083bb5eb426 1-74
+documentation/docs/reference/schemas.mdx
+  s_c4594e2defc52e::t_75dfe0aeeda071 1-39,41-46,67-85
+  s_c4594e2defc52e::t_473001d265ac7d 40,47-66
+documentation/docs/targets/supply-chain.mdx
+  s_c4594e2defc52e::t_90e15d054775cb 1-45
+documentation/lessons/04-binaries-blint/run.sh
+  s_c4594e2defc52e::t_956f95c7b1ed67 1-30,33-55
+  s_c4594e2defc52e::t_9fe2a2d2d5655e 31-32
+documentation/docs/integrate/mcp.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-178
+documentation/docs/targets/binaries.mdx
+  s_c4594e2defc52e::t_6cf27dda73e587 1-52
+documentation/lessons/02-go-service-golem/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-8
+documentation/docs/results/reachability.mdx
+  s_c4594e2defc52e::t_e4eaf66f345b7f 2-70
+documentation/docs/upgrade/migrate-v5-to-v6.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-41
+documentation/docs/targets/java-javascript-python-php.mdx
+  s_c4594e2defc52e::t_7546f6f8dd435b 58
+  s_c4594e2defc52e::t_3dea6fee46cb1c 1-45,47-57,59-98
+  s_c4594e2defc52e::t_4fcc8e44d9bae2 46
+documentation/docs/lessons/02-go-service-golem.mdx
+  s_c4594e2defc52e::t_c01c3f44ad1347 1,3-95,97-116
+  s_c4594e2defc52e::t_0e5293e6456b7d 2
+  s_c4594e2defc52e::t_aca793d3b5ae28 96
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-162
+documentation/docs/integrate/server.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-162
+documentation/package.json
+  s_c4594e2defc52e::t_36549f81e2c3d4 20
+documentation/docs/develop/debugging.mdx
+  s_c4594e2defc52e::t_505083bb5eb426 2,6,8,10,12,14-18,20,24-42,46-54
+documentation/docs/results/coverage.mdx
+  s_c4594e2defc52e::t_aa78e2d728486b 1-55
+documentation/docs/start/first-scan.mdx
+  s_c4594e2defc52e::t_40212cb9f63d13 2-98
+documentation/docs/integrate/vdr.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-69
+documentation/docs/results/prioritization.mdx
+  s_c4594e2defc52e::t_f5f7eb2e9fcbb8 2-32
+documentation/lessons/04-binaries-blint/expect.txt
+  s_c4594e2defc52e::t_9e3c4e5416f97b 1-4
+documentation/docs/reference/doctor.mdx
+  s_c4594e2defc52e::t_3ecec77ec5cffe 1-27,29-34,57-59,62-69,71-72,74-122
+  s_c4594e2defc52e::t_15ba23dafba06c 28,35-56,60-61,70,73
+documentation/package-lock.json
+  s_c4594e2defc52e::t_24b4498c15ae9f 12,2027-2029,2045-2046,2050-2052,2069-2071,2087-2088,2092-2094,2107-2108,2114-2115,2119-2121,2137,2141-2143,2160-2162,2178-2208,2212-2214,2260-2262,2272-2274,2287-2319,2330-2361,2374-2377,2388-2390,2403-2434,2445-2447,2460-2462,2498-2500,2513-2515,2525-2527,2540-2543,2554-2556,2569-2572,2583-2585,2598,2632-2634,2680-2682,2692-2694,2707-2709,2811-2813,2826,2837-2839,2852-2855,2865-2867,2880-2882,2918-2920,2943-2945,2958-2961,2971-2992,2994-2996,3018-3043,3045-3047,3060-3062,3072-3074,3087-3090,3139-3141,3154-3156,3166-3220,3233-3234,3244-3246,3259,3270-3272,3285-3287,3604-3627,5058-5060,5066,5878-5880,5897-5899,6003-6014,6043-6045,6048,6052-6057,6059,6084-6103,6110-6118,6180-6182,6199-6203,6345-6347,6747-6749,6755,6757,6763-6766,7138-7140,7187-7189,7341-7343,8463-8465,8889-8891,8896-8897,8899-8900,8906-8908,8911,8913,8915,8918-8919,8921,8928-8931,8962-8964,9437-9439,9445,10339-10341,11116-11118,11121-11122,13719-13721,13780-13782,13847-13853,13985-13987,14044-14046,14532-14534,14551,14553,14629-14631,14644-14647,14744-14746,14759-14762,14772-14774,14787-14789,14801-14803,14816-14818,14829-14831,14942-14944,14957,15102-15104,15117-15120,15377-15379,15392,15404-15406,15448-15450,15690-15692,15705-15713,15715-15718,15720-15721,15726-15728,15730-15736,15738-15743,15745-15746,15748,15750,15753,15756-15758,15760,15766,15768,16126-16128,16131-16132,16201-16203,16206-16209,16224-16252,16489-16491,17417-17419,17425,17593-17595,17597-17599,17622-17624,17628-17684,17805-17807,17810,18635-18637
+.github/workflows/lessons.yml
+  s_c4594e2defc52e::t_6eaa843dbf00a3 1-99
+test/test_docs_lessons.py
+  s_c4594e2defc52e::t_b78b98b14d007b 68-70,80-81
+  s_c4594e2defc52e::t_46be8d73837ddb 1-67,71-79,82-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a722ae92dc4533bf4612c0c0f65a346ec5ca107a",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

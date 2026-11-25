@@ -1,0 +1,49 @@
+documentation/docs/targets/binaries.mdx
+  s_c4594e2defc52e::t_33b914a980fdd7 18
+documentation/docs/reference/cli.mdx
+  s_c4594e2defc52e::t_33b914a980fdd7 228
+documentation/docs/results/scan-directory.mdx
+  s_c4594e2defc52e::t_3e80b1393b0289 138
+  s_c4594e2defc52e::t_314bed155f9c31 137
+documentation/docs/integrate/vdr.mdx
+  s_c4594e2defc52e::t_ed94f266ab25f2 54
+  s_c4594e2defc52e::t_a5e5d39fb20399 46,52
+documentation/docs/results/prioritization.mdx
+  s_c4594e2defc52e::t_051af7b3361974 12,14,16-28,31-36,39,45
+documentation/docs/targets/go.mdx
+  s_c4594e2defc52e::t_dcc322aa4313ae 62
+documentation/docs/targets/rust.mdx
+  s_c4594e2defc52e::t_dcc322aa4313ae 59
+documentation/docs/targets/java-javascript-python-php.mdx
+  s_c4594e2defc52e::t_deb12f15553374 18
+  s_c4594e2defc52e::t_dcc322aa4313ae 46
+documentation/docs/results/evidence.mdx
+  s_c4594e2defc52e::t_b62a1008cc89ba 54
+  s_c4594e2defc52e::t_29fc310ed05513 73
+documentation/docs/integrate/ci.mdx
+  s_c4594e2defc52e::t_4c52bc81a23387 56,70,108
+documentation/docs/results/coverage.mdx
+  s_c4594e2defc52e::t_3e80b1393b0289 19-22
+documentation/docs/targets/source-repositories.mdx
+  s_c4594e2defc52e::t_5946580d3bae59 24
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_c4594e2defc52e::t_87f73d496c4544 107
+documentation/docs/targets/container-images.mdx
+  s_c4594e2defc52e::t_33b914a980fdd7 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e922d46d06da218948aa1ce4b7f43dbe297b7f6",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

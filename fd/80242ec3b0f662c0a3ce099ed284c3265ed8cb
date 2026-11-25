@@ -1,0 +1,21 @@
+depscan/lib/pipeline.py
+  s_c4594e2defc52e::t_b98d116f2c0d50 734-739
+test/test_pipeline.py
+  s_c4594e2defc52e::t_5ebb8364e50547 65-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd80242ec3b0f662c0a3ce099ed284c3265ed8cb",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

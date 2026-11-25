@@ -1,0 +1,23 @@
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_c4594e2defc52e::t_7227a0883fdbed 18
+contrib/README.md
+  s_c4594e2defc52e::t_8039ae94a04f24 1,3,5,7-16,18-23
+contrib/CSAF_README.md
+  s_c4594e2defc52e::t_0cf2a8be3b2545 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "171c2d440035e1f0cc6d99c424198aa67afdd1b3",
+  "prompts": {},
+  "sessions": {
+    "s_c4594e2defc52e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_478568af-96e2-4d4b-8414-65e4362eaa01",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
