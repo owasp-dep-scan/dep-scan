@@ -304,7 +304,7 @@ def test_atom_timeout_is_kept_as_not_assessed(fake_cdxgen, tmp_path, monkeypatch
     assert len(_scans(fake_cdxgen)) == 1
     assert result.success
     assert result.not_assessed == [bom_mod.ATOM_TIMEOUT_REASON]
-    assert "Not assessed: atom did not finish" in caplog.text
+    assert "Not assessed (project BOM): atom did not finish" in caplog.text
 
 
 def test_clean_cdxgen_run_has_nothing_not_assessed(fake_cdxgen, tmp_path):
@@ -398,12 +398,15 @@ def test_exit_four_logs_the_introspection_tier(fake_cdxgen, tmp_path, monkeypatc
     src, reports = _make_project(tmp_path)
     bom_file = reports / "sbom-python.cdx.json"
     options = _options("research", ["python"], [], bom_file)
-    with caplog.at_level("WARNING"):
+    with caplog.at_level("DEBUG"):
         result = bom_mod.create_bom(str(bom_file), str(src), options)
     assert result.success
     assert result.introspection_gate_missed == [str(bom_file)]
+    exit_lines = [r for r in caplog.records if "exited 4" in r.message]
+    # The exit status is a debug line: the tier line below is the one
+    # console line for this BOM.
+    assert [r.levelname for r in exit_lines] == ["DEBUG"]
     message = " ".join(r.message for r in caplog.records)
-    assert "exited 4" in message
     assert "lockfile" not in message, "the tier is logged from the adapter record, below"
 
     scan = pipeline.TypeScan(project_type="python")
@@ -414,9 +417,10 @@ def test_exit_four_logs_the_introspection_tier(fake_cdxgen, tmp_path, monkeypatc
     with caplog.at_level("WARNING"):
         read = pipeline._cdxgen_adapter_result(ctx, scan)
     assert read is not None and read.status == "completed", read and read.reason
-    tier = [r.message for r in caplog.records if r.message.startswith("Introspection:")]
+    tier = [r.message for r in caplog.records if r.message.startswith("cdxgen fidelity")]
     assert tier == [
-        f"Introspection: overall tier lockfile, score 72/100 (report: {bom_file}.introspection.json)."
+        "cdxgen fidelity for sbom-python.cdx.json: tier lockfile, score 72/100, below the "
+        f"gate (see {bom_file}.introspection.json)."
     ]
 
 
@@ -438,7 +442,7 @@ def test_exit_zero_logs_no_introspection_tier(fake_cdxgen, tmp_path, caplog):
         pipeline._cdxgen_adapter_result(
             SimpleNamespace(reports_dir=str(reports), source_root=str(src)), scan
         )
-    assert not [r for r in caplog.records if "Introspection" in r.message]
+    assert not [r for r in caplog.records if "cdxgen fidelity" in r.message]
 
 
 def test_exit_five_stops_and_names_each_extractor_failure(
@@ -499,7 +503,12 @@ def test_other_exit_status_is_named_in_the_message(fake_cdxgen, tmp_path, monkey
     with caplog.at_level("ERROR"):
         result = bom_mod.create_bom(str(bom_file), str(src), options)
     assert not result.success
-    assert any("status 3" in r.message for r in caplog.records)
+    reason = result.failure_reason or ""
+    assert "status 3" in reason
+    assert "Rerun with --debug" in reason
+    # The inventory stage logs the reason as the scan's one error line, so
+    # the generator does not log it as well.
+    assert not any("status 3" in r.message for r in caplog.records)
 
 
 def test_remote_repository_runs_cdxgen_in_secure_mode(fake_cdxgen, tmp_path):

@@ -110,6 +110,7 @@ CAVEAT_KINDS = (
     "minimal-api",
     "record-skipped",
     "location-outside-root",
+    "attributed",
 )
 
 

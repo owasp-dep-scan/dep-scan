@@ -181,7 +181,8 @@ class VDRAnalyzer(XBOMAnalyzer):
                 include_pkg_group_rows.add(vuln.get("bom-ref"))
             # If the user doesn't want any table output return quickly
         if counts.no_matched_by_count and options.logger:
-            options.logger.info(
+            # The matching stage's manifest entry records this count.
+            options.logger.debug(
                 "Skipped %d vulnerability match(es) whose matched_by named no "
                 "component; the VDR carries no affects ref for them.",
                 counts.no_matched_by_count,

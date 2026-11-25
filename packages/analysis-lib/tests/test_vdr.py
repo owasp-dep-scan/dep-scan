@@ -214,17 +214,18 @@ def test_fuzzy_search_surfaces_all_components(monkeypatch):
 
 
 class _RecordingLogger(logging.Logger):
-    """A stand-in logger that collects the formatted info lines."""
+    """A stand-in logger that collects the formatted info and debug lines."""
 
     def __init__(self):
         super().__init__("recording")
         self.lines = []
+        self.debug_lines = []
 
     def info(self, msg, *args, **kwargs):
         self.lines.append(msg % args if args else msg)
 
     def debug(self, msg, *args, **kwargs):
-        pass
+        self.debug_lines.append(msg % args if args else msg)
 
 
 def test_a_row_without_matched_by_is_skipped_not_exported_with_an_empty_ref(monkeypatch):
@@ -270,9 +271,12 @@ def test_a_row_without_matched_by_is_skipped_not_exported_with_an_empty_ref(monk
     assert result.rows_without_component == 1, (
         "the caller states the skipped count on the scan's coverage"
     )
-    assert any("1" in line and "matched_by" in line for line in logger.lines), (
-        f"the skipped row must be counted in a log line; got {logger.lines}"
+    # The manifest's matching entry carries the count, so the console line
+    # is a debug line.
+    assert any("1" in line and "matched_by" in line for line in logger.debug_lines), (
+        f"the skipped row must be counted in a debug line; got {logger.debug_lines}"
     )
+    assert not any("matched_by" in line for line in logger.lines)
 
 
 # ---------------------------------------------------------------------------
@@ -337,9 +341,7 @@ def test_the_occurrence_fail_safe_direct_insight_names_reach_not_assessed():
     )
 
     plain = [
-        p["value"]
-        for p in (vdr.get("properties") or [])
-        if p.get("name") == "depscan:insights"
+        p["value"] for p in (vdr.get("properties") or []) if p.get("name") == "depscan:insights"
     ]
     rich = "\n".join(vdr.get("insights") or [])
     assert any("Direct dependency with known exploits, reach not assessed" in i for i in plain), (
@@ -417,9 +419,7 @@ def test_the_cve_fail_safe_direct_insight_names_reach_not_assessed():
     )
 
     plain = [
-        p["value"]
-        for p in (vdict.get("properties") or [])
-        if p.get("name") == "depscan:insights"
+        p["value"] for p in (vdict.get("properties") or []) if p.get("name") == "depscan:insights"
     ]
     rich = "\n".join(vdict.get("insights") or [])
     assert any("Direct dependency with known exploits, reach not assessed" in i for i in plain), (
@@ -900,9 +900,7 @@ def test_the_cve_fail_safe_insight_for_a_deployed_only_package_says_deployed():
         counts=Counts(),
     )
     plain = [
-        p["value"]
-        for p in (vdict.get("properties") or [])
-        if p.get("name") == "depscan:insights"
+        p["value"] for p in (vdict.get("properties") or []) if p.get("name") == "depscan:insights"
     ]
     assert any("Deployed dependency with known exploits, reach not assessed" in i for i in plain)
     assert not any("Direct dependency with known exploits" in i for i in plain)

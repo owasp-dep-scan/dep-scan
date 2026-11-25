@@ -239,7 +239,7 @@ def _object_shape_reason(decoder: json.JSONDecoder, text: str, idx: int, path: s
     if isinstance(document, dict) and "reachables" in document:
         gate = gate_report_version("2", SUPPORTED_MAJOR, KNOWN_MINOR)
         return gate.reason or _damaged_reason(
-            path, role, "is the atom 2 wrapped shape, which this adapter does not read"
+            path, role, "is the atom 2 wrapped shape, which dep-scan does not read"
         )
     if isinstance(document, dict):
         label = next(iter(document), "an empty object")
@@ -747,7 +747,7 @@ def extract(
     callsites = [str(path) for path in callsites_files or []]
     openapi = [str(path) for path in openapi_files or []]
     if not (reachables or usages or callsites or openapi):
-        return not_assessed("no atom report was given; the adapter has nothing to read")
+        return not_assessed("no atom slices were found, so there was nothing to read")
 
     refusal, gate_caveats, schema_version = _gate_version(producer_version)
     if refusal:

@@ -392,6 +392,13 @@ def check_malware_cve(cve_list):
     return False
 
 
+#: The value cdxgen gives the ``instrumentation`` identity of a package it
+#: installed into a throwaway virtual environment to resolve a source
+#: project's dependencies. That is a build step, not evidence that the package
+#: ships inside a binary, so it does not mark the package as deployed.
+CDXGEN_VENV_PREFIX = "cdxgen-venv-"
+
+
 def find_next_steps(
     matched_by,
     cve_list,
@@ -405,7 +412,15 @@ def find_next_steps(
     setgid_executable_purls,
     purl_identities,
     oci_props,
+    matched_purls=None,
 ) -> Dict[str, Any]:
+    """Pick the next step for one package and say which facts it rests on.
+
+    ``matched_by`` is the package, usually without a version. ``matched_purls``
+    holds the versioned purls the findings of that package are about; the
+    reached, endpoint-reached and service sets are keyed by versioned purl, so
+    they are looked up by these. Without it the lookup uses ``matched_by``.
+    """
     # Understand about the source manifest, detection techniques, and confidences.
     identity_evidences = purl_identities.get(matched_by) or []
     src_files = []
@@ -427,7 +442,10 @@ def find_next_steps(
                         "filename",
                     ):
                         src_files.append(method.get("value"))
-                    elif technique in ("binary-analysis", "instrumentation"):
+                    elif technique == "binary-analysis" or (
+                        technique == "instrumentation"
+                        and not str(method.get("value") or "").startswith(CDXGEN_VENV_PREFIX)
+                    ):
                         is_binary_detection = True
             confidences.append(method.get("confidence", 0))
     average_confidence = int(sum(confidences) / len(confidences)) if confidences else 0
@@ -460,11 +478,18 @@ def find_next_steps(
         is_deployed = True
     if "Flagged weakness" in insights_str:
         is_flagged_cwe = True
-    if reached_purls and reached_purls.get(matched_by):
+    # The insights are the facts the table prints beside this advice, so a
+    # finding they call reachable is never advised as if no flow was seen.
+    if "Endpoint-Reachable" in insights_str:
+        is_endpoint_reachable = is_reachable = True
+    elif "Reachable" in insights_str:
         is_reachable = True
-    if endpoint_reached_purls and endpoint_reached_purls.get(matched_by):
+    lookup_purls = list(matched_purls or []) or [matched_by]
+    if reached_purls and any(reached_purls.get(p) for p in lookup_purls):
+        is_reachable = True
+    if endpoint_reached_purls and any(endpoint_reached_purls.get(p) for p in lookup_purls):
         is_endpoint_reachable = True
-    if reached_services and reached_services.get(matched_by):
+    if reached_services and any(reached_services.get(p) for p in lookup_purls):
         possible_reachable_service = True
     # This is a very naive way of determining whether a CVE is for a malware or not
     # See https://github.com/AppThreat/vulnerability-db/issues/212 for an example of this being wrong.
@@ -495,7 +520,9 @@ def find_next_steps(
             elif has_exploits:
                 next_step_str = "[magenta]INFO[/magenta]: depscan predicts a potential [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
             else:
-                next_step_str = "These CVEs are likely harmless. However, consider hardening the container image by removing unnecessary OS libraries."
+                next_step_str = (
+                    "Consider hardening the container image by removing unnecessary OS libraries."
+                )
             if fix_version:
                 next_step_str = f"{next_step_str} This is in addition to updating the package to version '{fix_version}'."
         elif is_endpoint_reachable:
@@ -510,7 +537,7 @@ def find_next_steps(
             if has_exploits:
                 next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to version [bold]{fix_version}[/bold]."
             else:
-                next_step_str = f"These CVEs are likely harmless, but an exploitable flow is present. Update to version [bold]{fix_version}[/bold]."
+                next_step_str = f"Exploits are known for these CVEs, but depscan did not find a reachable flow to them. Update to version [bold]{fix_version}[/bold]."
         else:
             next_step_str = (
                 "Check the package’s issue tracker for available patches and workarounds."
@@ -575,6 +602,7 @@ def summarize_priority_actions(
     setgid_executable_purls,
     purl_identities,
     oci_props,
+    matched_by_purls=None,
 ):
     utable = Table(
         title=f"Top Priority ({project_type.upper()})",
@@ -604,6 +632,7 @@ def summarize_priority_actions(
             setgid_executable_purls,
             purl_identities,
             oci_props,
+            (matched_by_purls or {}).get(k),
         )
         if not has_any_malware and next_step_analysis_obj["is_malware"]:
             has_any_malware = True
@@ -662,6 +691,7 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
     matched_by_cves = defaultdict(list)
     matched_by_fixes = defaultdict(str)
     matched_by_insights = defaultdict(set)
+    matched_by_purls = defaultdict(set)
     for _, pkg_vuln_datas in pkg_group_rows.items():
         for c in pkg_vuln_datas:
             matched_by = c.get("matched_by", "").split("@")[0]
@@ -669,6 +699,8 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
             if c.get("matched_by") and purl_identities.get(c.get("matched_by")):
                 purl_identities[matched_by] = purl_identities[c.get("matched_by")]
             matched_by_cves[matched_by].append(c.get("id"))
+            if c.get("matched_by"):
+                matched_by_purls[matched_by].add(c.get("matched_by"))
             matched_by_insights[matched_by].update(c.get("insights", []))
             fv = c.get("fixed_location")
             if fv and not matched_by_fixes.get(matched_by):
@@ -687,6 +719,7 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
         setgid_executable_purls,
         purl_identities,
         oci_props,
+        matched_by_purls,
     )
     console.print()
     console.print(utable)

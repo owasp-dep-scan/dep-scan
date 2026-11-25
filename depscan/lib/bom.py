@@ -201,12 +201,21 @@ def _cdxgen_failure_reason(bom_result, stage: str) -> str:
     budget is indistinguishable from any other failure from here, so the
     text says what was in effect without claiming the cause.
     """
-    returncode = getattr(bom_result, "returncode", None)
-    status = f"exited with status {returncode}" if returncode is not None else "did not finish"
     return (
-        f"cdxgen {status} while generating the {stage} BOM, so no document was written. "
-        f"{cdxgen_timeout_hint()}. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output."
+        f"cdxgen {_cdxgen_status(bom_result)} while generating the {stage} BOM, so no "
+        f"document was written. {_cdxgen_failure_hint()}"
     )
+
+
+def _cdxgen_status(bom_result) -> str:
+    """How a failed cdxgen run ended, as a phrase."""
+    returncode = getattr(bom_result, "returncode", None)
+    return f"exited with status {returncode}" if returncode is not None else "did not finish"
+
+
+def _cdxgen_failure_hint() -> str:
+    """The time budget in effect and where to see cdxgen's own output."""
+    return f"{cdxgen_timeout_hint()}. Rerun with --debug to see cdxgen's output."
 
 
 def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
@@ -222,10 +231,10 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     if returncode in (None, 0):
         return []
     if returncode == 4:
-        # The fidelity tier is logged from the introspection record once
-        # cdxgen's adapter has read the report (BomResult's
-        # introspection_gate_missed names the BOM).
-        LOG.warning(
+        # The fidelity tier is logged at warning level from the introspection
+        # record once cdxgen's adapter has read the report (BomResult's
+        # introspection_gate_missed names the BOM), one line per BOM.
+        LOG.debug(
             "cdxgen exited 4 for the %s BOM: the introspection score is below the gate.",
             stage,
         )
@@ -244,7 +253,9 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
                 stage,
             )
         return failures
-    LOG.error("%s", _cdxgen_failure_reason(bom_result, stage))
+    # Any other status is a failed generation. The caller logs it once, with
+    # the reason from :func:`_cdxgen_failure_reason`: the scan's error line
+    # for a single BOM, the stage's not-assessed line for a lifecycle stage.
     return []
 
 
@@ -448,10 +459,7 @@ def get_pkg_list(xmlfile):
                         pkgs.append(get_package(ele, licenses))
     except Exception as pe:
         LOG.debug("Unable to parse %s %s", xmlfile, pe)
-        LOG.warning(
-            "Unable to produce Software Bill-of-Materials for this project. "
-            "Execute the scan after installing the dependencies!"
-        )
+        LOG.warning("The BOM %s could not be parsed, so its packages were not loaded.", xmlfile)
     return pkgs
 
 
@@ -562,6 +570,13 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
                 ),
             )
         blint_ok = create_blint_bom(bom_file, src_dir, options=options, targets=targets)
+        if not blint_ok:
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    "blint did not write the BOM. Rerun with --debug to see blint's output"
+                ),
+            )
         review_not_assessed = (
             _run_blint_review(bom_file, src_dir, options)
             if blint_ok and blint_reviews_requested(options)
@@ -579,10 +594,14 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     # Should we call cdxgen server
     if cdxgen_server or bom_engine == "CdxgenServerGenerator":
         if not cdxgen_server:
-            LOG.error(
-                "Pass the `--cdxgen-server` argument to use the cdxgen server for BOM generation. Alternatively, use `--bom-engine auto` or `--bom-engine CdxgenGenerator`."
+            # The inventory stage logs this reason as its error line.
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    "the CdxgenServerGenerator engine needs --cdxgen-server; pass it, or use "
+                    "--bom-engine auto or --bom-engine CdxgenGenerator"
+                ),
             )
-            return BomResult(success=False)
         cdxgen_lib = CdxgenServerGenerator
     else:
         # Prefer the new image based generators if docker command is available in auto mode
@@ -595,10 +614,14 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             ):
                 cdxgen_lib = CdxgenGenerator
                 if lifecycle_analysis_mode:
+                    # The lifecycle stages run cdxgen with build and pre-build
+                    # lifecycles against a source tree, which an image or a
+                    # live OS is not, so these types get a single BOM.
                     LOG.warning(
-                        "Lifecycle analysis is not supported for oci and os project types."
+                        "Lifecycle analysis is not supported for container, OS and "
+                        "hardware project types; generating a single BOM instead."
                     )
-                    lifecycle_analysis_mode = True
+                    lifecycle_analysis_mode = False
             elif _has_bundled_cdxgen():
                 # Inside a PyInstaller `--onefile` bundle we ship cdxgen under
                 # local_bin/. Use it instead of pulling a cdxgen container
@@ -650,7 +673,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             extractor_failures = _cdxgen_exit_verdict(bom_result, bom_file, "project")
             not_assessed = _atom_not_assessed(bom_result)
             for reason in not_assessed:
-                LOG.warning("Not assessed: %s", reason)
+                LOG.warning("Not assessed (project BOM): %s", reason)
         # Exit status 4 still delivers the BOM; any other failure, 5 included,
         # leaves nothing the user asked to scan.
         partial_ok = getattr(bom_result, "returncode", None) in (
@@ -659,13 +682,9 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             *CDXGEN_PARTIAL_EXIT_CODES,
         )
         if not bom_result.success or not partial_ok:
+            # The inventory stage logs this reason as the scan's one error
+            # line for the failed BOM.
             reason = _cdxgen_failure_reason(bom_result, "project")
-            if not bom_result.success:
-                # The verdict above interprets finished runs only; a run that
-                # never finished (stopped at the time budget, missing command)
-                # has this reason as its only console message.
-                LOG.error("%s", reason)
-            LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
             return BomResult(success=False, failure_reason=reason)
         # cdxgen can report success without writing anything, so the requested
@@ -804,6 +823,41 @@ def _load_dosai_report_value(data, is_report_ok):
     return data
 
 
+#: The command output the language tool runners return when they skip
+#: because the tool or the runtime it needs is missing.
+_MISSING_TOOL_OUTPUTS = frozenset(
+    {
+        "rusi binary not found",
+        "golem binary not found",
+        "go toolchain not found",
+        "kosi binary not found",
+        "dosai binary not found",
+        ".NET runtime not found",
+    }
+)
+
+
+def _warn_missing_tool(tool_name: str, res, options) -> None:
+    """Warn that a runner skipped for a missing tool, when nothing else will.
+
+    The runners log a missing tool at debug level only. When the doctor
+    report explains why the capability is unavailable, the reachability
+    dispatch warns with that reason; this line covers a scan without a
+    doctor report (a server request) or one whose report missed the gap, so
+    a missing tool still gives exactly one warning."""
+    output = getattr(res, "command_output", None)
+    if not getattr(res, "skipped", False) or output not in _MISSING_TOOL_OUTPUTS:
+        return
+    if _capability_unavailable_reason(tool_name, options or {}) is not None:
+        return
+    LOG.warning(
+        "%s reachability was not assessed: %s. Install cdxgen-plugins-bin, or run "
+        "`depscan doctor` to see what it needs.",
+        tool_name,
+        output,
+    )
+
+
 def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke rusi directly when cdxgen did not produce a report. Returns the
     parsed report or None. Kept as a fallback so reachability still works when
@@ -832,6 +886,7 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             dataflow_mode=RUSI_DEFAULT_DATAFLOW_MODE,
             logger=LOG,
         )
+    _warn_missing_tool("rusi", res, options)
     if res.skipped or not res.success or not os.path.exists(report_path):
         if fail_on_error:
             raise ScanFailureError(
@@ -874,6 +929,7 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             allow_cgo=allow_cgo,
             logger=LOG,
         )
+    _warn_missing_tool("golem", res, options)
     if res.skipped or not res.success or not os.path.exists(report_path):
         if fail_on_error:
             raise ScanFailureError(
@@ -901,6 +957,7 @@ def _run_kosi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     report_path = os.path.join(analysis_report_dir(bom_dir, "kosi"), "kosi.json")
     with console_status(f"Running kosi Kotlin reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_kosi(src_dir, report_path, backend=KOSI_DEFAULT_BACKEND, logger=LOG)
+    _warn_missing_tool("kosi", res, options)
     if res.skipped or not res.success or not os.path.exists(report_path):
         if fail_on_error:
             raise ScanFailureError(
@@ -942,6 +999,7 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             logger=LOG,
             **exclusion_args,
         )
+    _warn_missing_tool("dosai", res, options)
     if res.skipped or not res.success:
         if fail_on_error:
             raise ScanFailureError(
@@ -1676,8 +1734,18 @@ def discover_reachability_reports(
                     f"no {tool.name} report was found in the BOM directory "
                     f"(looked for {', '.join(tool.report_names(tool_types))})"
                 )
-            LOG.warning("%s reachability was not assessed: %s", tool.name, reason)
             results[tool.name] = not_assessed(reason)
+            # The manifest records every analyzer either way. The console
+            # warns only when the tool applies: the scan names its language,
+            # or a BOM in the directory carries its purl type. A Python
+            # project's BOM directory has nothing for golem to read, and
+            # saying so on every scan is noise.
+            applies = bool(tool_types) or bool(
+                tool.purl_type
+                and any(_bom_carries_purl_type(f, tool.purl_type) for f in bom_files or [])
+            )
+            log = LOG.warning if applies else LOG.debug
+            log("%s reachability was not assessed: %s", tool.name, reason)
             continue
         bom_data = _bom_data_for_tool(bom_files, tool, fail_on_error)
         results[tool.name] = _extract_report_records(
@@ -1823,7 +1891,7 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
     review_dir = analysis_report_dir(os.path.dirname(os.path.abspath(bom_file)), "blint")
     targets = blint_targets(src_dir, options)
     if not targets:
-        LOG.info("The blint review has no target: every path matches an --exclude pattern.")
+        LOG.warning("The blint review has no target: every path matches an --exclude pattern.")
         return []
     with console_status(f"Running blint's binary review on '{src_dir}'.", spinner=SPINNER):
         review = run_blint_reviews(
@@ -1834,7 +1902,11 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
         )
     if review.success:
         return []
-    LOG.warning("%s", review.command_output)
+    LOG.warning(
+        "The blint review failed, so its findings are missing from this scan. "
+        "Rerun with --debug to see blint's output."
+    )
+    LOG.debug("%s", review.command_output)
     return [review.command_output or "the blint review failed without a reason"]
 
 
@@ -1909,7 +1981,9 @@ def create_blint_bom(
     with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
-            LOG.info("The blint invocation was unsuccessful. Try generating the BOM separately.")
+            # The caller records the missing document: the scan's error line
+            # for a blint BOM, the post-build stage's reason for a lifecycle run.
+            LOG.debug("The blint invocation was unsuccessful.")
         return bom_result.success and os.path.exists(bom_file)
 
 
@@ -1939,6 +2013,15 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     postbuild_bom_file = options.get("postbuild_bom_file")
     container_bom_file = options.get("container_bom_file")
     reachability_analyzer = options.get("reachability_analyzer")
+    # What each stage left unassessed, as the console reports it: one line per
+    # distinct problem naming every stage it hit, logged once the stages ran.
+    # ``not_assessed`` keeps the per-stage reasons for the manifest.
+    stage_problems: Dict[str, List[str]] = {}
+
+    def note_problem(stage: str, problem: str) -> None:
+        stages = stage_problems.setdefault(problem, [])
+        if stage not in stages:
+            stages.append(stage)
 
     def stage_usable(bom_result, stage_file, stage) -> bool:
         """Whether one lifecycle stage produced a document worth scanning.
@@ -1956,9 +2039,9 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         if getattr(bom_result, "returncode", None) == 4:
             introspection_gate_missed.append(stage_file)
         for reason in _atom_not_assessed(bom_result):
+            note_problem(stage, reason)
             if reason not in not_assessed:
                 not_assessed.append(reason)
-                LOG.warning("Not assessed: %s", reason)
         if getattr(bom_result, "returncode", None) not in (
             None,
             0,
@@ -1969,7 +2052,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         if not os.path.exists(stage_file):
             reason = f"cdxgen reported success but the {stage} lifecycle BOM was not written"
             not_assessed.append(reason)
-            LOG.warning("Not assessed: %s", reason)
+            note_problem(stage, "cdxgen reported success but did not write the BOM")
             return False
         return True
 
@@ -1983,7 +2066,11 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         """
         reason = _cdxgen_failure_reason(bom_result, f"{stage} lifecycle")
         not_assessed.append(reason)
-        LOG.warning("Not assessed: %s", reason)
+        note_problem(
+            stage,
+            f"cdxgen {_cdxgen_status(bom_result)}, so no document was written. "
+            f"{_cdxgen_failure_hint()}",
+        )
 
     with console_status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
@@ -2045,7 +2132,8 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
                 container_image_name, container_bom_file, logger=LOG, options=coptions
             ).generate()
             if not stage_usable(bom_result, container_bom_file, "container"):
-                LOG.warning(
+                # The container stage's not-assessed line is the warning.
+                LOG.debug(
                     "No container BOM was generated for the image %s, so its "
                     "packages are missing from this scan.",
                     container_image_name,
@@ -2058,6 +2146,13 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
                 "Set the environment variable DEPSCAN_SOURCE_IMAGE to the name of the container image to include its components."
             )
         status.update("Preparing blint for post-build BOM generation.")
+    for problem, stages in stage_problems.items():
+        LOG.warning(
+            "Not assessed (%s lifecycle %s): %s",
+            " and ".join(stages),
+            "BOM" if len(stages) == 1 else "BOMs",
+            problem,
+        )
     # post-build BOM with blint
     coptions = {
         **options,

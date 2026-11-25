@@ -179,9 +179,13 @@ TOOL_PURL_TYPES = {
 }
 
 
-def _purl_type(ref: str) -> str:
+def purl_type(ref: str) -> str:
+    """The lower-case purl type of ``ref``, or an empty string."""
     head = comparable_purl(ref).split("/", 1)[0]
     return head[4:].lower() if head.lower().startswith("pkg:") else ""
+
+
+_purl_type = purl_type
 
 
 def reached_by_analyzer(records: Iterable[Evidence]) -> Dict[str, Dict[str, Set[str]]]:

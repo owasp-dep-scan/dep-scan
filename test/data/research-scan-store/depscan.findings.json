@@ -1,0 +1,511 @@
+{
+  "schemaVersion": "2",
+  "findings": [
+    {
+      "id": "dsf1:046da451c14f053f08e941dc9eeae8ece490449f0ee10c591ded382b59aa80f4",
+      "category": "vulnerability",
+      "rule": "CVE-2026-25645",
+      "title": "CVE-2026-25645 affects pkg:pypi/requests@2.31.0",
+      "severity": "medium",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0a3"
+      },
+      "cwes": [
+        377
+      ],
+      "components": [
+        "pkg:pypi/requests@2.31.0"
+      ],
+      "exploitability": {
+        "axes": {
+          "presence": "proven",
+          "reach": "likely",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "reached",
+        "unassessed": [
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "reach": [
+            "atom"
+          ],
+          "presence": [
+            "vdb",
+            "cdxgen",
+            "atom"
+          ]
+        },
+        "witness": "ev-4fec978c2d07cfc1"
+      },
+      "fix": {
+        "fixed_versions": [
+          "2.33.0"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-gc5v-m9x4-r6x2",
+          "type": "advisory"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-25645",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-gc5v-m9x4-r6x2",
+          "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:prioritized",
+          "value": "false"
+        },
+        {
+          "name": "depscan:insights",
+          "value": "Endpoint-Reachable\\nUsed in 3 locations"
+        },
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "reached"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "proven"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
+        }
+      ]
+    },
+    {
+      "id": "dsf1:051156050d1997a2cb9f0d66fde02338813c7838215cb72355144d5ffad42828",
+      "category": "vulnerability",
+      "rule": "CVE-2024-47081",
+      "title": "CVE-2024-47081 affects pkg:pypi/requests@2.31.0",
+      "severity": "medium",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0a3"
+      },
+      "cwes": [
+        522
+      ],
+      "components": [
+        "pkg:pypi/requests@2.31.0"
+      ],
+      "exploitability": {
+        "axes": {
+          "presence": "proven",
+          "reach": "likely",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "reached",
+        "unassessed": [
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "reach": [
+            "atom"
+          ],
+          "presence": [
+            "vdb",
+            "cdxgen",
+            "atom"
+          ]
+        },
+        "witness": "ev-4fec978c2d07cfc1"
+      },
+      "fix": {
+        "fixed_versions": [
+          "2.32.4"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-9hjg-9r4m-mvj7",
+          "type": "advisory"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-47081",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-9hjg-9r4m-mvj7",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/requests/PYSEC-2026-1872.yaml",
+          "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:prioritized",
+          "value": "true"
+        },
+        {
+          "name": "depscan:insights",
+          "value": "Endpoint-Reachable and Exploitable\\nReachable and Exploitable\\nUsed in 3 locations"
+        },
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "reached"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "proven"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
+        }
+      ]
+    },
+    {
+      "id": "dsf1:b5efe2b71170b3bd29c7a6edf83a963a903a9f7b936a0d40781fbed46a6fde94",
+      "category": "vulnerability",
+      "rule": "CVE-2024-35195",
+      "title": "CVE-2024-35195 affects pkg:pypi/requests@2.31.0",
+      "severity": "medium",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0a3"
+      },
+      "cwes": [
+        670
+      ],
+      "components": [
+        "pkg:pypi/requests@2.31.0"
+      ],
+      "exploitability": {
+        "axes": {
+          "presence": "proven",
+          "reach": "likely",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "reached",
+        "unassessed": [
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "reach": [
+            "atom"
+          ],
+          "presence": [
+            "vdb",
+            "cdxgen",
+            "atom"
+          ]
+        },
+        "witness": "ev-4fec978c2d07cfc1"
+      },
+      "fix": {
+        "fixed_versions": [
+          "2.32.0"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://github.com/psf/requests/security/advisories/GHSA-9wx4-h78v-vm56",
+          "type": "advisory"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-35195",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-9wx4-h78v-vm56",
+          "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:prioritized",
+          "value": "false"
+        },
+        {
+          "name": "depscan:insights",
+          "value": "Endpoint-Reachable\\nUsed in 3 locations"
+        },
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "reached"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "proven"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
+        }
+      ]
+    },
+    {
+      "id": "dsf1:d38e5e3db1457dffa0ac88cfa725dbbf04bf035271d93250da692922fc88595f",
+      "category": "vulnerability",
+      "rule": "CVE-2026-27205",
+      "title": "CVE-2026-27205 affects pkg:pypi/flask@2.2.0",
+      "severity": "low",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0a3"
+      },
+      "cwes": [
+        524
+      ],
+      "components": [
+        "pkg:pypi/flask@2.2.0"
+      ],
+      "exploitability": {
+        "axes": {
+          "presence": "proven",
+          "reach": "likely",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "reached",
+        "unassessed": [
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "reach": [
+            "atom"
+          ],
+          "presence": [
+            "vdb",
+            "cdxgen",
+            "atom"
+          ]
+        },
+        "witness": "ev-a75f0977c38ceea7"
+      },
+      "fix": {
+        "fixed_versions": [
+          "3.1.3"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://github.com/pallets/flask/security/advisories/GHSA-68rp-wp8r-4726",
+          "type": "advisory"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-27205",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-68rp-wp8r-4726",
+          "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:prioritized",
+          "value": "false"
+        },
+        {
+          "name": "depscan:insights",
+          "value": "Endpoint-Reachable\\nUsed in 5 locations"
+        },
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "reached"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "proven"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
+        }
+      ]
+    },
+    {
+      "id": "dsf1:58c46916ab0bc992999b54c20af8aa89e0e10f6f0b606c3831a071226ca46cec",
+      "category": "vulnerability",
+      "rule": "CVE-2023-30861",
+      "title": "CVE-2023-30861 affects pkg:pypi/flask@2.2.0",
+      "severity": "high",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0a3"
+      },
+      "cwes": [
+        539
+      ],
+      "components": [
+        "pkg:pypi/flask@2.2.0"
+      ],
+      "exploitability": {
+        "axes": {
+          "presence": "proven",
+          "reach": "likely",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "reached",
+        "unassessed": [
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "reach": [
+            "atom"
+          ],
+          "presence": [
+            "vdb",
+            "cdxgen",
+            "atom"
+          ]
+        },
+        "witness": "ev-a75f0977c38ceea7"
+      },
+      "fix": {
+        "fixed_versions": [
+          "2.2.5"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://github.com/pallets/flask/security/advisories/GHSA-m2qf-hxjv-5gpq",
+          "type": "advisory"
+        },
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2023-30861",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/pypa/advisory-database/tree/main/vulns/flask/PYSEC-2023-62.yaml",
+          "type": "advisory"
+        },
+        {
+          "url": "https://security.netapp.com/advisory/ntap-20230818-0006",
+          "type": "advisory"
+        },
+        {
+          "url": "https://www.debian.org/security/2023/dsa-5442",
+          "type": "advisory"
+        },
+        {
+          "url": "https://github.com/advisories/GHSA-m2qf-hxjv-5gpq",
+          "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:prioritized",
+          "value": "true"
+        },
+        {
+          "name": "depscan:insights",
+          "value": "Endpoint-Reachable\\nUsed in 5 locations"
+        },
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "reached"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "proven"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
+        }
+      ]
+    }
+  ]
+}

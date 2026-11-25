@@ -586,21 +586,9 @@ def _vdr_outputs(ctx, tscan):
 
     Recorded when the stage has run, so the manifest maps the file to the
     project type that produced it, which the file name alone does not always
-    carry. A BOM directory scan with a separate reports directory writes its
-    VDR next to the BOMs, outside the scan directory; that output is recorded
-    as not assessed so the directory never loads as a clean scan.
+    carry. The VDR is always written into the reports directory.
     """
-    inside = _relative_output(ctx, tscan.vdr_file)
-    if inside or not (tscan.vdr_file and os.path.isfile(tscan.vdr_file)):
-        return inside
-    return [
-        {
-            "file": os.path.basename(tscan.vdr_file),
-            "status": "not-assessed",
-            "reason": "the VDR was written next to the BOM directory input, "
-            "outside the scan directory",
-        }
-    ]
+    return _relative_output(ctx, tscan.vdr_file)
 
 
 def _result_from_context(ctx) -> ScanResult:

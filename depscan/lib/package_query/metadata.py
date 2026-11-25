@@ -157,9 +157,10 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
             if circuit_breaker:
                 for f in future_to_pkg:
                     f.cancel()
-                LOG.info(
-                    "Risk audited has been interrupted due to frequent api "
-                    "errors. Please try again later."
+                LOG.warning(
+                    "The risk audit was stopped after %d failed registry requests, "
+                    "so its results are missing from this scan. Try again later.",
+                    failure_count,
                 )
                 progress.stop()
                 return {}

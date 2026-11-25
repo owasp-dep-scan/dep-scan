@@ -621,9 +621,7 @@ def test_fixture_is_a_valid_scan_directory():
     assert len(record["path"]) == 5
     index = json.loads((FIXTURE_DIR / "evidence.index.json").read_text())
     assert index["byComponent"] == {"pkg:pypi/requests@2.32.1": [record["id"]]}
-    assert index["byFinding"] == {
-        f"{finding['id']} {finding['components'][0]}": [record["id"]]
-    }
+    assert index["byFinding"] == {f"{finding['id']} {finding['components'][0]}": [record["id"]]}
     assert finding["exploitability"]["axes"]["reach"] == "likely"
     assert finding["exploitability"]["sources"]["reach"] == ["atom"]
     assert finding["exploitability"]["witness"] == record["id"]
@@ -820,6 +818,70 @@ def test_an_installed_analyzer_without_a_report_is_not_reported_as_completed(
         assert analyzers[name]["reason"].startswith(
             f"no {name} report was found in the BOM directory"
         ), analyzers[name]["reason"]
+
+
+def _warned_analyzers(monkeypatch):
+    """The language analyzers the BOM-directory discovery warns about, by
+    name."""
+    from depscan.lib import bom as bom_module
+
+    warned = []
+    original = bom_module.LOG.warning
+
+    def record(message, *args, **kwargs):
+        if args and "reachability was not assessed" in message:
+            if args[0] in ("rusi", "golem", "kosi", "dosai"):
+                warned.append(args[0])
+        return original(message, *args, **kwargs)
+
+    monkeypatch.setattr(bom_module.LOG, "warning", record)
+    return warned
+
+
+def test_a_bom_dir_without_a_language_does_not_warn_about_its_tool(
+    scan_stubs, fake_tools, tmp_path, monkeypatch
+):
+    """A Python BOM directory carries nothing for rusi, golem, kosi or dosai:
+    the manifest still records each as not assessed, but the console does
+    not warn about tools that could never apply."""
+    warned = _warned_analyzers(monkeypatch)
+    analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, ["atom"]).manifest)
+    for name in ("rusi", "golem", "dosai", "kosi"):
+        assert analyzers[name]["status"] == "not-assessed"
+    assert warned == []
+
+
+def test_a_bom_dir_with_go_components_warns_about_the_missing_golem_report(
+    scan_stubs, fake_tools, tmp_path, monkeypatch
+):
+    """A BOM with a Go module and no golem report is a real gap, so it is
+    still a warning; the tools that do not apply stay quiet."""
+    warned = _warned_analyzers(monkeypatch)
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    bom_path = bom_dir / "sbom-universal.cdx.json"
+    _write_bom(bom_path)
+    bom = json.loads(bom_path.read_text())
+    bom["components"].append(
+        {
+            "name": "github.com/gorilla/mux",
+            "version": "v1.8.1",
+            "purl": "pkg:golang/github.com/gorilla/mux@v1.8.1",
+            "bom-ref": "pkg:golang/github.com/gorilla/mux@v1.8.1",
+            "type": "library",
+        }
+    )
+    bom_path.write_text(json.dumps(bom))
+    api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    assert warned == ["golem"]
 
 
 def test_analyzers_are_not_listed_when_reachability_is_off(scan_stubs, fake_tools, tmp_path):
@@ -1236,9 +1298,9 @@ def test_a_failed_lifecycle_sub_run_is_named_and_the_written_documents_listed(
         {"file": "sbom-postbuild-universal.cdx.json", "status": "completed"},
         {"file": "sbom-prebuild-universal.cdx.json", "status": "completed"},
     ]
-    assert any(
-        "build lifecycle" in reason for reason in inventory["notAssessed"]
-    ), "the failed sub-run is named"
+    assert any("build lifecycle" in reason for reason in inventory["notAssessed"]), (
+        "the failed sub-run is named"
+    )
 
 
 def test_a_failed_blint_review_is_a_failed_manifest_stage(scan_stubs, monkeypatch, tmp_path):
@@ -1271,9 +1333,7 @@ def test_a_failed_blint_review_is_a_failed_manifest_stage(scan_stubs, monkeypatc
         render=False,
     )
     assert result.manifest is not None
-    review = next(
-        stage for stage in result.manifest["stages"] if stage["name"] == "binary-review"
-    )
+    review = next(stage for stage in result.manifest["stages"] if stage["name"] == "binary-review")
     assert review["status"] == "failed"
     assert review["reason"] == reason
     assert review["capabilities"] == ["binary"]
@@ -1320,7 +1380,10 @@ def test_a_license_scan_counts_the_packages_without_license_data(
     monkeypatch.setattr(
         pipeline,
         "get_pkg_list",
-        lambda f: ([{"purl": "pkg:pypi/requests@2.32.1", "name": "requests", "version": "2.32.1"}], []),
+        lambda f: (
+            [{"purl": "pkg:pypi/requests@2.32.1", "name": "requests", "version": "2.32.1"}],
+            [],
+        ),
     )
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
@@ -1800,9 +1863,11 @@ def test_documented_manifest_fields_match_the_schema():
     assert scan_directory.manifest_fields_markdown() in page.read_text(encoding="utf-8")
 
 
-def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_path):
+def test_a_bom_directory_scan_keeps_its_vdr_in_the_scan_directory(scan_stubs, tmp_path):
     """A BOM directory scan with its own reports directory writes the VDR
-    next to the BOMs; the scan directory must not load as clean."""
+    there, never next to the BOMs, and the directory loads with its finding.
+    A manifest from an older scan that recorded the VDR as written outside
+    the directory still refuses to load as clean."""
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
     _write_bom(bom_dir / "a.cdx.json", name="a")
@@ -1813,9 +1878,17 @@ def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_p
         render=False,
     )
     assert result.vulnerabilities, "the scan itself found the stubbed vulnerability"
+    assert sorted(p.name for p in bom_dir.iterdir()) == ["a.cdx.json", "b.cdx.json"]
     vdr_stage = next(s for s in (result.manifest or {})["stages"] if s["name"] == "vdr")
-    assert vdr_stage["outputs"][0]["status"] == "not-assessed"
-    assert not os.path.isabs(vdr_stage["outputs"][0]["file"])
+    assert vdr_stage["outputs"] == [{"file": "depscan-universal.vdr.json", "status": "completed"}]
+    assert api.load_scan(str(reports)).vulnerabilities
+    # The refusal for an older manifest stays.
+    manifest_path = reports / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    next(s for s in manifest["stages"] if s["name"] == "vdr")["outputs"] = [
+        {"file": "depscan-universal.vdr.json", "status": "not-assessed", "reason": "outside"}
+    ]
+    manifest_path.write_text(json.dumps(manifest))
     with pytest.raises(api.ScanError, match="outside the scan directory"):
         api.load_scan(str(reports))
 

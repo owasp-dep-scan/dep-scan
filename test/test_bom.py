@@ -610,9 +610,9 @@ def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog
     assert "CDXGEN_TIMEOUT_MS" in result.failure_reason
     assert CDXGEN_TIMEOUT_MS in result.failure_reason, "the reason names the budget in effect"
     assert "raise CDXGEN_TIMEOUT_MS" in result.failure_reason
-    assert any("CDXGEN_TIMEOUT_MS" in message for message in caplog.messages), (
-        "the console names the budget too"
-    )
+    # The inventory stage logs the reason, budget included, as the scan's one
+    # error line; the generator does not log it a second time.
+    assert not any("CDXGEN_TIMEOUT_MS" in message for message in caplog.messages)
 
 
 def test_create_bom_requires_cdxgen_server_url(tmp_path):
@@ -626,6 +626,7 @@ def test_create_bom_requires_cdxgen_server_url(tmp_path):
 
     assert result.success is False
     assert result.bom_files == []
+    assert "--cdxgen-server" in (result.failure_reason or "")
 
 
 def test_lifecycle_boms_report_stage_files_and_no_primary(tmp_path, monkeypatch):
@@ -966,3 +967,125 @@ def test_a_check_appended_technique_never_narrows_the_cdxgen_inventory(tmp_path,
     result = bom_mod.create_bom(str(tmp_path / "b2.json"), str(tmp_path), options=user_only)
     assert result.success, result.failure_reason
     assert seen["techniques"] == [["binary-analysis", "filename"]]
+
+
+@pytest.mark.parametrize(
+    "project_type,engine,lifecycle_expected",
+    [
+        ("oci", "auto", False),
+        ("os", "auto", False),
+        # Positive control: a source type keeps the lifecycle run it asked for.
+        ("python", "CdxgenGenerator", True),
+    ],
+)
+def test_lifecycle_mode_is_turned_off_for_container_and_os_types(
+    tmp_path, monkeypatch, caplog, project_type, engine, lifecycle_expected
+):
+    """The generator warns that lifecycle analysis is not supported for
+    container and OS types, so it must also not run the lifecycle stages
+    for them: a single BOM is generated instead."""
+    from depscan.lib import bom as bom_mod
+
+    lifecycle_calls = []
+
+    def fake_lifecycle(cdxgen_lib, src_dir, options):
+        lifecycle_calls.append(src_dir)
+        return bom_mod.BomResult(success=False)
+
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
+    monkeypatch.setattr(bom_mod, "create_lifecycle_boms", fake_lifecycle)
+    for runner in (
+        "run_rusi_reachability",
+        "run_golem_reachability",
+        "run_kosi_reachability",
+        "run_dosai_reachability",
+    ):
+        monkeypatch.setattr(bom_mod, runner, lambda *a, **k: None)
+
+    target = str(tmp_path / f"sbom-{project_type}.cdx.json")
+    with caplog.at_level("WARNING"):
+        result = bom_mod.create_bom(
+            target,
+            str(tmp_path),
+            {
+                "project_type": [project_type],
+                "bom_engine": engine,
+                "lifecycle_analysis_mode": True,
+            },
+        )
+    warned = [r for r in caplog.records if "Lifecycle analysis is not supported" in r.message]
+    if lifecycle_expected:
+        assert lifecycle_calls == [str(tmp_path)]
+        assert not warned
+    else:
+        assert lifecycle_calls == [], "the warning says lifecycle analysis does not run"
+        assert len(warned) == 1
+        assert result.success is True
+        assert result.bom_files == [target]
+
+
+def test_lifecycle_stage_failures_share_one_warning(tmp_path, monkeypatch, caplog):
+    """The build and pre-build stages failing the same way give one console
+    line naming both stages; the manifest keeps one reason per stage."""
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    options = {
+        "prebuild_bom_file": str(tmp_path / "sbom-prebuild-rust.cdx.json"),
+        "build_bom_file": str(tmp_path / "sbom-build-rust.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild-rust.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container-rust.cdx.json"),
+        "reachability_analyzer": "off",
+    }
+    with caplog.at_level("WARNING"):
+        result = bom_mod.create_lifecycle_boms(
+            _fake_generator(success=False, writes=False), str(tmp_path), options
+        )
+    stage_reasons = [r for r in result.not_assessed if r.startswith("cdxgen did not finish")]
+    # Positive control: both stages failed and each has its own reason.
+    assert len(stage_reasons) == 2, result.not_assessed
+    lines = [r.message for r in caplog.records if r.message.startswith("Not assessed")]
+    assert len(lines) == 1, lines
+    assert "build and pre-build lifecycle BOMs" in lines[0]
+    assert "Rerun with --debug" in lines[0]
+
+
+@pytest.mark.parametrize("doctor_explains", [False, True])
+def test_a_missing_language_tool_warns_once(tmp_path, monkeypatch, caplog, doctor_explains):
+    """A missing rusi binary gives exactly one warning: the doctor's reason
+    from the reachability dispatch when the doctor report explains it,
+    otherwise the fallback's own line. The runner logs at debug level."""
+    from xbom_lib import rusi as rusi_mod
+
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(rusi_mod, "find_rusi_binary", lambda logger=None: None)
+    reason = "capability reachability:rust is unavailable: tool:rusi (rusi was not found)"
+    monkeypatch.setattr(
+        bom_mod,
+        "_capability_unavailable_reason",
+        lambda name, options: reason if doctor_explains else None,
+    )
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "Cargo.toml").write_text('[package]\nname = "demo"\nversion = "0.1.0"\n')
+    bom_file = tmp_path / "sbom-rust.cdx.json"
+    bom_file.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
+    with caplog.at_level("DEBUG"):
+        result = bom_mod.run_rusi_reachability(
+            str(bom_file),
+            str(src),
+            {"project_type": ["rust"], "reachability_analyzer": "FrameworkReachability"},
+        )
+    assert result is not None and result.status == "not-assessed"
+    # Positive control: the runner did look for the binary and said so.
+    assert any(
+        r.levelname == "DEBUG" and "rusi binary not found" in r.message for r in caplog.records
+    )
+    warnings = [r.message for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1, warnings
+    if doctor_explains:
+        assert warnings[0] == f"rusi reachability was not assessed: {reason}"
+    else:
+        assert warnings[0].startswith("rusi reachability was not assessed: rusi binary not found")

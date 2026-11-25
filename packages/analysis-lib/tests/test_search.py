@@ -404,6 +404,31 @@ def test_search_guarding_coverage_warns_instead_of_raising(monkeypatch, caplog):
     assert not caplog.records
 
 
+def test_search_guarding_coverage_is_quiet_for_a_reported_type(monkeypatch, caplog):
+    """A type the shard coverage report already warned about is not warned
+    about again by the search; an unreported type still is."""
+    import logging
+
+    from vdb.lib.search import ShardCoverageError
+
+    from analysis_lib import search as search_mod
+
+    monkeypatch.setattr(search_mod, "_WARNED_UNCOVERED_TYPES", set())
+    search_mod.mark_uncovered_types_reported(["swift"])
+
+    def raising_logic(term, **kwargs):
+        raise ShardCoverageError(f"no local shard serves {term}")
+
+    with caplog.at_level(logging.DEBUG, logger="depscan.analysis_lib"):
+        assert search_mod.search_guarding_coverage(raising_logic, "pkg:swift/a@1.0.0") == []
+        assert search_mod.search_guarding_coverage(raising_logic, "pkg:pub/b@1.0.0") == []
+    swift = [r for r in caplog.records if "'swift'" in r.getMessage()]
+    pub = [r for r in caplog.records if "'pub'" in r.getMessage()]
+    assert [r.levelname for r in swift] == ["DEBUG"]
+    # Positive control: an unreported type still warns.
+    assert [r.levelname for r in pub] == ["WARNING"]
+
+
 def test_search_guarding_coverage_passes_results_through():
     from analysis_lib import search as search_mod
 

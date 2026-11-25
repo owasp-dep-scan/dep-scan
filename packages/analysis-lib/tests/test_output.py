@@ -122,7 +122,10 @@ def test_caption_counts_id_affects_pairs():
     vulnerability count whenever the merge collapsed components."""
     vdr_a = _merged_vdr(
         "CVE-2026-41305",
-        [_affects_entry(p, fix_version="8.5.0") for p in (POSTCSS_8431, POSTCSS_8449, POSTCSS_8554)],
+        [
+            _affects_entry(p, fix_version="8.5.0")
+            for p in (POSTCSS_8431, POSTCSS_8449, POSTCSS_8554)
+        ],
         matched_by=POSTCSS_8431,
     )
     vdr_b = _merged_vdr(
@@ -280,9 +283,7 @@ def test_reporter_bom_fixture_shows_best_fix_per_group_on_top():
     assert "3.0.5" not in rendered
     # The postcss group's top row is CVE-2026-73646, which has no own fix —
     # the group's best fix still lands on that row.
-    top_row_line = next(
-        line for line in rendered.splitlines() if "CVE-2026-73646" in line
-    )
+    top_row_line = next(line for line in rendered.splitlines() if "CVE-2026-73646" in line)
     assert "8.5.10" in top_row_line
     # And no other postcss row repeats it
     assert rendered.count("8.5.10") == 1
@@ -354,6 +355,89 @@ def test_each_merged_component_row_shows_its_own_grade():
     assert list(table.columns[-1].cells) == ["moderate\nreached", "moderate\nreached"]
     # The summary counts pairs, as the caption does.
     assert exploitability_grade_stats(graded) == {"moderate": 1, "low": 1}
+
+
+def _next_steps(insights, fix_version, identities, reached=None, endpoint=None, purls=None):
+    from analysis_lib.output import find_next_steps
+
+    return find_next_steps(
+        "pkg:pypi/requests",
+        ["CVE-2024-47081"],
+        insights,
+        fix_version,
+        reached or {},
+        {},
+        endpoint or {},
+        {},
+        {},
+        {},
+        identities,
+        {},
+        purls,
+    )
+
+
+def test_next_steps_read_reachability_by_the_versioned_purls_of_the_findings():
+    """The reached sets are keyed by versioned purl while the priority table
+    groups findings by the package without its version, so the lookup uses
+    the versioned purls the findings are about."""
+    endpoint = {"pkg:pypi/requests@2.31.0": 6}
+    blind = _next_steps(["Exploitable"], "2.33.0", {}, endpoint=endpoint)
+    assert blind["is_endpoint_reachable"] is False
+    seen = _next_steps(
+        ["Exploitable"], "2.33.0", {}, endpoint=endpoint, purls={"pkg:pypi/requests@2.31.0"}
+    )
+    assert seen["is_endpoint_reachable"] is True
+    assert "unreachable" in seen["next_step_str"]
+    # A version the finding is not about does not count.
+    other = _next_steps(
+        ["Exploitable"], "2.33.0", {}, endpoint=endpoint, purls={"pkg:pypi/requests@2.0.0"}
+    )
+    assert other["is_endpoint_reachable"] is False
+
+
+def test_next_steps_never_deny_a_reach_the_insights_state():
+    """A finding the insights call endpoint-reachable and exploitable gets the
+    reachable advice, and the advice for exploits without a reachable flow
+    says that no flow was found instead of calling the CVEs harmless."""
+    reachable = _next_steps(["Endpoint-Reachable and Exploitable"], "2.33.0", {})
+    assert reachable["is_endpoint_reachable"] is True
+    assert "harmless" not in reachable["next_step_str"]
+    assert "unreachable" in reachable["next_step_str"]
+    unreached = _next_steps(["Exploitable"], "2.33.0", {})
+    assert unreached["is_reachable"] is False
+    assert "harmless" not in unreached["next_step_str"]
+    assert "did not find a reachable flow" in unreached["next_step_str"]
+
+
+def _identity(technique, value):
+    return {
+        "pkg:pypi/requests": [
+            {
+                "field": "purl",
+                "methods": [{"technique": technique, "confidence": 1, "value": value}],
+            }
+        ]
+    }
+
+
+def test_a_package_installed_into_the_cdxgen_venv_is_not_a_deployed_binary():
+    """cdxgen records the virtual environment it installed a source project's
+    dependencies into as ``instrumentation``. The package is not bundled
+    anywhere, so the bundling advice does not apply, and the manifest line
+    that source detection earns is not lost."""
+    result = _next_steps([], "2.33.0", _identity("instrumentation", "cdxgen-venv-7jGBqF"))
+    assert result["is_binary_detection"] is False
+    assert result["is_deployed"] is False
+    assert "bundling" not in result["next_step_str"]
+    assert result["next_step_str"].startswith("Update to version '2.33.0'")
+
+
+def test_a_traced_package_is_still_a_deployed_binary():
+    """A runtime trace of a package keeps the deployed-dependency advice."""
+    result = _next_steps([], "2.33.0", _identity("instrumentation", "pkg:pypi/requests@2.31.0"))
+    assert result["is_binary_detection"] is True
+    assert "bundling" in result["next_step_str"]
 
 
 def test_next_steps_count_the_fail_safe_label_as_known_exploits():

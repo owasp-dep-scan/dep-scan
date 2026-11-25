@@ -223,14 +223,10 @@ def test_the_container_run_command_carries_the_excluded_types(tmp_path):
 
 def _env_values(run_command_args):
     """The values of the docker run command's -e arguments."""
-    return [
-        run_command_args[i + 1] for i, arg in enumerate(run_command_args) if arg == "-e"
-    ]
+    return [run_command_args[i + 1] for i, arg in enumerate(run_command_args) if arg == "-e"]
 
 
-def test_the_container_run_command_names_the_mount_point_for_the_temp_dir(
-    monkeypatch, tmp_path
-):
+def test_the_container_run_command_names_the_mount_point_for_the_temp_dir(monkeypatch, tmp_path):
     """A caller-provided temp directory is mounted at /tmp inside the
     container, and the environment the container sees must name /tmp: the
     host path does not exist inside the container, and the image's cdxgen
@@ -483,9 +479,9 @@ def test_the_logging_handler_is_attached_to_the_stderr_console():
     assert proc.stdout == ""
 
 
-def test_progress_panels_write_on_stderr(tmp_path, capfd, monkeypatch):
-    """The pipeline's progress panels, the license audit announcement here,
-    print on the log console: stderr, not stdout."""
+def test_license_audit_announcement_is_a_log_line(tmp_path, capfd, caplog, monkeypatch):
+    """The license audit announcement is one INFO log line, which goes to the
+    log console, and never a panel on stdout."""
     monkeypatch.delenv("FETCH_LICENSE", raising=False)
     src = tmp_path / "src"
     src.mkdir()
@@ -503,12 +499,14 @@ def test_progress_panels_write_on_stderr(tmp_path, capfd, monkeypatch):
     )
     ctx = pipeline.build_context(args)
     pipeline.stage_setup(ctx)
-    pipeline.finalize_setup(ctx)
+    with caplog.at_level("INFO", logger=pipeline.LOG.name):
+        pipeline.finalize_setup(ctx)
 
     captured = capfd.readouterr()
     # Positive control: the license analysis really turned on.
     assert os.environ["FETCH_LICENSE"] == "true"
-    assert "License audit is enabled" in captured.err
+    announced = [r for r in caplog.records if "License audit is enabled" in r.getMessage()]
+    assert [r.levelname for r in announced] == ["INFO"]
     assert "License audit is enabled" not in captured.out
 
 

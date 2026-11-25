@@ -287,10 +287,10 @@ def export_csaf(
             errors[:3],
         )
     else:
-        LOG.info("CSAF document is valid against the CSAF %s schema.", csaf_version)
+        LOG.debug("CSAF document is valid against the CSAF %s schema.", csaf_version)
 
     os.makedirs(reports_dir, exist_ok=True)
     with open(outfile, "w") as fh:
         json.dump(doc, fh, indent=2, sort_keys=True)
-    LOG.info("CSAF report written to %s", outfile)
+    LOG.debug("CSAF report written to %s", outfile)
     return outfile, errors

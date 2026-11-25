@@ -62,7 +62,7 @@ directory an earlier scan produced), copy it aside first and say so.
 Every completed scan of a source, container or BOM target writes the
 CycloneDX VDR next to the BOM in the reports directory, named after it:
 `sbom-<type>.vdr.json` (for example `sbom-docker.vdr.json`), or
-`depscan-universal.vdr.json` for a BOM directory. A purl scan writes no
+`depscan-universal.vdr.json` for the universal BOM and for a BOM directory. A purl scan writes no
 VDR.
 
 Each VDR vulnerability carries the exploitability assessment as
@@ -78,7 +78,7 @@ changes a CSAF product status and is never a `not_affected` justification.
 
 ```bash
 depscan validate /absolute/path/to/reports/sbom-universal.csaf.json --format json
-depscan validate /absolute/path/to/reports/sbom-universal.vdr.json --format json
+depscan validate /absolute/path/to/reports/depscan-universal.vdr.json --format json
 ```
 
 The results document carries one `{"file", "format", "valid", "errors"}`

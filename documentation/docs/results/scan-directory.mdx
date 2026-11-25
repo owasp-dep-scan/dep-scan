@@ -8,7 +8,9 @@ description: The layout a scan writes, its manifest and findings files, and how 
 
 Every scan writes one directory, and everything that reads a scan afterwards reads only that directory: `depscan report`, the MCP server, the Python API and any script. The directory is self-describing. Its manifest records what the scan read, which tools ran, which did not and why, so a scan directory can be interpreted, filtered or diffed without re-running anything, on another machine, months later.
 
-The directory is the reports directory named by `-o`/`--reports-dir` or `DEPSCAN_REPORTS_DIR`, `reports` under the current directory by default. One case reuses an existing directory: when the scan's only target is a single BOM directory and no reports directory was named, that BOM directory is the reports directory, so the manifest, the findings file and the VDR land next to the BOMs. Several targets write `<reports-dir>/<n>-<name>/` per target.
+The directory is the reports directory named by `-o`/`--reports-dir` or `DEPSCAN_REPORTS_DIR`, `reports` under the current directory by default. One case reuses an existing directory: when the scan's only target is a single BOM directory and no reports directory was named, that BOM directory is the reports directory, so the manifest, the findings file and the VDR land next to the BOMs. Several targets write `<reports-dir>/<n>-<name>/` per target. With a reports directory named, nothing is written into the BOM directory: the VDR, the manifest and every other output go to the reports directory.
+
+The VDR is named `depscan-universal.vdr.json` whether the scan read the universal BOM (`sbom-universal.cdx.json`, which the default profile and `--profile research` both write) or a BOM directory. A scan of any other BOM writes `<bom>.vdr.json` beside it, for example `sbom-docker.vdr.json`. Scan directories written before this naming was unified hold `sbom-universal.vdr.json` instead; `depscan report` and `depscan.api.load_scan` read either name.
 
 ## The layout
 
@@ -19,7 +21,7 @@ reports/
 ├── evidence.jsonl                 the evidence store, one record per line
 ├── evidence.index.json            record ids by component purl and by finding
 ├── sbom-python.cdx.json           the BOM documents, named as before
-├── depscan-universal.vdr.json     the VDR files, named as before
+├── depscan-universal.vdr.json     the VDR, one per universal BOM or BOM directory
 ├── python-reachables.slices.json  the slice files cdxgen writes
 ├── analysis/
 │   ├── rusi/rusi.json             raw reports of the tools dep-scan runs itself

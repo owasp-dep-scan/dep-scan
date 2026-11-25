@@ -172,6 +172,11 @@ def _select_flavor(args):
     return flavor, legacy_flags
 
 
+def _log_severity_choice(detail: str) -> None:
+    """The one line saying how --severity meets the vdb image in use."""
+    LOG.info("--severity: %s.", detail)
+
+
 def resolve_scan_vdb_image(args):
     """Resolve the database image the scan should use, and its flavor.
 
@@ -197,11 +202,9 @@ def resolve_scan_vdb_image(args):
     pinned = os.getenv("VDB_DATABASE_URL") or getattr(args, "vdb_image", None)
     if pinned:
         if args.severity and "-extended" not in pinned:
-            LOG.info(
-                "--severity is set but a non-extended vdb image is pinned. The "
-                "severity floor is still applied to the final VDR. Use an "
-                "*-extended image (or clear the pin) to push the filter into "
-                "the search layer."
+            _log_severity_choice(
+                "the pinned vdb image has no metadata, so the severity floor is "
+                "still applied to the final VDR only"
             )
         return pinned, True, None
 
@@ -224,14 +227,11 @@ def resolve_scan_vdb_image(args):
     if "extended" in flavor:
         os.environ["VDB_INCLUDE_METADATA"] = "true"
     if args.severity and not explicit_choice:
-        LOG.info(
-            "--severity needs metadata search; using the extended vdb flavor (%s).",
-            flavor,
-        )
+        _log_severity_choice(f"using the {flavor} vdb flavor, which carries the metadata it needs")
     elif args.severity and "extended" not in flavor:
-        LOG.info(
-            "--severity is set with an explicitly chosen vdb flavor without "
-            "metadata. The severity floor is still applied to the final VDR."
+        _log_severity_choice(
+            f"the chosen {flavor} vdb flavor has no metadata, so the severity floor "
+            "is still applied to the final VDR only"
         )
     url = resolve_vdb_image_url(
         flavor=flavor, compression=getattr(args, "vdb_compression", None) or "xz"
@@ -373,6 +373,10 @@ def report_shard_coverage(purl_types, store_dir=None):
     coverage, _records = shard_store.coverage_for_types(purl_types, store_dir=store_dir)
     uncovered = sorted(coverage.uncovered_types)
     if uncovered:
+        # The searches that later hit these types log at debug level only.
+        from analysis_lib.search import mark_uncovered_types_reported
+
+        mark_uncovered_types_reported(uncovered)
         LOG.warning(
             "purl type(s) %s have no local shard, so components of those types "
             "were NOT assessed; this is not a clean result. Refresh the shards "
