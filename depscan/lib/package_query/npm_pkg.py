@@ -160,22 +160,6 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg) -> Dict[str, Any]:
                 bin_block_desc = f"{bin_block_desc}\n{k}: {v}"
             if bin_block_desc:
                 risk_metrics["pkg_includes_binary_info"] = f"Binary commands:{bin_block_desc}"
-        # Look for slsa attestations
-        if theversion.get("dist", {}).get("attestations") and theversion.get("dist", {}).get(
-            "signatures"
-        ):
-            attestations = theversion.get("dist").get("attestations")
-            signatures = theversion.get("dist").get("signatures")
-            if (
-                attestations.get("url").startswith("https://registry.npmjs.org/")
-                and attestations.get("provenance", {}).get("predicateType", "")
-                == "https://slsa.dev/provenance/v1"
-            ):
-                risk_metrics["pkg_attested_check"] = True
-                risk_metrics["pkg_attested_value"] = len(signatures)
-                risk_metrics["pkg_attested_info"] = "\n".join(
-                    [sig.get("keyid") for sig in signatures]
-                )
         # In some packages like biomejs, there would be no binary section
         # case 1: optional dependencies section might have a bunch of packages for each os
         # case 2: prebuild, prebuild-install, prebuildify in dependencies

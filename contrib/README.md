@@ -15,9 +15,6 @@ This folder holds the scripts, fixtures and research material that support dep-s
 - `dependency-track/` runs Dependency-Track beside dep-scan with docker compose; `lima/` starts an Ubuntu VM for scanning under Linux from a macOS host.
 - `schemas/` and the CycloneDX JSON Schema copies here back the offline validation.
 
-## Older tools, kept for reference
+## CI helpers
 
-- `trivy-compare.py` parses dep-scan's `depscan-<type>.json` as newline-delimited JSON, the shape dep-scan 6 wrote; dep-scan 7 writes one JSON array per file, so the script needs that change before it compares again.
-- `depscanGPT/README.md` carries prompt material for a ChatGPT-based assistant that reads dep-scan's reports; its advice predates the scan directory and the MCP server, both of which are better interfaces for an assistant today.
-- `dep-scan-gui.png` and `GUI_README.md` describe the retired web GUI.
-- `free_disk_space.sh` is a CI helper, not a dep-scan tool.
+- `free_disk_space.sh` frees disk space on GitHub's hosted runners before the image and repository tests.

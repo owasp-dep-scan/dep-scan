@@ -1418,7 +1418,6 @@ risk_help_text = {
     "pkg_version_deprecated": "Deprecated version",
     "pkg_version_missing": "Non-existent version",
     "pkg_includes_binary": "Includes binary",
-    "pkg_attested": "Has attestation",
     "pkg_private_on_public_registry": "Private package is public",
 }
 

@@ -20,7 +20,6 @@ with httpx.stream("GET", url=url, params=settings, timeout=30) as r:
                 if risk_metrics and (
                     risk_metrics["risk_score"] > 0.4
                     or risk_metrics.get("pkg_includes_binary_risk")
-                    or risk_metrics.get("pkg_attested_check")
                 ):
                     print(npm_pkg, risk_metrics)
             except Exception as e:
