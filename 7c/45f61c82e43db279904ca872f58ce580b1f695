@@ -1,0 +1,135 @@
+depscan/commands/translate.py
+  s_8c7c9bd4e9d139::t_90eb4d3ee78ca6 210
+test/data/scan-directory/depscan.manifest.json
+  s_8c7c9bd4e9d139::t_3e4a74d85ec303 52
+packages/analysis-lib/src/analysis_lib/output.py
+  s_8c7c9bd4e9d139::t_2969f7dcf4732e 6
+test/data/cdx-audit/direct-report.json
+  s_8c7c9bd4e9d139::t_035619b196130f 1-47,71-83,85-97,99-106
+  s_8c7c9bd4e9d139::t_37ae1e3e84c0b9 48-70,84,98
+test/test_scan_directory.py
+  s_8c7c9bd4e9d139::t_e1aeb4d6971efa 905
+  s_8c7c9bd4e9d139::t_0504bdecc08be7 1484
+  s_8c7c9bd4e9d139::t_17977fdfcb1004 34
+  s_8c7c9bd4e9d139::t_46de67b794346c 889
+  s_8c7c9bd4e9d139::t_f76acf55342239 882,884-887,890,893-894,902-904,906-919,1102-1103,1105-1107,1118
+packages/analysis-lib/tests/test_cdx_audit_adapter.py
+  s_8c7c9bd4e9d139::t_f37d9b0cfa0d27 194-206
+  s_8c7c9bd4e9d139::t_2b0059072373d6 1-193,207-236
+test/data/report-binary-clean/depscan.manifest.json
+  s_8c7c9bd4e9d139::t_3e4a74d85ec303 51
+depscan/lib/scan_directory.py
+  s_8c7c9bd4e9d139::t_e361ee84d45720 368-372
+  s_8c7c9bd4e9d139::t_3ed68d4366cc57 638,642-643,651-655,663,674-675
+depscan/lib/config.py
+  s_8c7c9bd4e9d139::t_c4f65d1dff9323 309
+test/conftest.py
+  s_8c7c9bd4e9d139::t_057c215130209d 114-159
+test/data/cdx-audit/predictive-report.json
+  s_8c7c9bd4e9d139::t_46faee72f22ba6 1-125,182-224
+  s_8c7c9bd4e9d139::t_37ae1e3e84c0b9 126-181
+test/data/report-binary/depscan.manifest.json
+  s_8c7c9bd4e9d139::t_3e4a74d85ec303 51
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdx_audit.py
+  s_8c7c9bd4e9d139::t_37145489d8e31b 1-25,27-90,92-106,108-144,146-329,331-352,355-375
+  s_8c7c9bd4e9d139::t_d84d003e61b3f5 353-354
+  s_8c7c9bd4e9d139::t_1102825eaf0767 91
+  s_8c7c9bd4e9d139::t_5892b11b4ab1f9 26
+  s_8c7c9bd4e9d139::t_f2e8405e494f67 330
+  s_8c7c9bd4e9d139::t_dfa64235c12a5c 107
+  s_8c7c9bd4e9d139::t_2079a77d246b29 145
+test/data/report-vdr/depscan.manifest.json
+  s_8c7c9bd4e9d139::t_3e4a74d85ec303 60
+depscan/commands/checks.py
+  s_8c7c9bd4e9d139::t_0bd5d37fc4cdcf 34-35
+packages/analysis-lib/src/analysis_lib/findings/cdx_audit_convert.py
+  s_8c7c9bd4e9d139::t_29ee4961ea2fc2 95-98,102
+  s_8c7c9bd4e9d139::t_99a93efaddc6e9 1-94,99-101,103-134,138,140-146,148-151,154,156
+  s_8c7c9bd4e9d139::t_20c820b6ca8432 135-137,147,152-153,155,157-164
+  s_8c7c9bd4e9d139::t_604a8601f25f5c 165
+  s_8c7c9bd4e9d139::t_d84d003e61b3f5 139
+test/test_v7_scan.py
+  s_8c7c9bd4e9d139::t_fe237b1488839b 135
+  s_8c7c9bd4e9d139::t_e1aeb4d6971efa 163
+  s_8c7c9bd4e9d139::t_46de67b794346c 133
+packages/analysis-lib/tests/test_cdx_audit_convert.py
+  s_8c7c9bd4e9d139::t_9282d1902d69b6 1-51,56-57,72,90-154
+  s_8c7c9bd4e9d139::t_4ff43e1b2e0264 52-55,58-71,73-89
+  s_8c7c9bd4e9d139::t_21bac1dfbe861f 155-171
+test/test_v7_output_contract.py
+  s_8c7c9bd4e9d139::t_03b61a7ecc3016 205,209-211,219-222,224,227-233
+  s_8c7c9bd4e9d139::t_fa10c03252a2ec 206-208,212-218,223,225-226
+depscan/lib/pipeline.py
+  s_8c7c9bd4e9d139::t_1847108b20432c 70
+  s_8c7c9bd4e9d139::t_9d86c009b5f7cd 111-116
+  s_8c7c9bd4e9d139::t_7c7120e3c1427d 39
+  s_8c7c9bd4e9d139::t_2e8ba3f4684eba 164-165,167-168,170-177
+  s_8c7c9bd4e9d139::t_fc392ab650782d 908
+  s_8c7c9bd4e9d139::t_db48300ec13719 1549-1558,1560-1565,1568-1616,1622-1626,1633-1647,1652-1653,1655-1656,1659-1663,1665-1718,1720-1735,1737-1740,1742-1760
+  s_8c7c9bd4e9d139::t_929f5cbf920c3d 1617-1621,1627-1629
+depscan/api.py
+  s_8c7c9bd4e9d139::t_da196f5282852d 324,327-329,331-332,334-335
+  s_8c7c9bd4e9d139::t_4dcc8b643c5f24 330,333
+  s_8c7c9bd4e9d139::t_f8d890e41fb683 191
+depscan/lib/cdx_audit.py
+  s_8c7c9bd4e9d139::t_6367f1e5c5a3a2 26-29
+  s_8c7c9bd4e9d139::t_6ff081c548e90c 1-25,30-225
+depscan/lib/doctor.py
+  s_8c7c9bd4e9d139::t_470b0740d67a6b 35
+  s_8c7c9bd4e9d139::t_6f40b47523bebc 357-361,366,368-369
+  s_8c7c9bd4e9d139::t_e0d6ef7d1aa9c4 891,985,987,1178,1197
+  s_8c7c9bd4e9d139::t_9e0bc94438cc00 323-332,344-356,362-365,367,370-373
+  s_8c7c9bd4e9d139::t_7a7644b21d25a8 333-343
+test/test_doctor.py
+  s_8c7c9bd4e9d139::t_e58873f2fa90ee 593-598,601,604,608,618-620
+  s_8c7c9bd4e9d139::t_4e3f0b5f0d5ba9 69,614-617,621-625
+  s_8c7c9bd4e9d139::t_8a6f85a40f5b7a 612-613
+  s_7318da1b9edd46::t_5f0009f2fb8241 626
+test/test_mcp_tools.py
+  s_8c7c9bd4e9d139::t_fe237b1488839b 171-172
+  s_8c7c9bd4e9d139::t_46de67b794346c 170
+test/test_mcp_resources.py
+  s_8c7c9bd4e9d139::t_46de67b794346c 121
+  s_8c7c9bd4e9d139::t_fe237b1488839b 122-123
+packages/analysis-lib/tests/data/cdx_audit/predictive-report.json
+  s_8c7c9bd4e9d139::t_1c737b4ebc8f24 1-224
+packages/analysis-lib/tests/data/cdx_audit/direct-report.json
+  s_8c7c9bd4e9d139::t_1c737b4ebc8f24 1-106
+test/test_pipeline.py
+  s_8c7c9bd4e9d139::t_78d2288984270a 499,513
+  s_8c7c9bd4e9d139::t_ecb2ff14d3e537 937
+  s_8c7c9bd4e9d139::t_c601358c3c3621 535
+  s_8c7c9bd4e9d139::t_e7e10588822821 431-453,456,458-460,462-498,501-505,508-510,512,514-525,528-530,532-533,545-551
+  s_8c7c9bd4e9d139::t_ee7ea67b474402 19
+  s_8c7c9bd4e9d139::t_e2e54fc785a63a 981
+depscan/cli_options.py
+  s_8c7c9bd4e9d139::t_4178d1a4944e27 204
+test/test_cdx_audit.py
+  s_8c7c9bd4e9d139::t_d93742f6ec1f34 1-42,44-143,145-150,152-283
+  s_8c7c9bd4e9d139::t_bffb388de2e339 43
+  s_8c7c9bd4e9d139::t_a79343096ccd4a 144,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c45f61c82e43db279904ca872f58ce580b1f695",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_8c7c9bd4e9d139": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9dbe5ca6-7bed-4f18-b047-b71e9f4c565f",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
