@@ -139,7 +139,7 @@ def fake_cdx_audit(monkeypatch, calls, report=None, version="13.10.0"):
 
     from depscan.lib import cdx_audit as cdx_audit_module
 
-    audit_report = report or EMPTY_AUDIT_REPORT
+    audit_report: dict = report or EMPTY_AUDIT_REPORT
 
     def fake_run(cmd, args):
         calls.setdefault("risk", []).append(list(args))
