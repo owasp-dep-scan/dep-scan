@@ -1,0 +1,23 @@
+depscan/lib/cdx_audit.py
+  s_8c7c9bd4e9d139::t_82ab9bf06d0723 20,83,185-189
+test/test_cdx_audit.py
+  s_8c7c9bd4e9d139::t_1044851e71b8fd 60
+  s_8c7c9bd4e9d139::t_0d0e523fa0fb30 65
+  s_8c7c9bd4e9d139::t_9c7ce5b693198d 13,24-59,61-64,66-69,77,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9c2cb5a0d02bc460bdc896929857780841d29539",
+  "prompts": {},
+  "sessions": {
+    "s_8c7c9bd4e9d139": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9dbe5ca6-7bed-4f18-b047-b71e9f4c565f",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
