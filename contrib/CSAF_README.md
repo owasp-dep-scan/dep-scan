@@ -4,7 +4,7 @@ The operator and reference documentation for dep-scan's CSAF VEX output has
 been promoted to the official documentation site:
 
 **➡ [CSAF VEX guide for compliance](https://depscan.readthedocs.io/en/latest/output/vex-csaf-guide/)**
-(source: [`documentation/docs/output/vex-csaf-guide.mdx`](../documentation/docs/output/vex-csaf-guide.mdx))
+(source: [`documentation/docs/integrate/vex-csaf.mdx`](../documentation/docs/integrate/vex-csaf.mdx))
 
 That guide is the single source of truth and covers:
 
