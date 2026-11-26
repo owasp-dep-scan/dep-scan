@@ -1,0 +1,50 @@
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_7318da1b9edd46::t_9ca3d90145683a 3,56-61,65-68,70-73
+documentation/docs/reference/cli.mdx
+  s_7318da1b9edd46::t_1c5784f6421041 144-145
+  s_7318da1b9edd46::t_1882a955210b9b 417,421-423
+test/test_mcp_tools.py
+  s_7318da1b9edd46::t_1488d114015a3b 9,144
+test/test_v7_output_contract.py
+  s_7318da1b9edd46::t_1488d114015a3b 181,611
+test/test_v7_scan.py
+  s_7318da1b9edd46::t_1488d114015a3b 5,109,457,472,477,1724,1755,1758
+THREAT_MODEL.md
+  s_7318da1b9edd46::t_d380fbeef8f590 186,188
+documentation/docs/results/scan-directory.mdx
+  s_7318da1b9edd46::t_34354bb53f8b3d 59
+test/data/report-binary/depscan.manifest.json
+  s_7318da1b9edd46::t_1488d114015a3b 323
+test/data/report-vdr/depscan.manifest.json
+  s_7318da1b9edd46::t_1488d114015a3b 366
+depscan/cli_options.py
+  s_7318da1b9edd46::t_47b4fcfbe9745f 236-238
+depscan/commands/scan.py
+  s_7318da1b9edd46::t_47b4fcfbe9745f 410-412
+documentation/docs/targets/supply-chain.mdx
+  s_7318da1b9edd46::t_1882a955210b9b 16-18,21,29-31
+test/data/scan-directory/depscan.manifest.json
+  s_7318da1b9edd46::t_1488d114015a3b 433
+test/test_api.py
+  s_7318da1b9edd46::t_1488d114015a3b 490
+test/data/report-binary-clean/depscan.manifest.json
+  s_7318da1b9edd46::t_1488d114015a3b 323
+test/test_pipeline.py
+  s_7318da1b9edd46::t_1488d114015a3b 4,387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eee8ee642cff280e8d9910de83d8382ce5d31509",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
