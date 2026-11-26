@@ -445,6 +445,45 @@ def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(tmp_path
     )
 
 
+#: npm components for a BOM the predictive audit has targets in.
+_NPM_COMPONENTS = [
+    {
+        "name": "left-pad",
+        "version": "1.3.0",
+        "purl": "pkg:npm/left-pad@1.3.0",
+        "bom-ref": "pkg:npm/left-pad@1.3.0",
+        "type": "library",
+    }
+]
+
+
+def _audit_stub(monkeypatch, reports=None, fail=None):
+    """Stub cdx-audit for the risk stage. ``reports`` maps a run kind
+    (``direct`` or ``predictive``) to the report it writes, the direct
+    fixture by default; ``fail`` maps a run kind to the CdxAuditError text
+    that run raises. Returns the list of argument lists the stage ran."""
+    runs = []
+    direct = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    predictive = json.loads((DATA_DIR / "cdx-audit" / "predictive-report.json").read_text())
+    chosen = {"direct": direct, "predictive": predictive, **(reports or {})}
+
+    def fake_run(cmd, args):
+        runs.append(list(args))
+        kind = "direct" if "--direct-bom-audit" in args else "predictive"
+        if fail and kind in fail:
+            raise cdx_audit.CdxAuditError(fail[kind])
+        report = chosen[kind]
+        Path(args[args.index("--report-file") + 1]).write_text(json.dumps(report))
+        return cdx_audit.CdxAuditResult(
+            report=report, report_version=report.get("version"), results=report.get("results")
+        )
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    return runs
+
+
 def test_stage_analysis_risk_runs_cdx_audit_on_the_type_bom(tmp_path, monkeypatch):
     """The direct audit runs on the BOM the type scan nominated, with the
     categories that fit the scan and the namespaces the user passed, and
@@ -488,11 +527,13 @@ def test_stage_analysis_risk_runs_cdx_audit_on_the_type_bom(tmp_path, monkeypatc
     assert "--offline" not in args
     assert scan.risk_error is None
     assert scan.risk_not_assessed is None
-    assert scan.audit_findings_count == 2
+    # Six cdx-audit findings; left-pad sits in two lockfiles, so dep-scan
+    # writes eight findings, and that is the count the stage states.
+    assert scan.audit_findings_count == 8
     assert scan.audit_caveats == []
     result = scan.adapter_results["cdx-audit"]
     assert result.status == "completed"
-    assert len(result.records) == 2
+    assert len(result.records) == 8
     assert {record.producer.name for record in result.records} == {"cdx-audit"}
 
 
@@ -522,7 +563,7 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
     ctx.depscan_options["scan_profile"] = "offline"
     scan = pipeline.TypeScan(project_type="npm")
     bom = Path(ctx.reports_dir) / "sbom-npm.cdx.json"
-    bom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
+    _write_bom(bom, _NPM_COMPONENTS)
     scan.nominated_bom_file = str(bom)
 
     assert pipeline.stage_analysis_risk(ctx, scan) is True
@@ -647,12 +688,203 @@ def test_stage_analysis_risk_fails_when_the_report_cannot_be_read(tmp_path, monk
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
     scan = pipeline.TypeScan(project_type="npm")
-    scan.nominated_bom_file = str(Path(ctx.reports_dir) / "sbom-npm.cdx.json")
+    scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / "sbom-npm.cdx.json")
 
     assert pipeline.stage_analysis_risk(ctx, scan) is True
     assert scan.risk_error is not None
     assert "not supported" in scan.risk_error
     assert "cdx-audit" not in scan.adapter_results
+
+
+def test_a_failed_predictive_run_keeps_the_direct_audit(tmp_path, monkeypatch, caplog):
+    """The predictive audit adds upstream findings to a direct audit that
+    already completed; when it fails, the direct findings and report stay,
+    the stage is not failed, and the failure is a coverage caveat with the
+    machine's paths taken out."""
+    reports_dir = tmp_path / "reports"
+    runs = _audit_stub(
+        monkeypatch,
+        fail={"predictive": f"cdx-audit exited with 1; its output ends: ENOENT {reports_dir}/x"},
+    )
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    ctx.depscan_options["scan_profile"] = "deep"
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / "sbom-npm.cdx.json", _NPM_COMPONENTS)
+
+    with caplog.at_level("INFO", logger=pipeline.LOG.name):
+        assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(runs) == 2, "the predictive run was attempted"
+    assert scan.risk_error is None
+    assert len(scan.adapter_results["cdx-audit"].records) == 8
+    assert [os.path.basename(path) for path in scan.audit_output_files] == ["cdx-audit-npm.json"]
+    gap = [detail for detail in scan.audit_caveats if "predictive audit" in detail]
+    assert len(gap) == 1
+    assert str(reports_dir) not in gap[0]
+    assert not any(record.levelname == "ERROR" for record in caplog.records)
+    warnings = [record for record in caplog.records if record.levelname == "WARNING"]
+    assert len(warnings) == 1
+
+
+def test_the_predictive_audit_skips_a_bom_without_npm_pypi_or_cargo(tmp_path, monkeypatch):
+    """A BOM whose packages are all of ecosystems the predictive audit does
+    not select from gets the direct audit only. Positive control: the same
+    profile over an npm BOM runs both."""
+    runs = _audit_stub(monkeypatch)
+    ctx = _ctx(tmp_path, ["-t", "java"])
+    ctx.perform_risk_audit = True
+    ctx.depscan_options["scan_profile"] = "deep"
+    scan = pipeline.TypeScan(project_type="java")
+    maven = [{"name": "guava", "version": "1.0", "purl": "pkg:maven/g/guava@1.0", "type": "library"}]
+    scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / "sbom-java.cdx.json", maven)
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(runs) == 1 and "--direct-bom-audit" in runs[0]
+
+    runs.clear()
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / "sbom-npm.cdx.json", _NPM_COMPONENTS)
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(runs) == 2
+
+
+def test_every_bom_of_a_bom_directory_is_audited_and_reports_are_not_input(tmp_path, monkeypatch):
+    """A BOM directory scan audits each BOM in it, with one report per BOM,
+    and a second scan of the same directory never reads those reports (or
+    the purl scan's input) back as BOMs: cdx-audit-bom.json matches
+    *bom*.json."""
+    from analysis_lib import get_all_bom_files
+
+    runs = _audit_stub(monkeypatch)
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom-java.cdx.json")
+    _write_bom(bom_dir / "sbom-js.cdx.json", _NPM_COMPONENTS)
+    for attempt in (1, 2):
+        runs.clear()
+        ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir), "--reports-dir", str(bom_dir)])
+        ctx.perform_risk_audit = True
+        scan = pipeline.TypeScan(project_type="bom")
+        scan.bom_files = get_all_bom_files(str(bom_dir))
+        assert pipeline.stage_analysis_risk(ctx, scan) is True
+        audited = sorted(os.path.basename(run[run.index("--bom") + 1]) for run in runs)
+        assert audited == ["sbom-java.cdx.json", "sbom-js.cdx.json"], f"run {attempt}"
+        written = sorted(os.path.basename(path) for path in scan.audit_output_files)
+        assert written == ["cdx-audit-bom-sbom-java.json", "cdx-audit-bom-sbom-js.json"]
+    (bom_dir / "cdx-audit-bom.json").write_text("{}")
+    (bom_dir / "cdx-audit-input-purl.json").write_text("{}")
+    assert sorted(os.path.basename(p) for p in get_all_bom_files(str(bom_dir))) == [
+        "sbom-java.cdx.json",
+        "sbom-js.cdx.json",
+    ]
+
+
+def test_a_lifecycle_run_audits_only_its_own_type_boms(tmp_path, monkeypatch):
+    """Lifecycle mode widens bom_files to every BOM in the reports
+    directory, other types' included; the audit reads only the documents
+    this type's generator wrote."""
+    runs = _audit_stub(monkeypatch)
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    reports = Path(ctx.reports_dir)
+    own = [_write_bom(reports / "sbom-npm-prebuild.cdx.json"), _write_bom(reports / "sbom-npm-build.cdx.json")]
+    other = _write_bom(reports / "sbom-java-build.cdx.json")
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.lifecycle_mode = True
+    scan.generated_bom_files = list(own)
+    scan.bom_files = sorted([*own, other])
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    audited = sorted(run[run.index("--bom") + 1] for run in runs)
+    assert audited == sorted(own)
+
+
+@pytest.mark.parametrize(
+    "project_type,root_type,purl,expected",
+    [
+        ("npm", "application", "pkg:npm/a@1", ("package-integrity", "dependency-source")),
+        ("cargo", "application", "pkg:cargo/time@0.1.45", ("package-integrity", "dependency-source", "cargo-security")),
+        ("docker", "application", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("podman", "application", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("rootfs", "application", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("oci-dir", "application", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("image", "application", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("bom", "container", "pkg:npm/a@1", pipeline.CONTAINER_AUDIT_CATEGORIES),
+        ("bom", "container", "pkg:cargo/time@0.1.45", (*pipeline.CONTAINER_AUDIT_CATEGORIES, "cargo-security")),
+    ],
+)
+def test_the_audit_categories_fit_the_bom(tmp_path, monkeypatch, project_type, root_type, purl, expected):
+    """Every container alias cdxgen and dep-scan use, and a BOM whose root
+    component is a container, add the image packs to the package packs; a
+    BOM with Cargo crates adds the crate pack."""
+    runs = _audit_stub(monkeypatch)
+    ctx = _ctx(tmp_path, ["-t", project_type])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type=project_type)
+    bom = Path(ctx.reports_dir) / f"sbom-{project_type}.cdx.json"
+    bom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "metadata": {"component": {"name": "x", "type": root_type}},
+                "components": [{"name": "c", "purl": purl, "type": "library"}],
+            }
+        )
+    )
+    scan.nominated_bom_file = str(bom)
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    args = runs[0]
+    assert tuple(args[args.index("--categories") + 1].split(",")) == tuple(expected)
+
+
+def test_a_purl_scan_audits_a_document_no_bom_glob_reads(tmp_path, monkeypatch):
+    """The purl scan's input document is recorded as an output of the stage
+    and named so no BOM directory scan of the reports directory reads it."""
+    from analysis_lib import get_all_bom_files
+
+    runs = _audit_stub(monkeypatch)
+    ctx = _ctx(tmp_path, ["--purl", "pkg:npm/left-pad@1.3.0"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.pkg_list = [{"name": "left-pad", "version": "1.3.0", "purl": "pkg:npm/left-pad@1.3.0"}]
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    audited = runs[0][runs[0].index("--bom") + 1]
+    assert os.path.basename(audited) == "cdx-audit-input-npm.json"
+    assert audited in scan.audit_output_files
+    assert audited not in get_all_bom_files(ctx.reports_dir)
+
+
+def test_the_stage_warns_once_and_keeps_caveats_off_the_console(tmp_path, monkeypatch, caplog):
+    """A cdx-audit that cannot run is one warning for the whole scan, not
+    one per type; a completed audit's caveats go to the debug log only, and
+    a failed one is one error line."""
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: None)
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    with caplog.at_level("INFO", logger=pipeline.LOG.name):
+        for project_type in ("npm", "python"):
+            scan = pipeline.TypeScan(project_type=project_type)
+            scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / f"sbom-{project_type}.json")
+            assert pipeline.stage_analysis_risk(ctx, scan) is False
+            assert scan.risk_not_assessed
+    assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 1
+
+    caplog.clear()
+    report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    report["summary"]["targetCapTruncated"] = 3
+    _audit_stub(monkeypatch, reports={"direct": report})
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = _write_bom(Path(ctx.reports_dir) / "sbom-npm.json")
+    with caplog.at_level("DEBUG", logger=pipeline.LOG.name):
+        assert pipeline.stage_analysis_risk(ctx, scan) is True
+    caveat_lines = [r for r in caplog.records if "Audit coverage caveat" in r.getMessage()]
+    assert caveat_lines and all(r.levelname == "DEBUG" for r in caveat_lines)
+
+    caplog.clear()
+    _audit_stub(monkeypatch, fail={"direct": "cdx-audit exited with 2; its output ends: boom"})
+    with caplog.at_level("INFO", logger=pipeline.LOG.name):
+        assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert scan.risk_error and "exited with 2" in scan.risk_error
+    assert len([r for r in caplog.records if r.levelname == "ERROR"]) == 1
 
 
 # ---------------------------------------------------------------------------

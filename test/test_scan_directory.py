@@ -1203,14 +1203,12 @@ def test_the_audit_coverage_gaps_reach_the_manifest_with_or_without_findings(
     validate("depscan-manifest", result.manifest)
     risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
     assert risk["status"] == "completed"
-    assert len(risk["notAssessed"]) == 2
+    # One gap: offline, the per-component count would only repeat it.
+    assert len(risk["notAssessed"]) == 1
     assert risk["notAssessed"][0].startswith(
         "cdx-audit did not look up registry metadata because the audit ran offline"
     )
     assert risk["notAssessed"][0].endswith("did not assess 4 npm, PyPI or Cargo component(s)")
-    assert risk["notAssessed"][1].startswith(
-        "4 of 4 npm, PyPI or Cargo component(s) carry no registry metadata"
-    )
     supply = [
         finding
         for finding in result.findings
