@@ -78,9 +78,77 @@ def fake_cdx_audit(tmp_path, monkeypatch):
     return script, calls
 
 
-def test_find_prefers_the_env_command(monkeypatch):
-    monkeypatch.setenv("CDX_AUDIT_CMD", "/opt/tools/cdx-audit")
-    assert cdx_audit.find_cdx_audit_cmd() == "/opt/tools/cdx-audit"
+def test_find_prefers_the_env_command(tmp_path, monkeypatch):
+    script = _write_fake_audit(tmp_path)
+    monkeypatch.setenv("CDX_AUDIT_CMD", str(script))
+    assert cdx_audit.find_cdx_audit_cmd() == str(script)
+    location = cdx_audit.locate_cdx_audit()
+    assert location.source == "env"
+
+
+def test_a_missing_env_command_is_not_found_by_the_scan_and_the_doctor(tmp_path, monkeypatch):
+    """CDX_AUDIT_CMD naming nothing is reported as not found, with the value
+    it named, by the scan's finder and the doctor alike; neither falls
+    through to another install the user did not ask for."""
+    from depscan.lib import doctor as doctor_lib
+
+    missing = tmp_path / "no-such-cdx-audit"
+    monkeypatch.setenv("CDX_AUDIT_CMD", str(missing))
+    assert cdx_audit.find_cdx_audit_cmd() is None
+    reason = cdx_audit.locate_cdx_audit().reason or ""
+    assert "cdx-audit was not found" in reason
+    assert str(missing) in reason
+    status = doctor_lib._cdx_audit_status()
+    assert status.path is None
+    assert status.reason == reason
+
+
+def test_discovery_uses_the_platform_safe_lookup(monkeypatch):
+    """PATH is searched with xbom_lib's find_executable, which never looks in
+    the current directory on Windows, not with shutil.which."""
+    monkeypatch.delenv("CDX_AUDIT_CMD", raising=False)
+    asked = []
+
+    def fake_find(name):
+        asked.append(name)
+        return "/usr/local/bin/cdx-audit" if name == "cdx-audit" else None
+
+    monkeypatch.setattr(cdx_audit, "find_executable", fake_find)
+    assert cdx_audit.find_cdx_audit_cmd() == "/usr/local/bin/cdx-audit"
+    assert asked == ["cdx-audit"]
+
+
+def test_both_runs_get_the_tool_environment(tmp_path, monkeypatch):
+    """The version probe and the run pass tool_env(), which on Windows keeps
+    cmd.exe from running a command planted in the scanned project."""
+    seen = []
+    real_run = cdx_audit.subprocess.run
+
+    def spy(*args, **kwargs):
+        seen.append(kwargs.get("env"))
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(cdx_audit, "tool_env", lambda: {**os.environ, "DEPSCAN_TOOL_ENV": "1"})
+    monkeypatch.setattr(cdx_audit.subprocess, "run", spy)
+    script = _write_fake_audit(tmp_path)
+    cdx_audit.cdx_audit_version(str(script))
+    monkeypatch.setenv("FAKE_REPORT", json.dumps({"version": 1, "results": []}))
+    cdx_audit.run_cdx_audit(str(script), ["--bom", "b.json", "--report-file", str(tmp_path / "r.json")])
+    assert len(seen) == 2
+    assert all(env and env.get("DEPSCAN_TOOL_ENV") == "1" for env in seen)
+
+
+def test_an_unsafe_command_is_a_failed_probe_not_a_crash(monkeypatch):
+    """build_command refuses a Windows batch file it cannot pass arguments to
+    safely with UnsafeCommandError, a SubprocessError; the version probe
+    reads that as an unreadable version."""
+    from xbom_lib.process import UnsafeCommandError
+
+    def refuse(argv):
+        raise UnsafeCommandError("Refusing to pass an argument containing '&' to a batch file")
+
+    monkeypatch.setattr(cdx_audit, "build_command", refuse)
+    assert cdx_audit.cdx_audit_version("C:/tools/cdx-audit.cmd") is None
 
 
 def test_version_check_against_the_minimum(monkeypatch):
@@ -128,12 +196,62 @@ def test_run_reads_the_report_and_the_markers(tmp_path, fake_cdx_audit):
     assert len(result.skipped_entries) == 1
 
 
-def test_run_names_a_run_without_a_report(tmp_path, fake_cdx_audit):
+def test_run_names_a_run_without_a_report(tmp_path, fake_cdx_audit, monkeypatch):
     script, calls = fake_cdx_audit
-    script.write_text("#!/bin/sh\nexit 1\n")
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    # A run that exits 0 and writes nothing.
+    monkeypatch.setattr(cdx_audit, "build_command", lambda argv: [sys.executable, "-c", "pass"])
     with pytest.raises(cdx_audit.CdxAuditError, match="wrote no report"):
-        cdx_audit.run_cdx_audit(str(script), ["--bom", "bom.json", "--report-file", str(tmp_path / "none.json")])
+        cdx_audit.run_cdx_audit(
+            str(script), ["--bom", "bom.json", "--report-file", str(tmp_path / "none.json")]
+        )
+
+
+def test_a_stale_report_is_never_read_as_this_runs(tmp_path, fake_cdx_audit, monkeypatch):
+    """A crashed run next to the report an earlier scan left is a failure
+    with the run's output, never the earlier findings."""
+    script, calls = fake_cdx_audit
+    report_file = tmp_path / "cdx-audit-npm.json"
+    report_file.write_text((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    crash = tmp_path / "crash.py"
+    crash.write_text("import sys\nprint('boom: the audit crashed', file=sys.stderr)\nsys.exit(0)\n")
+    monkeypatch.setattr(
+        cdx_audit, "build_command", lambda argv: [sys.executable, str(crash), *argv[1:]]
+    )
+    with pytest.raises(cdx_audit.CdxAuditError, match="wrote no report"):
+        cdx_audit.run_cdx_audit(str(script), ["--bom", "b.json", "--report-file", str(report_file)])
+    assert not report_file.exists(), "the earlier report was removed before the run"
+
+
+@pytest.mark.parametrize("exit_code", ["1", "2", "4"])
+def test_any_exit_other_than_0_and_3_is_a_failure(tmp_path, fake_cdx_audit, monkeypatch, exit_code):
+    """Only 0 and 3 (a finding met the fail severity) are completed runs; any
+    other exit is a failure whose message carries the end of the output,
+    even when a report was written."""
+    script, calls = fake_cdx_audit
+    monkeypatch.setenv("FAKE_REPORT", json.dumps({"version": 1, "results": []}))
+    monkeypatch.setenv("FAKE_EXIT", exit_code)
+    with pytest.raises(cdx_audit.CdxAuditError, match=f"exited with {exit_code}"):
+        cdx_audit.run_cdx_audit(
+            str(script), ["--bom", "b.json", "--report-file", str(tmp_path / "r.json")]
+        )
+
+
+@pytest.mark.parametrize(
+    "report,why",
+    [
+        ('{"version":1,"results":[', "a truncated report"),
+        ("[1, 2]", "a report that is no object"),
+        (json.dumps({"version": 1, "summary": {"skippedTargets": "many"}}), "a text count"),
+        (json.dumps({"version": 1, "summary": {"targetCapTruncated": 1.5}}), "a fractional count"),
+    ],
+)
+def test_an_unreadable_report_is_a_cdx_audit_error(tmp_path, fake_cdx_audit, monkeypatch, report, why):
+    script, calls = fake_cdx_audit
+    monkeypatch.setenv("FAKE_REPORT", report)
+    with pytest.raises(cdx_audit.CdxAuditError):
+        cdx_audit.run_cdx_audit(
+            str(script), ["--bom", "b.json", "--report-file", str(tmp_path / "r.json")]
+        )
 
 
 def test_build_args_direct_audit():
@@ -397,10 +515,13 @@ def test_doctor_reports_the_audit_tool(tmp_path, monkeypatch):
     a too-old one is unusable with the reason a scan refuses on."""
     from depscan.lib import doctor as doctor_lib
 
-    script = _write_fake_audit(tmp_path, name="cdx-audit-old", version="13.0.0")
+    script = _write_fake_audit(tmp_path, name="cdx-audit-old", version="13.9.0")
     monkeypatch.setenv("CDX_AUDIT_CMD", str(script))
-    monkeypatch.delenv("DEPSCAN_CDX_AUDIT_MIN_VERSION", raising=False)
+    # The minimum is read from DEPSCAN_CDX_AUDIT_MIN_VERSION at import, so
+    # removing the variable here would change nothing: the constant is set
+    # to the documented default instead, which 13.9.0 does not meet.
+    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.10.0")
     status = doctor_lib._cdx_audit_status()
-    assert status.version == "13.0.0"
+    assert status.version == "13.9.0"
     assert not status.usable
     assert "minimum" in (status.reason or "")

@@ -323,33 +323,23 @@ _PLUGIN_FINDERS = {
 def _cdx_audit_status() -> ToolStatus:
     """cdx-audit, the supply-chain audit engine dep-scan runs.
 
-    Discovery follows the cdxgen lookup: the ``CDX_AUDIT_CMD`` environment
-    variable, then PATH, then the command beside the cdxgen install, whose
-    npm package ships cdx-audit in its own ``bin`` directory. A version
+    Discovery is :func:`cdx_audit.locate_cdx_audit`, the function the scan
+    uses: the ``CDX_AUDIT_CMD`` environment variable, then PATH, then the
+    command beside the cdxgen install, whose npm package ships cdx-audit in
+    its own ``bin`` directory. A version
     below :data:`cdx_audit.CDX_AUDIT_MIN_VERSION`, or none readable at all,
     makes the tool unusable with a reason, exactly as a scan refuses it.
     """
     status = ToolStatus(name="cdx-audit", min_version=cdx_audit.CDX_AUDIT_MIN_VERSION)
-    # The doctor discovers on its own seams, the env var and the find
-    # registry, not through the audit runner's finder: a scan's test setup
-    # stubs that finder with a command name no probe can read.
-    path = os.environ.get("CDX_AUDIT_CMD", "").strip() or find_executable("cdx-audit")
+    # The scan locates the command through the same function, so the doctor
+    # and the stage agree on which cdx-audit runs and on why none does.
+    location = cdx_audit.locate_cdx_audit()
+    path = location.path
     if not path:
-        cdxgen_cmd = find_cdxgen_cmd() or find_cdxgen_cmd(False)
-        if cdxgen_cmd:
-            resolved = find_executable(str(cdxgen_cmd)) or str(cdxgen_cmd)
-            candidate = os.path.join(os.path.dirname(os.path.abspath(resolved)), "cdx-audit")
-            if os.path.isfile(candidate):
-                path = candidate
-    if not path:
-        status.reason = (
-            "cdx-audit was not found; install the cdxgen npm package (which ships it) "
-            "with `npm install -g @cdxgen/cdxgen` or set CDX_AUDIT_CMD"
-        )
+        status.reason = location.reason
         return status
     status.path = path
-    env_cmd = os.environ.get("CDX_AUDIT_CMD", "").strip()
-    if env_cmd and os.path.abspath(env_cmd) == os.path.abspath(path):
+    if location.source == "env":
         status.source = "env"
         status.source_env = "CDX_AUDIT_CMD"
     else:

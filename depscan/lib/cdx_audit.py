@@ -12,11 +12,12 @@ import json
 import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from depscan.lib.logger import LOG
-from xbom_lib.process import build_command
+from xbom_lib.process import build_command, find_executable, tool_env
 
 #: The cdxgen release this dep-scan needs. The audit passes
 #: ``--private-namespace``, ``--fetch-registry-metadata``, ``--offline`` and
@@ -39,37 +40,83 @@ _VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
 RUN_TIMEOUT_SECONDS = 3600
 
 
-def find_cdx_audit_cmd() -> Optional[str]:
-    """Locate the cdx-audit command.
+@dataclass
+class CdxAuditLocation:
+    """Where cdx-audit was found, or why it was not.
+
+    ``source`` is ``"env"`` when ``CDX_AUDIT_CMD`` named the command,
+    ``"path"`` when it came from PATH and ``"cdxgen"`` when it sits beside
+    the cdxgen install. ``reason`` says why ``path`` is None.
+    """
+
+    path: Optional[str] = None
+    source: Optional[str] = None
+    reason: Optional[str] = None
+
+
+#: The reason a scan and the doctor give when no cdx-audit is found.
+NOT_FOUND_REASON = (
+    "cdx-audit was not found; install the cdxgen npm package (which ships it) "
+    "with `npm install -g @cdxgen/cdxgen` or set CDX_AUDIT_CMD"
+)
+
+
+def _beside_cdxgen() -> Optional[str]:
+    """The cdx-audit command in the ``bin`` directory of the cdxgen install
+    dep-scan uses, where the cdxgen npm package ships it."""
+    try:
+        from xbom_lib.cdxgen import find_cdxgen_cmd
+    except ImportError:
+        return None
+    cdxgen_cmd = find_cdxgen_cmd() or find_cdxgen_cmd(False)
+    if not cdxgen_cmd:
+        return None
+    resolved = find_executable(str(cdxgen_cmd)) or str(cdxgen_cmd)
+    directory = os.path.dirname(os.path.abspath(resolved))
+    names = ("cdx-audit.cmd", "cdx-audit.exe", "cdx-audit") if sys.platform == "win32" else (
+        "cdx-audit",
+    )
+    for name in names:
+        candidate = os.path.join(directory, name)
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def locate_cdx_audit() -> CdxAuditLocation:
+    """Locate the cdx-audit command; the doctor and the scan share this.
 
     The ``CDX_AUDIT_CMD`` environment variable wins, then ``cdx-audit`` on
-    PATH, then the binary beside the cdxgen install dep-scan already found:
-    the cdxgen npm package ships ``cdx-audit`` in the same ``bin`` directory.
-    Returns None when none of the three holds a runnable command.
+    PATH, then the binary beside the cdxgen install dep-scan already found.
+    A ``CDX_AUDIT_CMD`` that names neither an existing file nor a command on
+    PATH is reported as not found with the value it named, rather than
+    falling through to another install the user did not ask for. PATH is
+    searched with :func:`xbom_lib.process.find_executable`, which never
+    looks in the current directory on Windows.
     """
     env_cmd = os.environ.get("CDX_AUDIT_CMD", "").strip()
     if env_cmd:
-        return env_cmd
-    from shutil import which
-
-    on_path = which("cdx-audit")
+        found = env_cmd if os.path.isfile(env_cmd) else find_executable(env_cmd)
+        if found:
+            return CdxAuditLocation(path=found, source="env")
+        return CdxAuditLocation(
+            reason=f"cdx-audit was not found: CDX_AUDIT_CMD names {env_cmd}, which does not exist"
+        )
+    on_path = find_executable("cdx-audit")
     if on_path:
-        return on_path
-    # Fall through to the cdxgen install: packages/xBOM-lib resolves the
-    # command the scan already validated, and cdx-audit sits beside it.
-    try:
-        from xbom_lib.cdxgen import find_cdxgen_cmd
+        return CdxAuditLocation(path=on_path, source="path")
+    beside = _beside_cdxgen()
+    if beside:
+        return CdxAuditLocation(path=beside, source="cdxgen")
+    return CdxAuditLocation(reason=NOT_FOUND_REASON)
 
-        cdxgen_cmd = find_cdxgen_cmd() or find_cdxgen_cmd(False)
-    except ImportError:
-        return None
-    if not cdxgen_cmd:
-        return None
-    resolved = which(str(cdxgen_cmd)) or str(cdxgen_cmd)
-    candidate = os.path.join(os.path.dirname(os.path.abspath(resolved)), "cdx-audit")
-    if os.path.isfile(candidate) or which(candidate):
-        return candidate
-    return None
+
+def find_cdx_audit_cmd() -> Optional[str]:
+    """The cdx-audit command the scan runs, or None when none is found.
+
+    :func:`locate_cdx_audit` says why when this returns None.
+    """
+    return locate_cdx_audit().path
 
 
 def cdx_audit_version(cmd: str) -> Optional[str]:
@@ -86,8 +133,11 @@ def cdx_audit_version(cmd: str) -> Optional[str]:
             timeout=60,
             check=False,
             shell=False,
+            env=tool_env(),
         )
-    except (OSError, subprocess.TimeoutExpired) as e:
+    except (OSError, subprocess.SubprocessError) as e:
+        # SubprocessError covers a timeout and the UnsafeCommandError
+        # build_command raises for a Windows batch file it will not run.
         LOG.debug("cdx-audit version probe failed: %s", e)
         return None
     found = _VERSION_RE.search(proc.stdout or "")
@@ -185,13 +235,53 @@ def build_audit_args(
     return args
 
 
+#: How much of a failed run's output an error message carries.
+OUTPUT_TAIL_CHARS = 2000
+
+#: The exit codes of a run that completed: 0, and 3 when a finding met the
+#: fail severity.
+COMPLETED_EXIT_CODES = (0, 3)
+
+
+def _output_tail(output: str) -> str:
+    """The end of a run's output, where the error usually is."""
+    text = output.strip()
+    if len(text) > OUTPUT_TAIL_CHARS:
+        text = "..." + text[-OUTPUT_TAIL_CHARS:]
+    return text or "(no output)"
+
+
+def _summary_count(summary: Dict[str, Any], key: str, optional: bool = False) -> Optional[int]:
+    """A count from the report's summary; a value that is not a whole
+    number is a malformed report."""
+    value = summary.get(key)
+    if value is None:
+        return None if optional else 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or int(value) != value:
+        raise CdxAuditError(
+            f"the cdx-audit report is malformed: summary.{key} is {value!r}, not a count"
+        )
+    return int(value)
+
+
 def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
     """Run cdx-audit once and read its JSON report back.
 
-    Exit code 3 is a result (a finding met the fail severity), never a run
-    failure; exit code 1 or a missing report is. The report's own markers
-    name what the run cut short, so the caller can turn them into caveats.
+    The report file is removed before the run, so a report left by an
+    earlier scan is never read as this run's. Exit code 3 is a result (a
+    finding met the fail severity); any other non-zero exit, a missing
+    report, a report that is not JSON and a summary count that is not a
+    number are failures, raised as :class:`CdxAuditError` with the end of
+    the run's output. The report's own markers name what the run cut
+    short, so the caller can turn them into caveats.
     """
+    report_file = args[args.index("--report-file") + 1]
+    try:
+        os.unlink(report_file)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        raise CdxAuditError(f"the stale cdx-audit report {report_file} could not be removed: {e}")
     # build_command spells a Windows npm shim (a .cmd batch file) as the
     # command line cmd.exe needs, and leaves a plain argv list everywhere
     # else.
@@ -204,16 +294,30 @@ def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
         timeout=RUN_TIMEOUT_SECONDS,
         check=False,
         shell=False,
+        env=tool_env(),
     )
     output = (proc.stdout or "") + (proc.stderr or "")
-    report_file = args[args.index("--report-file") + 1]
+    if proc.returncode not in COMPLETED_EXIT_CODES:
+        raise CdxAuditError(
+            f"cdx-audit exited with {proc.returncode}; its output ends: {_output_tail(output)}"
+        )
     if not os.path.isfile(report_file):
         raise CdxAuditError(
             f"cdx-audit wrote no report at {report_file} (exit {proc.returncode}); "
-            f"its output follows: {output.strip()[:2000]}"
+            f"its output ends: {_output_tail(output)}"
         )
-    with open(report_file, encoding="utf-8") as handle:
-        report = json.load(handle)
+    try:
+        with open(report_file, encoding="utf-8") as handle:
+            report = json.load(handle)
+    except (OSError, ValueError, RecursionError) as e:
+        raise CdxAuditError(
+            f"the cdx-audit report {report_file} could not be read: {e}; "
+            f"its output ends: {_output_tail(output)}"
+        ) from e
+    if not isinstance(report, dict):
+        raise CdxAuditError(
+            f"the cdx-audit report {report_file} is a {type(report).__name__}, not an object"
+        )
     result = CdxAuditResult(
         report=report,
         output=output,
@@ -221,10 +325,9 @@ def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
         exit_code=proc.returncode,
     )
     summary = report.get("summary") if isinstance(report.get("summary"), dict) else {}
-    result.skipped_count = int(summary.get("skippedTargets", 0) or 0)
-    result.errored_count = int(summary.get("erroredTargets", 0) or 0)
-    truncated = summary.get("targetCapTruncated")
-    result.truncated_count = int(truncated) if truncated is not None else None
+    result.skipped_count = _summary_count(summary, "skippedTargets") or 0
+    result.errored_count = _summary_count(summary, "erroredTargets") or 0
+    result.truncated_count = _summary_count(summary, "targetCapTruncated", optional=True)
     result.offline = bool(summary.get("offline"))
     result.time_budget_exhausted = bool(summary.get("timeBudgetExhausted"))
     result.results = report.get("results") if isinstance(report.get("results"), list) else []
