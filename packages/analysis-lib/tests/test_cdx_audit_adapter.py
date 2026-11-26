@@ -92,24 +92,31 @@ def test_monorepo_copies_are_told_apart_by_their_lockfile():
 
 
 def test_container_report_keeps_bom_refs_that_are_no_purls():
-    """A real container audit: the crypto and rootfs findings name their
-    component by a bom-ref that is no purl (``crypto/algorithm/md5@...``,
-    ``urn:uuid:...``). The record names no purl, keeps the bom-ref as its
-    component reference, and a declaring file inside the image is no
-    location in the scanned tree."""
+    """A real container audit: the crypto findings name their component by a
+    bom-ref that is no purl (``crypto/algorithm/md5@...``), one repository
+    finding by the ``pkg:generic/os-repository/...`` purl cdxgen writes for
+    a repository source, and one by a ``urn:uuid:`` bom-ref. A record names
+    only the purl that parses, keeps the bom-ref as its component
+    reference, and a declaring file inside the image is no location in the
+    scanned tree."""
     result = adapter.extract(
         load("container-report.json"), source="c.json", producer_version="13.10.0", source_root="/src"
     )
     assert result.status == "completed"
-    refs = sorted(record.subject.component_ref for record in result.records)
-    assert refs == [
+    by_ref = {record.subject.component_ref: record for record in result.records}
+    assert sorted(by_ref) == [
         "crypto/algorithm/md5@1.2.840.113549.2.5",
         "crypto/algorithm/sha-1@1.3.14.3.2.26",
+        "pkg:generic/os-repository/legacy-mirror@configured",
         "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d",
     ]
-    for record in result.records:
-        assert record.subject.purls == []
-        assert record.attributes["bomRef"] == record.subject.component_ref
+    assert by_ref["pkg:generic/os-repository/legacy-mirror@configured"].subject.purls == [
+        "pkg:generic/os-repository/legacy-mirror@configured"
+    ]
+    for ref, record in by_ref.items():
+        if not ref.startswith("pkg:"):
+            assert record.subject.purls == []
+            assert record.attributes["bomRef"] == ref
         assert not record.locations
     assert not any(caveat.kind == "location-outside-root" for caveat in result.caveats)
 

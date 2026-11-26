@@ -60,22 +60,27 @@ def test_the_finding_file_enters_the_fingerprint():
 
 
 def test_container_findings_located_by_bom_refs_never_raise():
-    """The real container report names crypto assets and a data component
-    by bom-refs that are no purls. The conversion names no component, keeps
-    the bom-ref in a property, tells the two weak algorithms apart and
-    never raises."""
+    """The real container report names crypto assets and a repository by
+    bom-refs that are no purls, and another repository by the generic purl
+    cdxgen writes. The conversion names only the purl as a component, keeps
+    each other bom-ref in a property, tells all four apart and never
+    raises."""
     result = load_records("container-report.json", source_root="/src")
     findings = findings_from_cdx_audit_records(result.records)
     assert sorted((f.rule, f.category) for f in findings) == [
         ("CBS-001", "crypto"),
         ("CBS-001", "crypto"),
         ("RFS-001", "binary-hardening"),
+        ("RFS-001", "binary-hardening"),
     ]
-    assert len({f.id for f in findings}) == 3
+    assert len({f.id for f in findings}) == 4
     for finding in findings:
-        assert finding.components is None
         refs = [p.value for p in finding.properties or [] if p.name == "cdx-audit:bomRef"]
-        assert refs and not refs[0].startswith("pkg:")
+        if finding.components:
+            assert finding.components == ["pkg:generic/os-repository/legacy-mirror@configured"]
+            assert not refs
+        else:
+            assert refs and not refs[0].startswith("pkg:")
         finding.to_dict()
 
 

@@ -1,6 +1,6 @@
 {
  "auditMode": "direct",
- "generatedAt": "2026-11-26T12:48:09.053Z",
+ "generatedAt": "2026-11-26T13:32:22.663Z",
  "inputs": [
   "sbom-docker.cdx.json"
  ],
@@ -16,7 +16,7 @@
    "bomFormat": "CycloneDX",
    "coverage": {
     "registryMetadata": "offline",
-    "components": 5,
+    "components": 6,
     "eligible": 1,
     "answered": 0,
     "withoutMetadata": 1,
@@ -73,7 +73,8 @@
      "message": "Repository 'legacy-mirror' is enabled and still uses plaintext HTTP: http://mirror.example.org/ubuntu",
      "mitigation": "Move package sources to HTTPS or a trusted local mirror protected by authenticated transport and repository signing.",
      "location": {
-      "bomRef": "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d"
+      "bomRef": "pkg:generic/os-repository/legacy-mirror@configured",
+      "purl": "pkg:generic/os-repository/legacy-mirror@configured"
      },
      "evidence": {
       "sourceFile": "/etc/apt/sources.list",
@@ -83,11 +84,40 @@
      "_match": {
       "type": "data",
       "name": "legacy-mirror",
-      "bom-ref": "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d",
+      "version": "configured",
+      "purl": "pkg:generic/os-repository/legacy-mirror@configured",
+      "bom-ref": "pkg:generic/os-repository/legacy-mirror@configured",
       "properties": [
        {
         "name": "internal:SrcFile",
         "value": "/etc/apt/sources.list"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "RFS-001",
+     "name": "Enabled OS repository uses plaintext HTTP transport",
+     "severity": "high",
+     "category": "rootfs-hardening",
+     "message": "Repository 'vendor-mirror' is enabled and still uses plaintext HTTP: http://vendor.example.org/apt",
+     "mitigation": "Move package sources to HTTPS or a trusted local mirror protected by authenticated transport and repository signing.",
+     "location": {
+      "bomRef": "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d"
+     },
+     "evidence": {
+      "sourceFile": "/etc/apt/sources.list.d/vendor.list",
+      "repoType": "apt-source",
+      "repoUrl": "http://vendor.example.org/apt"
+     },
+     "_match": {
+      "type": "data",
+      "name": "vendor-mirror",
+      "bom-ref": "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "/etc/apt/sources.list.d/vendor.list"
        }
       ]
      }
@@ -100,11 +130,11 @@
    "summary": {
     "findingsBySeverity": {
      "critical": 0,
-     "high": 3,
+     "high": 4,
      "low": 0,
      "medium": 0
     },
-    "findingsCount": 3,
+    "findingsCount": 4,
     "maxSeverity": "high"
    }
   }
@@ -112,13 +142,13 @@
  "summary": {
   "findingsBySeverity": {
    "critical": 0,
-   "high": 3,
+   "high": 4,
    "low": 0,
    "medium": 0
   },
   "inputBomCount": 1,
   "maxSeverity": "high",
-  "totalFindings": 3,
+  "totalFindings": 4,
   "bomsWithFindings": 1,
   "offline": true
  },

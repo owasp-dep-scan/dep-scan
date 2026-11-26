@@ -46,7 +46,7 @@ def test_the_table_names_rule_severity_packages_and_message():
     )
     text = _text(supply_chain_review.supply_chain_table(rows))
     assert "Supply-Chain Audit Results" in text
-    assert "Supply-chain findings count: 11" in text
+    assert "Supply-chain findings count: 12" in text
     assert "INT-005" in text and "LOW" in text
     assert "pkg:npm/left-pad@1.3.0" in text
     assert "(svc-a/package-lock.json)" in text, "the lockfile names the monorepo copy"
@@ -157,9 +157,9 @@ def test_the_html_report_keeps_the_supply_chain_section(tmp_path):
     ).parse_and_generate_report()
     html = out_html.read_text(encoding="utf-8")
     assert "Supply-Chain Audit Results" in html
-    assert "Supply-chain findings count: 3" in html
+    assert "Supply-chain findings count: 4" in html
     assert "<b>x</b>" not in html
-    assert html.count("<td>RFS-001</td>") + html.count("<td>CBS-001</td>") == 3
+    assert html.count("<td>RFS-001</td>") + html.count("<td>CBS-001</td>") == 4
     assert "╔" not in html
 
 
@@ -218,3 +218,4 @@ def test_the_html_report_from_saved_text_escapes_the_cells(tmp_path):
     assert "<img src=x" not in section
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in section
     assert "Supply-chain findings count: 3" in section
+
