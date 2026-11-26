@@ -94,15 +94,15 @@ The manifest names the two stages the checks add, beside the matching every scan
 project: juice-shop 33518f5a0911e25d9df747b1e70fb7af279a755c
 stage licenses: completed
 stage risk: completed
-supply-chain findings: 104
-most frequent rules: INT-029 x73, INT-023 x16, INT-001 x15
+supply-chain findings: 193
+most frequent rules: INT-029 x119, INT-005 x43, INT-023 x16
 producer: cdx-audit 13.9.0
-audit mode: direct, total findings: 126
+audit mode: direct, total findings: 229
 licence rows: 5
 copyleft conditions flagged: 2
 ```
 
-The supply-chain findings are not a scored package list: each one is a rule match with cdxgen's rule id, the severity cdx-audit gave it and the component it names. On the recorded run, INT-029 (an npm package that ships native platform binaries) matched 73 packages, INT-023 (a package first published inside the one-year quarantine window) matched 16, and INT-001 (install-time execution hooks) matched 15. The audit's own report, `cdx-audit-universal.json`, holds 126 findings, and the findings file maps every one of them: Juice Shop resolves some packages at two versions, and a finding's fingerprint keys on the package, so those records merge into one finding whose components name both versions' purls (16 of the 104 findings carry merged components, and all 121 components the audit named are named in the findings file). The audit ran with the `package-integrity` and `dependency-source` categories, the ones dep-scan's supply-chain check passes for source scans; a narrower or wider category set is a cdx-audit run of its own. Every finding names its producer (`cdx-audit` and the cdxgen version that ran), so a reader knows which audit answered.
+The supply-chain findings are not a scored package list: each one is a rule match with cdxgen's rule id, the severity cdx-audit gave it and the component it names. On the recorded run, INT-029 (an npm version that ships or builds native code: a platform constraint, a node-gyp build, a node-pre-gyp binary, or the platform packages a package ships through, which is how rollup and esbuild publish theirs) matched 119 packages, INT-005 (a deprecated npm package, whether the version in use or the newest release is the deprecated one) matched 43, INT-023 (a package first published inside the one-year quarantine window) matched 16, and INT-001 (install-time execution hooks) matched 15. The audit's own report, `cdx-audit-universal.json`, holds 229 findings, and the findings file maps every one of the 216 components they name: Juice Shop resolves some packages at two versions, and a finding's fingerprint keys on the package, so those records merge into one finding whose components name every version's purl. The audit first looked all 1844 registry-resolvable components up in their registries; its coverage block says so, and a run that could not look a component up says that instead. Every finding names its producer (`cdx-audit` and the cdxgen version that ran), so a reader knows which audit answered.
 
 Read the rule ids, not the counts: the dep-scan 6 risk audit flagged 382 packages on this project against a weighted score, and the supply-chain findings replace that list with one finding per rule and component. A private namespace (`--private-ns appthreat,shiftleft`) turns on the dependency-confusion check: each matching package name is looked up on its public registry, and one the public registry holds is reported by INT-017 to INT-019. Under the `deep` or `research` profiles the check adds cdx-audit's predictive mode, which audits the upstream repositories of the required dependencies; a target it skips or fails is counted in the findings' coverage reasons, never folded into clean.
 
