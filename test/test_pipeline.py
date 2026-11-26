@@ -1846,3 +1846,23 @@ def test_the_sample_config_leaves_the_resolved_profile_and_checks_out(tmp_path):
     assert "risk_audit" in text
     for internal in ("scan_profile", "checks_requested", "no_banner"):
         assert internal not in text
+
+
+def test_a_bare_purl_search_does_not_warn_when_cdx_audit_is_missing(tmp_path, monkeypatch, caplog):
+    """The audit a bare purl search turns on by itself is not something the
+    user asked for: a missing cdx-audit records the reason and logs it at
+    info. Positive control: the same scan that asked for the check warns."""
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: None)
+    for checks_requested, level in ((False, "INFO"), (True, "WARNING")):
+        caplog.clear()
+        ctx = _ctx(tmp_path, ["--purl", "pkg:npm/left-pad@1.3.0"])
+        ctx.args.checks_requested = checks_requested
+        ctx.perform_risk_audit = checks_requested
+        pipeline.finalize_setup(ctx)
+        scan = pipeline.TypeScan(project_type="npm")
+        scan.pkg_list = [{"name": "left-pad", "version": "1.3.0", "purl": "pkg:npm/left-pad@1.3.0"}]
+        with caplog.at_level("INFO", logger=pipeline.LOG.name):
+            assert pipeline.stage_analysis_risk(ctx, scan) is False
+        assert "cdx-audit was not found" in (scan.risk_not_assessed or "")
+        lines = [r for r in caplog.records if "supply-chain audit cannot run" in r.getMessage()]
+        assert [r.levelname for r in lines] == [level]

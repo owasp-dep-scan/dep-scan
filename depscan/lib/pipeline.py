@@ -271,6 +271,10 @@ class ScanContext:
     #: Whether this scan already warned that the requested supply-chain
     #: audit cannot run, so a scan of several types warns once.
     audit_unavailable_warned: bool = False
+    #: Whether the supply-chain audit runs only because a bare purl search
+    #: turns it on, not because a check or profile asked for it; a tool it
+    #: cannot run is then an info line, not a warning.
+    audit_automatic: bool = False
     user_bom_dir: Optional[str] = None
     bom_dir_mode: bool = False
     config_file_mode: bool = False
@@ -1107,6 +1111,8 @@ def finalize_setup(ctx):
         # A purl search with no --checks and no --profile audits the
         # package's supply chain too; a scan that named its checks runs
         # exactly those.
+        if not ctx.perform_risk_audit:
+            ctx.audit_automatic = True
         ctx.perform_risk_audit = True
     ctx.project_types = project_types_list
     # Construct the various report files
@@ -1782,11 +1788,16 @@ def _audit_report_file(ctx, scan, suffix: Optional[str], kind: str = "") -> str:
 
 
 def _warn_audit_unavailable(ctx, reason: str) -> None:
-    """One console warning per scan when a requested audit cannot run."""
+    """One console line per scan when the audit cannot run: a warning when
+    a check or profile asked for it, an info line for the audit a bare purl
+    search turns on by itself. The manifest records the reason either way."""
     if ctx.audit_unavailable_warned:
         return
     ctx.audit_unavailable_warned = True
-    LOG.warning("The supply-chain audit cannot run: %s.", reason)
+    if ctx.audit_automatic:
+        LOG.info("The supply-chain audit cannot run: %s.", reason)
+    else:
+        LOG.warning("The supply-chain audit cannot run: %s.", reason)
 
 
 def _run_audit(cmd, args, run_report_file, *, name, version, ctx):
