@@ -1697,7 +1697,8 @@ def _audit_bom_files(ctx, scan) -> List[str]:
     generated) is audited alone. A BOM directory scan audits every BOM in
     the directory. A lifecycle run audits the per-stage documents this type
     produced, never another type's documents that share the reports
-    directory. The stage's own outputs are never input."""
+    directory. The stage's own outputs, and JSON files that are no CycloneDX
+    BOM, are never input."""
     if getattr(ctx.args, "search_purl", None):
         purl_bom = _purl_bom_file(ctx, scan)
         return [purl_bom] if purl_bom else []
@@ -1712,6 +1713,13 @@ def _audit_bom_files(ctx, scan) -> List[str]:
     for bom_file in candidates:
         if not bom_file or _is_audit_output(bom_file) or not os.path.isfile(bom_file):
             continue
+        document = _bom_document(scan, bom_file)
+        if not isinstance(document, dict) or document.get("bomFormat") != "CycloneDX":
+            # A JSON file the BOM globs match that is no CycloneDX document
+            # (cdxgen's *.introspection.json beside each BOM, say) is no
+            # input cdx-audit can read.
+            LOG.debug("The supply-chain audit skips %s: it is no CycloneDX BOM.", bom_file)
+            continue
         real = os.path.realpath(bom_file)
         if real not in seen:
             seen.add(real)
@@ -1719,17 +1727,57 @@ def _audit_bom_files(ctx, scan) -> List[str]:
     return selected
 
 
-def _audit_report_file(ctx, scan, bom_file: str, multiple: bool, kind: str = "") -> str:
+def _safe_name(text: str) -> str:
+    """``text`` with every character a file name on Windows or POSIX could
+    misread replaced by ``_``."""
+    return "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in text)
+
+
+def _audit_report_suffixes(bom_files: List[str]) -> Dict[str, str]:
+    """A unique, stable report-name suffix for each of several BOMs.
+
+    The suffix is the BOM's path relative to the directory the BOMs share,
+    without the ``.json`` extension and with separators and unsafe
+    characters made ``_`` (``a/bom.json`` gives ``a_bom``, ``bom.cdx.json``
+    gives ``bom.cdx``). Two BOMs that still spell the same name get a short
+    hash of their relative path added, so no report overwrites another and
+    a rescan of the same directory writes the same names."""
+    import hashlib
+
+    parents = [os.path.dirname(os.path.abspath(path)) for path in bom_files]
+    try:
+        base = os.path.commonpath(parents) if parents else ""
+    except ValueError:
+        # Different drives on Windows share no directory.
+        base = ""
+    relative = {
+        path: (
+            os.path.relpath(os.path.abspath(path), base) if base else os.path.basename(path)
+        ).replace("\\", "/")
+        for path in bom_files
+    }
+    stems = {}
+    for path, rel in relative.items():
+        stem = rel[: -len(".json")] if rel.lower().endswith(".json") else rel
+        stems[path] = _safe_name(stem.replace("/", "_"))
+    counts: Dict[str, int] = {}
+    for stem in stems.values():
+        counts[stem] = counts.get(stem, 0) + 1
+    suffixes = {}
+    for path, stem in stems.items():
+        if counts[stem] > 1:
+            digest = hashlib.sha256(relative[path].encode("utf-8")).hexdigest()[:8]
+            stem = f"{stem}-{digest}"
+        suffixes[path] = stem
+    return suffixes
+
+
+def _audit_report_file(ctx, scan, suffix: Optional[str], kind: str = "") -> str:
     """The report file of one run: ``cdx-audit-<type>.json`` for a type
-    with one BOM, and the BOM's own name added when the type has several."""
+    with one BOM, and the BOM's suffix added when the type has several."""
     name = f"{AUDIT_OUTPUT_PREFIX}{kind}{scan.project_type}"
-    if multiple:
-        stem = os.path.basename(str(bom_file))
-        for suffix in (".json", ".cdx"):
-            if stem.endswith(suffix):
-                stem = stem[: -len(suffix)]
-        stem = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in stem)
-        name += f"-{stem}"
+    if suffix:
+        name += f"-{suffix}"
     return os.path.join(ctx.reports_dir, f"{name}.json")
 
 
@@ -1825,7 +1873,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     offline = bool(scan_profile == "offline" or ctx.depscan_options.get("vdb_offline", False))
     predictive = scan_profile in PREDICTIVE_PROFILES and not offline
     private_ns = getattr(args, "private_ns", None)
-    multiple = len(bom_files) > 1
+    suffixes = _audit_report_suffixes(bom_files) if len(bom_files) > 1 else {}
     boms = [_read_audit_bom(scan, bom_file) for bom_file in bom_files]
     records = []
     caveats = []
@@ -1836,7 +1884,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     budget = max(1, PREDICTIVE_TIME_BUDGET_MINUTES // max(1, len(predictive_boms)))
     redactor = None
     for bom in boms:
-        report_file = _audit_report_file(ctx, scan, bom.path, multiple)
+        report_file = _audit_report_file(ctx, scan, suffixes.get(bom.path))
         run_args = cdx_audit.build_audit_args(
             bom.path,
             report_file,
@@ -1851,7 +1899,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
                 cmd, run_args, report_file, name="direct", version=version, ctx=ctx
             )
         except (cdx_audit.CdxAuditError, subprocess.SubprocessError, OSError) as e:
-            failures.append(f"{os.path.basename(bom.path)}: {e}" if multiple else str(e))
+            failures.append(f"{os.path.basename(bom.path)}: {e}" if suffixes else str(e))
             continue
         scan.audit_output_files.append(report_file)
         records.extend(adapter_result.records)
@@ -1859,7 +1907,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
         if bom not in predictive_boms:
             continue
         predictive_report_file = _audit_report_file(
-            ctx, scan, bom.path, multiple, kind="predictive-"
+            ctx, scan, suffixes.get(bom.path), kind="predictive-"
         )
         predictive_args = cdx_audit.build_audit_args(
             bom.path,

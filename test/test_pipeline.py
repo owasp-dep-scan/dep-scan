@@ -769,13 +769,65 @@ def test_every_bom_of_a_bom_directory_is_audited_and_reports_are_not_input(tmp_p
         audited = sorted(os.path.basename(run[run.index("--bom") + 1]) for run in runs)
         assert audited == ["sbom-java.cdx.json", "sbom-js.cdx.json"], f"run {attempt}"
         written = sorted(os.path.basename(path) for path in scan.audit_output_files)
-        assert written == ["cdx-audit-bom-sbom-java.json", "cdx-audit-bom-sbom-js.json"]
+        assert written == [
+            "cdx-audit-bom-sbom-java.cdx.json",
+            "cdx-audit-bom-sbom-js.cdx.json",
+        ]
     (bom_dir / "cdx-audit-bom.json").write_text("{}")
     (bom_dir / "cdx-audit-input-purl.json").write_text("{}")
     assert sorted(os.path.basename(p) for p in get_all_bom_files(str(bom_dir))) == [
         "sbom-java.cdx.json",
         "sbom-js.cdx.json",
     ]
+
+
+def test_a_bom_directory_audits_only_cyclonedx_documents(tmp_path, monkeypatch):
+    """cdxgen writes sbom-<type>.cdx.json.introspection.json beside each BOM,
+    which the *bom*.json glob matches; it is no BOM, so it is skipped
+    quietly instead of failing the audit."""
+    from analysis_lib import get_all_bom_files
+
+    runs = _audit_stub(monkeypatch)
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom-js.cdx.json", _NPM_COMPONENTS)
+    (bom_dir / "sbom-js.cdx.json.introspection.json").write_text(json.dumps({"tiers": {}}))
+    ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir), "--reports-dir", str(bom_dir)])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="bom")
+    scan.bom_files = get_all_bom_files(str(bom_dir))
+    assert len(scan.bom_files) == 2, "the glob matches the introspection report"
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert scan.risk_error is None
+    assert [os.path.basename(run[run.index("--bom") + 1]) for run in runs] == ["sbom-js.cdx.json"]
+
+
+def test_reports_of_same_named_boms_never_overwrite_each_other(tmp_path, monkeypatch):
+    """Two bom.json in different subdirectories, and bom.json beside
+    bom.cdx.json, each get their own report name, the same on a rescan."""
+    runs = _audit_stub(monkeypatch)
+    bom_dir = tmp_path / "boms"
+    (bom_dir / "a").mkdir(parents=True)
+    (bom_dir / "b").mkdir()
+    paths = [
+        _write_bom(bom_dir / "a" / "bom.json"),
+        _write_bom(bom_dir / "b" / "bom.json"),
+        _write_bom(bom_dir / "a" / "bom.cdx.json"),
+        _write_bom(bom_dir / "a_bom.json"),
+    ]
+    names = []
+    for _ in (1, 2):
+        ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir)])
+        ctx.perform_risk_audit = True
+        scan = pipeline.TypeScan(project_type="bom")
+        scan.bom_files = list(paths)
+        assert pipeline.stage_analysis_risk(ctx, scan) is True
+        names.append(sorted(os.path.basename(path) for path in scan.audit_output_files))
+    assert len(set(names[0])) == 4, names[0]
+    assert names[0] == names[1], "the names are stable across scans"
+    assert "cdx-audit-bom-b_bom.json" in names[0]
+    assert "cdx-audit-bom-a_bom.cdx.json" in names[0]
+    assert len(runs) == 8
 
 
 def test_a_lifecycle_run_audits_only_its_own_type_boms(tmp_path, monkeypatch):
