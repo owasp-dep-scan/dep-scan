@@ -1,0 +1,27 @@
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_7318da1b9edd46::t_0e9056a8260f93 14-27
+  s_7318da1b9edd46::t_3aa0428fded0b0 30-43,49-50,58-60
+  s_7318da1b9edd46::t_de5e9f569d896a 28-29
+test/test_bom.py
+  s_7318da1b9edd46::t_798be17b45e253 49-77
+documentation/docs/reference/cli.mdx
+  s_7318da1b9edd46::t_2b1c4c4e1a7e0d 215
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_0e9056a8260f93 2225-2227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c5960b32bbb89e6c4ebfa3ebda31d9e52c8dca4",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
