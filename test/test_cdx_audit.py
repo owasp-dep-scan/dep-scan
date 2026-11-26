@@ -1,14 +1,14 @@
 """Tests for the cdx-audit runner and its wiring into the scan.
 
-The end-to-end tests that run a real cdx-audit need one installed that
-carries the options dep-scan passes (``--private-namespace``, ``--offline``,
-``--time-budget-minutes``); they are skipped, with the reason, when
-``CDX_AUDIT_CMD`` does not point at one.
+The end-to-end tests that run a real cdx-audit need one that carries the
+options dep-scan passes (``--private-namespace``, ``--offline``,
+``--time-budget-minutes``); they are skipped, with the reason, when none is
+found or the one found is older than the minimum. The offline tests load a
+Node module into cdx-audit that records and refuses any network access.
 """
 
 import json
 import os
-import socket
 import stat
 import sys
 from pathlib import Path
@@ -329,30 +329,72 @@ def test_build_args_ask_for_the_registry_lookup_unless_offline():
     assert "--fetch-registry-metadata" not in unasked
 
 
-def _block_network(monkeypatch):
-    """Every socket construction raises, so a registry, git or OCI request
-    fails the test instead of quietly succeeding."""
-    def no_socket(*args, **kwargs):
-        raise AssertionError("a scan in offline mode made a network request")
+#: A Node module loaded into cdx-audit with ``--import`` that records and
+#: refuses every socket connection, DNS lookup, fetch and child process the
+#: process attempts. cdx-audit is a Node program, so patching Python's
+#: socket module observes nothing it does, and its registry lookups run in
+#: a helper binary it spawns (cdxrs), so a spawn is refused as well.
+#: ``syncBuiltinESMExports`` makes the patches reach named ESM imports.
+NETGUARD_SOURCE = """import fs from "node:fs";
+import net from "node:net";
+import tls from "node:tls";
+import dns from "node:dns";
+import childProcess from "node:child_process";
+import { syncBuiltinESMExports } from "node:module";
+const logFile = process.env.DEPSCAN_NETGUARD_LOG;
+const refuse = (kind, target) => {
+  fs.appendFileSync(logFile, `${kind} ${String(target).slice(0, 200)}\\n`);
+  throw new Error(`network access refused by the test: ${kind}`);
+};
+const guard = (module, name, kind) => {
+  module[name] = (...args) => refuse(kind, JSON.stringify(args.slice(0, 2)));
+};
+guard(net, "connect", "net.connect");
+guard(net, "createConnection", "net.createConnection");
+guard(tls, "connect", "tls.connect");
+net.Socket.prototype.connect = function (...args) {
+  refuse("socket.connect", JSON.stringify(args[0]));
+};
+guard(dns, "lookup", "dns.lookup");
+dns.promises.lookup = async (host) => refuse("dns.promises.lookup", host);
+for (const name of ["spawn", "spawnSync", "execFile", "execFileSync", "exec", "execSync", "fork"]) {
+  guard(childProcess, name, `child_process.${name}`);
+}
+globalThis.fetch = async (url) => refuse("fetch", url);
+syncBuiltinESMExports();
+"""
 
-    monkeypatch.setattr(socket, "socket", no_socket)
-    monkeypatch.setattr(socket, "create_connection", no_socket)
-    if hasattr(socket, "socketpair"):
-        monkeypatch.setattr(socket, "socketpair", no_socket)
 
-
-@pytest.mark.skipif(
-    not os.environ.get("CDX_AUDIT_CMD"),
-    reason="needs a cdx-audit that carries --offline and --private-namespace; set CDX_AUDIT_CMD",
-)
-def test_offline_direct_audit_makes_no_network_request(tmp_path, monkeypatch):
-    """The real cdx-audit, offline, over a BOM whose component carries
-    registry metadata: no socket is ever built, and the report still lands."""
-    _block_network(monkeypatch)
+def _real_cdx_audit():
+    """The cdx-audit command to run, or skip: the real-tool tests need one
+    that carries the options dep-scan passes, so a missing or older one is
+    a skip with the reason, never a failure."""
     cmd = cdx_audit.find_cdx_audit_cmd()
-    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
-    bom_file = tmp_path / "sbom.cdx.json"
-    bom_file.write_text(
+    if not cmd:
+        pytest.skip("no cdx-audit found; set CDX_AUDIT_CMD to run the real-tool tests")
+    version = cdx_audit.cdx_audit_version(cmd)
+    if not cdx_audit.check_cdx_audit_version(version):
+        pytest.skip(
+            f"cdx-audit {version or 'of an unknown version'} is older than "
+            f"{cdx_audit.CDX_AUDIT_MIN_VERSION}, which carries the options dep-scan passes"
+        )
+    return cmd
+
+
+def _netguard(tmp_path, monkeypatch):
+    """Load the network guard into every Node process the test starts; the
+    log file it writes to, empty while nothing touched the network."""
+    guard = tmp_path / "netguard.mjs"
+    guard.write_text(NETGUARD_SOURCE, encoding="utf-8")
+    log = tmp_path / "network-attempts.log"
+    log.write_text("", encoding="utf-8")
+    monkeypatch.setenv("DEPSCAN_NETGUARD_LOG", str(log))
+    monkeypatch.setenv("NODE_OPTIONS", f"--import={guard.as_uri()}")
+    return log
+
+
+def _npm_bom(path, names=("depscan-netguard-probe-7f3a",)):
+    path.write_text(
         json.dumps(
             {
                 "bomFormat": "CycloneDX",
@@ -361,28 +403,58 @@ def test_offline_direct_audit_makes_no_network_request(tmp_path, monkeypatch):
                 "components": [
                     {
                         "type": "library",
-                        "bom-ref": "pkg:npm/express@4.21.2",
-                        "name": "express",
+                        "bom-ref": f"pkg:npm/{name}@4.21.2",
+                        "name": name,
                         "version": "4.21.2",
-                        "purl": "pkg:npm/express@4.21.2",
+                        "purl": f"pkg:npm/{name}@4.21.2",
                     }
+                    for name in names
                 ],
             }
         )
     )
-    report_file = tmp_path / "audit.json"
-    args = cdx_audit.build_audit_args(
-        str(bom_file), str(report_file), direct=True, offline=True
-    )
-    result = cdx_audit.run_cdx_audit(cmd, args)
-    assert result.report_version == 1
-    assert result.offline is True
+    return path
 
 
-@pytest.mark.skipif(
-    not os.environ.get("CDX_AUDIT_CMD"),
-    reason="needs a cdx-audit that carries --offline and --private-namespace; set CDX_AUDIT_CMD",
-)
+def test_an_offline_scan_runs_cdx_audit_without_touching_the_network(tmp_path, monkeypatch):
+    """The real cdx-audit under a Node guard that records any socket, DNS
+    lookup or fetch. The scan's own offline detection (--vdb-offline) is
+    what makes the stage pass --offline; the guard log stays empty and the
+    report says the registry lookups did not run.
+
+    Positive control: the same stage online asks for the registry lookup of
+    a package no local cache holds, and the guard records the attempt, so
+    an empty log means something.
+    """
+    from depscan.lib import pipeline
+    from test.test_pipeline import _ctx
+
+    cmd = _real_cdx_audit()
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: cmd)
+    log = _netguard(tmp_path, monkeypatch)
+    bom = _npm_bom(tmp_path / "sbom-npm.cdx.json")
+
+    (tmp_path / "offline").mkdir()
+    (tmp_path / "online").mkdir()
+    ctx = _ctx(tmp_path / "offline", ["-t", "npm", "--vdb-offline"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = str(bom)
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert scan.risk_error is None, scan.risk_error
+    assert scan.audit_output_files, "the audit ran and wrote its report"
+    report = json.loads(Path(scan.audit_output_files[0]).read_text())
+    assert report["results"][0]["coverage"]["registryMetadata"] == "offline"
+    assert log.read_text() == "", "the offline audit attempted network access"
+
+    online = _ctx(tmp_path / "online", ["-t", "npm"])
+    online.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = str(bom)
+    pipeline.stage_analysis_risk(online, scan)
+    assert log.read_text() != "", "the guard saw the online audit's registry lookup"
+
+
 def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
     """End to end through the real cdx-audit and the real public registry.
 
@@ -395,8 +467,7 @@ def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
     from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
     from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
 
-    cmd = cdx_audit.find_cdx_audit_cmd()
-    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
+    cmd = _real_cdx_audit()
     unpublished = "depscan-p21-unpublished-private-package"
     components = [
         {
@@ -453,19 +524,14 @@ def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
     ), "both names were answered about, so there is no gap to state"
 
 
-@pytest.mark.skipif(
-    not os.environ.get("CDX_AUDIT_CMD"),
-    reason="needs a cdx-audit that carries --offline and --private-namespace; set CDX_AUDIT_CMD",
-)
 def test_an_offline_private_namespace_check_asks_nothing_and_says_so(tmp_path, monkeypatch):
     """Offline, the public registry is not asked whether it holds a private
     name. No socket is built, and the report counts the name as unanswered,
     which the adapter states as a coverage gap instead of a clean check."""
     from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
 
-    _block_network(monkeypatch)
-    cmd = cdx_audit.find_cdx_audit_cmd()
-    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
+    cmd = _real_cdx_audit()
+    log = _netguard(tmp_path, monkeypatch)
     bom_file = tmp_path / "sbom.cdx.json"
     bom_file.write_text(
         json.dumps(
@@ -490,6 +556,7 @@ def test_an_offline_private_namespace_check_asks_nothing_and_says_so(tmp_path, m
         str(bom_file), str(report_file), direct=True, offline=True, private_ns="lodash"
     )
     result = cdx_audit.run_cdx_audit(cmd, args)
+    assert log.read_text() == "", "the offline audit attempted network access"
     assert result.report["results"][0]["coverage"]["privateNamespace"] == {
         "matched": 1,
         "onPublicRegistry": 0,
