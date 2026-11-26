@@ -16,6 +16,7 @@ from reporting_lib.template import (
     RECOMMENDATION,
     INFO,
     BINARY_HARDENING_RESULTS,
+    SUPPLY_CHAIN_RESULTS,
 )
 
 NEWLINE = "\n"
@@ -110,6 +111,11 @@ class ReportGenerator:
     BINARY_HARDENING_RESULTS_DATA_COLUMNS = ["Binary", "Check", "Severity", "Title"]
     BINARY_HARDENING_RESULTS_DATA = BINARY_HARDENING_RESULTS + " " + DATA
     BINARY_HARDENING_FINDINGS_COUNT = "Binary hardening findings count"
+
+    SUPPLY_CHAIN_RESULTS = "Supply-Chain Audit Results"
+    SUPPLY_CHAIN_RESULTS_DATA_COLUMNS = ["Rule", "Severity", "Package(s)", "Message"]
+    SUPPLY_CHAIN_RESULTS_DATA = SUPPLY_CHAIN_RESULTS + " " + DATA
+    SUPPLY_CHAIN_FINDINGS_COUNT = "Supply-chain findings count"
 
     @staticmethod
     def normalize_rich_text(text):
@@ -351,6 +357,11 @@ class ReportGenerator:
             self.BINARY_HARDENING_RESULTS: {
                 self.BINARY_HARDENING_FINDINGS_COUNT: "-1",
                 self.SUMMARY: "",
+                self.TABLE_HEADERS: [],
+                self.DATA: [],
+            },
+            self.SUPPLY_CHAIN_RESULTS: {
+                self.SUPPLY_CHAIN_FINDINGS_COUNT: "-1",
                 self.TABLE_HEADERS: [],
                 self.DATA: [],
             },
@@ -1318,6 +1329,78 @@ class ReportGenerator:
                 current_location = None
                 continue
 
+            # ---- Location identification: Supply-Chain Audit Results ----
+
+            if self.normalized_text_equals(line, self.SUPPLY_CHAIN_RESULTS):
+                current_location = self.SUPPLY_CHAIN_RESULTS
+                continue
+
+            if (
+                current_location == self.SUPPLY_CHAIN_RESULTS
+                and line.startswith("╔")
+                and line.endswith("╗")
+            ):
+                current_location = self.SUPPLY_CHAIN_RESULTS_DATA
+                current_columns_count = len(line[1:-1].split("╤"))
+                current_table_row = []
+                continue
+
+            if current_location == self.SUPPLY_CHAIN_RESULTS_DATA and (
+                (line.startswith("╚") and line.endswith("╝"))
+                or (line.startswith("╟") and line.endswith("╢"))
+            ):
+                # The table draws a line between rows, so each separator and
+                # the bottom edge close one row of possibly wrapped lines.
+                if current_table_row:
+                    cells = ["" for index in range(0, len(current_table_row[0]))]
+                    for row_piece in current_table_row:
+                        for index, row_piece_column in enumerate(row_piece):
+                            if index < len(cells):
+                                cells[index] += row_piece_column.strip() + "\n"
+                    sections_tree[self.SUPPLY_CHAIN_RESULTS][self.DATA].append(
+                        [cell[:-1].strip() for cell in cells]
+                    )
+                    current_table_row = []
+                if line.startswith("╚"):
+                    current_location = self.SUPPLY_CHAIN_RESULTS
+                continue
+
+            # ---- Data population: Supply-Chain Audit Results ----
+
+            if current_location == self.SUPPLY_CHAIN_RESULTS_DATA:
+                if line.startswith("║") and line.endswith("║"):  # in table row
+                    # The last column is the finding's free-text message, so
+                    # a separator character inside it stays in that cell.
+                    columns = line[1:-1].split("│", maxsplit=current_columns_count - 1)
+                    normalized_columns = [self.normalize_rich_text(column) for column in columns]
+                    if normalized_columns == self.SUPPLY_CHAIN_RESULTS_DATA_COLUMNS:
+                        sections_tree[self.SUPPLY_CHAIN_RESULTS][self.TABLE_HEADERS] = (
+                            normalized_columns
+                        )
+                        current_table_row = []
+                    else:
+                        # The cells stay HTML-escaped as rich wrote them;
+                        # only the colour spans go.
+                        current_table_row.append(
+                            [re.sub(r"</?span[^>]*>", "", column) for column in columns]
+                        )
+                continue
+
+            if current_location == self.SUPPLY_CHAIN_RESULTS and (
+                line.startswith(self.SUPPLY_CHAIN_FINDINGS_COUNT)
+                or self.string_matches_span_pattern(
+                    line, self.SUPPLY_CHAIN_FINDINGS_COUNT + r": \d+"
+                )
+            ):
+                sections_tree[self.SUPPLY_CHAIN_RESULTS][self.SUPPLY_CHAIN_FINDINGS_COUNT] = (
+                    self.normalize_rich_text(line)
+                    .split(self.SUPPLY_CHAIN_FINDINGS_COUNT + ":", 1)[1]
+                    .strip()
+                )
+                # The caption is the section's last line.
+                current_location = None
+                continue
+
         return sections_tree
 
     def format_as_html_ul(self, input_string):
@@ -2036,6 +2119,49 @@ class ReportGenerator:
 
         report_content.append(binary_hardening_results)
 
+    def generate_section_supply_chain(
+        self, sections_tree, report_content, table_inits, tree_is_from_html
+    ):
+        section = sections_tree[self.SUPPLY_CHAIN_RESULTS]
+        supply_chain_results = SUPPLY_CHAIN_RESULTS
+
+        current_content = section[self.SUPPLY_CHAIN_FINDINGS_COUNT]
+        try:
+            findings_count = int(current_content)
+        except ValueError:
+            findings_count = -1
+        if findings_count == -1:
+            current_content = f"{len(section[self.DATA])}"
+        elif tree_is_from_html is False:
+            current_content = html.escape(current_content)
+        supply_chain_results = supply_chain_results.replace(
+            "<SUPPLY_CHAIN_FINDINGS_COUNT_PLACEHOLDER>", current_content, 1
+        )
+
+        html_table = []
+        for row_data in section[self.DATA]:
+            html_row = ["<tr>"]
+            for index, column in enumerate(self.SUPPLY_CHAIN_RESULTS_DATA_COLUMNS):
+                current_content = row_data[index] if len(row_data) >= index + 1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                if self.raw_content:
+                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                else:
+                    html_row.append(f"<td>{current_content}</td>")
+            html_row.append("</tr>")
+            html_table.append("\n".join(html_row))
+
+        supply_chain_results = supply_chain_results.replace(
+            "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
+        )
+
+        table_id = self.identify_table_id(table_inits, "supply-chain-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        supply_chain_results = supply_chain_results.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
+        report_content.append(supply_chain_results)
+
     def generate_section_reachable_flows(
         self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
@@ -2503,6 +2629,11 @@ class ReportGenerator:
                 or len(sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA]) > 0
             ):
                 self.generate_section_binary_hardening(
+                    sections_tree, report_content, table_inits, tree_is_from_html
+                )
+
+            if len(sections_tree[self.SUPPLY_CHAIN_RESULTS][self.DATA]) > 0:
+                self.generate_section_supply_chain(
                     sections_tree, report_content, table_inits, tree_is_from_html
                 )
 

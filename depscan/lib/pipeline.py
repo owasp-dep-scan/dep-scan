@@ -67,7 +67,7 @@ from vdb.lib.utils import parse_purl
 from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
-from depscan.lib import binary_review, cdx_audit, explainer, utils
+from depscan.lib import binary_review, cdx_audit, explainer, supply_chain_review, utils
 from depscan.lib.exclusions import ExclusionSet
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
@@ -3041,11 +3041,31 @@ def _render_binary_review(ctx) -> None:
         )
 
 
+def _render_supply_chain(ctx) -> None:
+    """Print the supply-chain audit's findings on the console.
+
+    The rows are the findings :func:`finish_scan_directory` writes to
+    ``depscan.findings.json`` from the same cdx-audit records under the
+    same gate, so the table's count agrees with the file. The table is left
+    out with the other tables under ``--no-vuln-table``, and a scan that
+    did not run the audit prints nothing here."""
+    if not ctx.perform_risk_audit or ctx.args.no_vuln_table:
+        return
+    from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
+
+    rows = supply_chain_review.supply_chain_rows(
+        finding.to_dict() for finding in findings_from_cdx_audit_records(ctx.evidence_records)
+    )
+    if rows:
+        console.print(supply_chain_review.supply_chain_table(rows))
+
+
 def stage_render_reports(ctx):
     """Export the console output and render every report file."""
     args = ctx.args
     console.record = True
     _render_binary_review(ctx)
+    _render_supply_chain(ctx)
     # Export the console output
     console.save_html(
         ctx.html_report_file,

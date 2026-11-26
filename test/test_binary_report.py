@@ -186,11 +186,20 @@ def _run_binary_scan(scan_stubs, monkeypatch, tmp_path, *, findings_entries, cov
     return saved[str(reports / "depscan.txt")], reports
 
 
-def test_hardening_rows_keeps_only_the_review_category():
+def test_hardening_rows_keeps_only_the_reviews_own_findings():
+    """The table holds blint's binary-hardening findings; cdx-audit's
+    rootfs-hardening pack writes binary-hardening findings too, and those
+    belong to the supply-chain table."""
+    blint = {"name": "blint", "version": "4.1.0"}
     rows = binary_review.hardening_rows(
         [
-            {"category": "vulnerability", "rule": "CVE-2026-1"},
-            {"category": "binary-hardening", "rule": "CHECK_CANARY"},
+            {"category": "vulnerability", "rule": "CVE-2026-1", "producer": blint},
+            {"category": "binary-hardening", "rule": "CHECK_CANARY", "producer": blint},
+            {
+                "category": "binary-hardening",
+                "rule": "RFS-001",
+                "producer": {"name": "cdx-audit", "version": "13.10.0"},
+            },
             "not a finding",
             None,
         ]
