@@ -16,11 +16,11 @@ The published image carries the toolchain, so the runner installs nothing. The i
   run: |
     mkdir -p reports
     docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/app" \
-      ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a3 \
+      ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a4 \
       depscan scan /app --reports-dir /app/reports --profile ci
 ```
 
-Pin the image to a dep-scan 7 tag such as `v7.0.0a3`. Only a final `vX.Y.Z` release moves the `latest` tag, so `latest` stays on dep-scan 6.x until 7.0.0 is released.
+Pin the image to a dep-scan 7 tag such as `v7.0.0a4`. Only a final `vX.Y.Z` release moves the `latest` tag, so `latest` stays on dep-scan 6.x until 7.0.0 is released.
 
 Mount or cache a directory as `VDB_HOME` and the database survives between jobs; without it, every job downloads the flavor again. Pin the database flavor for the job (`depscan vdb download --flavor app-only` as a step, or `vdb_flavor` in the config file), because a job that resolves a different flavor than the cache holds re-downloads.
 
@@ -111,7 +111,7 @@ jobs:
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
             -e VDB_HOME=/db -v "$PWD/vdb-home:/db" \
             -v "$PWD:/app" \
-            ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a3 \
+            ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a4 \
             depscan scan /app -t js --bom-profile research --profile ci \
               --vdb-flavor app-only --reports-dir /app/reports --fail-on-error
       - name: Gate on assessed critical findings

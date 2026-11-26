@@ -21,7 +21,7 @@ HOOKS_DIR = os.path.join(
 )
 CHECK_SCRIPT = os.path.join(HOOKS_DIR, "check_depscan.py")
 STALE_SCRIPT = os.path.join(HOOKS_DIR, "stale_lockfile.py")
-PLUGIN_VERSION = "7.0.0-alpha.3"
+PLUGIN_VERSION = "7.0.0-alpha.4"
 
 #: The environment of a machine where depscan cannot be found at all.
 HIDDEN_ENV = {
@@ -114,7 +114,7 @@ def test_older_depscan_warns(tmp_path):
 
 def test_equal_version_is_silent(tmp_path):
     """The installed release that matches the plugin's version is not older."""
-    fake_env = _make_fake_install(tmp_path, version="7.0.0a3", with_mcp=True)
+    fake_env = _make_fake_install(tmp_path, version="7.0.0a4", with_mcp=True)
     result = _parse_hook_output(_run_hook(CHECK_SCRIPT, env=_env_with(fake_env)))
     assert result is None
 
