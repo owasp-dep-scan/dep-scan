@@ -2222,8 +2222,9 @@ def determine_spec_version(bom_files=None, fallback=None):
     """
     versions = []
     for bom_file in bom_files or []:
-        data = json_load(bom_file, log=LOG) or {}
-        if spec := data.get("specVersion"):
+        data = json_load(bom_file, log=LOG)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if isinstance(data, dict) and (spec := data.get("specVersion")):
             versions.append(str(spec))
     if versions:
         return max(versions, key=_spec_version_sort_key)
