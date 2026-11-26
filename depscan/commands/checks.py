@@ -198,15 +198,17 @@ def resolve(
         capability = CHECKS[name].capability
         if name not in profile_checks or capability is None:
             continue
-        if doctor_report is None and not expand:
+        if doctor_report is None:
+            # Only the scan verb hands a report in. config show and the MCP
+            # options document show what the profile asks for and probe no
+            # tool; a run without a report records a missing cdx-audit at
+            # the stage instead.
             continue
         # A profile that implies a check this machine cannot run records it
         # as not assessed, the way the all expansion does, instead of
         # refusing the whole scan: only a check named in --checks is gated.
-        report = doctor_report if doctor_report is not None else doctor_lib.doctor()
-        doctor_report = report
         reason = doctor_lib.capability_unavailable_reason(
-            capability, report.tools_by_name(), report.data, skip_requirements
+            capability, doctor_report.tools_by_name(), doctor_report.data, skip_requirements
         )
         if reason:
             names = [check for check in names if check != name]

@@ -856,6 +856,24 @@ def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, 
     assert options["reachability_analyzer"] == {"value": "off", "source": "command line"}
 
 
+@pytest.mark.parametrize("profile", ["deep", "research"])
+def test_config_show_probes_no_tool_for_a_profile(monkeypatch, capsys, clean_option_env, profile):
+    """A profile that implies the supply-chain check shows what it asks for:
+    config show collects no doctor report, so whether cdx-audit is installed
+    never changes the options it prints. Only the scan verb, which hands the
+    resolution its own report, records the check as not assessed."""
+    from depscan.lib import doctor as doctor_lib
+
+    def no_probe(*args, **kwargs):
+        raise AssertionError("config show probed the tools")
+
+    monkeypatch.setattr(doctor_lib, "doctor", no_probe)
+    code = run_main(monkeypatch, ["config", "show", "--profile", profile, "--format", "json"])
+    assert code == 0
+    options = json.loads(capsys.readouterr().out)["options"]
+    assert options["risk_audit"] == {"value": True, "source": "checks or profile"}
+
+
 def test_config_show_refuses_an_unknown_check(monkeypatch, capsys, clean_option_env):
     code = run_main(monkeypatch, ["config", "show", "--checks", "vulnerabilitys"])
     assert code == 2
