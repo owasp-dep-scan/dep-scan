@@ -1,0 +1,45 @@
+depscan/api.py
+  s_8c7c9bd4e9d139::t_b314dec9cc4e0f 328
+packages/analysis-lib/tests/test_cdx_audit_convert.py
+  s_8c7c9bd4e9d139::t_9fa8761958aad1 50
+depscan/lib/cdx_audit.py
+  s_8c7c9bd4e9d139::t_79f097ba5f7b70 4,22-26,138-141,151,170-174,241-245
+  s_8c7c9bd4e9d139::t_2ba787e828785a 231-237
+packages/analysis-lib/tests/test_cdx_audit_adapter.py
+  s_8c7c9bd4e9d139::t_565043ae44f9e7 237-342
+test/test_cdx_audit.py
+  s_8c7c9bd4e9d139::t_e2273c88e2131c 190-213
+  s_8c7c9bd4e9d139::t_834fccf35ca0ec 269-276,282-292,296,304-305,308-315,325,327,329-392
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdx_audit.py
+  s_8c7c9bd4e9d139::t_a7fb0d8a1ef860 9-11,61-68,83-90,119-130,134-168,344-346
+  s_8c7c9bd4e9d139::t_834fccf35ca0ec 12-14,91-118,131-133
+test/test_scan_directory.py
+  s_8c7c9bd4e9d139::t_efd52ffabfd780 1140,1167
+  s_8c7c9bd4e9d139::t_e2273c88e2131c 1101-1139,1141-1166,1168-1173
+packages/analysis-lib/src/analysis_lib/findings/cdx_audit_convert.py
+  s_8c7c9bd4e9d139::t_9fa8761958aad1 3-5,11-13,39
+test/test_pipeline.py
+  s_8c7c9bd4e9d139::t_e927942df6fdcf 468-470,475,515-517,533-534,564-608,614-638
+  s_8c7c9bd4e9d139::t_2ba787e828785a 609-613
+  s_8c7c9bd4e9d139::t_42b528fcc24f6b 639-640
+depscan/lib/pipeline.py
+  s_8c7c9bd4e9d139::t_9fa8761958aad1 1647-1656,1706
+  s_8c7c9bd4e9d139::t_e1630bb892c30b 1738,1756,1769-1771
+  s_8c7c9bd4e9d139::t_b314dec9cc4e0f 173-177,1757-1759,1782,1784-1785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41121b28157da92062b8bca2e8af0453f6236fe8",
+  "prompts": {},
+  "sessions": {
+    "s_8c7c9bd4e9d139": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9dbe5ca6-7bed-4f18-b047-b71e9f4c565f",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
