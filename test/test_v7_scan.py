@@ -1764,6 +1764,10 @@ def test_profile_deep_enables_risk_license_and_semantic_reachability(
         "the deep profile ran no predictive audit"
     )
     assert "scan_profile" not in (reports / "depscan.toml.sample").read_text()
+    # The resolution's markers are not options the user set: the manifest
+    # records the checks as stages and leaves them out.
+    assert "scan_profile" not in manifest["options"]
+    assert "checks_requested" not in manifest["options"]
 
 
 def test_a_profile_records_supply_chain_as_not_assessed_without_cdx_audit(

@@ -1146,10 +1146,9 @@ def finalize_setup(ctx):
     _write_sample_config(ctx, run_config_file)
 
 
-#: Options a scan carries internally that are no configuration a user sets:
-#: the banner flag, and what ``--checks`` and ``--profile`` resolved to,
-#: which a TOML file read back would turn into settings of their own.
-UNWRITTEN_OPTIONS = ("no_banner", "scan_profile", "checks_requested")
+#: The options no written config carries (see
+#: :data:`scan_directory.INTERNAL_OPTIONS`).
+UNWRITTEN_OPTIONS = scan_directory.INTERNAL_OPTIONS
 
 
 def write_config_file(options: Dict[str, Any], run_config_file: str) -> bool:

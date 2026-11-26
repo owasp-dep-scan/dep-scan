@@ -146,17 +146,25 @@ def option_holds_secret(name: str) -> bool:
     return any(part in lowered for part in _SECRET_NAME_PARTS) or lowered in _SECRET_OPTIONS
 
 
+#: Options a scan carries internally that are no configuration a user sets:
+#: the banner flag, and what ``--checks`` and ``--profile`` resolved to. The
+#: manifest records the checks as stages, and a config file read back would
+#: turn these into settings of their own, so neither writes them.
+INTERNAL_OPTIONS = ("no_banner", "scan_profile", "checks_requested")
+
+
 def redact_options(options: Dict[str, Any]) -> Dict[str, Any]:
     """The parsed options for the manifest, with secrets removed.
 
     Secret-capable options become ``<redacted>`` when they were set and null
     when they were not, so the manifest shows that a secret was configured
     without recording it. Path-valued options are dropped; ``inputs`` records
-    those paths as the user gave them.
+    those paths as the user gave them. The resolution markers in
+    :data:`INTERNAL_OPTIONS` other than the banner flag are dropped too.
     """
     out: Dict[str, Any] = {}
     for name, value in sorted(options.items()):
-        if name in _PATH_OPTIONS:
+        if name in _PATH_OPTIONS or (name in INTERNAL_OPTIONS and name != "no_banner"):
             continue
         if option_holds_secret(name):
             out[name] = REDACTED if option_is_set(value) else None
