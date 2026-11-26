@@ -769,10 +769,7 @@ def test_every_bom_of_a_bom_directory_is_audited_and_reports_are_not_input(tmp_p
         audited = sorted(os.path.basename(run[run.index("--bom") + 1]) for run in runs)
         assert audited == ["sbom-java.cdx.json", "sbom-js.cdx.json"], f"run {attempt}"
         written = sorted(os.path.basename(path) for path in scan.audit_output_files)
-        assert written == [
-            "cdx-audit-bom-sbom-java.cdx.json",
-            "cdx-audit-bom-sbom-js.cdx.json",
-        ]
+        assert written == ["cdx-audit-bom-sbom-java.json", "cdx-audit-bom-sbom-js.json"]
     (bom_dir / "cdx-audit-bom.json").write_text("{}")
     (bom_dir / "cdx-audit-input-purl.json").write_text("{}")
     assert sorted(os.path.basename(p) for p in get_all_bom_files(str(bom_dir))) == [
@@ -826,7 +823,9 @@ def test_reports_of_same_named_boms_never_overwrite_each_other(tmp_path, monkeyp
     assert len(set(names[0])) == 4, names[0]
     assert names[0] == names[1], "the names are stable across scans"
     assert "cdx-audit-bom-b_bom.json" in names[0]
-    assert "cdx-audit-bom-a_bom.cdx.json" in names[0]
+    assert not any(name.endswith(".cdx.json") for name in names[0]), (
+        "a report named *.cdx.json would be read as a BOM by every *.cdx.json glob"
+    )
     assert len(runs) == 8
 
 

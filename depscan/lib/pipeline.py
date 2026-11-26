@@ -1742,9 +1742,9 @@ def _audit_report_suffixes(bom_files: List[str]) -> Dict[str, str]:
     """A unique, stable report-name suffix for each of several BOMs.
 
     The suffix is the BOM's path relative to the directory the BOMs share,
-    without the ``.json`` extension and with separators and unsafe
-    characters made ``_`` (``a/bom.json`` gives ``a_bom``, ``bom.cdx.json``
-    gives ``bom.cdx``). Two BOMs that still spell the same name get a short
+    without the ``.cdx.json`` or ``.json`` extension, so no report name ends
+    in ``.cdx.json``, and with separators and unsafe characters made ``_``
+    (``a/bom.json`` and ``a/bom.cdx.json`` both give ``a_bom``). Two BOMs that still spell the same name get a short
     hash of their relative path added, so no report overwrites another and
     a rescan of the same directory writes the same names."""
     import hashlib
@@ -1763,7 +1763,13 @@ def _audit_report_suffixes(bom_files: List[str]) -> Dict[str, str]:
     }
     stems = {}
     for path, rel in relative.items():
-        stem = rel[: -len(".json")] if rel.lower().endswith(".json") else rel
+        # The report must not end in .cdx.json, or every *.cdx.json glob
+        # (cdxgen evinse, other tools, a later scan) reads it as a BOM.
+        stem = rel
+        for extension in (".cdx.json", ".json"):
+            if stem.lower().endswith(extension):
+                stem = stem[: -len(extension)]
+                break
         stems[path] = _safe_name(stem.replace("/", "_"))
     counts: Dict[str, int] = {}
     for stem in stems.values():
