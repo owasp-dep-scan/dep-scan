@@ -325,6 +325,7 @@ def _run_stages(
                 failed_reason=lambda: tscan.risk_error,
                 not_assessed_reason=lambda: tscan.risk_not_assessed,
                 record_extra=lambda: {
+                    "notAssessed": list(tscan.audit_caveats),
                     "outputs": [
                         output
                         for outputs in (

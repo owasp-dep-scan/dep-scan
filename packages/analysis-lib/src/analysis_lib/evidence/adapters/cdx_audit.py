@@ -6,7 +6,12 @@ input BOM with the rule findings the audit pack matched on that BOM's
 components and workflows. The predictive report holds one result per audited
 upstream target with the findings the target's child SBOM yielded, plus the
 targets the audit skipped or failed and the target-selection entries it left
-out; those become ``coverage-gap`` caveats, never silent omissions.
+out; those become ``coverage-gap`` caveats, never silent omissions. A direct
+result's ``coverage`` block states whether the registry lookups ran and how
+many components a registry answered for; the rules that read registry
+metadata could not assess the rest, which is a coverage gap too. Its
+``privateNamespace`` part counts the components matching a private namespace
+the public registry was asked about, and the ones it did not answer about.
 
 Every rule finding becomes one ``annotation`` record with polarity
 ``negative``. In direct mode the record's subject is the component the
@@ -53,6 +58,14 @@ KNOWN_REPORT_VERSION_MINOR = 0
 
 PRODUCER_NAME = "cdx-audit"
 
+#: The cdx-audit rules that read registry metadata. They evaluate only what
+#: the BOM carries, so a direct audit that did not look the packages up, or
+#: whose lookup a registry did not answer, could not assess them.
+REGISTRY_RULES = (
+    "deprecated npm packages, yanked releases, missing versions, package age "
+    "and native binaries"
+)
+
 
 def _parse_document(document: Any) -> Tuple[Optional[Any], Optional[str]]:
     """A report as a parsed value, accepting JSON text as well as an
@@ -65,6 +78,92 @@ def _parse_document(document: Any) -> Tuple[Optional[Any], Optional[str]]:
         except ValueError as e:
             return None, f"the report is not valid JSON: {e}"
     return document, None
+
+
+def _count(value: Any) -> int:
+    """A non-negative integer count, or 0 for anything else (a negative
+    number, a boolean, text, a missing value)."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return 0
+    return value
+
+
+def _private_namespace_caveat(block: Dict[str, Any]) -> Optional[EvidenceCaveat]:
+    """The caveat of a direct result's private-namespace ``coverage`` block.
+
+    cdx-audit counts the components whose name matches a private namespace
+    (``matched``) and, having asked the public registry about each name, the
+    ones it did not answer about (``unknown``). A name nobody answered about
+    is neither reported as published publicly nor known to be free, which is
+    a coverage gap; ``publicRegistry`` says whether the registries were asked
+    at all.
+    """
+    matched = _count(block.get("matched"))
+    unknown = _count(block.get("unknown"))
+    if not matched or not unknown:
+        return None
+    if as_str(block.get("publicRegistry")) == "offline":
+        why = "the audit ran offline and made no registry request"
+    else:
+        why = "the public registry did not answer about them"
+    share = f"{unknown} of {matched}" if unknown != matched else str(unknown)
+    return EvidenceCaveat(
+        kind="coverage-gap",
+        detail=(
+            f"the dependency-confusion check did not assess {share} component(s) "
+            f"matching a private namespace, because {why}"
+        ),
+    )
+
+
+def _registry_caveats(coverage: Dict[str, Any]) -> List[EvidenceCaveat]:
+    """The caveats of a direct result's registry ``coverage`` block.
+
+    cdx-audit counts the npm, PyPI and Cargo components that name a version
+    (``eligible``), the ones a registry answered for, and the rest
+    (``withoutMetadata``), and says under ``registryMetadata`` whether the
+    lookups ran at all. A lookup that did not run, or a component no
+    registry answered for, leaves the rules that read registry metadata
+    unable to assess that component, which is a coverage gap and never a
+    clean result.
+    """
+    caveats: List[EvidenceCaveat] = []
+    private_namespace = _private_namespace_caveat(as_dict(coverage.get("privateNamespace")))
+    if private_namespace is not None:
+        caveats.append(private_namespace)
+    eligible = _count(coverage.get("eligible"))
+    without = _count(coverage.get("withoutMetadata"))
+    mode = as_str(coverage.get("registryMetadata"))
+    scope = f"{eligible} npm, PyPI or Cargo component(s)" if eligible else "the scan's components"
+    if mode and mode != "fetched":
+        why = (
+            "the audit ran offline and made no registry request"
+            if mode == "offline"
+            else f"the audit was not asked for registry lookups ({mode})"
+        )
+        caveats.append(
+            EvidenceCaveat(
+                kind="coverage-gap",
+                detail=(
+                    f"cdx-audit did not look up registry metadata because {why}, "
+                    f"so its rules that read it ({REGISTRY_RULES}) did not assess {scope}"
+                ),
+            )
+        )
+    if without:
+        share = f"{without} of {eligible}" if eligible else str(without)
+        caveats.append(
+            EvidenceCaveat(
+                kind="coverage-gap",
+                detail=(
+                    f"{share} npm, PyPI or Cargo component(s) carry no registry metadata "
+                    "after the lookup (absent from the registry, served from an index "
+                    "the public registry does not hold, or failed in the lookup), so "
+                    f"cdx-audit's rules that read it ({REGISTRY_RULES}) did not assess them"
+                ),
+            )
+        )
+    return caveats
 
 
 def _purls_of(location: Any) -> List[str]:
@@ -242,6 +341,9 @@ def extract(
             skipped.add("report results are not JSON objects and became no record")
             continue
         if audit_mode == "direct":
+            # Stated before this result's records are built, so each record
+            # carries the coverage gaps of the audit it came from.
+            caveats.extend(_registry_caveats(as_dict(entry.get("coverage"))))
             findings = entry.get("findings")
             if findings is not None and not isinstance(findings, list):
                 skipped.add(

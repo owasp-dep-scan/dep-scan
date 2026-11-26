@@ -1,16 +1,16 @@
 """Conversion of cdx-audit findings into dep-scan findings.
 
-cdxgen's ``cdx-audit`` is the supply-chain audit engine dep-scan runs
-(decision 0004): the rule ids, severities, categories and the components each
-finding names are cdx-audit's own, and dep-scan presents them. The findings
+cdxgen's ``cdx-audit`` is the supply-chain audit engine dep-scan runs: the
+rule ids, severities, categories and the components each finding names are
+cdx-audit's own, and dep-scan presents them. The findings
 reach the findings file from the annotation records the evidence adapter
 built from the audit report: the adapter is the only reader of the report
 format, and the findings file reads only records.
 
 One finding per cdx-audit rule and component. The category is
-``supply-chain``, except where plan D1 assigns the audit packs elsewhere: a
-``cbom-security`` rule is a ``crypto`` finding and a ``rootfs-hardening``
-rule is a ``binary-hardening`` finding. The fingerprint carries the rule id,
+``supply-chain``, except for two audit packs, which are findings of the
+category that already owns them: a ``cbom-security`` rule is a ``crypto``
+finding and a ``rootfs-hardening`` rule a ``binary-hardening`` finding. The fingerprint carries the rule id,
 the component purls and the finding's file, all in spellings that survive a
 rescan from a moved root, so the same audit of the same tree keeps its ids
 and a suppression keyed on one finding does not swallow another.
@@ -36,7 +36,7 @@ _SEVERITIES = ("critical", "high", "medium", "low", "info")
 _CONFIDENCES = ("high", "medium", "low")
 
 #: The audit categories that map onto finding categories other than
-#: ``supply-chain``, where plan D1 assigns them.
+#: ``supply-chain``, the category that already owns what they report.
 CATEGORY_TO_FINDING_CATEGORY = {
     "cbom-security": "crypto",
     "rootfs-hardening": "binary-hardening",

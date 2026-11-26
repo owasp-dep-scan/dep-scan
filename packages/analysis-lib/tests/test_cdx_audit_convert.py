@@ -47,8 +47,7 @@ def test_predictive_records_carry_the_audited_dependency():
 
 def test_audit_categories_map_onto_their_own_finding_categories():
     """The cbom-security pack is crypto and rootfs-hardening is
-    binary-hardening, where plan D1 assigns them; everything else is
-    supply-chain."""
+    binary-hardening; everything else is supply-chain."""
     from analysis_lib.evidence import (
         Evidence,
         EvidenceProducer,

@@ -234,3 +234,109 @@ def test_record_ids_survive_a_moved_root():
         source_root="/elsewhere/tree-b",
     )
     assert [record.id for record in first.records] == [record.id for record in second.records]
+
+
+def _direct_with_coverage(coverage):
+    report = load("direct-report.json")
+    report["results"][0]["coverage"] = coverage
+    return report
+
+
+def _gap_details(result):
+    return [caveat.detail for caveat in result.caveats if caveat.kind == "coverage-gap"]
+
+
+def test_offline_registry_coverage_is_a_caveat_on_the_result_and_its_records():
+    """A direct audit that ran offline could not look any package up, so
+    the registry rules assessed nothing. The gap names the count and rides
+    on every record the audit still produced."""
+    result = adapter.extract(
+        _direct_with_coverage(
+            {"registryMetadata": "offline", "components": 50, "eligible": 12, "answered": 0, "withoutMetadata": 12}
+        ),
+        source="audit.json",
+        producer_version="13.10.0",
+    )
+    details = _gap_details(result)
+    assert any(
+        "the audit ran offline and made no registry request" in detail
+        and "did not assess 12 npm, PyPI or Cargo component(s)" in detail
+        for detail in details
+    ), details
+    assert result.records, "the audit's own findings still became records"
+    for record in result.records:
+        assert any(caveat.kind == "coverage-gap" for caveat in record.caveats), (
+            "a finding from an audit with a registry gap carries the gap"
+        )
+
+
+def test_an_unrequested_registry_lookup_is_named_as_such():
+    result = adapter.extract(
+        _direct_with_coverage({"registryMetadata": "not-requested", "eligible": 3, "withoutMetadata": 3}),
+        source="audit.json",
+        producer_version="13.10.0",
+    )
+    assert any(
+        "was not asked for registry lookups (not-requested)" in detail
+        for detail in _gap_details(result)
+    )
+
+
+def test_components_no_registry_answered_for_are_counted():
+    """Online, a lookup that ran still leaves the components no registry
+    answered for unassessed by the registry rules; they are counted. When
+    every eligible component was answered for, there is no registry gap."""
+    partial = adapter.extract(
+        _direct_with_coverage(
+            {"registryMetadata": "fetched", "components": 44, "eligible": 40, "answered": 37, "withoutMetadata": 3}
+        ),
+        source="audit.json",
+        producer_version="13.10.0",
+    )
+    details = _gap_details(partial)
+    assert any(
+        detail.startswith("3 of 40 npm, PyPI or Cargo component(s) carry no registry metadata")
+        for detail in details
+    ), details
+    assert not any("did not look up registry metadata" in detail for detail in details)
+
+    complete = adapter.extract(
+        _direct_with_coverage(
+            {"registryMetadata": "fetched", "components": 44, "eligible": 40, "answered": 40, "withoutMetadata": 0}
+        ),
+        source="audit.json",
+        producer_version="13.10.0",
+    )
+    assert not any("registry" in detail for detail in _gap_details(complete))
+
+
+def test_a_report_without_a_coverage_block_adds_no_registry_caveat():
+    """Reports from a cdx-audit before the coverage block carry none, and
+    nothing is invented about the registry rules."""
+    result = adapter.extract(
+        load("direct-report.json"), source="audit.json", producer_version="13.10.0"
+    )
+    assert not any("registry" in detail for detail in _gap_details(result))
+
+
+@pytest.mark.parametrize(
+    "coverage",
+    [
+        "offline",
+        12,
+        None,
+        {"registryMetadata": 5, "eligible": "12", "withoutMetadata": "3"},
+        {"registryMetadata": "fetched", "eligible": -4, "withoutMetadata": -1},
+        {"registryMetadata": "fetched", "eligible": True, "withoutMetadata": True},
+        {"registryMetadata": "fetched", "withoutMetadata": {"n": 3}},
+    ],
+)
+def test_a_malformed_coverage_block_raises_nothing_and_claims_nothing(coverage):
+    """Wrong types inside the coverage block are skipped: no exception, and
+    no caveat that states a count the report never gave."""
+    result = adapter.extract(
+        _direct_with_coverage(coverage), source="audit.json", producer_version="13.10.0"
+    )
+    assert result.status == "completed"
+    assert len(result.records) == 2
+    assert not any("registry" in detail for detail in _gap_details(result))

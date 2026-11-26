@@ -1,8 +1,7 @@
 """Find and run cdxgen's ``cdx-audit``, dep-scan's supply-chain audit engine.
 
 dep-scan owns orchestration and presentation; every supply-chain rule, score
-and severity comes from cdx-audit (decision 0004, delegate to the toolchain).
-This module locates the command the way dep-scan locates cdxgen itself, checks
+and severity comes from cdx-audit. This module locates the command the way dep-scan locates cdxgen itself, checks
 the version against the options dep-scan passes, runs one audit per project
 type's BOM with an argument list built in code, and returns the parsed JSON
 report. A report whose shape predates the fields dep-scan reads is refused the
@@ -20,10 +19,11 @@ from depscan.lib.logger import LOG
 from xbom_lib.process import build_command
 
 #: The cdxgen release this dep-scan needs. The audit passes
-#: ``--private-namespace``, ``--offline`` and ``--time-budget-minutes`` and
-#: reads the report's ``version`` field, the ``summary.targetCapTruncated``
-#: marker and the per-target skip reasons; all of that shipped after
-#: 13.9.0, so the minimum is the release that carries them.
+#: ``--private-namespace``, ``--fetch-registry-metadata``, ``--offline`` and
+#: ``--time-budget-minutes``, and reads the report's ``version`` field, the
+#: summary's ``targetCapTruncated`` and ``offline`` markers, each direct
+#: result's ``coverage`` block and the per-target skip reasons; all of that
+#: shipped after 13.9.0, so the minimum is the release that carries them.
 #: ``DEPSCAN_CDX_AUDIT_MIN_VERSION`` overrides the minimum for a scan run
 #: against a development cdxgen that already carries the options; the
 #: doctor reports the overridden minimum as its own.
@@ -135,6 +135,10 @@ class CdxAuditResult:
     #: already pulled out of the report for the caller.
     results: List[Dict[str, Any]] = field(default_factory=list)
     skipped_entries: List[Dict[str, Any]] = field(default_factory=list)
+    #: The registry coverage block of each direct result, as the report
+    #: states it: whether the registry lookups ran, and how many
+    #: registry-eligible components a registry answered for.
+    coverage: List[Dict[str, Any]] = field(default_factory=list)
 
 
 def build_audit_args(
@@ -144,6 +148,7 @@ def build_audit_args(
     direct: bool = True,
     categories: Optional[List[str]] = None,
     private_ns: Optional[str] = None,
+    fetch_registry_metadata: bool = False,
     offline: bool = False,
     predictive: bool = False,
     scope_required: bool = False,
@@ -162,6 +167,11 @@ def build_audit_args(
         args.extend(["--categories", ",".join(categories)])
     if private_ns:
         args.extend(["--private-namespace", private_ns])
+    if fetch_registry_metadata and not offline:
+        # The rules that read registry metadata can only evaluate what the
+        # BOM carries. Offline mode makes no request, so the flag is left
+        # out and the report's coverage block says the lookups did not run.
+        args.append("--fetch-registry-metadata")
     if offline:
         args.append("--offline")
     if predictive:
@@ -211,7 +221,6 @@ def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
         exit_code=proc.returncode,
     )
     summary = report.get("summary") if isinstance(report.get("summary"), dict) else {}
-    result.findings_count = int(summary.get("totalFindings", 0) or 0)
     result.skipped_count = int(summary.get("skippedTargets", 0) or 0)
     result.errored_count = int(summary.get("erroredTargets", 0) or 0)
     truncated = summary.get("targetCapTruncated")
@@ -219,9 +228,21 @@ def run_cdx_audit(cmd: str, args: List[str]) -> CdxAuditResult:
     result.offline = bool(summary.get("offline"))
     result.time_budget_exhausted = bool(summary.get("timeBudgetExhausted"))
     result.results = report.get("results") if isinstance(report.get("results"), list) else []
+    # Counted from the results in both modes: the direct summary states a
+    # total and the predictive summary does not.
+    result.findings_count = sum(
+        len(entry.get("findings"))
+        for entry in result.results
+        if isinstance(entry, dict) and isinstance(entry.get("findings"), list)
+    )
     result.skipped_entries = (
         report.get("skipped") if isinstance(report.get("skipped"), list) else []
     )
+    result.coverage = [
+        entry.get("coverage")
+        for entry in result.results
+        if isinstance(entry, dict) and isinstance(entry.get("coverage"), dict)
+    ]
     return result
 
 

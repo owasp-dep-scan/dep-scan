@@ -1160,6 +1160,79 @@ def test_an_unexpected_error_still_leaves_a_manifest(scan_stubs, monkeypatch, tm
     assert "purl" in failed[0]["reason"]
 
 
+def test_the_audit_coverage_gaps_reach_the_manifest_with_or_without_findings(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """What the audit could not assess is written on the risk stage as its
+    not-assessed reasons. An offline audit of a BOM with nothing to report
+    still says that its registry rules assessed none of the packages, so a
+    reader of the manifest never takes it for a complete audit.
+
+    Positive control: the same scan with a report that states no gap
+    records none.
+    """
+    from test.conftest import fake_cdx_audit
+
+    gap_report = {
+        "version": 1,
+        "auditMode": "direct",
+        "results": [
+            {
+                "findings": [],
+                "coverage": {
+                    "registryMetadata": "offline",
+                    "components": 9,
+                    "eligible": 4,
+                    "answered": 0,
+                    "withoutMetadata": 4,
+                },
+            }
+        ],
+        "summary": {"totalFindings": 0},
+    }
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports-with-gap"
+    fake_cdx_audit(monkeypatch, {}, report=gap_report)
+    result = api.scan(
+        api.scan_options(
+            bom=bom, reports_dir=str(reports), no_banner=True, risk_audit=True
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    validate("depscan-manifest", result.manifest)
+    risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == "completed"
+    assert len(risk["notAssessed"]) == 2
+    assert risk["notAssessed"][0].startswith(
+        "cdx-audit did not look up registry metadata because the audit ran offline"
+    )
+    assert risk["notAssessed"][0].endswith("did not assess 4 npm, PyPI or Cargo component(s)")
+    assert risk["notAssessed"][1].startswith(
+        "4 of 4 npm, PyPI or Cargo component(s) carry no registry metadata"
+    )
+    supply = [
+        finding
+        for finding in result.findings
+        if finding["category"] == "supply-chain"
+    ]
+    assert supply == [], "the report had no finding, and none was invented"
+
+    reports_clean = tmp_path / "reports-clean"
+    fake_cdx_audit(monkeypatch, {})
+    result = api.scan(
+        api.scan_options(
+            bom=bom, reports_dir=str(reports_clean), no_banner=True, risk_audit=True
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    validate("depscan-manifest", result.manifest)
+    risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == "completed"
+    assert not risk.get("notAssessed")
+
+
 def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monkeypatch, tmp_path):
     def audit_fails(cmd, args):
         raise cdx_audit.CdxAuditError("cdx-audit wrote no report at all (exit 1)")

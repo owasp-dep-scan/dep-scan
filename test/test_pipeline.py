@@ -482,10 +482,14 @@ def test_stage_analysis_risk_runs_cdx_audit_on_the_type_bom(tmp_path, monkeypatc
     assert "--direct-bom-audit" in args
     assert args[args.index("--categories") + 1] == "package-integrity,dependency-source"
     assert args[args.index("--private-namespace") + 1] == "@mycorp"
+    # Online, the direct audit looks the packages up in their registries
+    # first, so its registry rules have something to read.
+    assert "--fetch-registry-metadata" in args
     assert "--offline" not in args
     assert scan.risk_error is None
     assert scan.risk_not_assessed is None
     assert scan.audit_findings_count == 2
+    assert scan.audit_caveats == []
     result = scan.adapter_results["cdx-audit"]
     assert result.status == "completed"
     assert len(result.records) == 2
@@ -525,6 +529,9 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
     assert len(runs) == 1
     assert "--offline" in runs[0]
     assert "--direct-bom-audit" in runs[0]
+    assert "--fetch-registry-metadata" not in runs[0], (
+        "an offline scan asks cdx-audit for no registry lookup"
+    )
 
     runs.clear()
     ctx = _ctx(tmp_path, ["-t", "npm"])
@@ -540,6 +547,8 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
     assert "--max-targets" in predictive_args
     assert "--time-budget-minutes" in predictive_args
     assert "--offline" not in predictive_args
+    assert "--fetch-registry-metadata" not in predictive_args
+    assert "--fetch-registry-metadata" in runs[0]
 
 
 def test_stage_analysis_risk_names_why_it_could_not_run(tmp_path, monkeypatch):
@@ -567,6 +576,83 @@ def test_stage_analysis_risk_names_why_it_could_not_run(tmp_path, monkeypatch):
     reason = scan.risk_not_assessed or ""
     assert "produced no BOM" in reason
     assert "universal" in reason
+
+
+def test_stage_analysis_risk_records_the_audits_coverage_gaps_in_order(
+    tmp_path, monkeypatch
+):
+    """What the audit could not assess is kept, once each and in the order
+    the reports stated it, for the manifest's risk stage.
+
+    Positive control: a report without a gap leaves the list empty.
+    """
+    reports = []
+
+    def fake_run(cmd, args):
+        report_file = args[args.index("--report-file") + 1]
+        report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+        if len(reports) == 1:
+            report["summary"]["targetCapTruncated"] = 6
+            report["results"][0]["coverage"] = {
+                "registryMetadata": "fetched",
+                "components": 44,
+                "eligible": 40,
+                "answered": 37,
+                "withoutMetadata": 3,
+            }
+        Path(report_file).write_text(json.dumps(report))
+        reports.append(report)
+        return cdx_audit.CdxAuditResult(
+            report=report,
+            report_version=report["version"],
+            findings_count=2,
+            results=report["results"],
+        )
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="npm")
+    bom = Path(ctx.reports_dir) / "sbom-npm.cdx.json"
+    bom.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6"}))
+    scan.nominated_bom_file = str(bom)
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert scan.audit_caveats == []
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert len(scan.audit_caveats) == 2, "each gap once"
+    assert scan.audit_caveats[0].startswith("the audit's target cap left 6 target(s) unanalyzed")
+    assert scan.audit_caveats[1].startswith(
+        "3 of 40 npm, PyPI or Cargo component(s) carry no registry metadata"
+    ), "in the order the report stated them"
+
+
+def test_stage_analysis_risk_fails_when_the_report_cannot_be_read(tmp_path, monkeypatch):
+    """A report whose shape the adapter cannot read is a failed audit with
+    the reason, never a completed audit that happened to find nothing."""
+
+    def fake_run(cmd, args):
+        report_file = args[args.index("--report-file") + 1]
+        report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+        report["version"] = "9.0"
+        Path(report_file).write_text(json.dumps(report))
+        return cdx_audit.CdxAuditResult(report=report, report_version="9.0")
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.nominated_bom_file = str(Path(ctx.reports_dir) / "sbom-npm.cdx.json")
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert scan.risk_error is not None
+    assert "not supported" in scan.risk_error
+    assert "cdx-audit" not in scan.adapter_results
 
 
 # ---------------------------------------------------------------------------

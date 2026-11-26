@@ -187,6 +187,30 @@ def test_run_exit_3_is_a_result_not_a_failure(tmp_path, fake_cdx_audit):
     assert result.report["version"] == 1
 
 
+def test_build_args_ask_for_the_registry_lookup_unless_offline():
+    """Online, the direct audit looks the packages up; offline, it is not
+    asked, and cdx-audit is told why with --offline instead."""
+    online = cdx_audit.build_audit_args(
+        "sbom.cdx.json",
+        "audit.json",
+        direct=True,
+        fetch_registry_metadata=True,
+    )
+    assert "--fetch-registry-metadata" in online
+    assert "--offline" not in online
+    offline = cdx_audit.build_audit_args(
+        "sbom.cdx.json",
+        "audit.json",
+        direct=True,
+        fetch_registry_metadata=True,
+        offline=True,
+    )
+    assert "--offline" in offline
+    assert "--fetch-registry-metadata" not in offline
+    unasked = cdx_audit.build_audit_args("sbom.cdx.json", "audit.json", direct=True)
+    assert "--fetch-registry-metadata" not in unasked
+
+
 def _block_network(monkeypatch):
     """Every socket construction raises, so a registry, git or OCI request
     fails the test instead of quietly succeeding."""
@@ -242,12 +266,86 @@ def test_offline_direct_audit_makes_no_network_request(tmp_path, monkeypatch):
     reason="needs a cdx-audit that carries --offline and --private-namespace; set CDX_AUDIT_CMD",
 )
 def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
-    """End to end through the real cdx-audit: a component whose scoped name
-    starts with the private prefix becomes a supply-chain finding with the
-    INT-017 rule id, and the evidence store holds its record."""
+    """End to end through the real cdx-audit and the real public registry.
+
+    A private namespace is whatever the caller says it is, so the test names
+    a package the public npm registry holds (``lodash``) and one it does not
+    (a name made up for the test). Only the name the public registry holds is
+    a dependency-confusion finding: a private package that is not published
+    publicly is the intended state.
+    """
     from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
     from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
 
+    cmd = cdx_audit.find_cdx_audit_cmd()
+    assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
+    unpublished = "depscan-p21-unpublished-private-package"
+    components = [
+        {
+            "type": "library",
+            "bom-ref": f"pkg:npm/{name}@1.0.0",
+            "name": name,
+            "version": "1.0.0",
+            "purl": f"pkg:npm/{name}@1.0.0",
+        }
+        for name in ("lodash", unpublished)
+    ]
+    bom_file = tmp_path / "sbom.cdx.json"
+    bom_file.write_text(
+        json.dumps(
+            {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": components}
+        )
+    )
+    report_file = tmp_path / "audit.json"
+    args = cdx_audit.build_audit_args(
+        str(bom_file),
+        str(report_file),
+        direct=True,
+        categories=["package-integrity"],
+        private_ns=f"lodash,{unpublished}",
+    )
+    result = cdx_audit.run_cdx_audit(cmd, args)
+    block = result.report["results"][0]["coverage"]["privateNamespace"]
+    assert block == {
+        "matched": 2,
+        "onPublicRegistry": 1,
+        "notOnPublicRegistry": 1,
+        "unknown": 0,
+        "publicRegistry": "checked",
+    }, "the public registry answered about both names"
+    adapter_result = cdx_audit_extract(
+        result.report,
+        source="audit.json",
+        producer_version="13.10.0",
+        source_root=str(tmp_path),
+        mode="direct",
+    )
+    findings = findings_from_cdx_audit_records(adapter_result.records)
+    confusion = [f for f in findings if f.rule == "INT-017"]
+    assert len(confusion) == 1, "the name the public registry holds is the finding"
+    assert confusion[0].category == "supply-chain"
+    assert confusion[0].components == ["pkg:npm/lodash@1.0.0"]
+    assert not any(
+        unpublished in (f.components or [""])[0] for f in confusion
+    ), "a private name the public registry does not hold is no finding"
+    assert not any(
+        "dependency-confusion check did not assess" in (reason.detail or "")
+        for f in confusion
+        for reason in (f.coverage.reasons or [])
+    ), "both names were answered about, so there is no gap to state"
+
+
+@pytest.mark.skipif(
+    not os.environ.get("CDX_AUDIT_CMD"),
+    reason="needs a cdx-audit that carries --offline and --private-namespace; set CDX_AUDIT_CMD",
+)
+def test_an_offline_private_namespace_check_asks_nothing_and_says_so(tmp_path, monkeypatch):
+    """Offline, the public registry is not asked whether it holds a private
+    name. No socket is built, and the report counts the name as unanswered,
+    which the adapter states as a coverage gap instead of a clean check."""
+    from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
+
+    _block_network(monkeypatch)
     cmd = cdx_audit.find_cdx_audit_cmd()
     assert cmd, "CDX_AUDIT_CMD is set, so the finder resolves it"
     bom_file = tmp_path / "sbom.cdx.json"
@@ -260,47 +358,38 @@ def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
                 "components": [
                     {
                         "type": "library",
-                        "bom-ref": "pkg:npm/@mycorp/secret@1.0.0",
-                        "name": "secret",
-                        "group": "@mycorp",
-                        "version": "1.0.0",
-                        "purl": "pkg:npm/%40mycorp/secret@1.0.0",
-                    },
-                    {
-                        "type": "library",
-                        "bom-ref": "pkg:npm/express@4.21.2",
-                        "name": "express",
-                        "version": "4.21.2",
-                        "purl": "pkg:npm/express@4.21.2",
-                    },
+                        "bom-ref": "pkg:npm/lodash@4.17.21",
+                        "name": "lodash",
+                        "version": "4.17.21",
+                        "purl": "pkg:npm/lodash@4.17.21",
+                    }
                 ],
             }
         )
     )
     report_file = tmp_path / "audit.json"
     args = cdx_audit.build_audit_args(
-        str(bom_file),
-        str(report_file),
-        direct=True,
-        offline=True,
-        private_ns="mycorp",
+        str(bom_file), str(report_file), direct=True, offline=True, private_ns="lodash"
     )
     result = cdx_audit.run_cdx_audit(cmd, args)
+    assert result.report["results"][0]["coverage"]["privateNamespace"] == {
+        "matched": 1,
+        "onPublicRegistry": 0,
+        "notOnPublicRegistry": 0,
+        "unknown": 1,
+        "publicRegistry": "offline",
+    }
     adapter_result = cdx_audit_extract(
-        result.report,
-        source="audit.json",
-        producer_version="13.10.0",
-        source_root=str(tmp_path),
-        mode="direct",
+        result.report, source="audit.json", producer_version="13.10.0", mode="direct"
     )
-    findings = findings_from_cdx_audit_records(adapter_result.records)
-    confusion = [f for f in findings if f.rule == "INT-017"]
-    assert confusion, "the private namespace must produce a dependency-confusion finding"
-    assert confusion[0].category == "supply-chain"
-    assert "pkg:npm/%40mycorp/secret@1.0.0" in (confusion[0].components or [])
-    assert not any(
-        "pkg:npm/express@4.21.2" in (f.components or []) for f in confusion
-    ), "a public package must stay unflagged"
+    assert adapter_result.records == [], "nothing is reported as taken"
+    assert any(
+        caveat.kind == "coverage-gap"
+        and "the dependency-confusion check did not assess 1 component(s) matching a private namespace"
+        in caveat.detail
+        and "the audit ran offline" in caveat.detail
+        for caveat in adapter_result.caveats
+    ), [caveat.detail for caveat in adapter_result.caveats]
 
 
 def test_doctor_reports_the_audit_tool(tmp_path, monkeypatch):

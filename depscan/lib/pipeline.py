@@ -170,9 +170,11 @@ class TypeScan:
     #: The cdx-audit report files this type's audit wrote, for the risk
     #: stage's manifest outputs.
     audit_output_files: List[str] = field(default_factory=list)
-    #: How many coverage caveats the audit reported (skipped or failed
-    #: targets, a target cap or time budget that cut the queue).
-    audit_caveat_count: int = 0
+    #: What the audit could not assess, in its own words: skipped or failed
+    #: targets, a target cap or time budget that cut the queue, registry
+    #: lookups that did not run or did not answer. Recorded on the risk
+    #: stage as its not-assessed reasons.
+    audit_caveats: List[str] = field(default_factory=list)
     #: How many findings the audit's own summary states.
     audit_findings_count: int = 0
     #: How many of this type's packages carried no license data at all, as
@@ -1640,11 +1642,16 @@ def stage_analysis_risk(ctx, scan) -> bool:
     """Run cdxgen's cdx-audit over this type scan's BOM.
 
     The direct audit always runs under the supply-chain check, with the
-    categories that fit the scan type. The predictive audit runs only
-    under the deep and research profiles, over the required dependencies
-    and inside a target cap and time budget, and never when the scan runs
-    offline: an offline scan passes ``--offline`` to the direct audit, so
-    it makes no registry, git or OCI request at all.
+    categories that fit the scan type. It looks the BOM's npm, PyPI and
+    Cargo components up in their registries first, so its registry rules
+    (deprecation, yanked releases, missing versions, package age, native
+    binaries) can evaluate a BOM generated without that metadata. The
+    predictive audit runs only under the deep and research profiles, over
+    the required dependencies and inside a target cap and time budget. An
+    offline scan passes ``--offline`` to the direct audit and asks for no
+    registry lookup, so it makes no registry, git or OCI request at all;
+    the report's coverage block then says the registry rules did not
+    assess the scan's packages, and that reaches the caveats.
 
     Returns False when the audit did not run. A missing or too-old
     cdx-audit, or a scan with no BOM to audit, records why in
@@ -1694,6 +1701,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
                 direct=True,
                 categories=categories,
                 private_ns=private_ns,
+                fetch_registry_metadata=True,
                 offline=offline,
             ),
             report_file,
@@ -1725,6 +1733,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     written_outputs = []
     total_findings = 0
     try:
+        from analysis_lib.evidence.adapters import STATUS_COMPLETED
         from analysis_lib.evidence.adapters.cdx_audit import extract as cdx_audit_extract
 
         for name, run_args, run_report_file in runs:
@@ -1742,6 +1751,10 @@ def stage_analysis_risk(ctx, scan) -> bool:
                 source_root=ctx.source_root or ctx.src_dir,
                 mode=name,
             )
+            if adapter_result.status != STATUS_COMPLETED:
+                # A report the adapter could not read is never an audit
+                # with nothing to report.
+                raise cdx_audit.CdxAuditError(adapter_result.reason or "unreadable report")
             records.extend(adapter_result.records)
             caveats.extend(adapter_result.caveats)
             total_findings += result.findings_count
@@ -1751,7 +1764,9 @@ def stage_analysis_risk(ctx, scan) -> bool:
         scan.risk_error = f"the supply-chain audit was not successful: {e}"
         return True
     scan.audit_output_files = written_outputs
-    scan.audit_caveat_count = len(caveats)
+    # Kept in the order the reports stated them, so a rescan of the same
+    # tree writes the same list.
+    scan.audit_caveats = list(dict.fromkeys(caveat.detail for caveat in caveats))
     scan.audit_findings_count = total_findings
     if records or caveats:
         from analysis_lib.evidence.adapters import AdapterResult, STATUS_COMPLETED
@@ -1762,10 +1777,10 @@ def stage_analysis_risk(ctx, scan) -> bool:
     log_console.print(
         f"[green]Supply-chain audit[/green] ({scan.project_type}): "
         f"{total_findings} finding(s) from cdx-audit {version}"
-        + (f", {len(caveats)} coverage caveat(s)" if caveats else "")
+        + (f", {len(scan.audit_caveats)} coverage caveat(s)" if scan.audit_caveats else "")
     )
-    for caveat in caveats:
-        LOG.info("Audit coverage caveat: %s", caveat.detail)
+    for detail in scan.audit_caveats:
+        LOG.info("Audit coverage caveat: %s", detail)
     return True
 
 
