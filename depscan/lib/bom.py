@@ -21,7 +21,6 @@ from xbom_lib.cdxgen import (
     cdxgen_install_hint,
     cdxgen_timeout_hint,
     check_cdxgen_version,
-    deep_enabled,
     find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
@@ -1897,7 +1896,6 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
         review = run_blint_reviews(
             targets,
             review_dir,
-            deep=deep_enabled(options or {}),
             **_accepted_exclude_argument(run_blint_reviews, options),
         )
     if review.success:

@@ -1,27 +1,20 @@
 import contextlib
-import dataclasses
 import datetime
-import inspect
+import json
 import os
 import shutil
 import tempfile
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from xbom_lib import BOMResult, XBOMGenerator
 
 BLINT_AVAILABLE = False
 try:
-    from blint.lib.runners import AnalysisRunner, run_sbom_mode
-    from blint.config import BlintOptions, BLINTDB_IMAGE_URL
-    from blint.lib.macos_bundle import find_macos_bundles, path_inside_any_bundle
-    from blint.lib.utils import (
-        blintdb_setup,
-        export_metadata,
-        find_clickonce_files,
-        gen_file_list,
-    )
+    # blint's public API only. The engine modules behind it (runners,
+    # options, file discovery) are blint's to change between releases.
+    from blint.api import BlintApiError, BlintdbUnavailableError, analyze_many, sbom
 
     BLINT_AVAILABLE = True
 except ImportError:
@@ -36,29 +29,23 @@ BLINT_REVIEWS_FILE = "reviews.json"
 BLINT_COVERAGE_FILE = "analysis-coverage.json"
 
 
-def _accepts_exclude(func: Callable) -> bool:
-    """Whether an installed blint callable takes the ``exclude`` parameter
-    (blint 4.1.1 and later do). An older blint is handed no such
-    argument; the caller's own filtering of the target list stays the guard."""
-    try:
-        return "exclude" in inspect.signature(func).parameters
-    except (TypeError, ValueError):
-        return False
+def _write_report(reports_dir: str, name: str, document: Dict[str, Any]) -> None:
+    """Write one review report the way blint's CLI names and encodes it."""
+    with open(os.path.join(reports_dir, name), "w", encoding="utf-8") as handle:
+        json.dump(document, handle, default=str)
 
 
-def _options_accept_exclude() -> bool:
-    """Whether ``BlintOptions`` has an ``exclude`` field."""
-    try:
-        return "exclude" in {f.name for f in dataclasses.fields(BlintOptions)}
-    except TypeError:
-        return False
+def blintdb_requested(options: Dict[str, Any]) -> bool:
+    """Whether the binary SBOM should match functions against blintdb.
 
-
-def _exclude_kwargs(func: Callable, exclude: Sequence[str]) -> Dict[str, Any]:
-    """``{"exclude": [...]}`` when there are patterns and ``func`` takes them."""
-    if exclude and _accepts_exclude(func):
-        return {"exclude": list(exclude)}
-    return {}
+    blintdb is a download of tens of gigabytes, so it is used only when asked
+    for: an explicit ``use_blintdb`` option wins (the post-build lifecycle BOM
+    sets it to False), and otherwise ``USE_BLINTDB=true`` (or ``1``) in the
+    environment turns it on. blint downloads the database on first use.
+    """
+    if options.get("use_blintdb") is not None:
+        return bool(options["use_blintdb"])
+    return os.getenv("USE_BLINTDB", "").strip().lower() in ("true", "1")
 
 
 @dataclass
@@ -80,18 +67,18 @@ class BlintReviewResult:
 def run_blint_reviews(
     src_dirs: List[str],
     reports_dir: str,
-    deep: bool = False,
     exclude: Sequence[str] = (),
 ) -> BlintReviewResult:
     """Run blint's security checks and capability reviews and keep the reports.
 
-    The SBOM mode of blint produces no findings: ``no_reviews`` and the
-    reports directory only matter to the review mode, which is what the
-    ``blint`` command runs by default. This runs that mode over the same
-    paths without printing its tables and writes ``findings.json``,
-    ``reviews.json`` and ``analysis-coverage.json`` into ``reports_dir``.
-    The per-binary metadata files blint can export are not written; the SBOM
-    already carries that information.
+    The SBOM mode of blint produces no findings; the review mode, which is
+    what the ``blint`` command runs by default, does. This runs that mode
+    through ``blint.api.analyze_many`` over the same paths, without printing
+    anything, and writes ``findings.json``, ``reviews.json`` and
+    ``analysis-coverage.json`` into ``reports_dir``. The per-binary metadata
+    blint can export is not written; the SBOM already carries it. Findings
+    and reviews that blint could not attribute to an analyzed file are kept
+    in the coverage report under ``unmatched`` rather than dropped.
 
     A failure never raises: it is returned as ``success=False`` with the
     reason, so a review problem cannot take the SBOM down with it.
@@ -102,9 +89,7 @@ def run_blint_reviews(
     place under the scan root.
 
     ``exclude`` lists cdxgen-style globs anchored at each directory in
-    ``src_dirs``. They are handed to blint's file discovery when the
-    installed blint takes them; with an older blint the caller leaves excluded
-    trees out of ``src_dirs`` itself.
+    ``src_dirs``, applied by blint's own file discovery.
     """
     src_dirs = [os.path.abspath(src) for src in src_dirs]
     # A reports directory reused by an earlier scan can hold reports from it.
@@ -118,50 +103,25 @@ def run_blint_reviews(
             success=False, command_output="blint is not installed; no review was run."
         )
     try:
-        option_extra: Dict[str, Any] = (
-            {"exclude": list(exclude)} if exclude and _options_accept_exclude() else {}
-        )
-        options = BlintOptions(
-            deep_mode=deep,
-            no_error=True,
-            no_reviews=False,
-            quiet_mode=True,
-            src_dir_image=list(src_dirs),
-            stdout_mode=False,
-            reports_dir=reports_dir,
-            **option_extra,
-        )
-        exe_files = gen_file_list(options.src_dir_image, **_exclude_kwargs(gen_file_list, exclude))
-        macos_bundles: List[str] = []
-        for src in options.src_dir_image:
-            macos_bundles += (
-                find_macos_bundles(src, **_exclude_kwargs(find_macos_bundles, exclude)) or []
-            )
-            exe_files += [
-                f
-                for f in (
-                    find_clickonce_files(src, **_exclude_kwargs(find_clickonce_files, exclude))
-                    or []
-                )
-                if f not in exe_files
-            ]
-        exe_files = [f for f in exe_files if not path_inside_any_bundle(f, macos_bundles)]
-        exe_files += macos_bundles
-        runner = AnalysisRunner(export_artifacts=False, progress_disabled=True)
-        findings, reviews, _fuzzables, _callgraphs = runner.start(options, exe_files)
+        batch = analyze_many(src_dirs, exclude=list(exclude), quiet=True)
+        findings = [f for unit in batch.results for f in unit.findings]
+        reviews = [r for unit in batch.results for r in unit.reviews]
         header = {
             "scan_id": os.environ.get("SCAN_ID", str(uuid.uuid4())),
             "created": f"{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d %H:%M:%S%z}",
         }
+        coverage = {**header, **batch.coverage}
+        if batch.unmatched:
+            coverage["unmatched"] = batch.unmatched
         files = []
         os.makedirs(reports_dir, exist_ok=True)
-        export_metadata(reports_dir, {**header, **runner.analysis_coverage()}, "Analysis-Coverage")
+        _write_report(reports_dir, BLINT_COVERAGE_FILE, coverage)
         files.append(BLINT_COVERAGE_FILE)
         if findings:
-            export_metadata(reports_dir, {**header, "findings": findings}, "Findings")
+            _write_report(reports_dir, BLINT_FINDINGS_FILE, {**header, "findings": findings})
             files.append(BLINT_FINDINGS_FILE)
         if reviews:
-            export_metadata(reports_dir, {**header, "reviews": reviews}, "Reviews")
+            _write_report(reports_dir, BLINT_REVIEWS_FILE, {**header, "reviews": reviews})
             files.append(BLINT_REVIEWS_FILE)
     except Exception as e:  # blint is best effort; see the docstring
         return BlintReviewResult(success=False, command_output=f"blint review failed: {e}")
@@ -184,36 +144,52 @@ class BlintGenerator(XBOMGenerator):
             )
         src_dir = self.source_dir
         bom_file = self.bom_file
-        temp_reports_dir = tempfile.mkdtemp(
+        exclude = [str(p) for p in self.options.get("exclude_patterns") or []]
+        # dep-scan hands the targets as a list so a path with a comma in it
+        # survives; the comma-separated source directory is the older form.
+        targets = [str(t) for t in self.options.get("blint_targets") or []] or src_dir.split(",")
+        use_blintdb = blintdb_requested(self.options)
+        # blint extracts archives under BLINT_TEMP_DIR; the directory is this
+        # run's own and goes when the run ends.
+        temp_dir = tempfile.mkdtemp(
             prefix="blint-reports-",
             dir=os.getenv("DEPSCAN_TEMP_DIR")
             or os.getenv("RUNNER_TEMP")
             or os.getenv("AGENT_TEMPDIRECTORY"),
         )
-        os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
-        exclude = [str(p) for p in self.options.get("exclude_patterns") or []]
-        # dep-scan hands the targets as a list so a path with a comma in it
-        # survives; the comma-separated source directory is the older form.
-        targets = [str(t) for t in self.options.get("blint_targets") or []] or src_dir.split(",")
-        option_extra: Dict[str, Any] = (
-            {"exclude": exclude} if exclude and _options_accept_exclude() else {}
-        )
-        blint_options = BlintOptions(
-            deep_mode=self.options.get("deep", True),
-            sbom_mode=True,
-            db_mode=os.getenv("USE_BLINTDB", "") in ("true", "1"),
-            no_reviews=True,
-            no_error=True,
-            quiet_mode=True,
-            src_dir_image=targets,
-            stdout_mode=False,
-            reports_dir=temp_reports_dir,
-            use_blintdb=self.options.get("use_blintdb", False),
-            image_url=self.options.get("blintdb_image_url", BLINTDB_IMAGE_URL),
-            sbom_output=bom_file,
-            **option_extra,
-        )
-        blintdb_setup(blint_options)
-        sbom = run_sbom_mode(blint_options)
-        shutil.rmtree(temp_reports_dir, ignore_errors=True)
-        return BOMResult(success=True, bom_obj=sbom)
+        previous_temp_dir = os.environ.get("BLINT_TEMP_DIR")
+        os.environ["BLINT_TEMP_DIR"] = temp_dir
+        sbom_args: Dict[str, Any] = {
+            "deep": self.options.get("deep", True),
+            "blintdb_image_url": self.options.get("blintdb_image_url") or None,
+            "exclude": exclude,
+            "output_file": bom_file,
+            "quiet": True,
+        }
+        try:
+            try:
+                result = sbom(targets, use_blintdb=use_blintdb, **sbom_args)
+            except BlintdbUnavailableError as e:
+                # The database is an optional layer: without it the SBOM is
+                # still made from the binaries' own symbols and banners, and
+                # the log says the layer was missing rather than reading as
+                # "no match".
+                if self.logger:
+                    self.logger.warning(
+                        "blintdb could not be downloaded or verified, so the binary "
+                        "SBOM was generated without it: %s",
+                        e,
+                    )
+                result = sbom(targets, use_blintdb=False, **sbom_args)
+        except (BlintApiError, OSError) as e:
+            return BOMResult(success=False, command_output=f"blint SBOM failed: {e}")
+        finally:
+            if previous_temp_dir is None:
+                os.environ.pop("BLINT_TEMP_DIR", None)
+            else:
+                os.environ["BLINT_TEMP_DIR"] = previous_temp_dir
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        if result.bom is None:
+            notes = "; ".join(result.coverage.get("notes") or []) or "blint produced no SBOM"
+            return BOMResult(success=False, command_output=notes)
+        return BOMResult(success=True, bom_obj=result.bom)
