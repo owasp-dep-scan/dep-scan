@@ -1,0 +1,20 @@
+.github/workflows/lessons.yml
+  s_7318da1b9edd46::t_3cd0f0d9ea3b02 47-49,63,68,74,79,84,88,97,101,110,124
+  s_7318da1b9edd46::t_0f15cbf34cb690 58-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c356c4172156f358af201322df5a57e4a35ce3f0",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
