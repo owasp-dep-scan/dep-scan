@@ -195,7 +195,10 @@ def resolve(
         options["checks_requested"] = True
     profile_not_assessed: List[str] = []
     for name in PROFILE_SOFT_CHECKS:
-        if name not in profile_checks or (doctor_report is None and not expand):
+        capability = CHECKS[name].capability
+        if name not in profile_checks or capability is None:
+            continue
+        if doctor_report is None and not expand:
             continue
         # A profile that implies a check this machine cannot run records it
         # as not assessed, the way the all expansion does, instead of
@@ -203,7 +206,7 @@ def resolve(
         report = doctor_report if doctor_report is not None else doctor_lib.doctor()
         doctor_report = report
         reason = doctor_lib.capability_unavailable_reason(
-            CHECKS[name].capability, report.tools_by_name(), report.data, skip_requirements
+            capability, report.tools_by_name(), report.data, skip_requirements
         )
         if reason:
             names = [check for check in names if check != name]

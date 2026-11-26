@@ -26,7 +26,9 @@ def test_direct_records_map_onto_supply_chain_findings():
     deprecated = [f for f in findings if f.rule == "INT-005"]
     # request@2.88.0 and request@2.88.2 sit in different lockfiles and
     # left-pad@1.3.0 in both, so each lockfile's copy is its own finding.
-    assert sorted((f.components[0], f.locations[0].file) for f in deprecated) == [
+    assert sorted(
+        ((f.components or [""])[0], (f.locations or [])[0].file) for f in deprecated
+    ) == [
         ("pkg:npm/left-pad@1.3.0", "svc-a/package-lock.json"),
         ("pkg:npm/left-pad@1.3.0", "svc-b/package-lock.json"),
         ("pkg:npm/request@2.88.0", "svc-b/package-lock.json"),

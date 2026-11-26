@@ -172,7 +172,7 @@ def findings_from_cdx_audit_records(records: Optional[Iterable[Evidence]]) -> Li
         # names the target as its component.
         symbols = []
         if not purls and ref:
-            symbols.append(str(ref))
+            symbols.append(ref)
         if attributes.get("auditMode") == "predictive":
             for key in ("findingPurl", "findingRef", "upstreamFile"):
                 value = attributes.get(key)

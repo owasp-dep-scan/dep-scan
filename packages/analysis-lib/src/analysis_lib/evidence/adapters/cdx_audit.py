@@ -322,7 +322,7 @@ def _finding_record(
         locations=locations,
         confidence=pending.confidence if pending.confidence in ("high", "medium", "low") else None,
         attributes=attributes,
-        caveats=_dedupe(list(caveats) + list(pending.result_caveats)),
+        caveats=tuple(_dedupe(list(caveats) + list(pending.result_caveats))),
     )
 
 
