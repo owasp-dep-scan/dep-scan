@@ -1898,50 +1898,62 @@ def test_a_failed_direct_run_does_not_stop_the_other_boms(tmp_path, monkeypatch)
     assert len(scan.adapter_results["cdx-audit"].records) == 8
 
 
-@pytest.mark.parametrize("bound", ["targets", "time"])
-def test_the_predictive_bounds_hold_for_the_type_in_total(tmp_path, monkeypatch, bound):
-    """The target cap and the time budget are shared by every BOM of the
-    type: each predictive run gets what the earlier ones left, and a BOM
-    that finds a bound spent is not run, which is stated as a caveat."""
-    clock = {"now": 1000.0}
-    monkeypatch.setattr(pipeline, "_clock", lambda: clock["now"])
-    direct = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
-    predictive = json.loads((DATA_DIR / "cdx-audit" / "predictive-report.json").read_text())
-    planned = 20 if bound == "targets" else 1
-    template = predictive["results"][0]
-    predictive["results"] = [json.loads(json.dumps(template)) for _ in range(planned)]
-    runs = []
+def test_the_predictive_audit_runs_once_per_type_over_all_its_boms(tmp_path, monkeypatch):
+    """A lifecycle scan's per-stage BOMs name the same dependencies, so the
+    predictive audit runs once for the type over all of them through
+    --bom-dir, with the whole cap and budget, and each upstream target is
+    cloned once; the direct audit still runs once per BOM. Positive
+    control: a type with one BOM passes it with --bom."""
+    seen = {}
 
     def fake_run(cmd, args):
-        runs.append(list(args))
         report = direct if "--direct-bom-audit" in args else predictive
-        if report is predictive and bound == "time":
-            clock["now"] += 20 * 60
+        if "--bom-dir" in args:
+            directory = args[args.index("--bom-dir") + 1]
+            seen["inputs"] = sorted(os.listdir(directory))
+        runs.append(list(args))
         Path(args[args.index("--report-file") + 1]).write_text(json.dumps(report))
         return cdx_audit.CdxAuditResult(report=report, report_version=1, results=report["results"])
 
+    direct = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    predictive = json.loads((DATA_DIR / "cdx-audit" / "predictive-report.json").read_text())
+    runs = []
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
     monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
-    bom_dir = tmp_path / "boms"
-    bom_dir.mkdir()
-    ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir)])
+    ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
     ctx.depscan_options["scan_profile"] = "deep"
-    scan = pipeline.TypeScan(project_type="bom")
-    scan.bom_files = [
-        _write_bom(bom_dir / f"{name}.cdx.json", _NPM_COMPONENTS) for name in ("a", "b", "c")
+    reports = Path(ctx.reports_dir)
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.lifecycle_mode = True
+    scan.generated_bom_files = [
+        _write_bom(reports / f"sbom-{stage}-npm.cdx.json", _NPM_COMPONENTS)
+        for stage in ("prebuild", "build", "postbuild")
     ]
+    scan.bom_files = list(scan.generated_bom_files)
     assert pipeline.stage_analysis_risk(ctx, scan) is True
     predictive_runs = [run for run in runs if "--direct-bom-audit" not in run]
-    assert len(predictive_runs) == 2
-    if bound == "targets":
-        assert [run[run.index("--max-targets") + 1] for run in predictive_runs] == ["25", "5"]
-    else:
-        assert [run[run.index("--time-budget-minutes") + 1] for run in predictive_runs] == [
-            "30",
-            "10",
-        ]
-    spent = [detail for detail in scan.audit_caveats if "did not run" in detail]
-    assert len(spent) == 1 and "c.cdx.json" in spent[0]
-    assert ("target cap" if bound == "targets" else "time budget") in spent[0]
+    assert len(predictive_runs) == 1
+    run = predictive_runs[0]
+    assert "--bom" not in run
+    assert seen["inputs"] == ["bom-0.json", "bom-1.json", "bom-2.json"]
+    assert run[run.index("--max-targets") + 1] == str(pipeline.PREDICTIVE_MAX_TARGETS)
+    assert run[run.index("--time-budget-minutes") + 1] == str(
+        pipeline.PREDICTIVE_TIME_BUDGET_MINUTES
+    )
+    assert len([run for run in runs if "--direct-bom-audit" in run]) == 3
+    predictive_reports = [
+        name
+        for name in (os.path.basename(path) for path in scan.audit_output_files)
+        if name.startswith("cdx-audit-predictive-")
+    ]
+    assert predictive_reports == ["cdx-audit-predictive-npm.json"]
+    assert not any(name.startswith("depscan-predictive-") for name in os.listdir(reports))
+
+    runs.clear()
+    single = pipeline.TypeScan(project_type="npm")
+    single.nominated_bom_file = scan.generated_bom_files[0]
+    assert pipeline.stage_analysis_risk(ctx, single) is True
+    predictive_runs = [run for run in runs if "--direct-bom-audit" not in run]
+    assert len(predictive_runs) == 1 and "--bom" in predictive_runs[0]

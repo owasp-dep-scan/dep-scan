@@ -1593,14 +1593,11 @@ PREDICTIVE_PURL_TYPES = ("npm", "pypi", "cargo")
 
 #: The predictive audit runs under the deep and research profiles only,
 #: over the required dependencies, bounded by a target cap and a time
-#: budget so a scan stays finite. Both bounds hold for the type in total,
-#: shared by every BOM the type audits.
+#: budget so a scan stays finite. It runs once per type, over all of the
+#: type's BOMs together, so both bounds hold for the type in total.
 PREDICTIVE_PROFILES = ("deep", "research")
 PREDICTIVE_MAX_TARGETS = 25
 PREDICTIVE_TIME_BUDGET_MINUTES = 30
-
-#: The clock the predictive time budget is measured on.
-_clock = time.monotonic
 
 #: The prefix of every file the supply-chain stage writes: its reports and
 #: the input document of a purl scan. Nothing that reads BOMs from a
@@ -1828,6 +1825,69 @@ def _run_audit(cmd, args, run_report_file, *, name, version, ctx):
     return adapter_result, result
 
 
+def _run_predictive_audit(ctx, scan, cmd, version, bom_files, private_ns, records, caveats):
+    """Run the predictive audit once for the type, over every BOM it holds.
+
+    A lifecycle or BOM directory scan holds several BOMs that name the same
+    dependencies, so they go to one cdx-audit run as one ``--bom-dir`` of
+    copies: each upstream target is planned, cloned and audited once, and
+    the target cap and time budget bound the type as a whole. A failure is
+    a coverage caveat with one warning, never a failure of the stage, since
+    the direct audit already completed."""
+    import shutil
+    import tempfile
+
+    from analysis_lib.evidence import EvidenceCaveat
+
+    report_file = _audit_report_file(ctx, scan, None, kind="predictive-")
+    input_dir = None
+    try:
+        if len(bom_files) == 1:
+            bom_input, as_dir = bom_files[0], False
+        else:
+            # A directory of its own outside the scan directory, so no later
+            # BOM directory scan reads the copies back.
+            input_dir = tempfile.mkdtemp(prefix="depscan-predictive-")
+            for index, bom_file in enumerate(bom_files):
+                shutil.copyfile(bom_file, os.path.join(input_dir, f"bom-{index}.json"))
+            bom_input, as_dir = input_dir, True
+        args = cdx_audit.build_audit_args(
+            bom_input,
+            report_file,
+            direct=False,
+            private_ns=private_ns,
+            predictive=True,
+            scope_required=True,
+            max_targets=PREDICTIVE_MAX_TARGETS,
+            time_budget_minutes=PREDICTIVE_TIME_BUDGET_MINUTES,
+            bom_dir=as_dir,
+        )
+        adapter_result, _result = _run_audit(
+            cmd, args, report_file, name="predictive", version=version, ctx=ctx
+        )
+    except (cdx_audit.CdxAuditError, subprocess.SubprocessError, OSError) as e:
+        from analysis_lib.evidence.adapters import SourcePaths
+
+        redactor = SourcePaths([ctx.source_root or ctx.src_dir, ctx.reports_dir, input_dir])
+        detail = redactor.redact(str(e)).splitlines()[0] if str(e) else type(e).__name__
+        names = ", ".join(os.path.basename(path) for path in bom_files)
+        caveats.append(
+            EvidenceCaveat(
+                kind="coverage-gap",
+                detail=f"the predictive audit of {names} did not complete, so no upstream "
+                f"finding was assessed: {detail}",
+            )
+        )
+        LOG.warning("The predictive supply-chain audit of %s did not complete: %s", names, detail)
+        return
+    finally:
+        if input_dir:
+            shutil.rmtree(input_dir, ignore_errors=True)
+    scan.audit_output_files.append(report_file)
+    records.extend(adapter_result.records)
+    caveats.extend(adapter_result.caveats)
+
+
 def stage_analysis_risk(ctx, scan) -> bool:
     """Run cdxgen's cdx-audit over this type scan's BOMs.
 
@@ -1837,8 +1897,9 @@ def stage_analysis_risk(ctx, scan) -> bool:
     its registry rules (deprecation, yanked releases, missing versions,
     package age, native binaries) can evaluate a BOM generated without that
     metadata. The predictive audit runs only under the deep and research
-    profiles, over the required dependencies of a BOM that holds npm, PyPI
-    or Cargo packages, inside a target cap and a time budget. An offline
+    profiles, once per type over all of its BOMs that hold npm, PyPI or
+    Cargo packages, so each upstream target is audited once, inside a
+    target cap and a time budget. An offline
     scan passes ``--offline`` to the direct audit and asks for no registry
     lookup, so it makes no registry, git or OCI request at all; the
     report's coverage block then says the registry rules did not assess
@@ -1894,12 +1955,6 @@ def stage_analysis_risk(ctx, scan) -> bool:
     predictive_boms = [
         bom for bom in boms if predictive and bom.purl_types & set(PREDICTIVE_PURL_TYPES)
     ]
-    # The predictive bounds hold for the type as a whole: each BOM's run gets
-    # what earlier runs left of the target cap and the time budget, and a
-    # BOM that finds them spent is not run, which is stated.
-    targets_left = PREDICTIVE_MAX_TARGETS
-    deadline = _clock() + PREDICTIVE_TIME_BUDGET_MINUTES * 60
-    redactor = None
     for bom in boms:
         report_file = _audit_report_file(ctx, scan, suffixes.get(bom.path))
         run_args = cdx_audit.build_audit_args(
@@ -1921,74 +1976,11 @@ def stage_analysis_risk(ctx, scan) -> bool:
         scan.audit_output_files.append(report_file)
         records.extend(adapter_result.records)
         caveats.extend(adapter_result.caveats)
-        if bom not in predictive_boms:
-            continue
-        minutes_left = int((deadline - _clock()) // 60)
-        if targets_left < 1 or minutes_left < 1:
-            from analysis_lib.evidence import EvidenceCaveat
-
-            spent = "target cap" if targets_left < 1 else "time budget"
-            caveats.append(
-                EvidenceCaveat(
-                    kind="coverage-gap",
-                    detail=f"the predictive audit of {os.path.basename(bom.path)} did not run: "
-                    f"the {scan.project_type} scan's predictive {spent} "
-                    f"({PREDICTIVE_MAX_TARGETS} targets, {PREDICTIVE_TIME_BUDGET_MINUTES} "
-                    "minutes) was spent on its other BOMs",
-                )
-            )
-            continue
-        predictive_report_file = _audit_report_file(
-            ctx, scan, suffixes.get(bom.path), kind="predictive-"
+    if predictive_boms:
+        _run_predictive_audit(
+            ctx, scan, cmd, version, [bom.path for bom in predictive_boms], private_ns,
+            records, caveats,
         )
-        predictive_args = cdx_audit.build_audit_args(
-            bom.path,
-            predictive_report_file,
-            direct=False,
-            private_ns=private_ns,
-            predictive=True,
-            scope_required=True,
-            max_targets=targets_left,
-            time_budget_minutes=minutes_left,
-        )
-        try:
-            adapter_result, predictive_result = _run_audit(
-                cmd,
-                predictive_args,
-                predictive_report_file,
-                name="predictive",
-                version=version,
-                ctx=ctx,
-            )
-        except (cdx_audit.CdxAuditError, subprocess.SubprocessError, OSError) as e:
-            # The direct audit completed; the predictive one adds upstream
-            # findings, so its failure is coverage the scan did not get.
-            from analysis_lib.evidence import EvidenceCaveat
-
-            if redactor is None:
-                from analysis_lib.evidence.adapters import SourcePaths
-
-                redactor = SourcePaths([ctx.source_root or ctx.src_dir, ctx.reports_dir])
-            detail = redactor.redact(str(e)).splitlines()[0] if str(e) else type(e).__name__
-            caveats.append(
-                EvidenceCaveat(
-                    kind="coverage-gap",
-                    detail=f"the predictive audit of {os.path.basename(bom.path)} did not "
-                    f"complete, so no upstream finding was assessed: {detail}",
-                )
-            )
-            LOG.warning(
-                "The predictive supply-chain audit of %s did not complete: %s",
-                os.path.basename(bom.path),
-                detail,
-            )
-            continue
-        # Every target the run planned counts against the cap, audited,
-        # skipped or failed.
-        targets_left -= len(predictive_result.results)
-        scan.audit_output_files.append(predictive_report_file)
-        records.extend(adapter_result.records)
-        caveats.extend(adapter_result.caveats)
     # Kept in the order the reports stated them, so a rescan of the same
     # tree writes the same list.
     scan.audit_caveats = list(dict.fromkeys(caveat.detail for caveat in caveats))

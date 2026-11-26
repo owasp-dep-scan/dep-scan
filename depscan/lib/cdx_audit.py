@@ -204,13 +204,23 @@ def build_audit_args(
     scope_required: bool = False,
     max_targets: Optional[int] = None,
     time_budget_minutes: Optional[int] = None,
+    bom_dir: bool = False,
 ) -> List[str]:
     """The cdx-audit argument list for one audit run.
 
-    Every path leaves the process as the caller spelled it; the argument list
-    is passed to ``subprocess.run`` without a shell.
+    ``bom_dir`` passes ``bom_file`` as ``--bom-dir``, a directory of BOMs
+    cdx-audit reads as the inputs of one run. Every path leaves the process
+    as the caller spelled it; the argument list is passed to
+    ``subprocess.run`` without a shell.
     """
-    args = ["--bom", bom_file, "--report", "json", "--report-file", report_file]
+    args = [
+        "--bom-dir" if bom_dir else "--bom",
+        bom_file,
+        "--report",
+        "json",
+        "--report-file",
+        report_file,
+    ]
     if direct:
         args.append("--direct-bom-audit")
     if categories:
