@@ -219,3 +219,33 @@ def test_the_html_report_from_saved_text_escapes_the_cells(tmp_path):
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in section
     assert "Supply-chain findings count: 3" in section
 
+
+def test_long_purls_and_urls_fold_instead_of_being_cut():
+    """A purl or URL longer than its column is folded onto the next line,
+    so the text and HTML reports carry it whole."""
+    url = "https://github.com/example/" + "a" * 160 + "/issues/3142"
+    purl = "pkg:npm/%40scope/" + "b" * 120 + "@1.0.0"
+    rows = [
+        {
+            "producer": {"name": "cdx-audit"},
+            "rule": "INT-005",
+            "severity": "low",
+            "components": [purl],
+            "properties": [{"name": "cdx-audit:message", "value": f"deprecated, see {url}"}],
+        }
+    ]
+    buffer = io.StringIO()
+    Console(file=buffer, width=150, force_terminal=False).print(
+        supply_chain_review.supply_chain_table(rows)
+    )
+    text = buffer.getvalue()
+    assert "…" not in text
+    rows_text = [
+        line.strip().strip("║").split("│")
+        for line in text.splitlines()
+        if line.strip().startswith("║") and "Package(s)" not in line
+    ]
+    packages = "".join(columns[2].strip() for columns in rows_text)
+    message = "".join(columns[3].strip() for columns in rows_text)
+    assert purl in packages
+    assert url in message

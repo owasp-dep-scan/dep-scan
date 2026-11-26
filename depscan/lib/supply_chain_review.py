@@ -92,7 +92,14 @@ def supply_chain_table(rows: List[Dict[str, Any]]) -> Table:
         caption=f"{COUNT_CAPTION}: {len(rows)}",
     )
     for header in ("Rule", "Severity", "Package(s)", "Message"):
-        table.add_column(header=header, vertical="top")
+        # A purl or a URL in a message is one long word; fold it onto the
+        # next line instead of cutting it with an ellipsis, so depscan.txt
+        # and depscan.html carry it whole.
+        table.add_column(
+            header=header,
+            vertical="top",
+            overflow="fold" if header in ("Package(s)", "Message") else "ellipsis",
+        )
     for finding in rows:
         # The cells are text from the audit report, never markup.
         message = _property(finding, "cdx-audit:message") or str(finding.get("title") or "")
