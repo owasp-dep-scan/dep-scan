@@ -1,0 +1,19 @@
+documentation/docs/lessons/06-supply-chain-licence.mdx
+  s_8c7c9bd4e9d139::t_da9ae409c65b0d 97-98,100,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd7a55f7f3e369bde19f9cea16f9b108570b0d54",
+  "prompts": {},
+  "sessions": {
+    "s_8c7c9bd4e9d139": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9dbe5ca6-7bed-4f18-b047-b71e9f4c565f",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
