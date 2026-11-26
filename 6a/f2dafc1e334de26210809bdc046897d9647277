@@ -1,0 +1,21 @@
+test/test_supply_chain_report.py
+  s_7318da1b9edd46::t_61f86244ea00e5 222-251
+depscan/lib/supply_chain_review.py
+  s_7318da1b9edd46::t_161a577ab454fa 95-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6af2dafc1e334de26210809bdc046897d9647277",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
