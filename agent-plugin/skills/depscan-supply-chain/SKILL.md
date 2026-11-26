@@ -35,14 +35,23 @@ container files or fixture corpora are not product content carries their
 them.
 
 The check needs cdxgen 13.10.0 or newer (`depscan doctor` reports it as the
-`cdx-audit` tool). The direct audit reads the BOM, so it needs no registry;
-the predictive audit under `deep` or `research` resolves and clones the
-upstream repositories of the required dependencies under a target cap of 25
-and a 30-minute budget, which is the consent step above. Under the
-`offline` profile the audit runs with `--offline` and makes no network
-request at all. Every target the predictive audit skipped or failed, an
-exhausted target cap and a spent budget are named as coverage caveats on the
-findings, never folded into a clean result.
+`cdx-audit` tool). The direct audit first looks the BOM's npm, PyPI and
+Cargo components up in their registries, one request per package, because
+its rules for deprecated or yanked packages, missing versions and package
+age read what only a registry states; say so before running it on a network
+the user regards as restricted. The predictive audit under `deep` or
+`research` resolves and clones the upstream repositories of the required
+dependencies under a target cap of 25 and a 30-minute budget, which is the
+consent step above. Under the `offline` profile the audit runs with
+`--offline` and makes no network request at all.
+
+Whatever the audit could not assess is stated and never folded into a clean
+result: a target the predictive audit skipped or failed, an exhausted target
+cap, a spent budget, a registry lookup that did not run, and each component
+no registry answered for. Each is a coverage reason on the findings of that
+audit and a not-assessed reason on the manifest's `risk` stage. An offline
+scan always carries the reason that the registry rules assessed none of the
+scan's packages: read the `notAssessed` list before calling a scan clean.
 
 The audit's findings are `supply-chain` findings in `depscan.findings.json`
 (a `cbom-security` rule becomes a `crypto` finding, a `rootfs-hardening`
@@ -56,9 +65,13 @@ stage; `depscan vdb info --format json` shows the flavor and whether it
 carries them.
 
 Dependency confusion: pass `--private-ns` with the private namespace or
-name prefixes the organisation registers. A public-registry package whose
-name starts with one of them is reported by cdx-audit's INT-017 to INT-019
-rules, for npm scopes and for PyPI and Cargo names.
+name prefixes the organisation registers. Each matching package name is
+looked up on the public npm registry, the Python Package Index or crates.io.
+A name the public registry holds is reported by cdx-audit's INT-017 to
+INT-019 rules, for npm scopes and for PyPI and Cargo names; a private
+package that is not published publicly is the intended state and is not
+reported. Under the `offline` profile the public registry is not asked, so
+the check assesses none of the matching packages and the manifest says so.
 
 ## Step 2: narrower questions straight on a BOM
 
