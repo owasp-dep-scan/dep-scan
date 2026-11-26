@@ -31,16 +31,27 @@ COVERAGE_RELATIVE_PATH = "analysis/blint/analysis-coverage.json"
 _UNIT_KEYS = ("attempted", "succeeded", "failed", "skipped")
 
 
+#: The producer of the review's findings. cdx-audit's rootfs-hardening
+#: pack writes binary-hardening findings too; those belong to the
+#: supply-chain table, not to this one.
+HARDENING_PRODUCER = "blint"
+
+
 def hardening_rows(findings: Optional[Iterable[Any]]) -> List[Dict[str, Any]]:
-    """The binary-hardening findings among ``findings``, in their order.
+    """The blint review's binary-hardening findings among ``findings``, in
+    their order.
 
     ``findings`` are the dicts of ``depscan.findings.json``; findings of
-    every other category, and entries that are not objects, are left out.
+    every other category or producer, and entries that are not objects,
+    are left out.
     """
     return [
         finding
         for finding in findings or []
-        if isinstance(finding, dict) and finding.get("category") == HARDENING_CATEGORY
+        if isinstance(finding, dict)
+        and finding.get("category") == HARDENING_CATEGORY
+        and isinstance(finding.get("producer"), dict)
+        and finding["producer"].get("name") == HARDENING_PRODUCER
     ]
 
 

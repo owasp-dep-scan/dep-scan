@@ -24,7 +24,7 @@ from analysis_lib.output import (
 )
 
 from depscan import api
-from depscan.lib import binary_review
+from depscan.lib import binary_review, supply_chain_review
 from depscan.commands.output import (
     EXIT_FAILURE,
     json_path,
@@ -223,6 +223,14 @@ def _render_binary_review(result) -> None:
     )
 
 
+def _render_supply_chain(result) -> None:
+    """Print the supply-chain findings of a saved directory, the rows the
+    directory's ``depscan.findings.json`` holds with cdx-audit as producer."""
+    rows = supply_chain_review.supply_chain_rows(result.findings)
+    if rows:
+        console.print(supply_chain_review.supply_chain_table(rows))
+
+
 def _run_json_report(result) -> int:
     """Print the loaded scan directory as one JSON document on stdout.
 
@@ -289,6 +297,7 @@ def run_report_args(args: argparse.Namespace) -> int:
     for tscan in result.types:
         _render_results(tscan, result.findings)
     _render_binary_review(result)
+    _render_supply_chain(result)
     if args.explain:
         try:
             text = api.explain(result, mode=args.explanation_mode)

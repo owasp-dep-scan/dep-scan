@@ -2,7 +2,7 @@
 
 Every scan is driven the way a user drives it: ``sys.argv`` is set, ``main``
 runs, the exit code, the reports directory and the output are asserted. The
-database, the matching stage, the risk audit and the cdxgen process are
+database, the matching stage, the supply-chain audit and the cdxgen process are
 stubbed with recorded calls (the pattern of the scan directory and internals
 tests), and every stub has a positive control proving it ran. The doctor
 report stays real, with its database inspection replaced by a known state and
@@ -106,7 +106,7 @@ class _StubVdrResult:
 
 @pytest.fixture
 def scan_stubs(monkeypatch):
-    """Stub a scan's database, matching, risk audit and cdxgen process.
+    """Stub a scan's database, matching, supply-chain audit and cdxgen process.
 
     The doctor report stays real, with the database inspection replaced by a
     known state. The fake cdxgen records the command line it was handed and
@@ -130,11 +130,9 @@ def scan_stubs(monkeypatch):
     monkeypatch.setattr(pipeline.console, "save_html", lambda *a, **k: None)
     monkeypatch.setattr(pipeline.console, "save_text", lambda *a, **k: None)
 
-    def fake_risk_audit(*args, **kwargs):
-        calls["risk"].append(1)
-        return {}
+    from test.conftest import fake_cdx_audit
 
-    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
+    fake_cdx_audit(monkeypatch, calls)
 
     def fake_exec_tool(args, *a, **k):
         calls["cdxgen"].append(list(args))
@@ -162,6 +160,7 @@ def scan_stubs(monkeypatch):
 # the version line the fake prints, exactly as the doctor tests fake them.
 FAKE_TOOLS = {
     "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0"),
+    "cdx-audit": ("CDX_AUDIT_CMD", "CycloneDX Generator 13.9.0"),
     "golem": ("GOLEM_CMD", "golem 9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef"),
@@ -455,7 +454,7 @@ def test_an_explicit_or_shared_reports_dir_beats_the_bom_directory_reuse(
 
 
 def test_scan_runs_a_purl(scan_stubs, monkeypatch, tmp_path):
-    """A package URL scans without any BOM generation, with its risk audit."""
+    """A package URL scans without any BOM generation, with its supply-chain audit."""
     reports = tmp_path / "reports"
     code = run_main(
         monkeypatch,
@@ -470,12 +469,12 @@ def test_scan_runs_a_purl(scan_stubs, monkeypatch, tmp_path):
     assert code == 0
     assert (reports / "depscan.manifest.json").is_file()
     # Positive controls: matching saw the purl's own package list and the
-    # single-purl risk audit ran.
+    # single-purl supply-chain audit ran.
     assert scan_stubs["matching"], "the matching stage never ran"
     assert [pkg["purl"] for pkg in scan_stubs["matching"][0].pkg_list] == [
         "pkg:pypi/requests@2.32.1"
     ]
-    assert scan_stubs["risk"], "the single-purl risk audit never ran"
+    assert scan_stubs["risk"], "the single-purl supply-chain audit never ran"
     assert scan_stubs["cdxgen"] == []
 
 
@@ -1722,7 +1721,7 @@ def test_profile_ci_keeps_explain_on_when_passed_explicitly(
 def test_profile_deep_enables_risk_license_and_semantic_reachability(
     scan_stubs, fake_tools, monkeypatch, tmp_path, no_license_env
 ):
-    """The deep profile turns the risk audit and the license analysis on and
+    """The deep profile turns the supply-chain audit and the license analysis on and
     selects the semantic reachability analyzer, on the recorded namespace."""
     src = tmp_path / "src"
     src.mkdir()
@@ -1753,12 +1752,57 @@ def test_profile_deep_enables_risk_license_and_semantic_reachability(
     stages = {stage["name"]: stage for stage in manifest["stages"]}
     assert stages["licenses"]["status"] == "completed"
     assert stages["risk"]["status"] == "completed"
-    # Positive controls: the license analysis and the risk audit both ran,
+    # Positive controls: the license analysis and the supply-chain audit both ran,
     # and the cdxgen process produced the BOM.
     assert os.environ.get("FETCH_LICENSE") == "true"
-    assert scan_stubs["risk"], "the risk audit never ran"
+    assert scan_stubs["risk"], "the supply-chain audit never ran"
     assert scan_stubs["cdxgen"], "the cdxgen process never ran"
     assert scan_stubs["matching"], "the matching stage never ran"
+    # The profile's name reaches the stage, which runs the predictive audit
+    # under deep only: the BOM holds a PyPI package, so it ran.
+    assert any("--direct-bom-audit" not in run for run in scan_stubs["risk"]), (
+        "the deep profile ran no predictive audit"
+    )
+    assert "scan_profile" not in (reports / "depscan.toml.sample").read_text()
+    # The resolution's markers are not options the user set: the manifest
+    # records the checks as stages and leaves them out.
+    assert "scan_profile" not in manifest["options"]
+    assert "checks_requested" not in manifest["options"]
+
+
+def test_a_profile_records_supply_chain_as_not_assessed_without_cdx_audit(
+    scan_stubs, fake_tools, monkeypatch, tmp_path, caplog, no_license_env
+):
+    """--profile deep implies the supply-chain check. A machine without a
+    usable cdx-audit records the check as not assessed, the way the all
+    expansion does, with one warning, and the scan goes on; only a check
+    named in --checks stops the verb with exit 4."""
+    fake_tools["remove"]("cdx-audit")
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.js").write_text("const leftPad = require('left-pad');\n")
+    reports = tmp_path / "reports"
+    argv = ["scan", str(src), "-t", "js", "--bom-engine", "CdxgenGenerator", "--no-banner"]
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        code = run_main(monkeypatch, [*argv, "--profile", "deep", "--reports-dir", str(reports)])
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["check-supply-chain"]["status"] == "not-assessed"
+    assert "cdx-audit" in stages["check-supply-chain"]["reason"]
+    assert stages["risk"]["status"] == "skipped"
+    assert manifest["options"]["risk_audit"] is not True
+    assert scan_stubs["risk"] == [], "the audit did not run"
+    warnings = [r.getMessage() for r in caplog.records if "supply-chain" in r.getMessage()]
+    assert len(warnings) == 1, warnings
+    assert stages["licenses"]["status"] == "completed", "the profile's other checks ran"
+
+    caplog.clear()
+    code = run_main(
+        monkeypatch,
+        [*argv, "--checks", "supply-chain", "--reports-dir", str(tmp_path / "explicit")],
+    )
+    assert code == 4, "a check named in --checks is still gated"
 
 
 # ---------------------------------------------------------------------------

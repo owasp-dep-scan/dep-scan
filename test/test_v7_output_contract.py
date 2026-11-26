@@ -178,7 +178,7 @@ VULN_REQUESTS = {
 
 
 def install_scan_fakes():
-    """Stub a scan's database, matching, risk audit and cdxgen process."""
+    """Stub a scan's database, matching, supply-chain audit and cdxgen process."""
     from depscan.lib import bom as bom_mod
     from depscan.lib import doctor as doctor_mod
     from depscan.lib import pipeline, vdb_setup
@@ -202,11 +202,35 @@ def install_scan_fakes():
     pipeline.console.save_html = lambda *a, **k: None
     pipeline.console.save_text = lambda *a, **k: None
 
-    def fake_risk_audit(*args, **kwargs):
-        calls["risk"].append(1)
-        return {}
+    # install_scan_fakes patches the modules directly, without a fixture,
+    # exactly as the assignments above do. This file's runner is a spawned
+    # subprocess that cannot import the conftest, so the smallest report is
+    # spelled here.
+    from depscan.lib import cdx_audit as cdx_audit_module
+    from pathlib import Path
 
-    pipeline.risk_audit = fake_risk_audit
+    empty_audit_report = {
+        "version": 1,
+        "auditMode": "direct",
+        "results": [],
+        "summary": {"totalFindings": 0, "skippedTargets": 0, "erroredTargets": 0},
+    }
+
+    def fake_run(cmd, args):
+        calls["risk"].append(list(args))
+        path = args[args.index("--report-file") + 1]
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps(empty_audit_report))
+        return cdx_audit_module.CdxAuditResult(
+            report=empty_audit_report,
+            report_version=empty_audit_report.get("version"),
+            findings_count=0,
+            results=[],
+        )
+
+    cdx_audit_module.find_cdx_audit_cmd = lambda: "cdx-audit-fake"
+    cdx_audit_module.cdx_audit_version = lambda cmd: "13.9.0"
+    cdx_audit_module.run_cdx_audit = fake_run
 
     def fake_exec_tool(args, *a, **k):
         calls["cdxgen"].append([str(item) for item in args])
@@ -584,7 +608,7 @@ def _check_matching_ran(calls, scratch):
 
 
 def _check_risk_ran(calls, scratch):
-    assert calls["risk"], "the single-purl risk audit never ran"
+    assert calls["risk"], "the single-purl supply-chain audit never ran"
 
 
 def _check_database_guard_ran(calls, scratch):

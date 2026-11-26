@@ -207,7 +207,7 @@ OPTION_TABLE: tuple[OptionRow, ...] = (
         v7_flag="--checks",
         v7_value="supply-chain",
         v7_display="depscan scan --checks supply-chain",
-        note="The package risk audit became the supply-chain check.",
+        note="The package risk audit became the supply-chain check, which runs cdx-audit.",
     ),
     OptionRow(
         v6_flags=("--fail-on-error",),

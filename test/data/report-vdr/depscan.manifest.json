@@ -57,7 +57,7 @@
       "status": "skipped",
       "capabilities": [],
       "projectType": "universal",
-      "reason": "the risk audit was not requested"
+      "reason": "the supply-chain audit was not requested"
     },
     {
       "name": "enrichment",
@@ -363,7 +363,7 @@
       "missing": [],
       "requirements": [],
       "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/606",
-      "description": "Package risk audit and malware advisory reporting."
+      "description": "Supply-chain audit through cdxgen's cdx-audit, and malware advisory reporting."
     },
     {
       "name": "binary",

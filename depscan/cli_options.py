@@ -201,7 +201,7 @@ def build_parser():
         action="store_true",
         default=os.getenv("ENABLE_OSS_RISK", "") in ("true", "1"),
         dest="risk_audit",
-        help="Perform package risk audit (slow operation). Supported for npm, pypi, and cargo.",
+        help="Run the supply-chain audit through cdx-audit (the supply-chain check sets this).",
     )
     parser.add_argument(
         "--fail-on-error",
@@ -233,9 +233,9 @@ def build_parser():
         "--private-ns",
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
-        help="Private namespace to use while performing oss risk audit. "
-        "Private packages should not be available in public registries "
-        "by default. Comma separated values accepted.",
+        help="Private package namespaces or name prefixes, comma separated. The "
+        "supply-chain audit reports a package whose name starts with one of them "
+        "and that a public registry holds (dependency confusion).",
     )
     parser.add_argument(
         "-t",

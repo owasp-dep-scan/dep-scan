@@ -29,8 +29,8 @@ reports/
 │   ├── dosai/dotnet-methods.json, dotnet-dataflows.json
 │   ├── blint/findings.json        the binary review's reports
 │   └── tracebom/                  a trace BOM the scan directory holds
-├── license-python.json            the license and risk reports
-├── depscan-risk-python.json
+├── license-python.json            the license report
+├── cdx-audit-python.json          the supply-chain audit report
 ├── depscan.html, depscan.txt      the rendered reports
 └── report.csaf.json               the CSAF VEX document, with --csaf
     csaf.toml.sample               the starter CSAF metadata, with --csaf
@@ -47,12 +47,16 @@ A scan writes only the files that apply to it: a package URL target has no BOM, 
 | `slices` | `*.slices.json` | cdxgen |
 | `raw-report` | everything under `analysis/<producer>/` | the tool named by the directory |
 | `csaf` | `*.csaf.json` | dep-scan |
-| `report` | `depscan.html`, `depscan.txt`, the license and risk reports, the sample toml files, a template report | dep-scan |
+| `report` | `depscan.html`, `depscan.txt`, the license report, the `cdx-audit-<type>.json` audit reports, the sample toml files, a template report | dep-scan |
 | `other` | everything else, for example `*-openapi.json` | varies |
 
 ## The findings file
 
-`depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
+`depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that requested the supply-chain check also writes the cdx-audit findings, one per cdx-audit rule and component, with cdxgen's rule id as the rule and `cdx-audit` with the cdxgen version that ran as the producer. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
+
+## The supply-chain audit report
+
+`cdx-audit-<type>.json` is the JSON report cdxgen's `cdx-audit` wrote for this project type's BOM, exactly as the tool wrote it, and `cdx-audit-predictive-<type>.json` is its predictive run when the profile asked for one, a single run over all of the type's BOMs. A type with several BOMs (a BOM directory scan, a lifecycle scan) gets one report per BOM, named `cdx-audit-<type>-<bom path>.json` from the BOM's path relative to the directory the BOMs share, without its `.cdx.json` or `.json` extension so that no report name ends in `.cdx.json` (with a short hash added when two paths would spell the same name), audits only files that are CycloneDX documents, and a purl scan's audit input is `cdx-audit-input-<type>.json`. No scan of the directory reads a `cdx-audit-` file back as a BOM. The audit's findings become `supply-chain` findings in `depscan.findings.json` (a `cbom-security` rule becomes a `crypto` finding and a `rootfs-hardening` rule a `binary-hardening` finding), with cdxgen's rule id as the rule, cdx-audit's severity, and the producer named `cdx-audit` with the cdxgen version that ran. The per-finding evidence is in `evidence.jsonl` as `annotation` records. Whatever the audit could not assess becomes a `coverage-gap` caveat on the records and in every finding's `coverage` reasons, and is listed on the manifest's `risk` stage as a `notAssessed` reason, so a bounded or offline audit never reads as a complete one: a target the predictive audit skipped or failed, a target cap that cut its queue, a spent time budget, a registry lookup that did not run (it does not under the `offline` profile), and each npm, PyPI or Cargo component no registry answered for. The last two are stated even when the audit found nothing, so a scan with no supply-chain finding can still say that its registry rules assessed none of the packages.
 
 ## The manifest
 

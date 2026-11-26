@@ -32,6 +32,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from vdb.lib import config as vdb_config
 from vdb.lib import db as vdb_db
 
+from depscan.lib import cdx_audit
 from depscan.lib.config import VDB_AGE_HOURS, read_vdb_image_marker
 from xbom_lib import dosai as dosai_mod
 from xbom_lib import golem as golem_mod
@@ -317,6 +318,47 @@ _PLUGIN_FINDERS = {
     "dosai": dosai_mod.find_dosai_binary,
     "kosi": kosi_mod.find_kosi_binary,
 }
+
+
+def _cdx_audit_status() -> ToolStatus:
+    """cdx-audit, the supply-chain audit engine dep-scan runs.
+
+    Discovery is :func:`cdx_audit.locate_cdx_audit`, the function the scan
+    uses: the ``CDX_AUDIT_CMD`` environment variable, then PATH, then the
+    command beside the cdxgen install, whose npm package ships cdx-audit in
+    its own ``bin`` directory. A version
+    below :data:`cdx_audit.CDX_AUDIT_MIN_VERSION`, or none readable at all,
+    makes the tool unusable with a reason, exactly as a scan refuses it.
+    """
+    status = ToolStatus(name="cdx-audit", min_version=cdx_audit.CDX_AUDIT_MIN_VERSION)
+    # The scan locates the command through the same function, so the doctor
+    # and the stage agree on which cdx-audit runs and on why none does.
+    location = cdx_audit.locate_cdx_audit()
+    path = location.path
+    if not path:
+        status.reason = location.reason
+        return status
+    status.path = path
+    if location.source == "env":
+        status.source = "env"
+        status.source_env = "CDX_AUDIT_CMD"
+    else:
+        status.source = "path"
+    output = _run_version_probe(path, ["--version"])
+    found = _CDXGEN_VERSION_RE.search(output) if output else None
+    if found:
+        status.version = found.group(1)
+    if not status.version:
+        status.reason = (
+            f"its version could not be read; cdxgen {cdx_audit.CDX_AUDIT_MIN_VERSION} "
+            "is the minimum"
+        )
+    elif not cdx_audit.check_cdx_audit_version(status.version):
+        status.reason = (
+            f"cdx-audit {status.version} is older than the "
+            f"{cdx_audit.CDX_AUDIT_MIN_VERSION} minimum"
+        )
+    return status
 
 
 def _parse_kosi(output: str) -> Optional[str]:
@@ -929,8 +971,9 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
     ),
     CapabilitySpec(
         name="supply-chain",
-        description="Package risk audit and malware advisory reporting.",
+        description="Supply-chain audit through cdxgen's cdx-audit, and malware advisory reporting.",
         issue=606,
+        requirements=("tool:cdx-audit",),
         implemented=True,
     ),
     CapabilitySpec(
@@ -1121,6 +1164,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
             _plugin_tool_status, "kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV)
         )
         go = pool.submit(_go_status)
+        cdx_audit_probe = pool.submit(_cdx_audit_status)
         cdxgen_status = cdxgen.result()
         plugins = pool.submit(_plugins_status, cdxgen_status.path, get_plugins_bin_target())
         dosai_status = dosai.result()
@@ -1139,6 +1183,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
             dosai_status,
             dotnet.result(),
             kosi.result(),
+            cdx_audit_probe.result(),
             _blint_status(),
             _blintdb_status(),
         ]

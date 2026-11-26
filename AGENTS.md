@@ -24,8 +24,8 @@ The main trust boundaries and code paths live in these places:
 `depscan/lib/bom.py`
 : BOM creation and export flow, including cdxgen and blint integration
 
-`depscan/lib/package_query/`
-: network lookups to package registries and risk metadata logic
+`depscan/lib/cdx_audit.py`
+: locating and running cdxgen's cdx-audit for the supply-chain check
 
 `depscan/lib/github.py`
 : direct GitHub API token validation and scope lookup

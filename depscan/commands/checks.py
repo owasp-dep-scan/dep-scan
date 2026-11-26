@@ -31,8 +31,8 @@ class CheckSpec:
     ``capability`` is the doctor capability row the gate consults; None means
     the check has no gate (vulnerabilities always runs, whatever the machine
     holds). ``project_type`` and ``technique`` are appended to the internal
-    lists when the check runs, and ``risk_audit`` turns the package risk
-    audit on.
+    lists when the check runs, and ``risk_audit`` turns the supply-chain
+    audit (cdx-audit) on.
     """
 
     capability: Optional[str] = None
@@ -101,6 +101,13 @@ PROFILES: Dict[str, ProfileSpec] = {
     ),
 }
 
+#: The checks a profile may imply on a machine that cannot run them: the
+#: capability gate refuses them only when ``--checks`` names them, and a
+#: profile that implies one records it as not assessed. The supply-chain
+#: check needs a cdx-audit newer than many installed cdxgen releases, and
+#: ``--profile deep`` must not stop on that alone.
+PROFILE_SOFT_CHECKS: Tuple[str, ...] = ("supply-chain",)
+
 #: The profile names, in the order the help text lists them.
 PROFILE_NAMES: Tuple[str, ...] = tuple(PROFILES)
 
@@ -125,6 +132,9 @@ class Resolution:
     append_techniques: Tuple[str, ...] = ()
     not_assessed: List[Dict[str, str]] = field(default_factory=list)
     checks_defined: bool = False
+    #: The checks a profile implied that this machine cannot run, recorded
+    #: in ``not_assessed`` instead of refusing the scan.
+    profile_not_assessed: Tuple[str, ...] = ()
 
 
 def parse_checks(value) -> List[str]:
@@ -164,14 +174,46 @@ def resolve(
         expanded, not_assessed = expand_all(report, skip_requirements)
         named = [name for name in names if name != ALL_CHECKS]
         names = list(dict.fromkeys([*expanded, *named]))
+    profile_checks: List[str] = []
     if profile_name is not None:
         profile = PROFILES[profile_name]
         options.update(dict(profile.options))
         if not names:
             names = list(profile.checks)
+            profile_checks = list(profile.checks)
+        # The profile's name rides with its options: the scan profile and
+        # the cdxgen BOM profile are different dests on the internal
+        # namespace, and a stage that behaves per profile (the supply-chain
+        # audit's predictive mode) reads this key.
+        options["scan_profile"] = profile_name
     if not checks_defined:
         # Neither --checks nor --profile: the v6 default set, never gated.
         names = ["vulnerabilities", "reachability"]
+    else:
+        # A scan that named its checks or a profile runs exactly those; the
+        # purl search's automatic supply-chain audit is for a bare scan.
+        options["checks_requested"] = True
+    profile_not_assessed: List[str] = []
+    for name in PROFILE_SOFT_CHECKS:
+        capability = CHECKS[name].capability
+        if name not in profile_checks or capability is None:
+            continue
+        if doctor_report is None:
+            # Only the scan verb hands a report in. config show and the MCP
+            # options document show what the profile asks for and probe no
+            # tool; a run without a report records a missing cdx-audit at
+            # the stage instead.
+            continue
+        # A profile that implies a check this machine cannot run records it
+        # as not assessed, the way the all expansion does, instead of
+        # refusing the whole scan: only a check named in --checks is gated.
+        reason = doctor_lib.capability_unavailable_reason(
+            capability, doctor_report.tools_by_name(), doctor_report.data, skip_requirements
+        )
+        if reason:
+            names = [check for check in names if check != name]
+            not_assessed.append({"name": name, "reason": reason})
+            profile_not_assessed.append(name)
     enabled = set(names) | {"vulnerabilities"}
     if checks_defined and "reachability" not in enabled:
         options["reachability_analyzer"] = "off"
@@ -194,6 +236,7 @@ def resolve(
         append_techniques=tuple(append_techniques),
         not_assessed=not_assessed,
         checks_defined=checks_defined,
+        profile_not_assessed=tuple(profile_not_assessed),
     )
 
 

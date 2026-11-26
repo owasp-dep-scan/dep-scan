@@ -193,6 +193,35 @@ BINARY_HARDENING_RESULTS = """
 </div>
 """
 
+SUPPLY_CHAIN_RESULTS = """
+<h3 class="light-text"><code class="code-title">Supply-Chain Audit Results</code></h3>
+<div class="box-container">
+    <br>
+   <span class="badge border border-dark text-dark fs-6">Supply-chain findings count: <SUPPLY_CHAIN_FINDINGS_COUNT_PLACEHOLDER></span>
+   <br><br>
+    <div>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
+            <tr>
+                <th>Rule</th>
+                <th>Severity</th>
+                <th>Package(s)</th>
+                <th>Message</th>
+            </tr>
+            <tr>
+                <th><input type="text" placeholder="Search Rule" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Severity" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Package(s)" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Message" class="form-control search-in-table-comp"></th>
+            </tr>
+        </thead>
+            <tbody>
+                <TABLE_PLACEHOLDER>
+            </tbody>
+        </table>
+    </div>
+</div>
+"""
+
 VDR = """
 <h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Vulnerability Disclosure Report</code></h3>
 <div class="box-container">

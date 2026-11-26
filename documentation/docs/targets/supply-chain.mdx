@@ -13,24 +13,22 @@ Most compromises of the last few years did not exploit a CVE. They came through 
 depscan scan ./my-project --checks supply-chain --reports-dir reports
 ```
 
-The check runs the package risk audit, which queries registry metadata for npm, PyPI and crates.io packages and scores each against weighted risk factors: a private package name that exists on the public registry, install scripts, single-maintainer packages, packages published minutes ago, versions older than the project itself. The full factor table with its default weights is on [the risk audit reference](../reference/cli#the-package-risk-audit) and configurable through environment variables (`PKG_MIN_VERSIONS` and the rest). A package whose score crosses the threshold (the `PKG_MAX_RISK_SCORE` environment variable, 0.5 by default), or that is deprecated, missing its version, carrying binaries or private on a public registry, is printed in a table and written to `depscan-risk-<type>.json` in the scan directory, as one JSON array of row objects with plain values. When no package is flagged, the file is not written. A row from a scan of Juice Shop:
+The check runs cdxgen's `cdx-audit` over the BOM the scan produced or was given. Its findings become `supply-chain` findings in `depscan.findings.json`, each with cdxgen's rule id, cdx-audit's severity and the component it names: install scripts (INT-001), a deprecated npm version in use (INT-005) or an npm package whose newest release is deprecated (INT-031), a yanked Cargo crate (INT-010) or PyPI release (INT-030), a private name that exists on a public registry (INT-017 to INT-019), a version the registry does not list (INT-020 to INT-022), a package first published within the last year (INT-023 to INT-025), a package whose newest release is more than six years old (INT-026 to INT-028), and an npm version that ships or builds native code (INT-029). There is no risk score and no threshold: a package is listed when a rule matches it. The audit's own report is `cdx-audit-<type>.json` in the scan directory, and each finding's evidence is in `evidence.jsonl` with `cdx-audit` as the producer. The rule packs, the profiles that add the predictive mode and the options are on [the supply-chain audit reference](../reference/cli#the-supply-chain-audit).
 
-```json
-[
-  {
-    "Package": "@codemirror/streamparser",
-    "Used?": "Yes",
-    "Risk Score": 1,
-    "Identified Risks": ["Has fewer versions", "Has fewer maintainers"]
-  }
-]
+The scan prints the findings as a Supply-Chain Audit Results table (rule, severity, the packages with the lockfile that declared them, and cdx-audit's message), which also lands in `depscan.txt` and `depscan.html` and which `depscan report` prints from a saved scan directory; `--no-vuln-table` leaves it out with the other tables. A container scan's crypto and rootfs findings are cdx-audit's too, but their categories are `crypto` and `binary-hardening`, so select on the producer to list everything the audit reported:
+
+```bash
+jq '.findings[] | select(.producer.name == "cdx-audit") | {category, rule, severity, components}' \
+  reports/depscan.findings.json
 ```
 
 Two things the check always does, whatever else runs: malicious-package advisories (`MAL-*`) are matched and reported at every version, and they are the top of the prioritization ladder when they are also reachable ([prioritization](../results/prioritization)). Private namespaces are checked for dependency-confusion exposure with `--private-ns appthreat,shiftleft`, naming the namespaces that must not exist in public.
 
 ## Where the check stops
 
-The registry audit covers npm, PyPI and crates.io; other ecosystems are audited as advisories only. The deeper supply-chain rules, install-script policy, CI workflow permissions, dependency sources, provenance and AI-component inventory, exist as rule packs in cdxgen's `cdx-audit`, and wiring them into dep-scan's findings is [the supply-chain plan](https://github.com/owasp-dep-scan/dep-scan/issues/606). In this version nothing in the audit claims more than registry metadata supports, and a registry lookup that cannot run (offline mode, no network) is reported as not assessed with the reason, never as "no risk".
+The check needs `cdx-audit`, which the cdxgen npm package ships (cdxgen 13.9.0 or newer); `depscan doctor` reports it. `--checks supply-chain` on a machine without it exits 4 before any scan work, like any other check named in `--checks`. The `deep` and `research` profiles imply the check without naming it, so on such a machine they record it as a not-assessed `check-supply-chain` entry in the manifest, the way `--checks all` records the checks it cannot run, print one warning and run the rest of the profile.
+
+Source and BOM scans audit the `package-integrity` and `dependency-source` rule packs, plus `cargo-security` when the BOM carries Cargo crates. Container scans (any of cdxgen's container type names, or a BOM whose root component is a container) add `container-risk`, `rootfs-hardening` and `cbom-security` to those packs. A BOM directory scan audits every BOM in the directory, and a lifecycle scan the documents each project type produced. Before the rules run, the audit looks the npm, PyPI and Cargo components up in their registries, one request per package, so it needs the network. The `deep` and `research` profiles add cdx-audit's predictive mode, run once per project type over the BOMs that hold npm, PyPI or Cargo packages, which audits the required dependencies' upstream repositories under a target cap and a time budget; if it fails, the direct audit's findings stay and the failure is a coverage gap. Under the `offline` profile the audit makes no registry, git or OCI request, so the registry rules assess none of the packages. Whatever the audit could not assess (a predictive target it skipped, a registry lookup that did not run, a component no registry answered for) is a coverage reason on the findings and a `notAssessed` reason on the manifest's `risk` stage, never a clean result.
 
 ## AI and agent components
 

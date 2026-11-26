@@ -58,7 +58,7 @@ A typed scan starts the language's analyzer directly when needed; a universal sc
 | `ci` | `vulnerabilities,reachability` | explanations off |
 | `deep` | adds `license` and `supply-chain` | semantic reachability |
 | `research` | `deep` | plus cdxgen's research BOM profile |
-| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen, golem offline, no risk audit |
+| `offline` | `vulnerabilities,reachability` | no database download, local cdxgen, golem offline, no supply-chain audit |
 
 `--profile` and `--bom-profile` answer different questions and are easy to confuse: `--bom-profile` is cdxgen's own flag for how the BOM is generated (`appsec`, `research`, `operational`, `threat-modeling`, `license-compliance`, the machine-learning profiles), and it is the v6 `--profile` renamed; the v7 `--profile` shapes the scan. A scan that wants call-level reachability and nothing else passes `--bom-profile research`; one that also wants the licence and supply-chain checks passes `--profile research`, which implies it.
 

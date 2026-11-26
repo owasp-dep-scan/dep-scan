@@ -11,19 +11,25 @@ from rich.console import Console
 from analysis_lib.evidence.store import EVIDENCE_FILE
 
 
+#: File names under a BOM directory that are dep-scan's own outputs and
+#: never input BOMs: the VDR documents, and the supply-chain stage's
+#: cdx-audit reports and purl-scan input (``cdx-audit-bom.json`` would
+#: otherwise match ``*bom*.json`` on the next scan of the same directory).
+BOM_EXCLUDE_PATTERNS = ("*.vdr.json", "cdx-audit-*")
+
+
 def get_all_bom_files(from_dir):
     """
-    Collect all BOM JSON files under `from_dir`,
-    excluding any files matching '*.vdr.json'.
+    Collect all BOM JSON files under `from_dir`, excluding the files
+    :data:`BOM_EXCLUDE_PATTERNS` names.
     """
     base = Path(from_dir)
     include_patterns = ["*bom*.json", "*.cdx.json"]
-    exclude_pattern = "*.vdr.json"
 
     files = set()
     for pattern in include_patterns:
         for p in base.rglob(pattern):
-            if not fnmatch.fnmatch(p.name, exclude_pattern):
+            if not any(fnmatch.fnmatch(p.name, exclude) for exclude in BOM_EXCLUDE_PATTERNS):
                 files.add(str(p.resolve()))
 
     return sorted(files)

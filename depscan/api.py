@@ -188,7 +188,7 @@ def scan(
     This runs the stages the ``depscan`` command runs, in the same order,
     including the console, quiet and debug handling of the CLI, and writes
     the same files to ``options.reports_dir``: the BOM documents, the VDR
-    files, the license and risk reports and ``depscan.toml.sample``, plus
+    files, the license reports and the cdx-audit reports and ``depscan.toml.sample``, plus
     the scan directory's own ``depscan.findings.json`` and
     ``depscan.manifest.json``.
 
@@ -321,9 +321,19 @@ def _run_stages(
                 ctx,
                 tscan,
                 project_type=project_type,
-                skipped_reason="the risk audit was not requested",
+                skipped_reason="the supply-chain audit was not requested",
                 failed_reason=lambda: tscan.risk_error,
                 not_assessed_reason=lambda: tscan.risk_not_assessed,
+                record_extra=lambda: {
+                    "notAssessed": list(tscan.audit_caveats),
+                    "outputs": [
+                        output
+                        for outputs in (
+                            _relative_output(ctx, path) for path in tscan.audit_output_files
+                        )
+                        for output in outputs
+                    ]
+                },
             )
             pipeline.announce_scan_targets(ctx, tscan)
             _stage(

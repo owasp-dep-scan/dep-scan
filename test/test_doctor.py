@@ -66,6 +66,7 @@ sys.exit(EXIT_CODE)
 # The tools resolved through an environment variable naming the binary.
 ENV_TOOLS = {
     "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0", "13.8.0"),
+    "cdx-audit": ("CDX_AUDIT_CMD", "CycloneDX Generator 13.9.0", "13.9.0"),
     "golem": ("GOLEM_CMD", "golem 9.9.9", "9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9", "9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef", "9.9.9"),
@@ -589,22 +590,39 @@ def test_removing_one_plugin_changes_only_its_dependents(plugin, plugins_env):
 # --- the supply-chain and binary rows -----------------------------------------
 
 
-def test_supply_chain_needs_nothing_and_binary_follows_blint(fakes, monkeypatch):
-    """supply-chain is the package risk audit and the malware advisory
-    reporting a scan already does, so it needs no tool or data and is
-    available on a machine with nothing installed. binary runs on blint, so
-    it is unavailable while the package is missing."""
+def test_supply_chain_needs_cdx_audit_and_binary_follows_blint(fakes, monkeypatch):
+    """supply-chain runs cdxgen's cdx-audit, so it needs that tool and is
+    unavailable without it; binary runs on blint, so it is unavailable
+    while the package is missing. A machine with a cdx-audit old enough to
+    lack the options dep-scan passes is unavailable with the same reason a
+    scan refuses on."""
     monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
     _uninstall_tool(fakes, monkeypatch, "blint")
+    _uninstall_tool(fakes, monkeypatch, "cdx-audit")
     report = doctor_mod.doctor()
     signature = _capability_signature(report)
-    assert signature["supply-chain"] == ("available", ())
+    assert signature["supply-chain"] == ("unavailable", ("tool:cdx-audit",))
     assert signature["binary"] == ("unavailable", ("tool:blint",))
     by_name = {capability.name: capability for capability in report.capabilities}
     assert by_name["supply-chain"].description == (
-        "Package risk audit and malware advisory reporting."
+        "Supply-chain audit through cdxgen's cdx-audit, and malware advisory reporting."
     )
     assert by_name["binary"].description == "Binary analysis with blint."
+
+    # A too-old cdx-audit answers the version probe and still shuts the
+    # capability: the minimum rejects it and the entry names the reason.
+    old_script = fakes.script("cdx-audit", "CycloneDX Generator 13.0.0")
+    monkeypatch.setenv("CDX_AUDIT_CMD", str(old_script))
+    report = doctor_mod.doctor()
+    assert _capability_signature(report)["supply-chain"] == ("unavailable", ("tool:cdx-audit",))
+    entry = _tool_entries(report)["cdx-audit"]
+    assert entry.version == "13.0.0"
+    assert "minimum" in (entry.reason or "")
+
+    # A current cdx-audit makes the capability available again.
+    _install_tool(fakes, monkeypatch, "cdx-audit")
+    report = doctor_mod.doctor()
+    assert _capability_signature(report)["supply-chain"] == ("available", ())
 
 
 def test_binary_is_available_with_blint_installed(fakes, monkeypatch):

@@ -1,0 +1,240 @@
+{
+ "auditMode": "direct",
+ "generatedAt": "2026-11-26T12:47:29.241Z",
+ "inputs": [
+  "sbom-npm.cdx.json"
+ ],
+ "results": [
+  {
+   "auditOptions": {
+    "aiProvenance": true,
+    "bomAuditCategories": "package-integrity,dependency-source",
+    "bomAuditMinSeverity": "low",
+    "directBomAudit": true
+   },
+   "bomFormat": "CycloneDX",
+   "coverage": {
+    "registryMetadata": "fetched",
+    "components": 3,
+    "eligible": 3,
+    "answered": 3,
+    "withoutMetadata": 0,
+    "unparseable": 0,
+    "withoutVersion": 0,
+    "skippedByTimeBudget": 0
+   },
+   "findings": [
+    {
+     "ruleId": "INT-005",
+     "name": "npm deprecated package",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'request@2.88.0' is deprecated: request has been deprecated, see https://github.com/request/request/issues/3142",
+     "mitigation": "Migrate to a maintained alternative package",
+     "location": {
+      "bomRef": "pkg:npm/request@2.88.0",
+      "purl": "pkg:npm/request@2.88.0"
+     },
+     "evidence": {
+      "deprecationNotice": "request has been deprecated, see https://github.com/request/request/issues/3142"
+     },
+     "_match": {
+      "type": "library",
+      "name": "request",
+      "version": "2.88.0",
+      "purl": "pkg:npm/request@2.88.0",
+      "bom-ref": "pkg:npm/request@2.88.0",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-b/package-lock.json"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "INT-005",
+     "name": "npm deprecated package",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'left-pad@1.3.0' is deprecated: use String.prototype.padStart()",
+     "mitigation": "Migrate to a maintained alternative package",
+     "location": {
+      "bomRef": "pkg:npm/left-pad@1.3.0",
+      "purl": "pkg:npm/left-pad@1.3.0"
+     },
+     "evidence": {
+      "deprecationNotice": "use String.prototype.padStart()"
+     },
+     "_match": {
+      "type": "library",
+      "name": "left-pad",
+      "version": "1.3.0",
+      "purl": "pkg:npm/left-pad@1.3.0",
+      "bom-ref": "pkg:npm/left-pad@1.3.0",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-a/package-lock.json"
+       },
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-b/package-lock.json"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "INT-005",
+     "name": "npm deprecated package",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'request@2.88.2' is deprecated: request has been deprecated, see https://github.com/request/request/issues/3142",
+     "mitigation": "Migrate to a maintained alternative package",
+     "location": {
+      "bomRef": "pkg:npm/request@2.88.2",
+      "purl": "pkg:npm/request@2.88.2"
+     },
+     "evidence": {
+      "deprecationNotice": "request has been deprecated, see https://github.com/request/request/issues/3142"
+     },
+     "_match": {
+      "type": "library",
+      "name": "request",
+      "version": "2.88.2",
+      "purl": "pkg:npm/request@2.88.2",
+      "bom-ref": "pkg:npm/request@2.88.2",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-a/package-lock.json"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "INT-026",
+     "name": "npm package without any release in six years",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'request' has had no release since 2020-02-11T16:35:36.122Z",
+     "mitigation": "Plan a migration to a maintained alternative, or adopt the package into your own maintenance",
+     "location": {
+      "bomRef": "pkg:npm/request@2.88.0",
+      "purl": "pkg:npm/request@2.88.0"
+     },
+     "evidence": {
+      "latestPublishTime": "2020-02-11T16:35:36.122Z",
+      "lastModifiedTime": "2026-11-16T13:52:33.894Z"
+     },
+     "_match": {
+      "type": "library",
+      "name": "request",
+      "version": "2.88.0",
+      "purl": "pkg:npm/request@2.88.0",
+      "bom-ref": "pkg:npm/request@2.88.0",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-b/package-lock.json"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "INT-026",
+     "name": "npm package without any release in six years",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'left-pad' has had no release since 2018-04-09T01:10:45.796Z",
+     "mitigation": "Plan a migration to a maintained alternative, or adopt the package into your own maintenance",
+     "location": {
+      "bomRef": "pkg:npm/left-pad@1.3.0",
+      "purl": "pkg:npm/left-pad@1.3.0"
+     },
+     "evidence": {
+      "latestPublishTime": "2018-04-09T01:10:45.796Z",
+      "lastModifiedTime": "2026-11-18T13:37:02.787Z"
+     },
+     "_match": {
+      "type": "library",
+      "name": "left-pad",
+      "version": "1.3.0",
+      "purl": "pkg:npm/left-pad@1.3.0",
+      "bom-ref": "pkg:npm/left-pad@1.3.0",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-a/package-lock.json"
+       },
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-b/package-lock.json"
+       }
+      ]
+     }
+    },
+    {
+     "ruleId": "INT-026",
+     "name": "npm package without any release in six years",
+     "severity": "low",
+     "category": "package-integrity",
+     "message": "npm package 'request' has had no release since 2020-02-11T16:35:36.122Z",
+     "mitigation": "Plan a migration to a maintained alternative, or adopt the package into your own maintenance",
+     "location": {
+      "bomRef": "pkg:npm/request@2.88.2",
+      "purl": "pkg:npm/request@2.88.2"
+     },
+     "evidence": {
+      "latestPublishTime": "2020-02-11T16:35:36.122Z",
+      "lastModifiedTime": "2026-11-16T13:52:33.894Z"
+     },
+     "_match": {
+      "type": "library",
+      "name": "request",
+      "version": "2.88.2",
+      "purl": "pkg:npm/request@2.88.2",
+      "bom-ref": "pkg:npm/request@2.88.2",
+      "properties": [
+       {
+        "name": "internal:SrcFile",
+        "value": "svc-a/package-lock.json"
+       }
+      ]
+     }
+    }
+   ],
+   "serialNumber": "urn:uuid:ddd35916-8be3-456a-87ba-a6a0cc43d04c",
+   "source": "sbom-npm.cdx.json",
+   "specVersion": "1.7",
+   "status": "audited",
+   "summary": {
+    "findingsBySeverity": {
+     "critical": 0,
+     "high": 0,
+     "low": 6,
+     "medium": 0
+    },
+    "findingsCount": 6,
+    "maxSeverity": "low"
+   }
+  }
+ ],
+ "summary": {
+  "findingsBySeverity": {
+   "critical": 0,
+   "high": 0,
+   "low": 6,
+   "medium": 0
+  },
+  "inputBomCount": 1,
+  "maxSeverity": "low",
+  "totalFindings": 6,
+  "bomsWithFindings": 1
+ },
+ "tool": {
+  "name": "cdx-audit",
+  "version": "13.9.0"
+ },
+ "version": 1
+}

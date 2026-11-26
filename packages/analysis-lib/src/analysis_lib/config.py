@@ -1406,21 +1406,6 @@ TOML_TEMPLATE = {
     },
 }
 
-# Help text for various risk
-risk_help_text = {
-    "pkg_min_versions": "Has fewer versions",
-    "latest_now_min_seconds": "Recently updated",
-    "latest_now_max_seconds": "No recent updates",
-    "pkg_min_maintainers": "Has fewer maintainers",
-    "pkg_node_version": "Outdated Node version",
-    "pkg_install_scripts": "Runs scripts on install",
-    "pkg_deprecated": "Deprecated",
-    "pkg_version_deprecated": "Deprecated version",
-    "pkg_version_missing": "Non-existent version",
-    "pkg_includes_binary": "Includes binary",
-    "pkg_private_on_public_registry": "Private package is public",
-}
-
 max_distro_vulnerabilities = get_int_from_env("max_distro_vulnerabilities", 200)
 
 # Tags representing external services

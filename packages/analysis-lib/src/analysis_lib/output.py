@@ -3,7 +3,7 @@ from collections import OrderedDict, defaultdict
 from typing import Any, Dict, List
 
 from analysis_lib import VdrAnalysisKV
-from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
+from analysis_lib.config import max_distro_vulnerabilities
 from analysis_lib.findings.exploitability import GRADE_PROPERTY, RULE_PROPERTY
 from analysis_lib.helpers import is_malware_vuln, max_version
 from custom_json_diff.lib.utils import file_write
@@ -1002,120 +1002,6 @@ def summary_stats(results):
             summary[sev] += 1
 
     return summary
-
-
-def pkg_risks_table(
-    project_type,
-    scoped_pkgs,
-    risk_results,
-    pkg_max_risk_score=0.5,
-    risk_report_file=None,
-):
-    """
-    Identify package risk and write to a json file
-
-    :param project_type: Project type
-    :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
-    :param risk_results: A dict of the risk metrics and scope for each package.
-    :param pkg_max_risk_score: Max risk score
-    :param risk_report_file: Path to the JSON file for the risk audit findings.
-    """
-    if not risk_results:
-        return None, None
-    table = Table(
-        title=f"Risk Audit Summary ({project_type})",
-        box=box.DOUBLE_EDGE,
-        header_style="bold magenta",
-        min_width=150,
-    )
-    report_data = []
-    required_pkgs = scoped_pkgs.get("required", [])
-    optional_pkgs = scoped_pkgs.get("optional", [])
-    excluded_pkgs = scoped_pkgs.get("excluded", [])
-    headers = ["Package", "Used?", "Risk Score", "Identified Risks"]
-    for h in headers:
-        justify = "left"
-        if h == "Risk Score":
-            justify = "right"
-        table.add_column(header=h, justify=justify)
-    for pkg, risk_obj in risk_results.items():
-        if not risk_obj:
-            continue
-        risk_metrics = risk_obj.get("risk_metrics")
-        scope = risk_obj.get("scope")
-        project_type_pkg = f"{project_type}:{pkg}".lower()
-        if project_type_pkg in required_pkgs:
-            scope = "required"
-        elif project_type_pkg in optional_pkgs:
-            scope = "optional"
-        elif project_type_pkg in excluded_pkgs:
-            scope = "excluded"
-        package_usage = "N/A"
-        package_usage_simple = "N/A"
-        if scope == "required":
-            package_usage = "[bright_green][bold]Yes"
-            package_usage_simple = "Yes"
-        if scope == "optional":
-            package_usage = "[magenta]No"
-            package_usage_simple = "No"
-        if not risk_metrics:
-            continue
-        # Some risks gets special treatment for display
-        if risk_metrics.get("risk_score") and (
-            risk_metrics.get("risk_score") > pkg_max_risk_score
-            or risk_metrics.get("pkg_private_on_public_registry_risk")
-            or risk_metrics.get("pkg_deprecated_risk")
-            or risk_metrics.get("pkg_version_deprecated_risk")
-            or risk_metrics.get("pkg_version_missing_risk")
-            or risk_metrics.get("pkg_includes_binary_risk")
-        ):
-            risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
-            data = [
-                pkg,
-                package_usage,
-                risk_score,
-            ]
-            edata = [
-                pkg,
-                package_usage_simple,
-                round(risk_metrics.get("risk_score"), 2),
-            ]
-            risk_categories = []
-            risk_categories_plain = []
-            for rk, rv in risk_metrics.items():
-                if rk.endswith("_risk") and rv is True:
-                    rcat = rk.removesuffix("_risk")
-                    help_text = risk_help_text.get(rcat)
-                    extra_info = risk_metrics.get(f"{rcat}_info")
-                    if extra_info:
-                        help_text = f"{help_text}\n{extra_info}"
-                    # Only add texts that are available.
-                    if help_text:
-                        if rcat in (
-                            "pkg_deprecated",
-                            "pkg_version_deprecated",
-                            "pkg_includes_binary",
-                            "pkg_private_on_public_registry",
-                        ):
-                            risk_categories.append(f":cross_mark: {help_text}")
-                        else:
-                            risk_categories.append(f":warning: {help_text}")
-                        # The report file holds plain values, one risk per
-                        # entry, and a detail line the producer states more
-                        # than once (npm signs a version twice with one key
-                        # id) only once.
-                        for line in help_text.splitlines():
-                            if line and line not in risk_categories_plain:
-                                risk_categories_plain.append(line)
-            data.append("\n".join(risk_categories))
-            edata.append(risk_categories_plain)
-            table.add_row(*data)
-            report_data.append(dict(zip(headers, edata)))
-    if report_data:
-        # Store the risk audit findings as one JSON array of plain rows
-        if risk_report_file:
-            file_write(risk_report_file, json.dumps(report_data, indent=2))
-    return table, report_data
 
 
 def licenses_risk_table(project_type, licenses_results, license_report_file=None):
