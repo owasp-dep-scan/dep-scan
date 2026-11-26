@@ -44,6 +44,9 @@ jobs:
             flavor: app-only
           - lesson: 06-supply-chain-licence
             flavor: app-only
+            # The supply-chain check needs cdx-audit from cdxgen 13.9.0, which
+            # is not released yet; the lesson runs again once the pin moves.
+            skip: true
           - lesson: 07-ci-gating
             flavor: app-only
           - lesson: 08-agent-workflow
@@ -52,27 +55,37 @@ jobs:
             flavor: app-only
     name: lesson ${{ matrix.lesson }}
     steps:
+      - name: Report a lesson that is skipped
+        if: ${{ matrix.skip }}
+        run: echo "Lesson ${{ matrix.lesson }} is skipped; see the comment beside it in the matrix."
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: ${{ !matrix.skip }}
         with:
           persist-credentials: false
 
       - name: Trim CI agent
+        if: ${{ !matrix.skip }}
         run: |
           chmod +x contrib/free_disk_space.sh
           ./contrib/free_disk_space.sh
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        if: ${{ !matrix.skip }}
         with:
           node-version: 24
 
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
+        if: ${{ !matrix.skip }}
         with:
           go-version: stable
 
       - name: Install uv
+        if: ${{ !matrix.skip }}
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
 
       - name: Install the toolchain
+        if: ${{ !matrix.skip }}
         run: |
           uv sync --all-extras --all-packages
           echo "${{ github.workspace }}/.venv/bin" >> "$GITHUB_PATH"
@@ -81,9 +94,11 @@ jobs:
           sudo apt-get install -y php-cli ruby
 
       - name: Prefetch the vulnerability database
+        if: ${{ !matrix.skip }}
         run: depscan vdb download --flavor ${{ matrix.flavor }}
 
       - name: Run the lesson
+        if: ${{ !matrix.skip }}
         shell: bash
         env:
           WORK: ${{ runner.temp }}/lesson-${{ matrix.lesson }}
@@ -92,6 +107,7 @@ jobs:
             | tee "${{ runner.temp }}/lesson-output.txt"
 
       - name: Check the quoted output lines
+        if: ${{ !matrix.skip }}
         shell: bash
         run: |
           missing=0
@@ -105,7 +121,7 @@ jobs:
           exit $missing
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        if: always()
+        if: ${{ always() && !matrix.skip }}
         with:
           name: lesson-${{ matrix.lesson }}-output
           path: ${{ runner.temp }}/lesson-output.txt
