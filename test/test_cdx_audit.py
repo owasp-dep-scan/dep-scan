@@ -330,16 +330,18 @@ def test_build_args_ask_for_the_registry_lookup_unless_offline():
 
 
 #: A Node module loaded into cdx-audit with ``--import`` that records and
-#: refuses every socket connection, DNS lookup, fetch and child process the
-#: process attempts. cdx-audit is a Node program, so patching Python's
-#: socket module observes nothing it does, and its registry lookups run in
-#: a helper binary it spawns (cdxrs), so a spawn is refused as well.
-#: ``syncBuiltinESMExports`` makes the patches reach named ESM imports.
+#: refuses every socket connection, DNS lookup or resolve, fetch, child
+#: process and worker thread the process attempts. cdx-audit is a Node
+#: program, so patching Python's socket module observes nothing it does,
+#: and its registry lookups run in a helper binary it spawns (cdxrs), so a
+#: spawn is refused as well. ``syncBuiltinESMExports`` makes the patches
+#: reach named ESM imports.
 NETGUARD_SOURCE = """import fs from "node:fs";
 import net from "node:net";
 import tls from "node:tls";
 import dns from "node:dns";
 import childProcess from "node:child_process";
+import workerThreads from "node:worker_threads";
 import { syncBuiltinESMExports } from "node:module";
 const logFile = process.env.DEPSCAN_NETGUARD_LOG;
 const refuse = (kind, target) => {
@@ -355,14 +357,53 @@ guard(tls, "connect", "tls.connect");
 net.Socket.prototype.connect = function (...args) {
   refuse("socket.connect", JSON.stringify(args[0]));
 };
-guard(dns, "lookup", "dns.lookup");
-dns.promises.lookup = async (host) => refuse("dns.promises.lookup", host);
+for (const name of Object.keys(dns)) {
+  if (name === "lookup" || name === "lookupService" || name.startsWith("resolve")) {
+    guard(dns, name, `dns.${name}`);
+  }
+}
+for (const name of Object.keys(dns.promises)) {
+  if (name === "lookup" || name === "lookupService" || name.startsWith("resolve")) {
+    dns.promises[name] = async (...args) => refuse(`dns.promises.${name}`, args[0]);
+  }
+}
 for (const name of ["spawn", "spawnSync", "execFile", "execFileSync", "exec", "execSync", "fork"]) {
   guard(childProcess, name, `child_process.${name}`);
 }
+workerThreads.Worker = class {
+  constructor(file) {
+    refuse("worker_threads.Worker", file);
+  }
+};
 globalThis.fetch = async (url) => refuse("fetch", url);
 syncBuiltinESMExports();
 """
+
+
+@pytest.mark.parametrize(
+    "probe,kind",
+    [
+        ("require('node:dns').resolve4('example.org', () => {})", "dns.resolve4"),
+        ("require('node:dns').promises.resolveTxt('example.org').catch(() => {})", "dns.promises.resolveTxt"),
+        ("require('node:dns').lookup('example.org', () => {})", "dns.lookup"),
+        ("require('node:net').connect(9, '127.0.0.1')", "net.connect"),
+        ("new (require('node:worker_threads').Worker)('x.js')", "worker_threads.Worker"),
+        ("require('node:child_process').spawnSync('true')", "child_process.spawnSync"),
+        ("fetch('http://example.org').catch(() => {})", "fetch"),
+    ],
+)
+def test_the_network_guard_sees_each_route(tmp_path, monkeypatch, probe, kind):
+    """The guard the offline tests rely on records every route a Node
+    process could reach the network by, so its empty log means something."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not on PATH")
+    log = _netguard(tmp_path, monkeypatch)
+    subprocess.run([node, "-e", f"try {{ {probe} }} catch (e) {{}}"], check=False, timeout=60)
+    assert log.read_text().startswith(kind), log.read_text()
 
 
 def _real_cdx_audit():
