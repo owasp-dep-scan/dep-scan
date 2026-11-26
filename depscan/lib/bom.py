@@ -21,7 +21,6 @@ from xbom_lib.cdxgen import (
     cdxgen_install_hint,
     cdxgen_timeout_hint,
     check_cdxgen_version,
-    deep_enabled,
     find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
@@ -1897,7 +1896,6 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
         review = run_blint_reviews(
             targets,
             review_dir,
-            deep=deep_enabled(options or {}),
             **_accepted_exclude_argument(run_blint_reviews, options),
         )
     if review.success:
@@ -2222,8 +2220,9 @@ def determine_spec_version(bom_files=None, fallback=None):
     """
     versions = []
     for bom_file in bom_files or []:
-        data = json_load(bom_file, log=LOG) or {}
-        if spec := data.get("specVersion"):
+        data = json_load(bom_file, log=LOG)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if isinstance(data, dict) and (spec := data.get("specVersion")):
             versions.append(str(spec))
     if versions:
         return max(versions, key=_spec_version_sort_key)

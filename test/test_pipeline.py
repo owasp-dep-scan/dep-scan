@@ -779,21 +779,23 @@ def test_every_bom_of_a_bom_directory_is_audited_and_reports_are_not_input(tmp_p
 
 
 def test_a_bom_directory_audits_only_cyclonedx_documents(tmp_path, monkeypatch):
-    """cdxgen writes sbom-<type>.cdx.json.introspection.json beside each BOM,
-    which the *bom*.json glob matches; it is no BOM, so it is skipped
-    quietly instead of failing the audit."""
+    """cdxgen writes sbom-<type>.cdx.json.introspection.json beside each BOM.
+    The BOM glob skips it, and a stage handed it anyway (a list built some
+    other way) skips it quietly instead of failing the audit."""
     from analysis_lib import get_all_bom_files
 
     runs = _audit_stub(monkeypatch)
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
-    _write_bom(bom_dir / "sbom-js.cdx.json", _NPM_COMPONENTS)
-    (bom_dir / "sbom-js.cdx.json.introspection.json").write_text(json.dumps({"tiers": {}}))
+    bom = bom_dir / "sbom-js.cdx.json"
+    _write_bom(bom, _NPM_COMPONENTS)
+    introspection = bom_dir / "sbom-js.cdx.json.introspection.json"
+    introspection.write_text(json.dumps({"tiers": {}}))
+    assert get_all_bom_files(str(bom_dir)) == [str(bom.resolve())]
     ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir), "--reports-dir", str(bom_dir)])
     ctx.perform_risk_audit = True
     scan = pipeline.TypeScan(project_type="bom")
-    scan.bom_files = get_all_bom_files(str(bom_dir))
-    assert len(scan.bom_files) == 2, "the glob matches the introspection report"
+    scan.bom_files = [str(bom.resolve()), str(introspection.resolve())]
     assert pipeline.stage_analysis_risk(ctx, scan) is True
     assert scan.risk_error is None
     assert [os.path.basename(run[run.index("--bom") + 1]) for run in runs] == ["sbom-js.cdx.json"]

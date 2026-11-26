@@ -10,8 +10,8 @@ how: Create a text file (typically named COPYING, as per GNU conventions) in the
 note: The Free Software Foundation recommends taking the additional step of adding a boilerplate notice after the title of a licensed document. The boilerplate can be found at the "addendum" part of the license.
 
 using:
-  GNU LilyPond (Documentation): https://git.savannah.gnu.org/cgit/lilypond.git/tree/COPYING.FDL
-  GNU Scientific Library (Documentation): https://git.savannah.gnu.org/cgit/gsl.git/tree/doc/_static/fdl.txt
+  Mastodon (Documentation): https://github.com/mastodon/documentation/blob/main/LICENSE
+  Regular Expression Museum: https://github.com/thaliaarchi/regexp-museum/blob/main/LICENSE
   Qt (Documentation): https://code.qt.io/cgit/qt/qt.git/tree/LICENSE.FDL
   
 permissions:

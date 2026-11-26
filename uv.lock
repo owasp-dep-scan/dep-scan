@@ -804,7 +804,7 @@ wheels = [
 
 [[package]]
 name = "ds-analysis-lib"
-version = "7.0.0a3"
+version = "7.0.0a4"
 source = { editable = "packages/analysis-lib" }
 dependencies = [
     { name = "appthreat-vulnerability-db" },
@@ -833,12 +833,12 @@ requires-dist = [
 
 [[package]]
 name = "ds-reporting-lib"
-version = "7.0.0a3"
+version = "7.0.0a4"
 source = { editable = "packages/reporting-lib" }
 
 [[package]]
 name = "ds-server-lib"
-version = "7.0.0a3"
+version = "7.0.0a4"
 source = { editable = "packages/server-lib" }
 dependencies = [
     { name = "appthreat-vulnerability-db" },
@@ -871,7 +871,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "ds-xbom-lib"
-version = "7.0.0a3"
+version = "7.0.0a4"
 source = { editable = "packages/xbom-lib" }
 
 [[package]]
@@ -1521,7 +1521,7 @@ wheels = [
 
 [[package]]
 name = "owasp-depscan"
-version = "7.0.0a3"
+version = "7.0.0a4"
 source = { editable = "." }
 dependencies = [
     { name = "appthreat-vulnerability-db" },

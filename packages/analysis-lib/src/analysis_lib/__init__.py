@@ -11,17 +11,43 @@ from rich.console import Console
 from analysis_lib.evidence.store import EVIDENCE_FILE
 
 
-#: File names under a BOM directory that are dep-scan's own outputs and
-#: never input BOMs: the VDR documents, and the supply-chain stage's
-#: cdx-audit reports and purl-scan input (``cdx-audit-bom.json`` would
-#: otherwise match ``*bom*.json`` on the next scan of the same directory).
-BOM_EXCLUDE_PATTERNS = ("*.vdr.json", "cdx-audit-*")
+#: File names under a BOM directory that are scan outputs and never input
+#: BOMs: the VDR and CSAF documents, the supply-chain stage's cdx-audit
+#: reports and purl-scan input, the license report and cdxgen's
+#: introspection report. A BOM-directory scan has the project type ``bom``,
+#: so its license report is ``license-bom.json``, and a CSAF document named
+#: after ``sbom-universal.cdx.json`` is ``sbom-universal.csaf.json``. Both
+#: match ``*bom*.json`` when the reports directory is the BOM directory.
+BOM_EXCLUDE_PATTERNS = (
+    "*.vdr.json",
+    "*.csaf.json",
+    "*.introspection.json",
+    "cdx-audit-*",
+    "license-*.json",
+)
+
+
+def _starts_as_object(path):
+    """Whether the JSON file at ``path`` opens with ``{``.
+
+    A CycloneDX BOM is a JSON object, so a file whose first character is
+    anything else (a list, a string, an empty file) is not one, whatever its
+    name says. Only the opening bytes are read, so large BOMs stay cheap.
+    """
+    try:
+        with open(path, "rb") as handle:
+            head = handle.read(4096)
+    except OSError:
+        return False
+    head = head.removeprefix(b"\xef\xbb\xbf").lstrip()
+    return head.startswith(b"{")
 
 
 def get_all_bom_files(from_dir):
     """
     Collect all BOM JSON files under `from_dir`, excluding the files
-    :data:`BOM_EXCLUDE_PATTERNS` names.
+    :data:`BOM_EXCLUDE_PATTERNS` names and files that do not hold a JSON
+    object.
     """
     base = Path(from_dir)
     include_patterns = ["*bom*.json", "*.cdx.json"]
@@ -29,7 +55,9 @@ def get_all_bom_files(from_dir):
     files = set()
     for pattern in include_patterns:
         for p in base.rglob(pattern):
-            if not any(fnmatch.fnmatch(p.name, exclude) for exclude in BOM_EXCLUDE_PATTERNS):
+            if any(fnmatch.fnmatch(p.name, exclude) for exclude in BOM_EXCLUDE_PATTERNS):
+                continue
+            if p.is_file() and _starts_as_object(p):
                 files.add(str(p.resolve()))
 
     return sorted(files)

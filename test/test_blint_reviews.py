@@ -4,8 +4,8 @@ How the review's check findings reach ``depscan.findings.json`` through the
 blint adapter's records needs no blint installed and is tested in
 ``test_scan_directory.py``."""
 
-import dataclasses
 import json
+import logging
 import os
 import shutil
 import sys
@@ -53,14 +53,13 @@ class _StubGenerator:
 
 def test_the_review_step_keeps_its_reports_under_analysis_blint(monkeypatch, tmp_path):
     """dep-scan's own review step hands blint the analysis/blint directory
-    beside the BOM, absolute source paths and the deep setting, and reports
-    success by writing nothing."""
+    beside the BOM and the source paths, and reports success by writing
+    nothing."""
     seen: dict[str, object] = {}
 
-    def fake_run(src_dirs, reports_dir, deep=False):
+    def fake_run(src_dirs, reports_dir, exclude=()):
         seen["src_dirs"] = list(src_dirs)
         seen["reports_dir"] = reports_dir
-        seen["deep"] = deep
         return blint_mod.BlintReviewResult(success=True, files=[])
 
     monkeypatch.setattr(blint_mod, "run_blint_reviews", fake_run)
@@ -69,7 +68,6 @@ def test_the_review_step_keeps_its_reports_under_analysis_blint(monkeypatch, tmp
     assert reasons == []
     assert seen["reports_dir"] == str(tmp_path / "reports" / "analysis" / "blint")
     assert seen["src_dirs"] == ["src", "dist"]
-    assert seen["deep"] is True
 
 
 def test_the_review_step_returns_the_failure_reason(monkeypatch, tmp_path):
@@ -106,12 +104,8 @@ def test_real_review_keeps_reports_and_the_manifest_lists_them(tmp_path):
     assert f"analysis/blint/{blint_mod.BLINT_COVERAGE_FILE}" in listed
 
 
-@pytest.mark.skipif(
-    not blint_mod._accepts_exclude(getattr(blint_mod, "gen_file_list", lambda s: s)),
-    reason="the installed blint has no exclude parameter",
-)
 def test_real_review_leaves_an_excluded_tree_out(tmp_path):
-    """With a blint that takes the patterns, the review attempts only the
+    """The patterns reach blint's own walk: the review attempts only the
     binary outside the excluded tree."""
     source = os.path.realpath(sys.executable)
     for tree in ("kept", "test"):
@@ -126,20 +120,44 @@ def test_real_review_leaves_an_excluded_tree_out(tmp_path):
     assert coverage["units"]["attempted"] == 1
 
 
-class _FakeRunner:
-    def __init__(self, **kwargs):
-        pass
+def test_real_generator_writes_the_sbom(tmp_path):
+    bom_file = tmp_path / "bom.json"
+    result = blint_mod.BlintGenerator(
+        str(_copy_binary(tmp_path)), str(bom_file), options={"use_blintdb": False}
+    ).generate()
+    assert result.success, result.command_output
+    document = json.loads(bom_file.read_text())
+    assert document["bomFormat"] == "CycloneDX"
+    assert result.bom_obj is not None
+    assert result.bom_obj["serialNumber"] == document["serialNumber"]
 
-    def start(self, options, exe_files):
-        finding = {"id": "CHECK_NX", "title": "NX", "severity": "high", "filename": "/s/app"}
-        return [finding], [{"id": "ENVIRONMENT_ACCESS"}], [], []
 
-    def analysis_coverage(self):
-        return {"units": {"attempted": 1, "succeeded": 1, "failed": 0, "skipped": 0}}
+_COVERAGE = {"units": {"attempted": 1, "succeeded": 1, "failed": 0, "skipped": 0}}
+
+
+def _batch(findings=(), reviews=(), unmatched=()):
+    from blint.api import AnalysisResult, BatchAnalysisResult
+
+    unit = AnalysisResult(metadata={}, findings=list(findings), reviews=list(reviews))
+    return BatchAnalysisResult(results=[unit], coverage=dict(_COVERAGE), unmatched=list(unmatched))
+
+
+def _fake_analyze_many(seen=None, batch=None, error=None):
+    def fake(paths, **kwargs):
+        if seen is not None:
+            seen["paths"] = list(paths)
+            seen.update(kwargs)
+        if error:
+            raise error
+        return batch if batch is not None else _batch()
+
+    return fake
 
 
 def test_review_writes_findings_and_reviews_and_drops_stale_reports(monkeypatch, tmp_path):
-    monkeypatch.setattr(blint_mod, "AnalysisRunner", _FakeRunner)
+    finding = {"id": "CHECK_NX", "title": "NX", "severity": "high", "filename": "/s/app"}
+    batch = _batch(findings=[finding], reviews=[{"id": "ENVIRONMENT_ACCESS"}])
+    monkeypatch.setattr(blint_mod, "analyze_many", _fake_analyze_many(batch=batch))
     reports = tmp_path / "analysis" / "blint"
     reports.mkdir(parents=True)
     (reports / blint_mod.BLINT_FINDINGS_FILE).write_text('{"findings": [{"id": "OLD"}]}')
@@ -147,7 +165,33 @@ def test_review_writes_findings_and_reviews_and_drops_stale_reports(monkeypatch,
     assert result.success
     document = json.loads((reports / blint_mod.BLINT_FINDINGS_FILE).read_text())
     assert [f["id"] for f in document["findings"]] == ["CHECK_NX"]
-    assert (reports / blint_mod.BLINT_REVIEWS_FILE).is_file()
+    reviews = json.loads((reports / blint_mod.BLINT_REVIEWS_FILE).read_text())
+    assert [r["id"] for r in reviews["reviews"]] == ["ENVIRONMENT_ACCESS"]
+    coverage = json.loads((reports / blint_mod.BLINT_COVERAGE_FILE).read_text())
+    assert coverage["units"] == _COVERAGE["units"]
+    assert {"scan_id", "created"} <= set(coverage)
+    assert "unmatched" not in coverage
+
+
+def test_a_clean_review_writes_only_the_coverage_report(monkeypatch, tmp_path):
+    monkeypatch.setattr(blint_mod, "analyze_many", _fake_analyze_many())
+    reports = tmp_path / "r"
+    result = blint_mod.run_blint_reviews([str(tmp_path)], str(reports))
+    assert result.success and result.files == [blint_mod.BLINT_COVERAGE_FILE]
+    assert sorted(os.listdir(reports)) == [blint_mod.BLINT_COVERAGE_FILE]
+
+
+def test_records_blint_could_not_attribute_are_kept_in_the_coverage_report(
+    monkeypatch, tmp_path
+):
+    stray = {"id": "CHECK_PIE", "filename": "/elsewhere"}
+    monkeypatch.setattr(
+        blint_mod, "analyze_many", _fake_analyze_many(batch=_batch(unmatched=[stray]))
+    )
+    reports = tmp_path / "r"
+    assert blint_mod.run_blint_reviews([str(tmp_path)], str(reports)).success
+    coverage = json.loads((reports / blint_mod.BLINT_COVERAGE_FILE).read_text())
+    assert coverage["unmatched"] == [stray]
 
 
 def test_a_relative_review_path_is_walked_as_an_absolute_one(monkeypatch, tmp_path):
@@ -157,129 +201,28 @@ def test_a_relative_review_path_is_walked_as_an_absolute_one(monkeypatch, tmp_pa
     directory, and the finding ids of a relative ``-i`` equal those of an
     absolute one."""
     seen = {}
-
-    class Recording(_FakeRunner):
-        def start(self, options, exe_files):
-            seen["dirs"] = list(options.src_dir_image)
-            return super().start(options, exe_files)
-
-    monkeypatch.setattr(blint_mod, "AnalysisRunner", Recording)
+    monkeypatch.setattr(blint_mod, "analyze_many", _fake_analyze_many(seen))
     (tmp_path / "bins").mkdir()
     monkeypatch.chdir(tmp_path)
     result = blint_mod.run_blint_reviews(["bins"], str(tmp_path / "r"))
     assert result.success
-    assert seen["dirs"] == [str(tmp_path / "bins")]
+    assert seen["paths"] == [str(tmp_path / "bins")]
+
+
+def test_a_review_hands_the_patterns_to_blint(monkeypatch, tmp_path):
+    seen = {}
+    monkeypatch.setattr(blint_mod, "analyze_many", _fake_analyze_many(seen))
+    result = blint_mod.run_blint_reviews([str(tmp_path)], str(tmp_path / "r"), exclude=["test/**"])
+    assert result.success
+    assert seen["exclude"] == ["test/**"] and seen["quiet"] is True
 
 
 def test_review_failure_is_returned_not_raised(monkeypatch, tmp_path):
-    class Broken(_FakeRunner):
-        def start(self, options, exe_files):
-            raise RuntimeError("boom")
-
-    monkeypatch.setattr(blint_mod, "AnalysisRunner", Broken)
+    monkeypatch.setattr(
+        blint_mod, "analyze_many", _fake_analyze_many(error=RuntimeError("boom"))
+    )
     result = blint_mod.run_blint_reviews([str(tmp_path)], str(tmp_path / "r"))
     assert result.success is False and "boom" in (result.command_output or "")
-
-
-@dataclasses.dataclass
-class _OptionsWithoutExclude:
-    src_dir_image: list
-    deep_mode: bool = False
-    no_error: bool = False
-    no_reviews: bool = False
-    quiet_mode: bool = False
-    stdout_mode: bool = False
-    reports_dir: str = ""
-    sbom_mode: bool = False
-    db_mode: bool = False
-    use_blintdb: bool = False
-    image_url: str = ""
-    sbom_output: str = ""
-
-
-@dataclasses.dataclass
-class _OptionsWithExcludeField(_OptionsWithoutExclude):
-    exclude: list = dataclasses.field(default_factory=list)
-
-
-def _generator_run(monkeypatch, tmp_path, options_class, options):
-    seen = {}
-
-    def fake_sbom(blint_options):
-        seen["options"] = blint_options
-        return "sbom"
-
-    monkeypatch.setattr(blint_mod, "BlintOptions", options_class)
-    monkeypatch.setattr(blint_mod, "run_sbom_mode", fake_sbom)
-    monkeypatch.setattr(blint_mod, "blintdb_setup", lambda options: None)
-    generator = blint_mod.BlintGenerator(
-        str(tmp_path), str(tmp_path / "bom.json"), options=options
-    )
-    assert generator.generate().success
-    return seen["options"]
-
-
-def test_the_generator_takes_the_target_list_and_the_patterns(monkeypatch, tmp_path):
-    options = {"blint_targets": ["/a,b", "/c"], "exclude_patterns": ["test/**"]}
-    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithExcludeField, options)
-    assert seen.src_dir_image == ["/a,b", "/c"], "a comma in a path survives"
-    assert seen.exclude == ["test/**"]
-
-
-def test_the_generator_without_a_target_list_splits_the_source_directory(monkeypatch, tmp_path):
-    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithExcludeField, {})
-    assert seen.src_dir_image == [str(tmp_path)]
-    assert seen.exclude == []
-
-
-def test_the_generator_passes_no_exclude_to_a_blint_without_the_field(monkeypatch, tmp_path):
-    options = {"blint_targets": ["/c"], "exclude_patterns": ["test/**"]}
-    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithoutExclude, options)
-    assert not hasattr(seen, "exclude")
-
-
-@pytest.mark.parametrize("takes_exclude", [True, False])
-def test_a_review_hands_the_patterns_to_the_blint_walks_that_take_them(
-    monkeypatch, tmp_path, takes_exclude
-):
-    calls = {}
-
-    if takes_exclude:
-
-        def lister(src, exclude=None):
-            calls.setdefault("gen_file_list", exclude)
-            return []
-
-        def bundles(src, exclude=None):
-            calls["bundles"] = exclude
-            return []
-
-        def clickonce(src, exclude=None):
-            calls["clickonce"] = exclude
-            return []
-
-    else:
-
-        def lister(src):
-            calls["gen_file_list"] = "no parameter"
-            return []
-
-        def bundles(src):
-            calls["bundles"] = "no parameter"
-            return []
-
-        def clickonce(src):
-            calls["clickonce"] = "no parameter"
-            return []
-
-    monkeypatch.setattr(blint_mod, "gen_file_list", lister)
-    monkeypatch.setattr(blint_mod, "find_macos_bundles", bundles)
-    monkeypatch.setattr(blint_mod, "find_clickonce_files", clickonce)
-    monkeypatch.setattr(blint_mod, "AnalysisRunner", _FakeRunner)
-    result = blint_mod.run_blint_reviews([str(tmp_path)], str(tmp_path / "r"), exclude=["test/**"])
-    assert result.success
-    expected = ["test/**"] if takes_exclude else "no parameter"
-    assert calls == {"gen_file_list": expected, "bundles": expected, "clickonce": expected}
 
 
 def test_reviews_remove_the_reports_of_an_earlier_scan_before_they_start(tmp_path, monkeypatch):
@@ -292,11 +235,129 @@ def test_reviews_remove_the_reports_of_an_earlier_scan_before_they_start(tmp_pat
     )
     for name in names:
         (reports / name).write_text("{}")
-
-    def boom(*a, **k):
-        raise RuntimeError("runner failed")
-
-    monkeypatch.setattr(blint_mod, "AnalysisRunner", boom)
+    monkeypatch.setattr(
+        blint_mod, "analyze_many", _fake_analyze_many(error=RuntimeError("runner failed"))
+    )
     result = blint_mod.run_blint_reviews([str(tmp_path)], str(reports))
     assert result.success is False
     assert [n for n in names if (reports / n).exists()] == []
+
+
+def _fake_sbom(calls, fail_with_blintdb=False, bom=None, notes=None):
+    from blint.api import BlintdbUnavailableError, SbomResult
+
+    def fake(paths, **kwargs):
+        calls.append({"paths": list(paths), **kwargs})
+        if fail_with_blintdb and kwargs.get("use_blintdb"):
+            raise BlintdbUnavailableError("no blint.db layer")
+        if notes is not None:
+            return SbomResult(bom=None, coverage={"notes": notes})
+        return SbomResult(bom=bom or {"bomFormat": "CycloneDX"}, coverage={})
+
+    return fake
+
+
+class _RecordingLogger(logging.Logger):
+    """A logger that keeps the warning messages it is given."""
+
+    def __init__(self, name):
+        super().__init__(name)
+        self.warnings: list = []
+
+    def warning(self, msg, *args, **kwargs):
+        self.warnings.append(msg % args)
+
+
+def _generate(monkeypatch, tmp_path, options, **fake_kwargs):
+    calls: list = []
+    monkeypatch.setattr(blint_mod, "sbom", _fake_sbom(calls, **fake_kwargs))
+    logger = _RecordingLogger("test-blint")
+    generator = blint_mod.BlintGenerator(
+        str(tmp_path), str(tmp_path / "bom.json"), logger=logger, options=options
+    )
+    return generator.generate(), calls, logger.warnings
+
+
+def test_the_generator_takes_the_target_list_and_the_patterns(monkeypatch, tmp_path):
+    options = {"blint_targets": ["/a,b", "/c"], "exclude_patterns": ["test/**"]}
+    result, calls, _ = _generate(monkeypatch, tmp_path, options)
+    assert result.success and result.bom_obj == {"bomFormat": "CycloneDX"}
+    (call,) = calls
+    assert call["paths"] == ["/a,b", "/c"], "a comma in a path survives"
+    assert call["exclude"] == ["test/**"]
+    assert call["output_file"] == str(tmp_path / "bom.json")
+    assert call["deep"] is True and call["quiet"] is True
+
+
+def test_the_generator_without_a_target_list_splits_the_source_directory(monkeypatch, tmp_path):
+    _, calls, _ = _generate(monkeypatch, tmp_path, {"deep": False})
+    assert calls[0]["paths"] == [str(tmp_path)]
+    assert calls[0]["exclude"] == [] and calls[0]["deep"] is False
+
+
+def test_the_generator_restores_blint_temp_dir(monkeypatch, tmp_path):
+    monkeypatch.setenv("BLINT_TEMP_DIR", "/kept")
+    seen = {}
+
+    def fake(paths, **kwargs):
+        from blint.api import SbomResult
+
+        seen["during"] = os.environ["BLINT_TEMP_DIR"]
+        assert os.path.isdir(seen["during"])
+        return SbomResult(bom={}, coverage={})
+
+    monkeypatch.setattr(blint_mod, "sbom", fake)
+    assert blint_mod.BlintGenerator(str(tmp_path), str(tmp_path / "b.json")).generate().success
+    assert seen["during"] != "/kept" and not os.path.exists(seen["during"])
+    assert os.environ["BLINT_TEMP_DIR"] == "/kept"
+
+
+@pytest.mark.parametrize(
+    "env, options, expected",
+    [
+        (None, {}, False),
+        ("true", {}, True),
+        ("1", {}, True),
+        ("TRUE", {}, True),
+        ("false", {}, False),
+        ("0", {}, False),
+        # the post-build lifecycle BOM asks for no database whatever the env says
+        ("true", {"use_blintdb": False}, False),
+        (None, {"use_blintdb": True}, True),
+    ],
+)
+def test_blintdb_is_used_only_when_asked_for(monkeypatch, tmp_path, env, options, expected):
+    if env is None:
+        monkeypatch.delenv("USE_BLINTDB", raising=False)
+    else:
+        monkeypatch.setenv("USE_BLINTDB", env)
+    _, calls, _ = _generate(monkeypatch, tmp_path, options)
+    assert calls[0]["use_blintdb"] is expected
+
+
+def test_an_unavailable_blintdb_falls_back_to_an_sbom_without_it(monkeypatch, tmp_path):
+    result, calls, warnings = _generate(
+        monkeypatch, tmp_path, {"use_blintdb": True}, fail_with_blintdb=True
+    )
+    assert result.success
+    assert [c["use_blintdb"] for c in calls] == [True, False]
+    assert len(warnings) == 1 and "no blint.db layer" in warnings[0]
+
+
+def test_a_generator_failure_is_returned_not_raised(monkeypatch, tmp_path):
+    from blint.api import AnalysisFailedError
+
+    def broken(paths, **kwargs):
+        raise AnalysisFailedError("SBOM generation failed: ValueError: bad unit")
+
+    monkeypatch.setattr(blint_mod, "sbom", broken)
+    result = blint_mod.BlintGenerator(str(tmp_path), str(tmp_path / "b.json")).generate()
+    assert result.success is False and "bad unit" in (result.command_output or "")
+
+
+def test_nothing_to_inventory_is_a_failure_with_blints_reason(monkeypatch, tmp_path):
+    result, _, _ = _generate(
+        monkeypatch, tmp_path, {}, notes=["no analyzable inputs were discovered"]
+    )
+    assert result.success is False
+    assert result.command_output == "no analyzable inputs were discovered"

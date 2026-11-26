@@ -46,6 +46,35 @@ def test_determine_spec_version_two_zero_beats_one_x(tmp_path):
     assert determine_spec_version(files) == "2.0"
 
 
+def test_determine_spec_version_skips_non_object_documents(tmp_path):
+    # A license report is a JSON list; it must not stop the VDR stage.
+    listed = tmp_path / "license-bom.json"
+    listed.write_text(json.dumps([{"license": "MIT"}]))
+    files = [str(listed), _write_bom(tmp_path / "a.json", "1.7")]
+    assert determine_spec_version(files, fallback="1.6") == "1.7"
+
+
+def test_get_all_bom_files_skips_outputs_and_non_objects(tmp_path):
+    from analysis_lib import get_all_bom_files
+
+    bom = {"bomFormat": "CycloneDX", "specVersion": "1.6"}
+    (tmp_path / "sbom-build.cdx.json").write_text(json.dumps(bom))
+    # A BOM saved with a UTF-8 byte order mark and leading blank lines.
+    (tmp_path / "app-bom.json").write_bytes(b"\xef\xbb\xbf\n  " + json.dumps(bom).encode())
+    # The license report of a BOM-directory scan (project type "bom").
+    (tmp_path / "license-bom.json").write_text("[]")
+    (tmp_path / "sbom-universal.csaf.json").write_text("{}")
+    (tmp_path / "sbom-build.cdx.json.introspection.json").write_text("{}")
+    (tmp_path / "sbom-build.vdr.json").write_text(json.dumps(bom))
+    (tmp_path / "cdx-audit-bom.json").write_text("{}")
+    # Files named like BOMs that hold no JSON object.
+    (tmp_path / "notes-bom.json").write_text('[{"x": 1}]')
+    (tmp_path / "empty-bom.json").write_text("")
+    (tmp_path / "dir-bom.json").mkdir()
+    names = sorted(os.path.basename(p) for p in get_all_bom_files(str(tmp_path)))
+    assert names == ["app-bom.json", "sbom-build.cdx.json"]
+
+
 def test_update_tools_metadata_uses_spec_version():
     bom = update_tools_metadata(None, None, "6.0.0", spec_version="1.7")
     assert bom["specVersion"] == "1.7"

@@ -45,7 +45,7 @@ The rules cover hardening posture (PIE, RELRO, NX, stack canaries, FORTIFY, RPAT
 
 ## blintdb
 
-blint can match the functions of a binary against blintdb, a large similarity database that identifies libraries without version banners. The database is a tens-of-gigabytes download per platform, and where it is absent the layer is reported as unavailable rather than as "no match": a scan that cannot consult blintdb says so. Decide per workflow whether the identification is worth the download; a source-side scan of the same project usually identifies the components more cheaply.
+blint can match the functions of a binary against blintdb, a large similarity database that identifies libraries without version banners. The database is a tens-of-gigabytes download per platform, and where it is absent the layer is reported as unavailable rather than as "no match": a scan that cannot consult blintdb says so. Decide per workflow whether the identification is worth the download; a source-side scan of the same project usually identifies the components more cheaply. A binary scan uses blintdb only when `USE_BLINTDB=true` is set, and blint downloads the database on first use (`depscan doctor` shows where it is). The post-build BOM of a lifecycle scan never uses it. When the download fails or the database cannot be verified, the binary BOM is generated without blintdb and a warning says the layer was missing.
 
 ## Diffs between builds
 
