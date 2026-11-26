@@ -1,0 +1,38 @@
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_8c7c9bd4e9d139::t_717ccda5eb7530 68-74
+  s_8c7c9bd4e9d139::t_b778d754705abc 38-54
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_8c7c9bd4e9d139::t_b778d754705abc 74
+AGENTS.md
+  s_8c7c9bd4e9d139::t_b57c53ad1e9d96 27-28
+documentation/docs/adv-usage.mdx
+  s_8c7c9bd4e9d139::t_321432ac10c95c 47
+  s_8c7c9bd4e9d139::t_717ccda5eb7530 39
+  s_8c7c9bd4e9d139::t_b778d754705abc 31-35
+documentation/docs/output/scan-directory.mdx
+  s_8c7c9bd4e9d139::t_b778d754705abc 69
+documentation/sidebars.ts
+  s_8c7c9bd4e9d139::t_8443efc840003b 99-100
+documentation/docs/doctor.mdx
+  s_8c7c9bd4e9d139::t_321432ac10c95c 54,82,91
+documentation/docs/migrate-v6-to-v7.mdx
+  s_8c7c9bd4e9d139::t_717ccda5eb7530 36-43
+documentation/docs/lessons/06-supply-chain-licence.mdx
+  s_8c7c9bd4e9d139::t_074a6c498a8be1 107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94251b1adb4ac6e1dca3058e8d6c883d701eddf6",
+  "prompts": {},
+  "sessions": {
+    "s_8c7c9bd4e9d139": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9dbe5ca6-7bed-4f18-b047-b71e9f4c565f",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
