@@ -1,0 +1,36 @@
+AGENTS.md
+  s_7318da1b9edd46::t_dd26e916036ccd 27-28
+documentation/docs/results/scan-directory.mdx
+  s_7318da1b9edd46::t_b189938c513e99 59
+documentation/docs/reference/doctor.mdx
+  s_7318da1b9edd46::t_ee0e76b769a41c 55
+  s_7318da1b9edd46::t_dd26e916036ccd 85,94
+documentation/docs/lessons/06-supply-chain-licence.mdx
+  s_7318da1b9edd46::t_dd26e916036ccd 107
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_7318da1b9edd46::t_dd26e916036ccd 74
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_dd26e916036ccd 36-43
+documentation/docs/reference/cli.mdx
+  s_7318da1b9edd46::t_b189938c513e99 416-420,424,430
+documentation/docs/targets/supply-chain.mdx
+  s_7318da1b9edd46::t_8e25430fdb4b55 16,27
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_7318da1b9edd46::t_dd26e916036ccd 38-54,68-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd8399307caa60d0d5034bb39d16927eae12727c",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
