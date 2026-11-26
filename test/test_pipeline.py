@@ -1866,3 +1866,33 @@ def test_a_bare_purl_search_does_not_warn_when_cdx_audit_is_missing(tmp_path, mo
         assert "cdx-audit was not found" in (scan.risk_not_assessed or "")
         lines = [r for r in caplog.records if "supply-chain audit cannot run" in r.getMessage()]
         assert [r.levelname for r in lines] == [level]
+
+
+def test_a_failed_direct_run_does_not_stop_the_other_boms(tmp_path, monkeypatch):
+    """A BOM whose direct audit fails marks the stage failed with that
+    BOM's name, and the BOMs after it are still audited and keep their
+    findings."""
+    report = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    runs = []
+
+    def fake_run(cmd, args):
+        bom = args[args.index("--bom") + 1]
+        runs.append(os.path.basename(bom))
+        if os.path.basename(bom).startswith("a-"):
+            raise cdx_audit.CdxAuditError("cdx-audit exited with 1; its output ends: boom")
+        Path(args[args.index("--report-file") + 1]).write_text(json.dumps(report))
+        return cdx_audit.CdxAuditResult(report=report, report_version=1, results=report["results"])
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir)])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="bom")
+    scan.bom_files = [_write_bom(bom_dir / "a-bad.cdx.json"), _write_bom(bom_dir / "b-good.cdx.json")]
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    assert runs == ["a-bad.cdx.json", "b-good.cdx.json"]
+    assert scan.risk_error and "a-bad.cdx.json" in scan.risk_error
+    assert len(scan.adapter_results["cdx-audit"].records) == 8

@@ -161,3 +161,60 @@ def test_the_html_report_keeps_the_supply_chain_section(tmp_path):
     assert "<b>x</b>" not in html
     assert html.count("<td>RFS-001</td>") + html.count("<td>CBS-001</td>") == 3
     assert "╔" not in html
+
+
+#: Finding text that Rich would read as markup, and HTML a report must not
+#: carry as markup either.
+HOSTILE_MESSAGES = [
+    "evil [link=https://attacker.example]click me[/link] tail",
+    "close all [/] then [bold red]RED",
+    "<script>alert(1)</script> & <img src=x onerror=alert(2)>",
+]
+
+
+def _hostile_rows():
+    rows = [
+        {
+            "producer": {"name": "cdx-audit"},
+            "rule": f"R-{index}[/]",
+            "severity": "high",
+            "components": [f"pkg:npm/x{index}@1.0.0"],
+            "properties": [{"name": "cdx-audit:message", "value": message}],
+        }
+        for index, message in enumerate(HOSTILE_MESSAGES)
+    ]
+    return supply_chain_review.supply_chain_rows(rows)
+
+
+def test_finding_text_is_never_rich_markup():
+    """A message or rule that looks like Rich markup is printed as written:
+    no link is made, no style applied, and a stray closing tag neither
+    raises nor swallows text."""
+    console = Console(record=True, width=200, file=io.StringIO())
+    console.print(supply_chain_review.supply_chain_table(_hostile_rows()))
+    text = console.export_text(clear=False)
+    html = console.export_html(clear=False)
+    assert "[link=https://attacker.example]click me[/link]" in text
+    assert "close all [/] then [bold red]RED" in text
+    assert "R-0[/]" in text
+    assert "attacker.example" not in html.split("<pre")[0]
+    assert 'href="https://attacker.example"' not in html
+
+
+def test_the_html_report_from_saved_text_escapes_the_cells(tmp_path):
+    """depscan.html can be rebuilt from depscan.txt, where the cells are
+    plain text; the generator escapes them on that path too."""
+    console = Console(record=True, width=200, file=io.StringIO())
+    console.print(supply_chain_review.supply_chain_table(_hostile_rows()))
+    text_report = tmp_path / "depscan.txt"
+    text_report.write_text(console.export_text(clear=False), encoding="utf-8")
+    out_html = tmp_path / "depscan.html"
+    ReportGenerator(
+        input_txt_path=str(text_report), report_output_path=str(out_html), raw_content=False
+    ).parse_and_generate_report()
+    html = out_html.read_text(encoding="utf-8")
+    section = html[html.index("Supply-Chain Audit Results</code>") :]
+    assert "<script>alert" not in section
+    assert "<img src=x" not in section
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in section
+    assert "Supply-chain findings count: 3" in section
