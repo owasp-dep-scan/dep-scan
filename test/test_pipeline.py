@@ -1,7 +1,7 @@
 """Unit tests for the pipeline stages, one stage per test.
 
 Each test builds a small scan context and runs a single stage. The expensive
-collaborators (the database, the vulnerability search, the registry risk
+collaborators (the database, the vulnerability search, the cdx-audit supply-chain
 audit) are stubbed, and every stub records its calls so the test also proves
 the stage reached it. The BOM fixtures come from ``test/data``; nothing here
 touches the network or a database on this machine.
@@ -384,7 +384,7 @@ def test_stage_inventory_carries_the_purl_package_list(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# analysis: license and risk audit
+# analysis: license and supply-chain audit
 # ---------------------------------------------------------------------------
 
 

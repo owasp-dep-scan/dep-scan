@@ -2,7 +2,7 @@
 
 Every scan is driven the way a user drives it: ``sys.argv`` is set, ``main``
 runs, the exit code, the reports directory and the output are asserted. The
-database, the matching stage, the risk audit and the cdxgen process are
+database, the matching stage, the supply-chain audit and the cdxgen process are
 stubbed with recorded calls (the pattern of the scan directory and internals
 tests), and every stub has a positive control proving it ran. The doctor
 report stays real, with its database inspection replaced by a known state and
@@ -106,7 +106,7 @@ class _StubVdrResult:
 
 @pytest.fixture
 def scan_stubs(monkeypatch):
-    """Stub a scan's database, matching, risk audit and cdxgen process.
+    """Stub a scan's database, matching, supply-chain audit and cdxgen process.
 
     The doctor report stays real, with the database inspection replaced by a
     known state. The fake cdxgen records the command line it was handed and
@@ -454,7 +454,7 @@ def test_an_explicit_or_shared_reports_dir_beats_the_bom_directory_reuse(
 
 
 def test_scan_runs_a_purl(scan_stubs, monkeypatch, tmp_path):
-    """A package URL scans without any BOM generation, with its risk audit."""
+    """A package URL scans without any BOM generation, with its supply-chain audit."""
     reports = tmp_path / "reports"
     code = run_main(
         monkeypatch,
@@ -469,12 +469,12 @@ def test_scan_runs_a_purl(scan_stubs, monkeypatch, tmp_path):
     assert code == 0
     assert (reports / "depscan.manifest.json").is_file()
     # Positive controls: matching saw the purl's own package list and the
-    # single-purl risk audit ran.
+    # single-purl supply-chain audit ran.
     assert scan_stubs["matching"], "the matching stage never ran"
     assert [pkg["purl"] for pkg in scan_stubs["matching"][0].pkg_list] == [
         "pkg:pypi/requests@2.32.1"
     ]
-    assert scan_stubs["risk"], "the single-purl risk audit never ran"
+    assert scan_stubs["risk"], "the single-purl supply-chain audit never ran"
     assert scan_stubs["cdxgen"] == []
 
 
@@ -1721,7 +1721,7 @@ def test_profile_ci_keeps_explain_on_when_passed_explicitly(
 def test_profile_deep_enables_risk_license_and_semantic_reachability(
     scan_stubs, fake_tools, monkeypatch, tmp_path, no_license_env
 ):
-    """The deep profile turns the risk audit and the license analysis on and
+    """The deep profile turns the supply-chain audit and the license analysis on and
     selects the semantic reachability analyzer, on the recorded namespace."""
     src = tmp_path / "src"
     src.mkdir()
@@ -1752,10 +1752,10 @@ def test_profile_deep_enables_risk_license_and_semantic_reachability(
     stages = {stage["name"]: stage for stage in manifest["stages"]}
     assert stages["licenses"]["status"] == "completed"
     assert stages["risk"]["status"] == "completed"
-    # Positive controls: the license analysis and the risk audit both ran,
+    # Positive controls: the license analysis and the supply-chain audit both ran,
     # and the cdxgen process produced the BOM.
     assert os.environ.get("FETCH_LICENSE") == "true"
-    assert scan_stubs["risk"], "the risk audit never ran"
+    assert scan_stubs["risk"], "the supply-chain audit never ran"
     assert scan_stubs["cdxgen"], "the cdxgen process never ran"
     assert scan_stubs["matching"], "the matching stage never ran"
     # The profile's name reaches the stage, which runs the predictive audit

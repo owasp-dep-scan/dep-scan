@@ -487,7 +487,7 @@ def test_build_server_bom_scanner_scans_through_the_api(monkeypatch, tmp_path):
     assert options["project_type"] == ["js"]
     assert options["suggest"] is True
     assert options["no_banner"] is True
-    # The server never ran reachability, risk audit or the CLI search order.
+    # The server never ran reachability, the supply-chain audit or the CLI search order.
     assert options["reachability_analyzer"] == "off"
     assert options["risk_audit"] is False
     assert options["fail_on_error"] is False

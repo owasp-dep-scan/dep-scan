@@ -233,9 +233,9 @@ def build_parser():
         "--private-ns",
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
-        help="Private namespace to use while performing oss risk audit. "
-        "Private packages should not be available in public registries "
-        "by default. Comma separated values accepted.",
+        help="Private package namespaces or name prefixes, comma separated. The "
+        "supply-chain audit reports a package whose name starts with one of them "
+        "and that a public registry holds (dependency confusion).",
     )
     parser.add_argument(
         "-t",

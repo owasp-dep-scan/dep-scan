@@ -1,6 +1,6 @@
 ---
 name: depscan-supply-chain
-description: 'Audits how software is built and delivered rather than which CVEs it carries: dep-scan''s supply-chain check runs cdxgen''s cdx-audit (the package-integrity, dependency-source, ci-permission, mcp-server and ai-* rule packs, the dependency-confusion check through --private-ns, and the predictive upstream audit under the deep and research profiles), malicious-package matching from the vulnerability database, and AI and MCP inventory through cdxgen''s ai-bom skill. Use when asked about install scripts, CI workflow risk, dependency confusion, AI or MCP supply chain, or whether a package is known malicious.'
+description: 'Audits how software is built and delivered rather than which CVEs it carries: dep-scan''s supply-chain check runs cdxgen''s cdx-audit (the package-integrity and dependency-source rule packs, cargo-security for Cargo crates, container-risk, rootfs-hardening and cbom-security added for container images, the dependency-confusion check through --private-ns, and the predictive upstream audit under the deep and research profiles), malicious-package matching from the vulnerability database, and cdx-audit run directly for the ci-permission, mcp-server and ai-* packs and AI and MCP inventory through cdxgen''s ai-bom skill. Use when asked about install scripts, CI workflow risk, dependency confusion, AI or MCP supply chain, or whether a package is known malicious.'
 ---
 
 # Audit the supply chain
@@ -53,13 +53,24 @@ audit and a not-assessed reason on the manifest's `risk` stage. An offline
 scan always carries the reason that the registry rules assessed none of the
 scan's packages: read the `notAssessed` list before calling a scan clean.
 
+The packs dep-scan runs are `package-integrity` and `dependency-source`,
+plus `cargo-security` when the BOM carries Cargo crates; a container image
+adds `container-risk`, `rootfs-hardening` and `cbom-security` to them. The
+CI, MCP and AI packs are not among them: Step 2 runs cdx-audit directly for
+those questions.
+
 The audit's findings are `supply-chain` findings in `depscan.findings.json`
 (a `cbom-security` rule becomes a `crypto` finding, a `rootfs-hardening`
 rule a `binary-hardening` finding), with cdxgen's rule id as the rule and
-cdx-audit's severity. The raw report stays in the scan directory as
-`cdx-audit-<type>.json`. When the scan carries no BOM to audit, the
+cdx-audit's severity; select on `.producer.name == "cdx-audit"` to read all
+of them. The scan prints them as the Supply-Chain Audit Results table. The
+raw report stays in the scan directory as `cdx-audit-<type>.json`, one per
+BOM in a BOM directory scan. When the scan carries no BOM to audit, the
 manifest's risk stage says so as not-assessed, which is not clean; a
-`skipped` stage means the check was not requested. Malicious packages
+`skipped` stage means the check was not requested. Under `--profile deep`
+or `--profile research` on a machine whose cdx-audit is missing or too old,
+the manifest carries a not-assessed `check-supply-chain` entry instead of
+a risk stage that ran: report it as not assessed, not as clean. Malicious packages
 (`MAL-` advisories) match through the vulnerability database in the matching
 stage; `depscan vdb info --format json` shows the flavor and whether it
 carries them.

@@ -183,9 +183,9 @@ Report generation also matters. A user-provided Jinja template is a powerful fea
 
 ### 4. Registry and GitHub metadata lookups
 
-The package risk audit path reaches out to PyPI, npm, and crates.io. GitHub token helpers call the GitHub API. These calls are not just incidental network traffic. They can affect risk scoring, package classification, and operator decisions.
+The supply-chain check runs cdxgen's `cdx-audit` as a child process, and that process reaches out to npm, PyPI and crates.io for registry metadata, asks the public registries whether a private namespace's names exist there, and under the `deep` and `research` profiles clones the upstream repositories of the required dependencies. GitHub token helpers call the GitHub API. These calls are not just incidental network traffic. They decide which supply-chain findings are reported, and so affect package classification and operator decisions.
 
-The repository already includes some useful controls here. Timeouts are used. Registry base URLs are fixed in config. The metadata fetch path has a circuit breaker to stop after repeated failures.
+The repository already includes some useful controls here. dep-scan builds the cdx-audit argument list in code and runs it without a shell (through the same portable command builder as cdxgen, which refuses an argument a Windows batch file could re-parse), removes a stale report before each run, and treats any exit code other than 0 and 3, or an unreadable report, as a failed audit. The `offline` profile passes `--offline`, so the audit makes no registry, git or OCI request, and the predictive mode is bounded by a target cap and a time budget. Whatever the audit could not assess is recorded as a coverage gap, never as a clean result.
 
 The main risks are:
 

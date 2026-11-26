@@ -407,9 +407,9 @@ def _add_search_options(parser: argparse.ArgumentParser) -> None:
         "--private-ns",
         default=argparse.SUPPRESS,
         dest="private_ns",
-        help="Private namespace to use while performing oss risk audit. "
-        "Private packages should not be available in public registries "
-        "by default. Comma separated values accepted.",
+        help="Private package namespaces or name prefixes, comma separated. The "
+        "supply-chain audit reports a package whose name starts with one of them "
+        "and that a public registry holds (dependency confusion).",
     )
     parser.add_argument(
         "--deep",

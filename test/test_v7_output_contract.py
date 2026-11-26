@@ -178,7 +178,7 @@ VULN_REQUESTS = {
 
 
 def install_scan_fakes():
-    """Stub a scan's database, matching, risk audit and cdxgen process."""
+    """Stub a scan's database, matching, supply-chain audit and cdxgen process."""
     from depscan.lib import bom as bom_mod
     from depscan.lib import doctor as doctor_mod
     from depscan.lib import pipeline, vdb_setup
@@ -608,7 +608,7 @@ def _check_matching_ran(calls, scratch):
 
 
 def _check_risk_ran(calls, scratch):
-    assert calls["risk"], "the single-purl risk audit never ran"
+    assert calls["risk"], "the single-purl supply-chain audit never ran"
 
 
 def _check_database_guard_ran(calls, scratch):

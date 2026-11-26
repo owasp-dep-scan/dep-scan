@@ -6,7 +6,7 @@ client session initializes over the in-memory transport, and the tool
 result is read from the call result's text and validated against the
 tool's published output schema. The scan directories are produced the way
 ``test/test_v7_scan.py`` produces them: a real ``api.scan`` whose database,
-matching, risk audit and cdxgen process are stubbed with recorded calls,
+matching, supply-chain audit and cdxgen process are stubbed with recorded calls,
 so every document a tool reads back was written by the scan pipeline
 itself.
 
@@ -141,7 +141,7 @@ class _StubVdrResult:
 
 @pytest.fixture
 def scan_stubs(monkeypatch):
-    """Stub a scan's database, matching, risk audit and cdxgen process.
+    """Stub a scan's database, matching, supply-chain audit and cdxgen process.
 
     The stubs are the ones ``test/test_v7_scan.py`` uses, with two
     additions for this suite: the matching stage returns the vulnerability
