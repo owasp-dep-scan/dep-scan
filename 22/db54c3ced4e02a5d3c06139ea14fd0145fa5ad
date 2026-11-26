@@ -1,0 +1,29 @@
+depscan/lib/cdx_audit.py
+  s_7318da1b9edd46::t_58466022e2ba84 207,211-214,216-223
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_62a7d0406d45c9 1596-1597,1828-1890,1900-1902,1979-1982
+documentation/docs/reference/cli.mdx
+  s_7318da1b9edd46::t_9aedb2e89a35ed 421
+documentation/docs/results/scan-directory.mdx
+  s_7318da1b9edd46::t_e27d36195cb7fd 59
+documentation/docs/targets/supply-chain.mdx
+  s_7318da1b9edd46::t_d4a9b8cbb1d074 31
+test/test_pipeline.py
+  s_7318da1b9edd46::t_07ad14ed4ead56 1901-1907,1911-1914,1918-1920,1924,1927-1932,1934,1937-1959
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "22db54c3ced4e02a5d3c06139ea14fd0145fa5ad",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
