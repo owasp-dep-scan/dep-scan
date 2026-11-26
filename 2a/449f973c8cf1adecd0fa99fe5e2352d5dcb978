@@ -1,0 +1,21 @@
+test/test_cdx_audit.py
+  s_7318da1b9edd46::t_31c8347c65e485 437-438
+  s_7318da1b9edd46::t_74411df4932229 3-7,332,338-339,341,344-348,355,357,363,365,368-371,373-395,397,406-407,409,411,416-424,428-436,439-455,470,533-534,559
+  s_7318da1b9edd46::t_5112bc3043aa08 333-337,340,342-343,349-354,356,358-362,364,396,425-427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a449f973c8cf1adecd0fa99fe5e2352d5dcb978",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
