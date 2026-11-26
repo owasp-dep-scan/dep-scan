@@ -1,9 +1,12 @@
 """Tests for the cdx-audit report adapter.
 
 The fixtures under ``data/cdx_audit/`` are cut from real cdx-audit JSON
-reports (a direct audit of a PyPI BOM, a bounded predictive audit of the
-same BOM), trimmed to the fields the adapter reads and scrubbed of the
-recording machine's paths.
+reports, trimmed to the fields the adapter reads (the matched component's
+``internal:SrcFile`` properties among them) and scrubbed of the recording
+machine's paths: a direct audit of an npm monorepo BOM with the categories
+dep-scan passes and a registry lookup, a direct audit of a container BOM
+with the image packs, offline, and a bounded predictive audit of a PyPI
+BOM.
 """
 
 import json
@@ -24,14 +27,16 @@ def test_direct_report_yields_annotation_records():
     report = load("direct-report.json")
     result = adapter.extract(
         report,
-        source="cdx-audit-bom.json",
+        source="cdx-audit-npm.json",
         producer_version="13.10.0",
         source_root="/src",
     )
     assert result.status == "completed"
-    assert len(result.records) == 2
+    # Six findings; left-pad@1.3.0 is declared by two lockfiles, so each of
+    # its two findings becomes one record per lockfile.
+    assert len(result.records) == 8
     rule_ids = {record.attributes["id"] for record in result.records}
-    assert rule_ids == {"CI-002", "PKG-006"}
+    assert rule_ids == {"INT-005", "INT-026"}
     for record in result.records:
         assert record.producer.name == "cdx-audit"
         assert record.producer.version == "13.10.0"
@@ -43,30 +48,103 @@ def test_direct_records_name_their_component_and_file():
     report = load("direct-report.json")
     result = adapter.extract(
         report,
-        source="cdx-audit-bom.json",
+        source="cdx-audit-npm.json",
         producer_version="13.10.0",
         source_root="/src",
     )
-    by_rule = {record.attributes["id"]: record for record in result.records}
-    ci002 = by_rule["CI-002"]
-    assert ci002.subject.purls == ["pkg:github/pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e"]
-    assert ci002.attributes["severity"] == "high"
-    assert ci002.attributes["auditMode"] == "direct"
-    pkg006 = by_rule["PKG-006"]
-    assert pkg006.subject.purls, "every finding names its component"
+    deprecated = [record for record in result.records if record.attributes["id"] == "INT-005"]
+    located = sorted(
+        (record.subject.purls[0], record.locations[0].file) for record in deprecated
+    )
+    assert located == [
+        ("pkg:npm/left-pad@1.3.0", "svc-a/package-lock.json"),
+        ("pkg:npm/left-pad@1.3.0", "svc-b/package-lock.json"),
+        ("pkg:npm/request@2.88.0", "svc-b/package-lock.json"),
+        ("pkg:npm/request@2.88.2", "svc-a/package-lock.json"),
+    ], "each record names its component and the lockfile that declared it"
+    for record in deprecated:
+        assert record.attributes["severity"] == "low"
+        assert record.attributes["auditMode"] == "direct"
+
+
+def test_monorepo_copies_are_told_apart_by_their_lockfile():
+    """The file comes from the matched component's ``internal:SrcFile``
+    properties. Without it the two lockfiles that pin left-pad would give
+    one record, and two versions of request would carry no file at all."""
+    report = load("direct-report.json")
+    result = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    left_pad = [
+        record
+        for record in result.records
+        if record.attributes["id"] == "INT-005"
+        and record.subject.purls == ["pkg:npm/left-pad@1.3.0"]
+    ]
+    assert len(left_pad) == 2
+    assert len({record.id for record in left_pad}) == 2
+
+    # Negative control: the same report without the matched components
+    # gives one record per finding and no file.
+    for finding in report["results"][0]["findings"]:
+        finding.pop("_match")
+    bare = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    assert len(bare.records) == 6
+    assert all(not record.locations for record in bare.records)
+
+
+def test_container_report_keeps_bom_refs_that_are_no_purls():
+    """A real container audit: the crypto and rootfs findings name their
+    component by a bom-ref that is no purl (``crypto/algorithm/md5@...``,
+    ``urn:uuid:...``). The record names no purl, keeps the bom-ref as its
+    component reference, and a declaring file inside the image is no
+    location in the scanned tree."""
+    result = adapter.extract(
+        load("container-report.json"), source="c.json", producer_version="13.10.0", source_root="/src"
+    )
+    assert result.status == "completed"
+    refs = sorted(record.subject.component_ref for record in result.records)
+    assert refs == [
+        "crypto/algorithm/md5@1.2.840.113549.2.5",
+        "crypto/algorithm/sha-1@1.3.14.3.2.26",
+        "urn:uuid:0d9f3c2a-1b4e-4f6a-9c8d-2e7f1a0b3c4d",
+    ]
+    for record in result.records:
+        assert record.subject.purls == []
+        assert record.attributes["bomRef"] == record.subject.component_ref
+        assert not record.locations
+    assert not any(caveat.kind == "location-outside-root" for caveat in result.caveats)
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        {"bomRef": "file:/usr/bin/su"},
+        {"bomRef": "urn:uuid:59e7b709-955a-410e-9e03-91dc28edefb3"},
+        {"bomRef": "pkg:npm/a@1", "purl": "crypto/algorithm/md5"},
+        [{"purl": "pkg:npm/a@1"}],
+        "pkg:npm/a@1",
+    ],
+)
+def test_odd_locations_never_reach_the_purls(location):
+    """Only values that parse as purls become subject purls; a location
+    that is an array or a string is read as no location at all."""
+    report = load("direct-report.json")
+    finding = report["results"][0]["findings"][0]
+    finding["location"] = location
+    finding.pop("_match")
+    result = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    assert result.status == "completed"
+    first = next(r for r in result.records if r.attributes["message"] == finding["message"])
+    for purl in first.subject.purls:
+        assert purl.startswith("pkg:")
 
 
 def test_direct_records_store_file_paths_relative_to_the_root():
     report = load("direct-report.json")
-    finding = next(
-        f
-        for f in report["results"][0]["findings"]
-        if f.get("location", {}).get("file")
-    )
+    finding = report["results"][0]["findings"][0]
     finding["location"]["file"] = "/src/.github/workflows/publish.yml"
     result = adapter.extract(
         report,
-        source="cdx-audit-bom.json",
+        source="cdx-audit-npm.json",
         producer_version="13.10.0",
         source_root="/src",
     )
@@ -313,9 +391,9 @@ def test_components_no_registry_answered_for_are_counted():
 def test_a_report_without_a_coverage_block_adds_no_registry_caveat():
     """Reports from a cdx-audit before the coverage block carry none, and
     nothing is invented about the registry rules."""
-    result = adapter.extract(
-        load("direct-report.json"), source="audit.json", producer_version="13.10.0"
-    )
+    report = load("direct-report.json")
+    report["results"][0].pop("coverage")
+    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
     assert not any("registry" in detail for detail in _gap_details(result))
 
 
@@ -338,5 +416,123 @@ def test_a_malformed_coverage_block_raises_nothing_and_claims_nothing(coverage):
         _direct_with_coverage(coverage), source="audit.json", producer_version="13.10.0"
     )
     assert result.status == "completed"
-    assert len(result.records) == 2
+    assert len(result.records) == 8
     assert not any("registry" in detail for detail in _gap_details(result))
+
+
+def test_every_record_of_a_run_carries_the_same_run_caveats():
+    """Run-level caveats are collected before any record is built, so the
+    order of the results never decides which record carries which gap."""
+    report = load("predictive-report.json")
+    audited = report["results"][0]
+    second = json.loads(json.dumps(audited))
+    second["target"]["purl"] = "pkg:pypi/other@1.0.0"
+    second["target"]["bomRefs"] = ["pkg:pypi/other@1.0.0"]
+    report["results"].append(second)
+    for order in (report["results"], list(reversed(report["results"]))):
+        report["results"] = order
+        result = adapter.extract(report, source="p.json", producer_version="13.10.0")
+        details = [
+            sorted(caveat.detail for caveat in record.caveats) for record in result.records
+        ]
+        assert len(details) >= 2
+        assert all(entry == details[0] for entry in details), details
+        assert any("did not audit pkg:pypi/django-otp" in d for d in details[0])
+
+
+def test_direct_result_coverage_stays_on_its_own_records():
+    """In a report of two BOMs, a BOM's registry gap rides only on the
+    records of that BOM."""
+    report = load("direct-report.json")
+    gap = json.loads(json.dumps(report["results"][0]))
+    gap["coverage"] = {
+        "registryMetadata": "fetched",
+        "eligible": 3,
+        "answered": 2,
+        "withoutMetadata": 1,
+    }
+    gap["findings"] = gap["findings"][:1]
+    gap["findings"][0]["message"] = "from the second BOM"
+    report["results"].append(gap)
+    result = adapter.extract(report, source="d.json", producer_version="13.10.0")
+    for record in result.records:
+        has_gap = any("1 of 3" in caveat.detail for caveat in record.caveats)
+        assert has_gap == (record.attributes["message"] == "from the second BOM")
+
+
+def test_target_selection_skips_are_counted_per_reason():
+    """Hundreds of purls skipped for one reason are one caveat with a count,
+    so the manifest never lists them one by one."""
+    report = load("predictive-report.json")
+    report["skipped"] = [
+        {"reason": "unsupported-ecosystem", "purl": f"pkg:maven/org.x/lib{i}@1.0"}
+        for i in range(200)
+    ] + [{"reason": "allowlisted", "purl": "pkg:npm/react@18.0.0"}]
+    result = adapter.extract(report, source="p.json", producer_version="13.10.0")
+    selection = [c.detail for c in result.caveats if "did not select" in c.detail]
+    assert selection == [
+        "the audit did not select 200 purls for analysis: unsupported-ecosystem",
+        "the audit did not select pkg:npm/react@18.0.0 for analysis: allowlisted",
+    ]
+
+
+def test_predictive_upstream_files_never_become_locations():
+    """A predictive finding's file is in the target's upstream repository.
+    It stays an attribute next to the target and is never a location in the
+    scanned tree."""
+    report = load("predictive-report.json")
+    report["results"][0]["findings"][0]["location"]["file"] = ".github/workflows/release.yml"
+    result = adapter.extract(
+        report, source="p.json", producer_version="13.10.0", source_root="/Users/alice/app"
+    )
+    record = result.records[0]
+    assert not record.locations
+    assert record.attributes["upstreamFile"] == ".github/workflows/release.yml"
+    assert record.attributes["targetPurl"] == "pkg:pypi/django-grappelli@5.0.1"
+
+
+def test_predictive_error_text_is_redacted():
+    report = load("predictive-report.json")
+    skipped = next(entry for entry in report["results"] if entry.get("status") != "audited")
+    skipped["error"] = "ENOENT: open '/Users/alice/app/node_modules/x/package.json'"
+    result = adapter.extract(
+        report, source="p.json", producer_version="13.10.0", source_root="/Users/alice/app"
+    )
+    details = [caveat.detail for caveat in result.caveats]
+    assert not any("/Users/alice" in detail for detail in details), details
+    assert any("node_modules/x/package.json" in detail for detail in details)
+
+
+def test_offline_coverage_states_one_gap_not_two():
+    """Offline, every eligible component is without registry metadata; the
+    caveat that says the lookups did not run covers it, and the per-component
+    count is stated only when the lookups ran."""
+    result = adapter.extract(
+        _direct_with_coverage(
+            {"registryMetadata": "offline", "eligible": 3, "answered": 0, "withoutMetadata": 3}
+        ),
+        source="audit.json",
+        producer_version="13.10.0",
+    )
+    details = _gap_details(result)
+    assert any("did not look up registry metadata" in detail for detail in details)
+    assert not any("carry no registry metadata" in detail for detail in details), details
+
+
+def test_two_findings_differing_only_by_message_stay_two_records():
+    """The record discriminator carries the message, so two findings of one
+    rule on one component and file stay apart."""
+    report = load("direct-report.json")
+    findings = report["results"][0]["findings"]
+    twin = json.loads(json.dumps(findings[0]))
+    twin["message"] = findings[0]["message"] + " (second signal)"
+    findings.append(twin)
+    result = adapter.extract(report, source="d.json", producer_version="13.10.0")
+    same_place = [
+        record
+        for record in result.records
+        if record.attributes["id"] == findings[0]["ruleId"]
+        and record.subject.purls == [findings[0]["location"]["purl"]]
+    ]
+    assert len(same_place) == 2
+    assert len({record.id for record in same_place}) == 2

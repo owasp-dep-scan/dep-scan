@@ -10,14 +10,22 @@ format, and the findings file reads only records.
 One finding per cdx-audit rule and component. The category is
 ``supply-chain``, except for two audit packs, which are findings of the
 category that already owns them: a ``cbom-security`` rule is a ``crypto``
-finding and a ``rootfs-hardening`` rule a ``binary-hardening`` finding. The fingerprint carries the rule id,
-the component purls and the finding's file, all in spellings that survive a
-rescan from a moved root, so the same audit of the same tree keeps its ids
-and a suppression keyed on one finding does not swallow another.
+finding and a ``rootfs-hardening`` rule a ``binary-hardening`` finding. The
+fingerprint carries the rule id, the component purls and the finding's file
+(the lockfile that declared the component, so two copies in a monorepo stay
+apart), all in spellings that survive a rescan from a moved root, so the
+same audit of the same tree keeps its ids and a suppression keyed on one
+finding does not swallow another. A finding located by a bom-ref that is
+no purl names no component; the bom-ref goes into the fingerprint's symbols
+and a property instead. A predictive finding names the audited dependency
+as its component, so the upstream component and file it matched go into
+the symbols too.
 """
 
 import json
 from typing import Any, Iterable, List, Optional
+
+from packageurl import PackageURL
 
 from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
@@ -48,8 +56,24 @@ SUPPLY_CHAIN_CAPABILITY = "supply-chain"
 
 
 def _severity(value: Any) -> str:
+    """The finding severity of a cdx-audit severity. A finding that states
+    none is counted as ``low`` by cdx-audit's own summary, so it is ``low``
+    here too and the two counts agree."""
     name = str(value or "").strip().lower()
+    if not name:
+        return "low"
     return name if name in _SEVERITIES else "unknown"
+
+
+def _is_purl(value: Any) -> bool:
+    """Whether ``value`` is a package URL the fingerprint can normalise."""
+    if not isinstance(value, str) or not value.startswith("pkg:"):
+        return False
+    try:
+        PackageURL.from_string(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _category(attributes: dict) -> str:
@@ -120,6 +144,10 @@ def findings_from_cdx_audit_records(records: Optional[Iterable[Evidence]]) -> Li
             ("cdx-audit:targetPurl", "targetPurl"),
             ("cdx-audit:auditSeverity", "auditSeverity"),
             ("cdx-audit:auditScore", "auditScore"),
+            ("cdx-audit:message", "message"),
+            ("cdx-audit:bomRef", "bomRef"),
+            ("cdx-audit:findingPurl", "findingPurl"),
+            ("cdx-audit:upstreamFile", "upstreamFile"),
         ):
             value = attributes.get(key)
             if value not in (None, ""):
@@ -131,12 +159,27 @@ def findings_from_cdx_audit_records(records: Optional[Iterable[Evidence]]) -> Li
             for caveat in record.caveats or []
             if caveat.kind in ("coverage-gap", "record-skipped")
         ]
-        purls = sorted(record.subject.purls)
-        components = purls or (
-            [record.subject.component_ref] if record.subject.component_ref else None
-        )
+        # Only package URLs are components; a finding located by a bom-ref
+        # that is no purl (a crypto asset, a rootfs file, a serial number)
+        # keeps that reference in its properties and its fingerprint.
+        purls = sorted(purl for purl in record.subject.purls if _is_purl(purl))
+        ref = record.subject.component_ref
+        components = purls or None
+        # What tells two findings of one rule on the same components apart
+        # beyond the file: the bom-ref of a component that has no purl, and
+        # in predictive mode the upstream component and file the finding
+        # was matched on, since every predictive finding of one target
+        # names the target as its component.
+        symbols = []
+        if not purls and ref:
+            symbols.append(str(ref))
+        if attributes.get("auditMode") == "predictive":
+            for key in ("findingPurl", "findingRef", "upstreamFile"):
+                value = attributes.get(key)
+                if value not in (None, ""):
+                    symbols.append(f"{key}={value}")
         finding = Finding(
-            id=finding_fingerprint(category, rule, purls, file=file or ""),
+            id=finding_fingerprint(category, rule, purls, file=file or "", symbols=symbols),
             category=category,
             rule=rule,
             title=title,

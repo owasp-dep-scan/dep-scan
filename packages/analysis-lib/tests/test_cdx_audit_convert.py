@@ -22,18 +22,91 @@ def load_records(name, **kwargs):
 def test_direct_records_map_onto_supply_chain_findings():
     result = load_records("direct-report.json", source_root="/src")
     findings = findings_from_cdx_audit_records(result.records)
-    by_rule = {finding.rule: finding for finding in findings}
-    assert set(by_rule) == {"CI-002", "PKG-006"}
-    ci002 = by_rule["CI-002"]
-    assert ci002.category == "supply-chain"
-    assert ci002.severity == "high"
-    assert ci002.title == "OIDC token issuance to non-official action"
-    assert ci002.producer.name == "cdx-audit"
-    assert ci002.producer.version == "13.10.0"
-    assert ci002.components == [
-        "pkg:github/pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e"
+    assert {finding.rule for finding in findings} == {"INT-005", "INT-026"}
+    deprecated = [f for f in findings if f.rule == "INT-005"]
+    # request@2.88.0 and request@2.88.2 sit in different lockfiles and
+    # left-pad@1.3.0 in both, so each lockfile's copy is its own finding.
+    assert sorted((f.components[0], f.locations[0].file) for f in deprecated) == [
+        ("pkg:npm/left-pad@1.3.0", "svc-a/package-lock.json"),
+        ("pkg:npm/left-pad@1.3.0", "svc-b/package-lock.json"),
+        ("pkg:npm/request@2.88.0", "svc-b/package-lock.json"),
+        ("pkg:npm/request@2.88.2", "svc-a/package-lock.json"),
     ]
-    assert ci002.evidence, "the finding carries the audit's evidence"
+    first = deprecated[0]
+    assert first.category == "supply-chain"
+    assert first.severity == "low"
+    assert first.title == "npm deprecated package"
+    assert first.producer.name == "cdx-audit"
+    assert first.producer.version == "13.10.0"
+    assert first.evidence, "the finding carries the audit's evidence"
+    messages = {p.value for f in deprecated for p in f.properties or [] if p.name == "cdx-audit:message"}
+    assert any("is deprecated" in message for message in messages)
+
+
+def test_the_finding_file_enters_the_fingerprint():
+    """Two lockfiles of a monorepo that pin the same package version give
+    two findings with two ids, so suppressing one does not silence the
+    other."""
+    findings = findings_from_cdx_audit_records(
+        load_records("direct-report.json", source_root="/src").records
+    )
+    left_pad = [
+        f for f in findings if f.rule == "INT-005" and f.components == ["pkg:npm/left-pad@1.3.0"]
+    ]
+    assert len(left_pad) == 2
+    assert len({f.id for f in left_pad}) == 2
+
+
+def test_container_findings_located_by_bom_refs_never_raise():
+    """The real container report names crypto assets and a data component
+    by bom-refs that are no purls. The conversion names no component, keeps
+    the bom-ref in a property, tells the two weak algorithms apart and
+    never raises."""
+    result = load_records("container-report.json", source_root="/src")
+    findings = findings_from_cdx_audit_records(result.records)
+    assert sorted((f.rule, f.category) for f in findings) == [
+        ("CBS-001", "crypto"),
+        ("CBS-001", "crypto"),
+        ("RFS-001", "binary-hardening"),
+    ]
+    assert len({f.id for f in findings}) == 3
+    for finding in findings:
+        assert finding.components is None
+        refs = [p.value for p in finding.properties or [] if p.name == "cdx-audit:bomRef"]
+        assert refs and not refs[0].startswith("pkg:")
+        finding.to_dict()
+
+
+def test_a_finding_without_a_severity_is_low_like_cdx_audits_count():
+    report = json.loads((DATA_DIR / "direct-report.json").read_text())
+    report["results"][0]["findings"][0].pop("severity")
+    records = adapter.extract(report, source="audit.json", producer_version="13.10.0").records
+    findings = findings_from_cdx_audit_records(records)
+    assert "low" in {f.severity for f in findings}
+    assert "unknown" not in {f.severity for f in findings}
+
+
+def test_predictive_findings_of_one_target_stay_apart():
+    """Every predictive finding names the target as its component, so the
+    upstream component and file the finding matched enter the fingerprint;
+    two pinning findings of one workflow repository stay two findings with
+    their own evidence."""
+    report = json.loads((DATA_DIR / "predictive-report.json").read_text())
+    first = report["results"][0]["findings"][0]
+    second = json.loads(json.dumps(first))
+    second["location"] = {
+        "bomRef": "pkg:github/actions/setup-python@v5",
+        "purl": "pkg:github/actions/setup-python@v5",
+    }
+    second["message"] = "GitHub Action 'actions/setup-python@v5' pinned to mutable tag (not SHA)"
+    second["evidence"] = {"currentVersion": "v5", "isOfficial": "true", "action": "setup-python"}
+    report["results"][0]["findings"].append(second)
+    records = adapter.extract(report, source="p.json", producer_version="13.10.0").records
+    findings = findings_from_cdx_audit_records(records)
+    pinned = [f for f in findings if f.rule == first["ruleId"]]
+    assert len(pinned) == 2
+    assert len({f.id for f in pinned}) == 2
+    assert pinned[0].evidence != pinned[1].evidence
 
 
 def test_predictive_records_carry_the_audited_dependency():

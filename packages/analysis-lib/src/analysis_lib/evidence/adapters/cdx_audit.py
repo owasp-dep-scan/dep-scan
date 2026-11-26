@@ -15,12 +15,24 @@ the public registry was asked about, and the ones it did not answer about.
 
 Every rule finding becomes one ``annotation`` record with polarity
 ``negative``. In direct mode the record's subject is the component the
-finding's location names, and the finding's file (a path inside the scanned
-tree when the BOM was generated from it) is stored relative to the source
-root. In predictive mode the record's subject is the audited dependency's own
-purl, the purl the user's BOM carries: the finding's own location names a
-component of the upstream child SBOM, which the user's BOM does not carry,
-so it is kept in the record's attributes instead.
+finding's location names: its purl when the location carries one that
+parses, and otherwise no purl at all, with the location's bom-ref (a crypto
+asset, a rootfs file, a serial number) kept as the component reference. The
+finding's file is the location's own ``file`` (a workflow file) or, for a
+package rule, each manifest or lockfile the matched component's
+``internal:SrcFile`` properties name, stored relative to the source root; a
+component two lockfiles of a monorepo declare gives one record per
+lockfile. In predictive mode the record's subject is the audited
+dependency's own purl, the purl the user's BOM carries: the finding's own
+location names a component and a file of the upstream repository, which
+the user's tree does not hold, so both are kept in the record's attributes
+instead.
+
+Caveats are collected per run before any record is built: the summary's
+shortfall markers, the skipped and failed targets, the target-selection
+skips (one caveat per reason with its count) and the findings that became
+no record ride on every record of the run, and a direct result's registry
+coverage caveats on the records of that result.
 
 The report names its own shape version in ``version`` and the producing tool
 in ``tool``; the gate runs on the shape version, and the producer block
@@ -28,7 +40,10 @@ carries the tool version. A report whose shape predates the version field is
 accepted with a ``schema-unknown`` caveat.
 """
 
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+
+from packageurl import PackageURL
 
 from analysis_lib.evidence import (
     Evidence,
@@ -150,7 +165,10 @@ def _registry_caveats(coverage: Dict[str, Any]) -> List[EvidenceCaveat]:
                 ),
             )
         )
-    if without:
+    # The per-component count means something only when the lookups ran:
+    # offline or unrequested, every eligible component is without metadata
+    # and the caveat above already says why.
+    if without and mode == "fetched":
         share = f"{without} of {eligible}" if eligible else str(without)
         caveats.append(
             EvidenceCaveat(
@@ -166,70 +184,131 @@ def _registry_caveats(coverage: Dict[str, Any]) -> List[EvidenceCaveat]:
     return caveats
 
 
+def _is_purl(value: str) -> bool:
+    """Whether ``value`` parses as a package URL. A bom-ref such as
+    ``crypto/algorithm/md5@1.2.840.113549.2.5``, ``urn:uuid:...`` or
+    ``file:/usr/bin/su`` names a component but is no purl."""
+    if not value.startswith("pkg:"):
+        return False
+    try:
+        PackageURL.from_string(value)
+    except ValueError:
+        return False
+    return True
+
+
 def _purls_of(location: Any) -> List[str]:
-    """The purls one finding's location names, preferring the ``purl`` over
-    the ``bom-ref`` when they differ."""
-    purl = as_str(as_dict(location).get("purl"))
-    if purl:
-        return [purl]
-    ref = as_str(as_dict(location).get("bomRef"))
-    return [ref] if ref else []
+    """The purls one finding's location names: the ``purl`` when it parses,
+    else the ``bomRef`` when that is a purl. A location that names its
+    component only by a bom-ref that is no purl names no purl at all; the
+    bom-ref stays the record's component reference."""
+    block = as_dict(location)
+    for key in ("purl", "bomRef"):
+        value = as_str(block.get(key)).strip()
+        if value and _is_purl(value):
+            return [value]
+    return []
+
+
+def _component_ref_of(location: Any) -> Optional[str]:
+    """The bom-ref a finding's location names, else its purl."""
+    block = as_dict(location)
+    return as_str(block.get("bomRef")).strip() or as_str(block.get("purl")).strip() or None
+
+
+#: The property names a cdxgen component records its declaring manifest or
+#: lockfile under. cdxgen writes ``internal:SrcFile``; older BOMs and other
+#: generators write ``SrcFile``.
+SRC_FILE_PROPERTIES = ("internal:SrcFile", "SrcFile")
+
+
+def _declaring_files(finding: dict) -> List[str]:
+    """The manifests or lockfiles that declare the component a finding
+    matched, from the matched component's ``SrcFile`` properties.
+
+    cdxgen merges every copy of one package version in a monorepo into one
+    component with one ``SrcFile`` per declaring file, so the copies are
+    told apart by these files and nothing else."""
+    files: List[str] = []
+    properties = as_dict(finding.get("_match")).get("properties")
+    for prop in properties if isinstance(properties, list) else []:
+        prop = as_dict(prop)
+        if as_str(prop.get("name")) in SRC_FILE_PROPERTIES:
+            value = as_str(prop.get("value")).strip()
+            if value and value not in files:
+                files.append(value)
+    return files
+
+
+@dataclass
+class _PendingFinding:
+    """One finding read and validated, waiting for the run's caveats."""
+
+    finding: dict
+    subject_purls: List[str]
+    component_ref: Optional[str]
+    audit_attributes: Dict[str, Any]
+    file_relative: Optional[str]
+    outside_file: Optional[str]
+    upstream_file: Optional[str]
+    result_caveats: Tuple[EvidenceCaveat, ...] = ()
+    confidence: Optional[str] = None
 
 
 def _finding_record(
-    finding: dict,
+    pending: _PendingFinding,
     *,
     producer: EvidenceProducer,
     paths: SourcePaths,
     source: str,
-    subject_purls: List[str],
-    component_ref: Optional[str],
-    audit_attributes: Dict[str, Any],
     caveats: Tuple[EvidenceCaveat, ...],
-    skipped: SkipTally,
-    confidence: Optional[str] = None,
-) -> Optional[Evidence]:
+) -> Evidence:
     """One annotation record for one cdx-audit rule finding.
 
     The record keeps the finding's rule id, title, severity, category,
     message, mitigation and evidence object as given (paths neutralized),
-    plus the audited target's own assessment in predictive mode. Its
-    location carries the finding's file in the relative spelling, and a
-    file the source root cannot hold is left out with the basename kept in
-    the attributes.
+    plus the audited target's own assessment in predictive mode. In direct
+    mode its location carries the finding's file in the relative spelling,
+    and a file the source root cannot hold is left out with the basename
+    kept in the attributes. In predictive mode the file is one in the
+    target's upstream repository, so it stays an attribute and never
+    becomes a location in the user's tree.
     """
+    finding = pending.finding
     rule_id = as_str(finding.get("ruleId"))
-    if not rule_id:
-        skipped.add("findings carry no rule id and became no record")
-        return None
     location = as_dict(finding.get("location"))
     attributes: Dict[str, Any] = {"id": rule_id}
     for key in ("name", "description", "severity", "category", "message", "mitigation"):
         value = finding.get(key)
         if value is not None:
             attributes[key] = paths.redact(value) if isinstance(value, str) else value
-    finding_purl = as_str(location.get("purl"))
+    finding_purl = location.get("purl")
+    finding_purl = finding_purl.strip() if isinstance(finding_purl, str) else ""
     if finding_purl:
         attributes["findingPurl"] = finding_purl
+    finding_ref = location.get("bomRef")
+    finding_ref = finding_ref.strip() if isinstance(finding_ref, str) else ""
+    if finding_ref and finding_ref != finding_purl:
+        attributes["findingRef"] = finding_ref
+    if pending.component_ref and not pending.subject_purls:
+        attributes["bomRef"] = pending.component_ref
     evidence = finding.get("evidence")
     if evidence not in (None, {}, []):
         attributes["evidence"] = paths.redact(paths.neutral(evidence))
-    attributes.update(audit_attributes)
-    file_relative = paths.relative(location.get("file"))
-    locations = [EvidenceLocation(file=file_relative)] if file_relative else []
-    if (
-        isinstance(location.get("file"), str)
-        and location.get("file").strip()
-        and file_relative is None
-        and "file" in location
-    ):
+    attributes.update(pending.audit_attributes)
+    if pending.outside_file:
         # The file sits outside the source root; keep its basename so the
         # finding still names where it pointed.
-        attributes["findingFile"] = location["file"].replace("\\", "/").rsplit("/", 1)[-1]
+        attributes["findingFile"] = pending.outside_file
+    if pending.upstream_file:
+        attributes["upstreamFile"] = paths.redact(pending.upstream_file)
+    locations = (
+        (EvidenceLocation(file=pending.file_relative),) if pending.file_relative else ()
+    )
     discriminator_object = {
         "ruleId": rule_id,
-        "purl": finding_purl or component_ref or "",
-        "file": file_relative or "",
+        "purl": finding_purl or pending.component_ref or "",
+        "file": pending.file_relative or pending.upstream_file or "",
         "message": as_str(finding.get("message")),
     }
     return build_record(
@@ -238,13 +317,82 @@ def _finding_record(
         kind="annotation",
         polarity="negative",
         discriminator=stable_discriminator(discriminator_object, paths),
-        purls=tuple(subject_purls),
-        component_ref=component_ref,
-        locations=tuple(locations),
-        confidence=confidence if confidence in ("high", "medium", "low") else None,
+        purls=tuple(pending.subject_purls),
+        component_ref=pending.component_ref,
+        locations=locations,
+        confidence=pending.confidence if pending.confidence in ("high", "medium", "low") else None,
         attributes=attributes,
-        caveats=caveats,
+        caveats=_dedupe(list(caveats) + list(pending.result_caveats)),
     )
+
+
+def _direct_pending(
+    finding: dict,
+    paths: SourcePaths,
+    probe: SourcePaths,
+    result_caveats: Tuple[EvidenceCaveat, ...],
+) -> List[_PendingFinding]:
+    """The pending records of one direct finding: one per file it names.
+
+    The file is the finding location's own ``file`` when the rule names one
+    (a workflow file), else each manifest or lockfile that declared the
+    matched component, so two lockfiles of a monorepo that pin the same
+    package give two findings. A declaring file the source root cannot
+    hold (a path inside a container image) is no location in the scanned
+    tree and is left out without a caveat; ``probe`` tests that without
+    counting it."""
+    location = as_dict(finding.get("location"))
+    own_file = as_str(location.get("file")).strip()
+    raw_files = [own_file] if own_file else []
+    if not raw_files:
+        raw_files = [path for path in _declaring_files(finding) if probe.relative(path)]
+    raw_files = raw_files or [""]
+    pending: List[_PendingFinding] = []
+    for raw in raw_files:
+        relative = paths.relative(raw) if raw else None
+        outside = raw.replace("\\", "/").rsplit("/", 1)[-1] if raw and relative is None else None
+        pending.append(
+            _PendingFinding(
+                finding=finding,
+                subject_purls=_purls_of(location),
+                component_ref=_component_ref_of(location),
+                audit_attributes={"auditMode": "direct"},
+                file_relative=relative,
+                outside_file=outside,
+                upstream_file=None,
+                result_caveats=result_caveats,
+            )
+        )
+    return pending
+
+
+def _selection_skip_caveats(selection_skips: List[Any], skipped: SkipTally) -> List[EvidenceCaveat]:
+    """One caveat per target-selection skip reason, with its count.
+
+    A predictive audit of a large BOM skips hundreds of purls for the same
+    reason (an ecosystem it does not audit, an allowlisted package), so
+    each reason is stated once with how many purls it left out, and a
+    reason that covers a single purl names it."""
+    by_reason: Dict[str, List[str]] = {}
+    for skip in selection_skips:
+        if not isinstance(skip, dict):
+            skipped.add("skipped entries are not JSON objects and were not read")
+            continue
+        reason = as_str(skip.get("reason")) or "no reason given"
+        by_reason.setdefault(reason, []).append(as_str(skip.get("purl")))
+    caveats = []
+    for reason, purls in by_reason.items():
+        if len(purls) == 1:
+            subject = purls[0] or "a purl"
+        else:
+            subject = f"{len(purls)} purls"
+        caveats.append(
+            EvidenceCaveat(
+                kind="coverage-gap",
+                detail=f"the audit did not select {subject} for analysis: {reason}",
+            )
+        )
+    return caveats
 
 
 @guard_extract(PRODUCER_NAME)
@@ -266,6 +414,12 @@ def extract(
     ``mode`` names the audit mode when the caller already knows it; a
     report that names no ``auditMode`` reads as predictive, the shape the
     tool wrote before the field existed.
+
+    Every caveat of the run (its summary markers, the targets it skipped or
+    failed, the purls it did not select, findings it could not read) is
+    collected before any record is built, and every record of the run
+    carries the same set; a direct result's own registry coverage caveats
+    go on that result's records only.
     """
     document, error = _parse_document(report)
     if error is not None or not isinstance(document, dict):
@@ -295,9 +449,11 @@ def extract(
 
     audit_mode = as_str(document.get("auditMode")) or as_str(mode) or "predictive"
     paths = SourcePaths([source_root])
+    probe = SourcePaths([source_root])
     skipped = SkipTally()
-    caveats: List[EvidenceCaveat] = list(gate.caveats)
-    records: List[Evidence] = []
+    run_caveats: List[EvidenceCaveat] = list(gate.caveats)
+    result_level: List[EvidenceCaveat] = []
+    pending: List[_PendingFinding] = []
 
     results = document.get("results")
     if results is not None and not isinstance(results, list):
@@ -313,23 +469,21 @@ def extract(
     summary = as_dict(document.get("summary"))
     truncated = summary.get("targetCapTruncated")
     if isinstance(truncated, int) and not isinstance(truncated, bool) and truncated > 0:
-        caveats.append(
+        run_caveats.append(
             EvidenceCaveat(
                 kind="coverage-gap",
-                detail=(
-                    f"the audit's target cap left {truncated} target(s) unanalyzed"
-                ),
+                detail=f"the audit's target cap left {truncated} target(s) unanalyzed",
             )
         )
     if summary.get("offline") is True:
-        caveats.append(
+        run_caveats.append(
             EvidenceCaveat(
                 kind="coverage-gap",
                 detail="the audit ran offline and made no upstream requests",
             )
         )
     if summary.get("timeBudgetExhausted") is True:
-        caveats.append(
+        run_caveats.append(
             EvidenceCaveat(
                 kind="coverage-gap",
                 detail="the audit's time budget was spent before every target started",
@@ -340,54 +494,42 @@ def extract(
         if not isinstance(entry, dict):
             skipped.add("report results are not JSON objects and became no record")
             continue
+        findings = entry.get("findings")
+        if findings is not None and not isinstance(findings, list):
+            skipped.add(
+                f"{audit_mode} results carry a findings value that is not an array "
+                "and became no record"
+            )
+            findings = []
         if audit_mode == "direct":
-            # Stated before this result's records are built, so each record
-            # carries the coverage gaps of the audit it came from.
-            caveats.extend(_registry_caveats(as_dict(entry.get("coverage"))))
-            findings = entry.get("findings")
-            if findings is not None and not isinstance(findings, list):
-                skipped.add(
-                    "direct results carry a findings value that is not an array "
-                    "and became no record"
-                )
-                findings = []
+            # This result's coverage gaps belong to the BOM it audited, so
+            # they go on that BOM's records.
+            coverage_caveats = tuple(_registry_caveats(as_dict(entry.get("coverage"))))
+            result_level.extend(coverage_caveats)
             for finding in findings or []:
                 if not isinstance(finding, dict):
                     skipped.add("findings are not JSON objects and became no record")
                     continue
-                try:
-                    record = _finding_record(
-                        finding,
-                        producer=producer,
-                        paths=paths,
-                        source=source,
-                        subject_purls=_purls_of(finding.get("location")),
-                        component_ref=as_str(
-                            (finding.get("location") or {}).get("bomRef")
-                        )
-                        or None,
-                        audit_attributes={"auditMode": "direct"},
-                        caveats=tuple(caveats),
-                        skipped=skipped,
-                    )
-                except RecursionError:
-                    skipped.add(TOO_DEEP_REASON)
+                if not as_str(finding.get("ruleId")):
+                    skipped.add("findings carry no rule id and became no record")
                     continue
-                if record is not None:
-                    records.append(record)
+                pending.extend(_direct_pending(finding, paths, probe, coverage_caveats))
             continue
         # Predictive mode: one result per target.
         target = as_dict(entry.get("target"))
         target_purl = as_str(target.get("purl"))
+        bom_refs = target.get("bomRefs")
         target_refs = [
-            as_str(ref) for ref in target.get("bomRefs", []) if isinstance(ref, str) and ref
+            ref for ref in (bom_refs if isinstance(bom_refs, list) else []) if isinstance(ref, str) and ref
         ] or ([target_purl] if target_purl else [])
+        subject_purls = sorted({ref for ref in target_refs if _is_purl(ref)})
         status = as_str(entry.get("status")) or "audited"
         if status != "audited":
             # A target the audit skipped (offline, time budget, no
             # repository resolved from the purl) or failed on (a clone or
-            # child SBOM error) is coverage the audit did not get.
-            reason = as_str(entry.get("error")) or as_str(target.get("purl"))
+            # child SBOM error) is coverage the audit did not get. The error
+            # text can name paths on this machine, so it is redacted.
+            reason = paths.redact(as_str(entry.get("error")))
             error_type = as_str(entry.get("errorType"))
             detail = f"the predictive audit did not audit {target_purl or 'a target'}"
             if status == "skipped":
@@ -396,64 +538,61 @@ def extract(
                 detail += f"; it failed ({error_type or 'runtime error'})"
             if reason:
                 detail += f": {reason}"
-            caveats.append(EvidenceCaveat(kind="coverage-gap", detail=detail))
+            run_caveats.append(EvidenceCaveat(kind="coverage-gap", detail=detail))
             continue
         assessment = as_dict(entry.get("assessment"))
-        audit_attributes = {
-            "auditMode": "predictive",
-            "targetPurl": target_purl,
-        }
+        audit_attributes = {"auditMode": "predictive", "targetPurl": target_purl}
         for key in ("score", "severity", "confidenceLabel"):
             value = assessment.get(key)
             if value is not None:
                 audit_attributes[f"audit{key[0].upper()}{key[1:]}"] = value
-        findings = entry.get("findings")
-        if findings is not None and not isinstance(findings, list):
-            skipped.add(
-                "predictive results carry a findings value that is not an array "
-                "and became no record"
-            )
-            findings = []
         for finding in findings or []:
             if not isinstance(finding, dict):
                 skipped.add("findings are not JSON objects and became no record")
                 continue
-            try:
-                record = _finding_record(
-                    finding,
-                    producer=producer,
-                    paths=paths,
-                    source=source,
-                    subject_purls=sorted(set(target_refs)),
+            if not as_str(finding.get("ruleId")):
+                skipped.add("findings carry no rule id and became no record")
+                continue
+            upstream = as_str(as_dict(finding.get("location")).get("file")).strip()
+            pending.append(
+                _PendingFinding(
+                    finding=finding,
+                    subject_purls=subject_purls,
                     component_ref=target_refs[0] if target_refs else None,
                     audit_attributes=audit_attributes,
-                    caveats=tuple(caveats),
-                    skipped=skipped,
+                    file_relative=None,
+                    outside_file=None,
+                    upstream_file=upstream.replace("\\", "/") or None,
                     confidence=as_str(assessment.get("confidenceLabel")) or None,
                 )
-            except RecursionError:
-                skipped.add(TOO_DEEP_REASON)
-                continue
-            if record is not None:
-                records.append(record)
+            )
 
-    # Target-selection skips: purls the audit never considered, each with
-    # its own reason.
+    # Target-selection skips: purls the audit never considered, counted
+    # per reason.
     selection_skips = document.get("skipped")
     if selection_skips is not None and not isinstance(selection_skips, list):
         skipped.add("the report's skipped value is not an array and was not read")
         selection_skips = []
-    for skip in selection_skips or []:
-        if not isinstance(skip, dict):
-            skipped.add("skipped entries are not JSON objects and were not read")
-            continue
-        reason = as_str(skip.get("reason")) or "no reason given"
-        purl = as_str(skip.get("purl"))
-        detail = f"the audit did not select {purl or 'a purl'} for analysis: {reason}"
-        caveats.append(EvidenceCaveat(kind="coverage-gap", detail=detail))
-
+    run_caveats.extend(_selection_skip_caveats(selection_skips or [], skipped))
     outside = paths.producer_caveat()
-    all_caveats = _dedupe(caveats + skipped.caveats() + ([outside] if outside else []))
+    run_level = _dedupe(run_caveats + skipped.caveats() + ([outside] if outside else []))
+
+    records: List[Evidence] = []
+    for item in pending:
+        try:
+            records.append(
+                _finding_record(
+                    item,
+                    producer=producer,
+                    paths=paths,
+                    source=source,
+                    caveats=tuple(run_level),
+                )
+            )
+        except RecursionError:
+            skipped.add(TOO_DEEP_REASON)
+    too_deep = [caveat for caveat in skipped.caveats() if TOO_DEEP_REASON in caveat.detail]
+    all_caveats = _dedupe(run_level + result_level + too_deep)
     return AdapterResult(status=STATUS_COMPLETED, records=records, caveats=all_caveats)
 
 
