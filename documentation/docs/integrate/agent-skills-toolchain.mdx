@@ -65,9 +65,8 @@ installation and [the MCP server](../integrate/mcp) for the read tools.
 ## "Is our supply chain sound?" and "is anything in our tree malicious?"
 
 - Audit install scripts, CI permissions, dependency sources and build
-  fidelity: `depscan-supply-chain` (dep-scan's supply-chain check, then
-  cdx-audit's rule packs directly; the predictive mode clones upstream and
-  needs consent)
+  fidelity: `depscan-supply-chain` (the supply-chain check runs cdxgen's
+  cdx-audit; the predictive mode clones upstream and needs consent)
 - Inventory AI models, MCP servers and agent skills:
   `depscan-supply-chain` (cdxgen's `mcp` and `ai-skill` project types,
   with cdxgen's `ai-bom` skill for the details)

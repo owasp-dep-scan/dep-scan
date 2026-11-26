@@ -27,7 +27,7 @@ The six dep-scan-front skills cover what dep-scan's code delivers today. The eig
 | `depscan-binary` | Review an executable, installer or driver with blint, with blintdb as a consent-gated tens-of-gigabytes download | yes |
 | `depscan-mobile-app` | Analyse an APK, AAB or IPA with blint's deep mode, the JNI join, entitlements and privacy manifests | yes |
 | `depscan-memory-safety` | Find memory-safety defects in C and C++ with atom and chen and rank them by reach; inventory unsafe boundaries elsewhere | yes |
-| `depscan-supply-chain` | Audit install scripts, CI permissions, dependency sources, AI and MCP inventory (dep-scan's check, then cdx-audit's rule packs; predictive mode clones upstream and needs consent) | yes |
+| `depscan-supply-chain` | Audit install scripts, CI permissions, dependency sources, AI and MCP inventory (dep-scan's check runs cdx-audit; the predictive mode clones upstream and needs consent) | yes |
 | `depscan-crypto` | Inventory cryptography and join it to reachability (golem, rusi, dosai, atom-tools, trustinspector) | yes |
 
 For BOM generation the skills name the cdxgen plugin's skills (`sbom-generate`, `container-sbom`, `sbom-fidelity-loop`) instead of repeating cdxgen's commands; cdxgen has no MCP server, so everything there runs as a command line.
