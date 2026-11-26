@@ -141,7 +141,7 @@ gates; checks that cannot run become not-assessed entries in the manifest.
 | `vulnerabilities` | Always runs. |
 | `license` | License analysis. |
 | `reachability` | Reachability enrichment; needs cdxgen 13.8.0 or newer. |
-| `supply-chain` | The supply-chain audit through cdxgen's cdx-audit (cdxgen 13.10.0 or newer). |
+| `supply-chain` | The supply-chain audit through cdxgen's cdx-audit (cdxgen 13.9.0 or newer). |
 | `binary`, `memory-safety`, `mobile`, `code`, `crypto` | Present as names, but several are not implemented in this version and exit 4 with the reason. Probe with `depscan doctor` before promising one. |
 | `all` | Every check; the ones that cannot run are recorded, not refused. |
 

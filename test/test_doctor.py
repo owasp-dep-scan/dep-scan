@@ -66,7 +66,7 @@ sys.exit(EXIT_CODE)
 # The tools resolved through an environment variable naming the binary.
 ENV_TOOLS = {
     "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0", "13.8.0"),
-    "cdx-audit": ("CDX_AUDIT_CMD", "CycloneDX Generator 13.10.0", "13.10.0"),
+    "cdx-audit": ("CDX_AUDIT_CMD", "CycloneDX Generator 13.9.0", "13.9.0"),
     "golem": ("GOLEM_CMD", "golem 9.9.9", "9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9", "9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef", "9.9.9"),

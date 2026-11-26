@@ -28,7 +28,7 @@ def test_direct_report_yields_annotation_records():
     result = adapter.extract(
         report,
         source="cdx-audit-npm.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/src",
     )
     assert result.status == "completed"
@@ -39,7 +39,7 @@ def test_direct_report_yields_annotation_records():
     assert rule_ids == {"INT-005", "INT-026"}
     for record in result.records:
         assert record.producer.name == "cdx-audit"
-        assert record.producer.version == "13.10.0"
+        assert record.producer.version == "13.9.0"
         assert record.kind == "annotation"
         assert record.polarity == "negative"
 
@@ -49,7 +49,7 @@ def test_direct_records_name_their_component_and_file():
     result = adapter.extract(
         report,
         source="cdx-audit-npm.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/src",
     )
     deprecated = [record for record in result.records if record.attributes["id"] == "INT-005"]
@@ -72,7 +72,7 @@ def test_monorepo_copies_are_told_apart_by_their_lockfile():
     properties. Without it the two lockfiles that pin left-pad would give
     one record, and two versions of request would carry no file at all."""
     report = load("direct-report.json")
-    result = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="a.json", producer_version="13.9.0")
     left_pad = [
         record
         for record in result.records
@@ -86,7 +86,7 @@ def test_monorepo_copies_are_told_apart_by_their_lockfile():
     # gives one record per finding and no file.
     for finding in report["results"][0]["findings"]:
         finding.pop("_match")
-    bare = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    bare = adapter.extract(report, source="a.json", producer_version="13.9.0")
     assert len(bare.records) == 6
     assert all(not record.locations for record in bare.records)
 
@@ -100,7 +100,7 @@ def test_container_report_keeps_bom_refs_that_are_no_purls():
     reference, and a declaring file inside the image is no location in the
     scanned tree."""
     result = adapter.extract(
-        load("container-report.json"), source="c.json", producer_version="13.10.0", source_root="/src"
+        load("container-report.json"), source="c.json", producer_version="13.9.0", source_root="/src"
     )
     assert result.status == "completed"
     by_ref = {record.subject.component_ref: record for record in result.records}
@@ -138,7 +138,7 @@ def test_odd_locations_never_reach_the_purls(location):
     finding = report["results"][0]["findings"][0]
     finding["location"] = location
     finding.pop("_match")
-    result = adapter.extract(report, source="a.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="a.json", producer_version="13.9.0")
     assert result.status == "completed"
     first = next(r for r in result.records if r.attributes["message"] == finding["message"])
     for purl in first.subject.purls:
@@ -152,7 +152,7 @@ def test_direct_records_store_file_paths_relative_to_the_root():
     result = adapter.extract(
         report,
         source="cdx-audit-npm.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/src",
     )
     located = [
@@ -171,7 +171,7 @@ def test_predictive_report_records_cover_the_shortfalls():
     result = adapter.extract(
         report,
         source="cdx-audit-predictive-bom.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/src",
     )
     assert result.status == "completed"
@@ -206,12 +206,12 @@ def test_errored_target_becomes_a_coverage_caveat():
         ],
         "skipped": [],
         "summary": {},
-        "tool": {"name": "cdx-audit", "version": "13.10.0"},
+        "tool": {"name": "cdx-audit", "version": "13.9.0"},
     }
     result = adapter.extract(
         report,
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     caveats = [caveat.detail for caveat in result.caveats if caveat.kind == "coverage-gap"]
     assert any("it failed (clone)" in detail for detail in caveats), caveats
@@ -224,9 +224,9 @@ def test_offline_summary_is_a_caveat():
         "results": [],
         "skipped": [],
         "summary": {"offline": True, "totalTargets": 3, "skippedTargets": 3},
-        "tool": {"name": "cdx-audit", "version": "13.10.0"},
+        "tool": {"name": "cdx-audit", "version": "13.9.0"},
     }
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     caveats = [caveat.detail for caveat in result.caveats if caveat.kind == "coverage-gap"]
     assert any("offline" in detail for detail in caveats)
 
@@ -234,7 +234,7 @@ def test_offline_summary_is_a_caveat():
 def test_report_without_a_version_is_accepted_with_a_caveat():
     report = load("direct-report.json")
     del report["version"]
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert result.status == "completed"
     assert any(caveat.kind == "schema-unknown" for caveat in result.caveats)
 
@@ -242,16 +242,16 @@ def test_report_without_a_version_is_accepted_with_a_caveat():
 def test_unsupported_report_shape_is_not_assessed():
     report = load("direct-report.json")
     report["version"] = "2.0"
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert result.status == "not-assessed"
     assert "not supported" in result.reason
 
 
 def test_malformed_report_is_not_assessed():
-    result = adapter.extract("{not json", source="audit.json", producer_version="13.10.0")
+    result = adapter.extract("{not json", source="audit.json", producer_version="13.9.0")
     assert result.status == "not-assessed"
     assert "not valid JSON" in result.reason
-    result = adapter.extract([1, 2, 3], source="audit.json", producer_version="13.10.0")
+    result = adapter.extract([1, 2, 3], source="audit.json", producer_version="13.9.0")
     assert result.status == "not-assessed"
 
 
@@ -274,7 +274,7 @@ def test_nested_hostile_input_never_raises(mutation, why):
     crash and never a silent clean result."""
     report = load("direct-report.json")
     report.update(mutation)
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert result.status == "completed"
     assert any(
         caveat.kind in ("record-skipped", "coverage-gap") for caveat in result.caveats
@@ -286,7 +286,7 @@ def test_results_of_the_wrong_type_are_not_assessed():
     at all, so the honest answer is not-assessed, never zero findings."""
     report = load("direct-report.json")
     report["results"] = {"not": "a list"}
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert result.status == "not-assessed"
     assert "expected an array" in result.reason
 
@@ -294,7 +294,7 @@ def test_results_of_the_wrong_type_are_not_assessed():
 def test_finding_without_a_rule_id_is_counted_not_silently_dropped():
     report = load("direct-report.json")
     report["results"][0]["findings"].append({"severity": "high", "message": "no rule id"})
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert result.status == "completed"
     assert any(
         caveat.kind == "record-skipped" and "no rule id" in caveat.detail
@@ -309,13 +309,13 @@ def test_record_ids_survive_a_moved_root():
     first = adapter.extract(
         report,
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/work/tree-a",
     )
     second = adapter.extract(
         report,
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root="/elsewhere/tree-b",
     )
     assert [record.id for record in first.records] == [record.id for record in second.records]
@@ -340,7 +340,7 @@ def test_offline_registry_coverage_is_a_caveat_on_the_result_and_its_records():
             {"registryMetadata": "offline", "components": 50, "eligible": 12, "answered": 0, "withoutMetadata": 12}
         ),
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     details = _gap_details(result)
     assert any(
@@ -359,7 +359,7 @@ def test_an_unrequested_registry_lookup_is_named_as_such():
     result = adapter.extract(
         _direct_with_coverage({"registryMetadata": "not-requested", "eligible": 3, "withoutMetadata": 3}),
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     assert any(
         "was not asked for registry lookups (not-requested)" in detail
@@ -376,7 +376,7 @@ def test_components_no_registry_answered_for_are_counted():
             {"registryMetadata": "fetched", "components": 44, "eligible": 40, "answered": 37, "withoutMetadata": 3}
         ),
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     details = _gap_details(partial)
     assert any(
@@ -390,7 +390,7 @@ def test_components_no_registry_answered_for_are_counted():
             {"registryMetadata": "fetched", "components": 44, "eligible": 40, "answered": 40, "withoutMetadata": 0}
         ),
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     assert not any("registry" in detail for detail in _gap_details(complete))
 
@@ -400,7 +400,7 @@ def test_a_report_without_a_coverage_block_adds_no_registry_caveat():
     nothing is invented about the registry rules."""
     report = load("direct-report.json")
     report["results"][0].pop("coverage")
-    result = adapter.extract(report, source="audit.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="audit.json", producer_version="13.9.0")
     assert not any("registry" in detail for detail in _gap_details(result))
 
 
@@ -420,7 +420,7 @@ def test_a_malformed_coverage_block_raises_nothing_and_claims_nothing(coverage):
     """Wrong types inside the coverage block are skipped: no exception, and
     no caveat that states a count the report never gave."""
     result = adapter.extract(
-        _direct_with_coverage(coverage), source="audit.json", producer_version="13.10.0"
+        _direct_with_coverage(coverage), source="audit.json", producer_version="13.9.0"
     )
     assert result.status == "completed"
     assert len(result.records) == 8
@@ -438,7 +438,7 @@ def test_every_record_of_a_run_carries_the_same_run_caveats():
     report["results"].append(second)
     for order in (report["results"], list(reversed(report["results"]))):
         report["results"] = order
-        result = adapter.extract(report, source="p.json", producer_version="13.10.0")
+        result = adapter.extract(report, source="p.json", producer_version="13.9.0")
         details = [
             sorted(caveat.detail for caveat in record.caveats) for record in result.records
         ]
@@ -461,7 +461,7 @@ def test_direct_result_coverage_stays_on_its_own_records():
     gap["findings"] = gap["findings"][:1]
     gap["findings"][0]["message"] = "from the second BOM"
     report["results"].append(gap)
-    result = adapter.extract(report, source="d.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="d.json", producer_version="13.9.0")
     for record in result.records:
         has_gap = any("1 of 3" in caveat.detail for caveat in record.caveats)
         assert has_gap == (record.attributes["message"] == "from the second BOM")
@@ -475,7 +475,7 @@ def test_target_selection_skips_are_counted_per_reason():
         {"reason": "unsupported-ecosystem", "purl": f"pkg:maven/org.x/lib{i}@1.0"}
         for i in range(200)
     ] + [{"reason": "allowlisted", "purl": "pkg:npm/react@18.0.0"}]
-    result = adapter.extract(report, source="p.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="p.json", producer_version="13.9.0")
     selection = [c.detail for c in result.caveats if "did not select" in c.detail]
     assert selection == [
         "the audit did not select 200 purls for analysis: unsupported-ecosystem",
@@ -490,7 +490,7 @@ def test_predictive_upstream_files_never_become_locations():
     report = load("predictive-report.json")
     report["results"][0]["findings"][0]["location"]["file"] = ".github/workflows/release.yml"
     result = adapter.extract(
-        report, source="p.json", producer_version="13.10.0", source_root="/Users/alice/app"
+        report, source="p.json", producer_version="13.9.0", source_root="/Users/alice/app"
     )
     record = result.records[0]
     assert not record.locations
@@ -503,7 +503,7 @@ def test_predictive_error_text_is_redacted():
     skipped = next(entry for entry in report["results"] if entry.get("status") != "audited")
     skipped["error"] = "ENOENT: open '/Users/alice/app/node_modules/x/package.json'"
     result = adapter.extract(
-        report, source="p.json", producer_version="13.10.0", source_root="/Users/alice/app"
+        report, source="p.json", producer_version="13.9.0", source_root="/Users/alice/app"
     )
     details = [caveat.detail for caveat in result.caveats]
     assert not any("/Users/alice" in detail for detail in details), details
@@ -519,7 +519,7 @@ def test_offline_coverage_states_one_gap_not_two():
             {"registryMetadata": "offline", "eligible": 3, "answered": 0, "withoutMetadata": 3}
         ),
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
     )
     details = _gap_details(result)
     assert any("did not look up registry metadata" in detail for detail in details)
@@ -534,7 +534,7 @@ def test_two_findings_differing_only_by_message_stay_two_records():
     twin = json.loads(json.dumps(findings[0]))
     twin["message"] = findings[0]["message"] + " (second signal)"
     findings.append(twin)
-    result = adapter.extract(report, source="d.json", producer_version="13.10.0")
+    result = adapter.extract(report, source="d.json", producer_version="13.9.0")
     same_place = [
         record
         for record in result.records

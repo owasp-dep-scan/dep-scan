@@ -198,7 +198,7 @@ def test_hardening_rows_keeps_only_the_reviews_own_findings():
             {
                 "category": "binary-hardening",
                 "rule": "RFS-001",
-                "producer": {"name": "cdx-audit", "version": "13.10.0"},
+                "producer": {"name": "cdx-audit", "version": "13.9.0"},
             },
             "not a finding",
             None,

@@ -229,7 +229,7 @@ def install_scan_fakes():
         )
 
     cdx_audit_module.find_cdx_audit_cmd = lambda: "cdx-audit-fake"
-    cdx_audit_module.cdx_audit_version = lambda cmd: "13.10.0"
+    cdx_audit_module.cdx_audit_version = lambda cmd: "13.9.0"
     cdx_audit_module.run_cdx_audit = fake_run
 
     def fake_exec_tool(args, *a, **k):

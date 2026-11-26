@@ -34,7 +34,7 @@ container files or fixture corpora are not product content carries their
 `--cdxgen-args --exclude` trees, or the inventory spends its budget reading
 them.
 
-The check needs cdxgen 13.10.0 or newer (`depscan doctor` reports it as the
+The check needs cdxgen 13.9.0 or newer (`depscan doctor` reports it as the
 `cdx-audit` tool). The direct audit first looks the BOM's npm, PyPI and
 Cargo components up in their registries, one request per package, because
 its rules for deprecated or yanked packages, missing versions and package

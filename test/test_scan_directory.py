@@ -1236,7 +1236,7 @@ def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monk
         raise cdx_audit.CdxAuditError("cdx-audit wrote no report at all (exit 1)")
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", audit_fails)
     bom = _write_bom(tmp_path / "given.cdx.json")
     result = api.scan(

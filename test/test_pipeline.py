@@ -479,7 +479,7 @@ def _audit_stub(monkeypatch, reports=None, fail=None):
         )
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     return runs
 
@@ -505,7 +505,7 @@ def test_stage_analysis_risk_runs_cdx_audit_on_the_type_bom(tmp_path, monkeypatc
         )
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
@@ -556,7 +556,7 @@ def test_stage_analysis_risk_is_offline_and_predictive_by_profile(tmp_path, monk
         )
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
@@ -612,7 +612,7 @@ def test_stage_analysis_risk_names_why_it_could_not_run(tmp_path, monkeypatch):
     assert "cdx-audit was not found" in reason
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     assert pipeline.stage_analysis_risk(ctx, scan) is False
     reason = scan.risk_not_assessed or ""
     assert "produced no BOM" in reason
@@ -651,7 +651,7 @@ def test_stage_analysis_risk_records_the_audits_coverage_gaps_in_order(
         )
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
@@ -683,7 +683,7 @@ def test_stage_analysis_risk_fails_when_the_report_cannot_be_read(tmp_path, monk
         return cdx_audit.CdxAuditResult(report=report, report_version="9.0")
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True
@@ -1883,7 +1883,7 @@ def test_a_failed_direct_run_does_not_stop_the_other_boms(tmp_path, monkeypatch)
         return cdx_audit.CdxAuditResult(report=report, report_version=1, results=report["results"])
 
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
@@ -1918,7 +1918,7 @@ def test_the_predictive_audit_runs_once_per_type_over_all_its_boms(tmp_path, mon
     predictive = json.loads((DATA_DIR / "cdx-audit" / "predictive-report.json").read_text())
     runs = []
     monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
-    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.9.0")
     monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
     ctx = _ctx(tmp_path, ["-t", "npm"])
     ctx.perform_risk_audit = True

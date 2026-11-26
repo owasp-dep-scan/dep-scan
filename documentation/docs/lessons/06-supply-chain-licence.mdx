@@ -7,7 +7,7 @@ sidebar_position: 06
 
 This lesson runs the supply-chain and licence checks over the same pinned Juice Shop commit as lesson 1 and reads the files they write. The supply-chain check runs cdxgen's `cdx-audit` over the scan's BOM, so its findings carry cdxgen's rule ids, severities and the components each one names; the licence check writes its report beside them. Both write plain JSON into the scan directory, so the audit is a file a reviewer opens, not console output to scrape.
 
-The inputs are pinned: Juice Shop at commit `33518f5a0911`, the `app-only` database flavor, and the cdxgen release the supply-chain check needs (13.10.0 or newer, which ships `cdx-audit` with the options dep-scan passes). The output below is from a run on 2026-11-26 with dep-scan 7.0.0a3 and the cdxgen 13.9.0 master build that already carries the audit options; the lesson's CI job installs the cdxgen release instead.
+The inputs are pinned: Juice Shop at commit `33518f5a0911`, the `app-only` database flavor, and the cdxgen release the supply-chain check needs (13.9.0 or newer, which ships `cdx-audit` with the options dep-scan passes). The output below is from a run on 2026-11-26 with dep-scan 7.0.0a3 and the cdxgen 13.9.0 master build that already carries the audit options; the lesson's CI job installs the cdxgen release instead.
 
 As in lesson 1, the commit pins the source but not the dependency tree: Juice Shop at this commit ships no lockfile (its `.npmrc` sets `package-lock=false`), so the dependencies are resolved at scan time and the counts below can drift between runs. The install writes `node_modules` and a `package-lock.json` into the clone, which is acceptable for the throwaway clone the script makes.
 
@@ -23,7 +23,7 @@ The commands live in `documentation/lessons/06-supply-chain-licence/run.sh` (and
 # commit as lesson 01, and reads the supply-chain findings, the audit's own
 # report, the licence report and the manifest stages that record what ran.
 #
-# Needs: dep-scan, cdxgen 13.10.0 or newer (for the cdx-audit it ships),
+# Needs: dep-scan, cdxgen 13.9.0 or newer (for the cdx-audit it ships),
 # Node.js, and an app-only vulnerability database.
 set -euo pipefail
 

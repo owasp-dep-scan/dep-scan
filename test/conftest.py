@@ -124,7 +124,7 @@ EMPTY_AUDIT_REPORT = {
 }
 
 
-def fake_cdx_audit(monkeypatch, calls, report=None, version="13.10.0"):
+def fake_cdx_audit(monkeypatch, calls, report=None, version="13.9.0"):
     """Stub the cdx-audit runner the risk stage calls.
 
     The stage's positive control: a scan whose supply-chain check ran

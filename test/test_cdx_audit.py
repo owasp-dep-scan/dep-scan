@@ -10,6 +10,7 @@ Node module into cdx-audit that records and refuses any network access.
 import json
 import os
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,7 +32,7 @@ import sys
 
 args = sys.argv[1:]
 if args and args[0] == "--version":
-    print("CycloneDX Generator " + os.environ.get("FAKE_VERSION", "13.10.0"))
+    print("CycloneDX Generator " + os.environ.get("FAKE_VERSION", "13.9.0"))
     sys.exit(0)
 report = ""
 for index, arg in enumerate(args):
@@ -51,7 +52,7 @@ def _write_fake_audit(directory, name="cdx-audit-fake", version=None):
     if version:
         # A fixed version line, for the tests that probe --version.
         text = text.replace(
-            'os.environ.get("FAKE_VERSION", "13.10.0")', repr(version)
+            'os.environ.get("FAKE_VERSION", "13.9.0")', repr(version)
         )
     body.write_text(text, encoding="utf-8")
     if sys.platform == "win32":
@@ -74,7 +75,7 @@ def fake_cdx_audit(tmp_path, monkeypatch):
     choose, so the minimum check is exercised against real parse output."""
     calls = {}
 
-    script = _write_fake_audit(tmp_path, version="13.10.0")
+    script = _write_fake_audit(tmp_path, version="13.9.0")
     return script, calls
 
 
@@ -154,11 +155,11 @@ def test_an_unsafe_command_is_a_failed_probe_not_a_crash(monkeypatch):
 def test_version_check_against_the_minimum(monkeypatch):
     # The documented default, whatever the run's environment overrode it to
     # for the tests that run the real worktree build.
-    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.10.0")
-    assert cdx_audit.check_cdx_audit_version("13.10.0")
+    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.9.0")
+    assert cdx_audit.check_cdx_audit_version("13.9.0")
     assert cdx_audit.check_cdx_audit_version("14.0.1")
-    assert not cdx_audit.check_cdx_audit_version("13.9.0")
-    assert not cdx_audit.check_cdx_audit_version("13.9")
+    assert not cdx_audit.check_cdx_audit_version("13.8.0")
+    assert not cdx_audit.check_cdx_audit_version("13.8")
     assert not cdx_audit.check_cdx_audit_version(None)
     assert not cdx_audit.check_cdx_audit_version("")
 
@@ -419,6 +420,20 @@ def _real_cdx_audit():
             f"cdx-audit {version or 'of an unknown version'} is older than "
             f"{cdx_audit.CDX_AUDIT_MIN_VERSION}, which carries the options dep-scan passes"
         )
+    # A development build can report the minimum's version before it carries
+    # the options, so its help text decides.
+    from xbom_lib.process import build_command, tool_env
+
+    help_text = subprocess.run(
+        build_command([cmd, "--help"]),
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+        env=tool_env(),
+    ).stdout
+    if "--time-budget-minutes" not in (help_text or ""):
+        pytest.skip(f"cdx-audit {version} does not carry the options dep-scan passes")
     return cmd
 
 
@@ -546,7 +561,7 @@ def test_private_namespace_produces_a_dependency_confusion_finding(tmp_path):
     adapter_result = cdx_audit_extract(
         result.report,
         source="audit.json",
-        producer_version="13.10.0",
+        producer_version="13.9.0",
         source_root=str(tmp_path),
         mode="direct",
     )
@@ -606,7 +621,7 @@ def test_an_offline_private_namespace_check_asks_nothing_and_says_so(tmp_path, m
         "publicRegistry": "offline",
     }
     adapter_result = cdx_audit_extract(
-        result.report, source="audit.json", producer_version="13.10.0", mode="direct"
+        result.report, source="audit.json", producer_version="13.9.0", mode="direct"
     )
     assert adapter_result.records == [], "nothing is reported as taken"
     assert any(
@@ -623,13 +638,13 @@ def test_doctor_reports_the_audit_tool(tmp_path, monkeypatch):
     a too-old one is unusable with the reason a scan refuses on."""
     from depscan.lib import doctor as doctor_lib
 
-    script = _write_fake_audit(tmp_path, name="cdx-audit-old", version="13.9.0")
+    script = _write_fake_audit(tmp_path, name="cdx-audit-old", version="13.8.0")
     monkeypatch.setenv("CDX_AUDIT_CMD", str(script))
     # The minimum is read from DEPSCAN_CDX_AUDIT_MIN_VERSION at import, so
     # removing the variable here would change nothing: the constant is set
-    # to the documented default instead, which 13.9.0 does not meet.
-    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.10.0")
+    # to the documented default instead, which 13.8.0 does not meet.
+    monkeypatch.setattr(cdx_audit, "CDX_AUDIT_MIN_VERSION", "13.9.0")
     status = doctor_lib._cdx_audit_status()
-    assert status.version == "13.9.0"
+    assert status.version == "13.8.0"
     assert not status.usable
     assert "minimum" in (status.reason or "")

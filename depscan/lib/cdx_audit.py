@@ -24,11 +24,13 @@ from xbom_lib.process import build_command, find_executable, tool_env
 #: ``--time-budget-minutes``, and reads the report's ``version`` field, the
 #: summary's ``targetCapTruncated`` and ``offline`` markers, each direct
 #: result's ``coverage`` block and the per-target skip reasons; all of that
-#: shipped after 13.9.0, so the minimum is the release that carries them.
+#: shipped after 13.8.0, so the minimum is 13.9.0, the release that carries
+#: them. A development build that reports 13.9.0 without them writes no
+#: report ``version`` field and is refused on that.
 #: ``DEPSCAN_CDX_AUDIT_MIN_VERSION`` overrides the minimum for a scan run
 #: against a development cdxgen that already carries the options; the
 #: doctor reports the overridden minimum as its own.
-CDX_AUDIT_MIN_VERSION = os.getenv("DEPSCAN_CDX_AUDIT_MIN_VERSION", "") or "13.10.0"
+CDX_AUDIT_MIN_VERSION = os.getenv("DEPSCAN_CDX_AUDIT_MIN_VERSION", "") or "13.9.0"
 
 _CDXYGEN_NPM_PACKAGE = "@cdxgen/cdxgen"
 

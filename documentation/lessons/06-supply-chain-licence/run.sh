@@ -5,7 +5,7 @@
 # commit as lesson 01, and reads the supply-chain findings, the audit's own
 # report, the licence report and the manifest stages that record what ran.
 #
-# Needs: dep-scan, cdxgen 13.10.0 or newer (for the cdx-audit it ships),
+# Needs: dep-scan, cdxgen 13.9.0 or newer (for the cdx-audit it ships),
 # Node.js, and an app-only vulnerability database.
 set -euo pipefail
 

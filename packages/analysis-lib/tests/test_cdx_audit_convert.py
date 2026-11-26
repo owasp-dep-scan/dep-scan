@@ -16,7 +16,7 @@ DATA_DIR = Path(__file__).parent / "data" / "cdx_audit"
 
 def load_records(name, **kwargs):
     report = json.loads((DATA_DIR / name).read_text())
-    return adapter.extract(report, source="audit.json", producer_version="13.10.0", **kwargs)
+    return adapter.extract(report, source="audit.json", producer_version="13.9.0", **kwargs)
 
 
 def test_direct_records_map_onto_supply_chain_findings():
@@ -39,7 +39,7 @@ def test_direct_records_map_onto_supply_chain_findings():
     assert first.severity == "low"
     assert first.title == "npm deprecated package"
     assert first.producer.name == "cdx-audit"
-    assert first.producer.version == "13.10.0"
+    assert first.producer.version == "13.9.0"
     assert first.evidence, "the finding carries the audit's evidence"
     messages = {p.value for f in deprecated for p in f.properties or [] if p.name == "cdx-audit:message"}
     assert any("is deprecated" in message for message in messages)
@@ -87,7 +87,7 @@ def test_container_findings_located_by_bom_refs_never_raise():
 def test_a_finding_without_a_severity_is_low_like_cdx_audits_count():
     report = json.loads((DATA_DIR / "direct-report.json").read_text())
     report["results"][0]["findings"][0].pop("severity")
-    records = adapter.extract(report, source="audit.json", producer_version="13.10.0").records
+    records = adapter.extract(report, source="audit.json", producer_version="13.9.0").records
     findings = findings_from_cdx_audit_records(records)
     assert "low" in {f.severity for f in findings}
     assert "unknown" not in {f.severity for f in findings}
@@ -108,7 +108,7 @@ def test_predictive_findings_of_one_target_stay_apart():
     second["message"] = "GitHub Action 'actions/setup-python@v5' pinned to mutable tag (not SHA)"
     second["evidence"] = {"currentVersion": "v5", "isOfficial": "true", "action": "setup-python"}
     report["results"][0]["findings"].append(second)
-    records = adapter.extract(report, source="p.json", producer_version="13.10.0").records
+    records = adapter.extract(report, source="p.json", producer_version="13.9.0").records
     findings = findings_from_cdx_audit_records(records)
     pinned = [f for f in findings if f.rule == first["ruleId"]]
     assert len(pinned) == 2
@@ -139,7 +139,7 @@ def test_audit_categories_map_onto_their_own_finding_categories():
             schema_version="1",
             id=f"ev-{rule}",
             producer=EvidenceProducer(
-                name="cdx-audit", version="13.10.0", report_schema_version="1"
+                name="cdx-audit", version="13.9.0", report_schema_version="1"
             ),
             kind="annotation",
             polarity="negative",
@@ -202,7 +202,7 @@ def test_same_rule_on_two_components_gives_two_findings():
         dict(finding, location={"purl": "pkg:pypi/one@1.0.0", "bomRef": "pkg:pypi/one@1.0.0"}),
         dict(finding, location={"purl": "pkg:pypi/two@2.0.0", "bomRef": "pkg:pypi/two@2.0.0"}),
     ]
-    records = adapter.extract(report, source="audit.json", producer_version="13.10.0").records
+    records = adapter.extract(report, source="audit.json", producer_version="13.9.0").records
     findings = findings_from_cdx_audit_records(records)
     assert len(findings) == 2
     assert len({f.id for f in findings}) == 2
@@ -244,7 +244,7 @@ def test_two_versions_of_one_package_merge_into_one_finding():
         dict(finding, location={"purl": "pkg:pypi/acorn@8.11.3", "bomRef": "pkg:pypi/acorn@8.11.3"}),
         dict(finding, location={"purl": "pkg:pypi/acorn@8.14.1", "bomRef": "pkg:pypi/acorn@8.14.1"}),
     ]
-    records = adapter.extract(report, source="audit.json", producer_version="13.10.0").records
+    records = adapter.extract(report, source="audit.json", producer_version="13.9.0").records
     assert len(records) == 2
     findings = findings_from_cdx_audit_records(records)
     assert len(findings) == 1

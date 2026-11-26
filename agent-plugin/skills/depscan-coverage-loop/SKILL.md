@@ -69,7 +69,7 @@ read, not guesses:
 | A capability `unavailable` with `missing: ["tool:cdxgen"]` | The same cdxgen fix; reachability needs 13.8.0 or newer. |
 | The database flavor lacks distro advisories (apk, deb, rpm) | `depscan vdb download --flavor full`, with the consent rule. |
 | The risk stage `skipped` with `the supply-chain audit was not requested` | Not a defect: the supply-chain check was not asked for. Add `--checks supply-chain` only if the user wants it. |
-| The risk stage `not-assessed` with "cdx-audit was not found" or a minimum named | Install cdxgen 13.10.0 or newer (`npm install -g @cdxgen/cdxgen`, with consent, into a prefix where a choice exists) or export `CDX_AUDIT_CMD`; the check runs cdx-audit. |
+| The risk stage `not-assessed` with "cdx-audit was not found" or a minimum named | Install cdxgen 13.9.0 or newer (`npm install -g @cdxgen/cdxgen`, with consent, into a prefix where a choice exists) or export `CDX_AUDIT_CMD`; the check runs cdx-audit. |
 | The risk stage `not-assessed` because the scan produced no BOM to audit | Not fixable on this machine: the audit reads a BOM. Report it as not assessed. |
 | The risk stage `completed` with `notAssessed` reasons about registry metadata | The audit ran but its registry rules did not assess every package: the lookup was offline (the `offline` profile makes no network request by design) or a registry did not answer for the named components. Re-scan online for the first; report the count for the second. Never present the scan as fully assessed. |
 | A capability `not-implemented` | Nothing to fix on this machine; the capability is dep-scan's backlog. Report it with its `issue` link. |

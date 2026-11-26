@@ -30,7 +30,7 @@ CONTAINER_REPORT = json.loads((DATA_DIR / "cdx-audit" / "container-report.json")
 
 def _findings(name):
     report = json.loads((DATA_DIR / "cdx-audit" / name).read_text())
-    records = extract(report, source="a.json", producer_version="13.10.0", source_root="/src").records
+    records = extract(report, source="a.json", producer_version="13.9.0", source_root="/src").records
     return [finding.to_dict() for finding in findings_from_cdx_audit_records(records)]
 
 
