@@ -1,0 +1,21 @@
+depscan/commands/checks.py
+  s_7318da1b9edd46::t_2c13afdd588f11 201-205,211
+test/test_v7_verbs.py
+  s_7318da1b9edd46::t_9bc1d0a69d17c6 859-876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f075faa8a6c09362ed14af027629e74378c62ee",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
