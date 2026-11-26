@@ -1758,6 +1758,47 @@ def test_profile_deep_enables_risk_license_and_semantic_reachability(
     assert scan_stubs["risk"], "the risk audit never ran"
     assert scan_stubs["cdxgen"], "the cdxgen process never ran"
     assert scan_stubs["matching"], "the matching stage never ran"
+    # The profile's name reaches the stage, which runs the predictive audit
+    # under deep only: the BOM holds a PyPI package, so it ran.
+    assert any("--direct-bom-audit" not in run for run in scan_stubs["risk"]), (
+        "the deep profile ran no predictive audit"
+    )
+    assert "scan_profile" not in (reports / "depscan.toml.sample").read_text()
+
+
+def test_a_profile_records_supply_chain_as_not_assessed_without_cdx_audit(
+    scan_stubs, fake_tools, monkeypatch, tmp_path, caplog, no_license_env
+):
+    """--profile deep implies the supply-chain check. A machine without a
+    usable cdx-audit records the check as not assessed, the way the all
+    expansion does, with one warning, and the scan goes on; only a check
+    named in --checks stops the verb with exit 4."""
+    fake_tools["remove"]("cdx-audit")
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "app.js").write_text("const leftPad = require('left-pad');\n")
+    reports = tmp_path / "reports"
+    argv = ["scan", str(src), "-t", "js", "--bom-engine", "CdxgenGenerator", "--no-banner"]
+    with caplog.at_level(logging.WARNING, logger=LOG.name):
+        code = run_main(monkeypatch, [*argv, "--profile", "deep", "--reports-dir", str(reports)])
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["check-supply-chain"]["status"] == "not-assessed"
+    assert "cdx-audit" in stages["check-supply-chain"]["reason"]
+    assert stages["risk"]["status"] == "skipped"
+    assert manifest["options"]["risk_audit"] is not True
+    assert scan_stubs["risk"] == [], "the audit did not run"
+    warnings = [r.getMessage() for r in caplog.records if "supply-chain" in r.getMessage()]
+    assert len(warnings) == 1, warnings
+    assert stages["licenses"]["status"] == "completed", "the profile's other checks ran"
+
+    caplog.clear()
+    code = run_main(
+        monkeypatch,
+        [*argv, "--checks", "supply-chain", "--reports-dir", str(tmp_path / "explicit")],
+    )
+    assert code == 4, "a check named in --checks is still gated"
 
 
 # ---------------------------------------------------------------------------

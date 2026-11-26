@@ -1768,3 +1768,29 @@ def test_unreadable_cdxgen_documents_give_one_line(tmp_path, caplog):
     assert len(lines) == 1, lines
     assert "a.cdx.json, b.cdx.json, c.cdx.json" in lines[0]
     assert "good.cdx.json" not in lines[0]
+
+
+@pytest.mark.parametrize("checks_requested,audits", [(False, True), (True, False)])
+def test_a_purl_search_audits_only_when_no_checks_were_named(
+    tmp_path, checks_requested, audits
+):
+    """A bare purl search turns the supply-chain audit on; a scan that named
+    its checks or a profile runs exactly those."""
+    ctx = _ctx(tmp_path, ["--purl", "pkg:npm/left-pad@1.3.0"])
+    ctx.args.checks_requested = checks_requested
+    ctx.perform_risk_audit = False
+    pipeline.finalize_setup(ctx)
+    assert ctx.perform_risk_audit is audits
+
+
+def test_the_sample_config_leaves_the_resolved_profile_and_checks_out(tmp_path):
+    """scan_profile and checks_requested ride on the internal namespace for
+    the stages; a depscan.toml.sample read back must not turn them into
+    settings, so they are never written."""
+    path = tmp_path / "depscan.toml.sample"
+    options = {"scan_profile": "deep", "checks_requested": True, "no_banner": True, "risk_audit": True}
+    assert pipeline.write_config_file(options, str(path))
+    text = path.read_text()
+    assert "risk_audit" in text
+    for internal in ("scan_profile", "checks_requested", "no_banner"):
+        assert internal not in text

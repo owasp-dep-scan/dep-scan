@@ -846,7 +846,14 @@ def _capability_gate(args: argparse.Namespace, names, skip_requirements: Tuple[s
     if named:
         requested = named
     elif profile_name is not None:
-        requested = list(checks_table.PROFILES[profile_name].checks)
+        # A check the profile implies but the machine cannot run is recorded
+        # as not assessed by the resolution; only an explicitly named check
+        # stops the verb.
+        requested = [
+            name
+            for name in checks_table.PROFILES[profile_name].checks
+            if name not in checks_table.PROFILE_SOFT_CHECKS
+        ]
     else:
         # Only the all expansion was requested.
         return report, None
@@ -937,6 +944,14 @@ def run(args: argparse.Namespace) -> int:
         resolution = checks_table.resolve(
             args, doctor_report=report, skip_requirements=skip_requirements
         )
+        for entry in resolution.not_assessed:
+            if entry.get("name") in resolution.profile_not_assessed:
+                LOG.warning(
+                    "The %s check the %s profile implies is not assessed: %s",
+                    entry["name"],
+                    getattr(args, "profile", None),
+                    entry.get("reason"),
+                )
         internal = scan_namespace(args, resolution=resolution)
         if json_output:
             internal.no_banner = True

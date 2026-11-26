@@ -1103,8 +1103,10 @@ def finalize_setup(ctx):
         # manifest does not record them (``--cdxgen-args`` is redacted there),
         # so this line stays on the console.
         LOG.info("Exclude patterns applied to this scan's walks: %s", exclusions.describe())
-    if args.search_purl:
-        # Automatically enable risk audit for single purl searches
+    if args.search_purl and not getattr(args, "checks_requested", False):
+        # A purl search with no --checks and no --profile audits the
+        # package's supply chain too; a scan that named its checks runs
+        # exactly those.
         ctx.perform_risk_audit = True
     ctx.project_types = project_types_list
     # Construct the various report files
@@ -1138,16 +1140,22 @@ def finalize_setup(ctx):
     _write_sample_config(ctx, run_config_file)
 
 
+#: Options a scan carries internally that are no configuration a user sets:
+#: the banner flag, and what ``--checks`` and ``--profile`` resolved to,
+#: which a TOML file read back would turn into settings of their own.
+UNWRITTEN_OPTIONS = ("no_banner", "scan_profile", "checks_requested")
+
+
 def write_config_file(options: Dict[str, Any], run_config_file: str) -> bool:
-    """Write an options dict as a TOML config file, without ``no_banner``.
+    """Write an options dict as a TOML config file, without the internal
+    options in :data:`UNWRITTEN_OPTIONS`.
 
     The sample config a scan writes and the file ``depscan config init``
-    writes are the same document: the effective options minus the banner
-    flag. Options whose value is None are dropped by the TOML encoder.
+    writes are the same document: the effective options minus those.
+    Options whose value is None are dropped by the TOML encoder.
     Returns False when the file could not be written.
     """
-    run_config = {**options}
-    run_config.pop("no_banner", None)
+    run_config = {key: value for key, value in options.items() if key not in UNWRITTEN_OPTIONS}
     try:
         import toml as _toml
 
