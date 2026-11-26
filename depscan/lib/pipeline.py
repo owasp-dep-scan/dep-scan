@@ -1593,11 +1593,14 @@ PREDICTIVE_PURL_TYPES = ("npm", "pypi", "cargo")
 
 #: The predictive audit runs under the deep and research profiles only,
 #: over the required dependencies, bounded by a target cap and a time
-#: budget so a scan stays finite. The budget is shared by every BOM the
-#: type audits.
+#: budget so a scan stays finite. Both bounds hold for the type in total,
+#: shared by every BOM the type audits.
 PREDICTIVE_PROFILES = ("deep", "research")
 PREDICTIVE_MAX_TARGETS = 25
 PREDICTIVE_TIME_BUDGET_MINUTES = 30
+
+#: The clock the predictive time budget is measured on.
+_clock = time.monotonic
 
 #: The prefix of every file the supply-chain stage writes: its reports and
 #: the input document of a purl scan. Nothing that reads BOMs from a
@@ -1822,7 +1825,7 @@ def _run_audit(cmd, args, run_report_file, *, name, version, ctx):
         # A report the adapter could not read is never an audit with
         # nothing to report.
         raise cdx_audit.CdxAuditError(adapter_result.reason or "unreadable report")
-    return adapter_result
+    return adapter_result, result
 
 
 def stage_analysis_risk(ctx, scan) -> bool:
@@ -1891,7 +1894,11 @@ def stage_analysis_risk(ctx, scan) -> bool:
     predictive_boms = [
         bom for bom in boms if predictive and bom.purl_types & set(PREDICTIVE_PURL_TYPES)
     ]
-    budget = max(1, PREDICTIVE_TIME_BUDGET_MINUTES // max(1, len(predictive_boms)))
+    # The predictive bounds hold for the type as a whole: each BOM's run gets
+    # what earlier runs left of the target cap and the time budget, and a
+    # BOM that finds them spent is not run, which is stated.
+    targets_left = PREDICTIVE_MAX_TARGETS
+    deadline = _clock() + PREDICTIVE_TIME_BUDGET_MINUTES * 60
     redactor = None
     for bom in boms:
         report_file = _audit_report_file(ctx, scan, suffixes.get(bom.path))
@@ -1905,7 +1912,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
             offline=offline,
         )
         try:
-            adapter_result = _run_audit(
+            adapter_result, _result = _run_audit(
                 cmd, run_args, report_file, name="direct", version=version, ctx=ctx
             )
         except (cdx_audit.CdxAuditError, subprocess.SubprocessError, OSError) as e:
@@ -1915,6 +1922,21 @@ def stage_analysis_risk(ctx, scan) -> bool:
         records.extend(adapter_result.records)
         caveats.extend(adapter_result.caveats)
         if bom not in predictive_boms:
+            continue
+        minutes_left = int((deadline - _clock()) // 60)
+        if targets_left < 1 or minutes_left < 1:
+            from analysis_lib.evidence import EvidenceCaveat
+
+            spent = "target cap" if targets_left < 1 else "time budget"
+            caveats.append(
+                EvidenceCaveat(
+                    kind="coverage-gap",
+                    detail=f"the predictive audit of {os.path.basename(bom.path)} did not run: "
+                    f"the {scan.project_type} scan's predictive {spent} "
+                    f"({PREDICTIVE_MAX_TARGETS} targets, {PREDICTIVE_TIME_BUDGET_MINUTES} "
+                    "minutes) was spent on its other BOMs",
+                )
+            )
             continue
         predictive_report_file = _audit_report_file(
             ctx, scan, suffixes.get(bom.path), kind="predictive-"
@@ -1926,11 +1948,11 @@ def stage_analysis_risk(ctx, scan) -> bool:
             private_ns=private_ns,
             predictive=True,
             scope_required=True,
-            max_targets=PREDICTIVE_MAX_TARGETS,
-            time_budget_minutes=budget,
+            max_targets=targets_left,
+            time_budget_minutes=minutes_left,
         )
         try:
-            adapter_result = _run_audit(
+            adapter_result, predictive_result = _run_audit(
                 cmd,
                 predictive_args,
                 predictive_report_file,
@@ -1961,6 +1983,9 @@ def stage_analysis_risk(ctx, scan) -> bool:
                 detail,
             )
             continue
+        # Every target the run planned counts against the cap, audited,
+        # skipped or failed.
+        targets_left -= len(predictive_result.results)
         scan.audit_output_files.append(predictive_report_file)
         records.extend(adapter_result.records)
         caveats.extend(adapter_result.caveats)

@@ -1896,3 +1896,52 @@ def test_a_failed_direct_run_does_not_stop_the_other_boms(tmp_path, monkeypatch)
     assert runs == ["a-bad.cdx.json", "b-good.cdx.json"]
     assert scan.risk_error and "a-bad.cdx.json" in scan.risk_error
     assert len(scan.adapter_results["cdx-audit"].records) == 8
+
+
+@pytest.mark.parametrize("bound", ["targets", "time"])
+def test_the_predictive_bounds_hold_for_the_type_in_total(tmp_path, monkeypatch, bound):
+    """The target cap and the time budget are shared by every BOM of the
+    type: each predictive run gets what the earlier ones left, and a BOM
+    that finds a bound spent is not run, which is stated as a caveat."""
+    clock = {"now": 1000.0}
+    monkeypatch.setattr(pipeline, "_clock", lambda: clock["now"])
+    direct = json.loads((DATA_DIR / "cdx-audit" / "direct-report.json").read_text())
+    predictive = json.loads((DATA_DIR / "cdx-audit" / "predictive-report.json").read_text())
+    planned = 20 if bound == "targets" else 1
+    template = predictive["results"][0]
+    predictive["results"] = [json.loads(json.dumps(template)) for _ in range(planned)]
+    runs = []
+
+    def fake_run(cmd, args):
+        runs.append(list(args))
+        report = direct if "--direct-bom-audit" in args else predictive
+        if report is predictive and bound == "time":
+            clock["now"] += 20 * 60
+        Path(args[args.index("--report-file") + 1]).write_text(json.dumps(report))
+        return cdx_audit.CdxAuditResult(report=report, report_version=1, results=report["results"])
+
+    monkeypatch.setattr(cdx_audit, "find_cdx_audit_cmd", lambda: "cdx-audit-fake")
+    monkeypatch.setattr(cdx_audit, "cdx_audit_version", lambda cmd: "13.10.0")
+    monkeypatch.setattr(cdx_audit, "run_cdx_audit", fake_run)
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir)])
+    ctx.perform_risk_audit = True
+    ctx.depscan_options["scan_profile"] = "deep"
+    scan = pipeline.TypeScan(project_type="bom")
+    scan.bom_files = [
+        _write_bom(bom_dir / f"{name}.cdx.json", _NPM_COMPONENTS) for name in ("a", "b", "c")
+    ]
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+    predictive_runs = [run for run in runs if "--direct-bom-audit" not in run]
+    assert len(predictive_runs) == 2
+    if bound == "targets":
+        assert [run[run.index("--max-targets") + 1] for run in predictive_runs] == ["25", "5"]
+    else:
+        assert [run[run.index("--time-budget-minutes") + 1] for run in predictive_runs] == [
+            "30",
+            "10",
+        ]
+    spent = [detail for detail in scan.audit_caveats if "did not run" in detail]
+    assert len(spent) == 1 and "c.cdx.json" in spent[0]
+    assert ("target cap" if bound == "targets" else "time budget") in spent[0]
