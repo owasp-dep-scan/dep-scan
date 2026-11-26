@@ -1,0 +1,33 @@
+test/data/cdx-audit/direct-report.json
+  s_7318da1b9edd46::t_e7b6f99e25d190 3,5,10-11,16-25,28-51,53-67,69-93,95-96,99-112,116-124,126-146,148-150,152-153,156-203,207-208,214-215,218-219,226-227,231-232,237,240
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_7318da1b9edd46::t_f9c544bc5eb34c 14-20,23-24,32
+test/data/cdx-audit/container-report.json
+  s_7318da1b9edd46::t_71a68620c37b39 1-130
+test/test_pipeline.py
+  s_7318da1b9edd46::t_e5cde27cc52dd6 699-771,773-889
+  s_7318da1b9edd46::t_d41910b4bf2791 772
+  s_7318da1b9edd46::t_05cdd4af1bcdb2 448-486,530-532,536,566,691
+test/test_scan_directory.py
+  s_7318da1b9edd46::t_5e861fc8e51396 1206-1207
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_ddc1cf3625b248 178,180-183,271-273,1344,1878-1879
+  s_7318da1b9edd46::t_ea41b54d0dc57a 1296
+  s_7318da1b9edd46::t_dab71800a4a0c1 1560,1569-1580,1583-1584,1589-1592,1595-1638,1645-1647,1674,1679-1681,1683-1692,1694-1759,1763-1776,1780-1787,1794-1796,1800,1804-1805,1807-1808,1814-1815,1817,1820-1826,1828-1839,1841-1854,1856-1877,1880-1889,1892-1900,1910-1920,1923,1927
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ed3cd1f0746b35364a699e93cac95f400a4c98b",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
