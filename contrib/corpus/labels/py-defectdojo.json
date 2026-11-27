@@ -1,0 +1,295 @@
+{
+  "item": "py-defectdojo",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/amqp",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/bleach",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:pypi/cpe",
+        "occurrences": 34
+      },
+      {
+        "purl": "pkg:pypi/cryptography",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:pypi/cvss",
+        "occurrences": 104
+      },
+      {
+        "purl": "pkg:pypi/defusedxml",
+        "occurrences": 110
+      },
+      {
+        "purl": "pkg:pypi/django",
+        "occurrences": 16171
+      },
+      {
+        "purl": "pkg:pypi/django-crispy-forms",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/django-crum",
+        "occurrences": 45
+      },
+      {
+        "purl": "pkg:pypi/django-debug-toolbar",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/django-environ",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/django-extensions",
+        "occurrences": 38
+      },
+      {
+        "purl": "pkg:pypi/django-fieldsignals",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/django-filter",
+        "occurrences": 676
+      },
+      {
+        "purl": "pkg:pypi/django-imagekit",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/django-multiselectfield",
+        "occurrences": 139
+      },
+      {
+        "purl": "pkg:pypi/django-pghistory",
+        "occurrences": 135
+      },
+      {
+        "purl": "pkg:pypi/django-pgtrigger",
+        "occurrences": 270
+      },
+      {
+        "purl": "pkg:pypi/django-polymorphic",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:pypi/django-ratelimit",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/django-split-settings",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/django-tagulous",
+        "occurrences": 106
+      },
+      {
+        "purl": "pkg:pypi/django-watson",
+        "occurrences": 35
+      },
+      {
+        "purl": "pkg:pypi/djangorestframework",
+        "occurrences": 1065
+      },
+      {
+        "purl": "pkg:pypi/drf-spectacular",
+        "occurrences": 158
+      },
+      {
+        "purl": "pkg:pypi/html2text",
+        "occurrences": 76
+      },
+      {
+        "purl": "pkg:pypi/hyperlink",
+        "occurrences": 51
+      },
+      {
+        "purl": "pkg:pypi/idna",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/kombu",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/lxml",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:pypi/markdown",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/netaddr",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/openpyxl",
+        "occurrences": 19
+      },
+      {
+        "purl": "pkg:pypi/packageurl-python",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/python-dateutil",
+        "occurrences": 206
+      },
+      {
+        "purl": "pkg:pypi/pyyaml",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/redis",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 57
+      },
+      {
+        "purl": "pkg:pypi/six",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:pypi/titlecase",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/urllib3",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/vcrpy-unittest",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/vobject",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/vulners",
+        "occurrences": 2
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/argon2-cffi"
+      },
+      {
+        "purl": "pkg:pypi/blackduck"
+      },
+      {
+        "purl": "pkg:pypi/celery"
+      },
+      {
+        "purl": "pkg:pypi/django-auditlog"
+      },
+      {
+        "purl": "pkg:pypi/django-celery-results"
+      },
+      {
+        "purl": "pkg:pypi/django-dbbackup"
+      },
+      {
+        "purl": "pkg:pypi/django-debug-toolbar-request-history"
+      },
+      {
+        "purl": "pkg:pypi/django-htmx"
+      },
+      {
+        "purl": "pkg:pypi/django-permissions-policy"
+      },
+      {
+        "purl": "pkg:pypi/django-prometheus"
+      },
+      {
+        "purl": "pkg:pypi/django-single-session"
+      },
+      {
+        "purl": "pkg:pypi/django-slack"
+      },
+      {
+        "purl": "pkg:pypi/django-test-migrations"
+      },
+      {
+        "purl": "pkg:pypi/drf-spectacular-sidecar"
+      },
+      {
+        "purl": "pkg:pypi/fontawesomefree"
+      },
+      {
+        "purl": "pkg:pypi/gitpython"
+      },
+      {
+        "purl": "pkg:pypi/humanize"
+      },
+      {
+        "purl": "pkg:pypi/jira"
+      },
+      {
+        "purl": "pkg:pypi/json-log-formatter"
+      },
+      {
+        "purl": "pkg:pypi/parameterized"
+      },
+      {
+        "purl": "pkg:pypi/pillow"
+      },
+      {
+        "purl": "pkg:pypi/psycopg"
+      },
+      {
+        "purl": "pkg:pypi/pygithub"
+      },
+      {
+        "purl": "pkg:pypi/pyjwt"
+      },
+      {
+        "purl": "pkg:pypi/pyopenssl"
+      },
+      {
+        "purl": "pkg:pypi/python-gitlab"
+      },
+      {
+        "purl": "pkg:pypi/ruff"
+      },
+      {
+        "purl": "pkg:pypi/setuptools"
+      },
+      {
+        "purl": "pkg:pypi/sqlalchemy"
+      },
+      {
+        "purl": "pkg:pypi/uwsgi"
+      },
+      {
+        "purl": "pkg:pypi/vcrpy"
+      },
+      {
+        "purl": "pkg:pypi/watchdog"
+      },
+      {
+        "purl": "pkg:pypi/whitenoise"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 44,
+      "unused": 33,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 19691
+    }
+  }
+}

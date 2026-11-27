@@ -1,0 +1,309 @@
+{
+  "item": "py-celery",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/billiard",
+        "occurrences": 137
+      },
+      {
+        "purl": "pkg:pypi/boto3",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/botocore",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/click",
+        "occurrences": 261
+      },
+      {
+        "purl": "pkg:pypi/click-didyoumean",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/click-plugins",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/click-repl",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/colorama",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/couchbase",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/cryptography",
+        "occurrences": 39
+      },
+      {
+        "purl": "pkg:pypi/docutils",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/elastic-transport",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/exceptiongroup",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/greenlet",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:pypi/kombu",
+        "occurrences": 621
+      },
+      {
+        "purl": "pkg:pypi/psutil",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/pyarango",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/pycouchdb",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/pydocumentdb",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/pygments",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/pylibmc",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/pymongo",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/pyperclip",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/pytest-celery",
+        "occurrences": 52
+      },
+      {
+        "purl": "pkg:pypi/pytest-docker-tools",
+        "occurrences": 26
+      },
+      {
+        "purl": "pkg:pypi/python-dateutil",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/python-memcached",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:pypi/setuptools",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/sphinx-celery",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/sqlalchemy",
+        "occurrences": 55
+      },
+      {
+        "purl": "pkg:pypi/tblib",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/tzlocal",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/vine",
+        "occurrences": 34
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/azure-identity"
+      },
+      {
+        "purl": "pkg:pypi/azure-storage-blob"
+      },
+      {
+        "purl": "pkg:pypi/brotli"
+      },
+      {
+        "purl": "pkg:pypi/brotlipy"
+      },
+      {
+        "purl": "pkg:pypi/bumpversion"
+      },
+      {
+        "purl": "pkg:pypi/cassandra-driver"
+      },
+      {
+        "purl": "pkg:pypi/django"
+      },
+      {
+        "purl": "pkg:pypi/elasticsearch"
+      },
+      {
+        "purl": "pkg:pypi/ephem"
+      },
+      {
+        "purl": "pkg:pypi/eventlet"
+      },
+      {
+        "purl": "pkg:pypi/flake8"
+      },
+      {
+        "purl": "pkg:pypi/flake8-docstrings"
+      },
+      {
+        "purl": "pkg:pypi/futures"
+      },
+      {
+        "purl": "pkg:pypi/gevent"
+      },
+      {
+        "purl": "pkg:pypi/google-cloud-firestore"
+      },
+      {
+        "purl": "pkg:pypi/google-cloud-storage"
+      },
+      {
+        "purl": "pkg:pypi/grpcio"
+      },
+      {
+        "purl": "pkg:pypi/isort"
+      },
+      {
+        "purl": "pkg:pypi/kazoo"
+      },
+      {
+        "purl": "pkg:pypi/librabbitmq"
+      },
+      {
+        "purl": "pkg:pypi/mock"
+      },
+      {
+        "purl": "pkg:pypi/moto"
+      },
+      {
+        "purl": "pkg:pypi/mypy"
+      },
+      {
+        "purl": "pkg:pypi/pre-commit"
+      },
+      {
+        "purl": "pkg:pypi/pycurl"
+      },
+      {
+        "purl": "pkg:pypi/pydantic"
+      },
+      {
+        "purl": "pkg:pypi/pydocstyle"
+      },
+      {
+        "purl": "pkg:pypi/pyro4"
+      },
+      {
+        "purl": "pkg:pypi/pytest"
+      },
+      {
+        "purl": "pkg:pypi/pytest-click"
+      },
+      {
+        "purl": "pkg:pypi/pytest-cov"
+      },
+      {
+        "purl": "pkg:pypi/pytest-github-actions-annotate-failures"
+      },
+      {
+        "purl": "pkg:pypi/pytest-order"
+      },
+      {
+        "purl": "pkg:pypi/pytest-rerunfailures"
+      },
+      {
+        "purl": "pkg:pypi/pytest-subtests"
+      },
+      {
+        "purl": "pkg:pypi/pytest-timeout"
+      },
+      {
+        "purl": "pkg:pypi/python-consul2"
+      },
+      {
+        "purl": "pkg:pypi/pyzmq"
+      },
+      {
+        "purl": "pkg:pypi/softlayer-messaging"
+      },
+      {
+        "purl": "pkg:pypi/sphinx"
+      },
+      {
+        "purl": "pkg:pypi/sphinx-autobuild"
+      },
+      {
+        "purl": "pkg:pypi/sphinx-click"
+      },
+      {
+        "purl": "pkg:pypi/sphinx-testing"
+      },
+      {
+        "purl": "pkg:pypi/sphinx2rst"
+      },
+      {
+        "purl": "pkg:pypi/tox"
+      },
+      {
+        "purl": "pkg:pypi/urllib3"
+      },
+      {
+        "purl": "pkg:pypi/wheel"
+      },
+      {
+        "purl": "pkg:pypi/zstandard"
+      }
+    ],
+    "unmapped": {
+      "IPython": 12,
+      "azure": 8,
+      "backports": 1,
+      "bpython": 3,
+      "djcelery": 5,
+      "google": 13,
+      "objgraph": 3,
+      "pybloom_live": 2
+    },
+    "local": {},
+    "counts": {
+      "used": 34,
+      "unused": 48,
+      "unmapped": 8,
+      "local": 0,
+      "certainUses": 1376
+    }
+  }
+}

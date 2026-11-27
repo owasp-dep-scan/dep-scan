@@ -1,0 +1,162 @@
+{
+  "item": "js-express-boilerplate",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/bcryptjs",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/compression",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/cors",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/dotenv",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:npm/express-mongo-sanitize",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express-rate-limit",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/helmet",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/http-status",
+        "occurrences": 38
+      },
+      {
+        "purl": "pkg:npm/joi",
+        "occurrences": 59
+      },
+      {
+        "purl": "pkg:npm/jsonwebtoken",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/moment",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/mongoose",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:npm/morgan",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/nodemailer",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/passport",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/passport-jwt",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/swagger-jsdoc",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/swagger-ui-express",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/validator",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/winston",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:npm/xss-clean",
+        "occurrences": 2
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/coveralls"
+      },
+      {
+        "purl": "pkg:npm/cross-env"
+      },
+      {
+        "purl": "pkg:npm/eslint"
+      },
+      {
+        "purl": "pkg:npm/eslint-config-airbnb-base"
+      },
+      {
+        "purl": "pkg:npm/eslint-config-prettier"
+      },
+      {
+        "purl": "pkg:npm/eslint-plugin-import"
+      },
+      {
+        "purl": "pkg:npm/eslint-plugin-jest"
+      },
+      {
+        "purl": "pkg:npm/eslint-plugin-prettier"
+      },
+      {
+        "purl": "pkg:npm/eslint-plugin-security"
+      },
+      {
+        "purl": "pkg:npm/faker"
+      },
+      {
+        "purl": "pkg:npm/husky"
+      },
+      {
+        "purl": "pkg:npm/jest"
+      },
+      {
+        "purl": "pkg:npm/lint-staged"
+      },
+      {
+        "purl": "pkg:npm/node-mocks-http"
+      },
+      {
+        "purl": "pkg:npm/nodemon"
+      },
+      {
+        "purl": "pkg:npm/pm2"
+      },
+      {
+        "purl": "pkg:npm/prettier"
+      },
+      {
+        "purl": "pkg:npm/supertest"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 22,
+      "unused": 18,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 178
+    }
+  }
+}

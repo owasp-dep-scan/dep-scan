@@ -1,0 +1,315 @@
+{
+  "item": "java-webgoat",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:maven/com.auth0/java-jwt",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:maven/com.auth0/jwks-rsa",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-annotations",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-core",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind",
+        "occurrences": 92
+      },
+      {
+        "purl": "pkg:maven/com.google.guava/guava",
+        "occurrences": 19
+      },
+      {
+        "purl": "pkg:maven/com.microsoft.playwright/playwright",
+        "occurrences": 602
+      },
+      {
+        "purl": "pkg:maven/com.nulab-inc/zxcvbn",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:maven/com.thoughtworks.xstream/xstream",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:maven/commons-io/commons-io",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/commons-logging/commons-logging",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:maven/io.jsonwebtoken/jjwt",
+        "occurrences": 228
+      },
+      {
+        "purl": "pkg:maven/io.micrometer/micrometer-commons",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/io.rest-assured/json-path",
+        "occurrences": 35
+      },
+      {
+        "purl": "pkg:maven/io.rest-assured/rest-assured",
+        "occurrences": 972
+      },
+      {
+        "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/jakarta.persistence/jakarta.persistence-api",
+        "occurrences": 89
+      },
+      {
+        "purl": "pkg:maven/jakarta.servlet/jakarta.servlet-api",
+        "occurrences": 181
+      },
+      {
+        "purl": "pkg:maven/jakarta.validation/jakarta.validation-api",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:maven/jakarta.xml.bind/jakarta.xml.bind-api",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/javax.xml.bind/jaxb-api",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:maven/org.apache.commons/commons-exec",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.apache.commons/commons-lang3",
+        "occurrences": 88
+      },
+      {
+        "purl": "pkg:maven/org.apache.commons/commons-text",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.apache.httpcomponents/httpcore",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/org.apache.logging.log4j/log4j-api",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:maven/org.asciidoctor/asciidoctorj-api",
+        "occurrences": 74
+      },
+      {
+        "purl": "pkg:maven/org.assertj/assertj-core",
+        "occurrences": 46
+      },
+      {
+        "purl": "pkg:maven/org.bitbucket.b_c/jose4j",
+        "occurrences": 92
+      },
+      {
+        "purl": "pkg:maven/org.flywaydb/flyway-core",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:maven/org.hamcrest/hamcrest",
+        "occurrences": 119
+      },
+      {
+        "purl": "pkg:maven/org.jsoup/jsoup",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.junit.jupiter/junit-jupiter-api",
+        "occurrences": 213
+      },
+      {
+        "purl": "pkg:maven/org.projectlombok/lombok",
+        "occurrences": 705
+      },
+      {
+        "purl": "pkg:maven/org.slf4j/slf4j-api",
+        "occurrences": 158
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot",
+        "occurrences": 27
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-actuator",
+        "occurrences": 26
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-jdbc",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-persistence",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-jpa",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-config",
+        "occurrences": 89
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-core",
+        "occurrences": 109
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-crypto",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-web",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-beans",
+        "occurrences": 52
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 288
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 159
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-jdbc",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 1839
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 171
+      },
+      {
+        "purl": "pkg:maven/org.thymeleaf.extras/thymeleaf-extras-springsecurity6",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.thymeleaf/thymeleaf",
+        "occurrences": 45
+      },
+      {
+        "purl": "pkg:maven/org.thymeleaf/thymeleaf-spring6",
+        "occurrences": 22
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:maven/cglib/cglib-nodep"
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.datatype/jackson-datatype-jsr310"
+      },
+      {
+        "purl": "pkg:maven/com.github.terma/javaniotcpproxy"
+      },
+      {
+        "purl": "pkg:maven/com.sun.xml.bind/jaxb-impl"
+      },
+      {
+        "purl": "pkg:maven/org.asciidoctor/asciidoctorj"
+      },
+      {
+        "purl": "pkg:maven/org.flywaydb/flyway-database-hsqldb"
+      },
+      {
+        "purl": "pkg:maven/org.hsqldb/hsqldb"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-properties-migrator"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-jpa"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-jpa-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security-oauth2-client"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-thymeleaf"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-validation"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webmvc"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webmvc-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-test"
+      },
+      {
+        "purl": "pkg:maven/org.webjars/bootstrap"
+      },
+      {
+        "purl": "pkg:maven/org.webjars/jquery"
+      },
+      {
+        "purl": "pkg:maven/org.webjars/webjars-locator-lite"
+      },
+      {
+        "purl": "pkg:maven/org.wiremock/wiremock-standalone"
+      },
+      {
+        "purl": "pkg:maven/xml-resolver/xml-resolver"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 55,
+      "unused": 25,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 6857
+    }
+  }
+}

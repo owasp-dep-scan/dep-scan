@@ -1,0 +1,210 @@
+---
+sidebar_position: 4
+title: Measuring dep-scan
+---
+
+# Measuring dep-scan
+
+dep-scan's central claim is that it joins facts single-purpose tools hold
+apart: an advisory to the code that uses the package, a route to the packages
+its handlers reach, a lifecycle phase to the next, a component to the image
+layer, a component to what ran. Every one of those joins is measured against
+labelled inputs, and the scores are the baseline later changes are measured
+against. The measurement lives in `contrib/corpus/`: a manifest of items, a
+label file per item, the scorer that runs dep-scan on each item and compares
+(`score.py`), and the input resolution it uses (`inputs.py`).
+
+## What the corpus holds
+
+`contrib/corpus/depscan.corpus.json` lists every item with its source, the
+digest that pins it, its licence, the scan dep-scan runs on it, and the label
+file beside it. Three kinds of item make up the corpus:
+
+- **Repository items** are the callsites ground-truth projects (JavaScript
+  and TypeScript, Python, Java, PHP, Ruby) and Juice Shop, each pinned to a
+  commit and checked against the digest of `git archive --format=tar
+  <commit>`. Their usage labels are derived from the callsites oracle
+  output, reduced to package level.
+- **Fixture items** are small projects committed under
+  `contrib/corpus/fixtures/`: supply-chain controls, a malicious-version
+  manifest, one C source that `build.sh` builds twice (with and without
+  hardening) in the scorer's copy of the fixture, a lifecycle project, a
+  two-version monorepo, a minimal ASP.NET API, and a program for the runtime
+  join. Their labels are hand-written against the source, with a `file:line`
+  citation for each expectation, or built into the fixture itself. A fixture
+  is checked by a digest over its committed files, and `.gitattributes` keeps
+  every fixture file free of line-ending conversion.
+- **Data and image items**: the pre-generated repo-test data of
+  `contrib/repotests/`, pulled by digest from GHCR, and one public image
+  pinned by digest.
+
+Categories dep-scan does not produce yet (memory safety, mobile, crypto,
+code) appear in the manifest's `notProduced` list with the issue that tracks
+each, so the score table shows them as gaps instead of leaving them out.
+
+## How labels are written
+
+A label file (`contrib/corpus/labels/<item>.json`) states what a scan must
+find and what it must not. Every section names its source, and the schema
+(`contrib/corpus/depscan-labels.schema.json`) refuses a section without one:
+
+- `oracle` labels are derived from the callsites ground truth by
+  `contrib/corpus/derive_labels.py`, which reduces the oracle output to
+  package level: a package is `used` when the truth holds a certain use of it
+  in the project's own files, and `unused` when the project declares it as a
+  direct dependency and the truth holds no use of it at all. For Python the
+  project's own files say what is direct (requirements files,
+  pyproject.toml, setup.cfg, setup.py, Pipfile and the root package of
+  uv.lock), for JavaScript its package.json, and for the other languages the
+  scan's BOM; the project's own distribution is never a label. A used
+  package's purl comes from the truth's name, never from a scan: npm, Maven,
+  Composer and gem names give the purl directly. A Python import name that
+  is a package or module of the tree is project-local; any other maps
+  through the import names of the declared distributions (a declared
+  psycopg2-binary claims `psycopg2`), an import table, the installed
+  distributions' `top_level.txt` when an environment is available, and
+  finally a distribution of the same name that the project declares, that
+  its lock files install, or that its resolved environment holds (a
+  requirements-format lock made outside the tree, passed with `--lock`). A
+  name that is a module of the project itself is counted under `local`. A
+  module the project imports that neither its tree nor any distribution
+  holds is listed under `missingModules` with the reviewed reason (vulpy's
+  `lib.posts1`), and counts nowhere. A name that still maps to nothing is
+  counted under `unmapped`, and the scorer counts every unmapped name as a
+  used package no analyser matched, a recall miss shown as `unmappedUsed`.
+  No truth row (no file, line or member) is carried.
+- `hand` labels are written by reading the code, with a `file:line` citation
+  for each expected finding or used package, and a sentence for each unused
+  package or forbidden one.
+- `fixture` labels belong to fixtures built for the expectation: the build
+  script in the fixture is the citation.
+
+No used package, expected finding or join record is derived from dep-scan's
+or atom's own output; a label that only restates the product cannot catch
+it. The oracle derivation reads a scan's BOM for one thing only, which
+declared dependencies of a Java, PHP or Ruby project are direct, to name the
+unused packages. A label that
+names a version matches only that version; one without a version matches
+any. When the scorer looks wrong, fix the scorer, never the label.
+
+## Running the scorer
+
+```bash
+# Everything whose inputs are present, cloning missing repository items;
+# clones, scans and pulled repo-test data default to
+# ${XDG_CACHE_HOME:-~/.cache}/depscan/corpus/
+python contrib/corpus/score.py --fetch
+
+# The same, with every scan kept off the network (no database download, no
+# remote cdxgen, no image pull) unless an item names its own profile
+python contrib/corpus/score.py --fetch --profile offline
+
+# Score scan directories that already exist, one per item under the root
+python contrib/corpus/score.py --scan-dir /path/to/scans \
+  --corpus-root /path/to/clones
+
+# The subset a pull request runs, failing on a dropped floor or a fired
+# negative control; the scans root must lie outside the dep-scan checkout
+python contrib/corpus/score.py --subset ci \
+  --floors contrib/corpus/floors.json \
+  --testdata-root repotests-data --scans-root /tmp/corpus-scans
+```
+
+The scorer runs each item's scan through the dep-scan Python API, reads the
+scan directory the scan wrote, and compares against the labels with the same
+`comparable_purl` rule the product itself uses. It writes `score.json`
+(schema: `contrib/corpus/depscan-score.schema.json`) and a Markdown table. A
+scan whose analysis did not run is recorded as not assessed with its reason;
+it is never a miss and never a clean result. A category is not assessed only
+when no project type of the scan completed the stage that produces it. An
+item whose scoring raises (a tool the host lacks, a broken label file) is
+recorded with state `error` and the exception, and the other items are still
+scored; an input the host cannot provide, such as bash for the binary
+fixture's build or git for a repository item, makes the item not assessed.
+With `--items`, `--floors` checks only the selected items' floors. The exit
+code is 0 when the run held, 1 when a floor dropped or a negative control
+fired, and 2 on a usage error such as an unknown item or an unreadable
+floors file.
+
+The reachability numbers per project and per analyser come from the same
+corpus: `python contrib/reachability_eval.py --scan-dir <scans>` scores
+`direct_purls` and the reached purls of both analysers against the `used`
+and `unused` labels for every item that carries them, through the scorer's
+own functions, exits 1 when no item could be scored and 2 when `--items`
+names an item the manifest does not hold. Its snapshot mode keeps the older
+behaviour for a refactor that must not change output:
+`python contrib/reachability_eval.py --check-snapshot /path/to/repo` (or
+`--check`, or just the repository argument) compares the reached sets of the
+repository's reports with `contrib/reachability_eval.baseline.json` and exits
+1 when they differ, and `--snapshot /path/to/repo` records the baseline
+instead.
+
+## The join scores
+
+Each join of the vision's table has at least one labelled item, and the score
+carries one of three outcomes per join: **measured** (with the numbers),
+**partial** (what is measured and what is not), or **gap** (dep-scan cannot
+make the join today, and the draft issue names the producer that would have
+to record what). The current table lives in the score artifact the scheduled
+`Join eval` workflow uploads; the floor file records what each subset item
+scored when the floors were written, each with the commit it was recorded at.
+
+The table below is the state recorded in `contrib/corpus/results/`. The
+full run (`score-full.json`) comes from one machine: the repository items,
+the image and the binary fixture were scored with `--scan-dir` over scans
+made with cdxgen 13.9.0 (built from master) and atom 4.0.3, the other fixture
+items and the java-sec-code repo-test data were scanned again at commit
+c759eaf7 with `--profile offline`, and the labels were derived at commit
+dc2ce3c9. The pull-request subset (`score-ci.json`) was scanned afresh at
+commit b3b7f85a with the tools the workflow installs, cdxgen 13.8.0 and atom
+4.0.2, against the app-2y vulnerability database the job pulls. Checked
+against `floors.json`, both runs have no violation.
+
+| Join | Outcome at this measurement |
+| --- | --- |
+| Advisory to usage and reach | measured on Juice Shop: 99 advisory findings, 24 reached on used packages, none reached on an unused or unlabelled package, 14 on used packages not reached (CVE-2020-15084 on express-jwt among them, the known middleware indirection). Juice Shop ships no lockfile, so these counts follow the registry on the day of the scan |
+| Route to package | measured through dosai on the .NET fixture (both labelled routes match); partial on Juice Shop, a repository item: cdxgen's JavaScript OpenAPI document carries no handler usage maps, so no route binds (producer gap) |
+| Lifecycle phase to phase | measured on the lifecycle fixture in both runs, reported per label: shipped 2 of 2, build-only 1 of 1, dev-only 2 of 2 against the build BOM (a source scan's post-build BOM is empty). cdxgen marks the build-only uglify-js and the dev-only eslint with the same `cdx:npm:package:development` property and names no package a build script runs, so build-only holds as "does not ship" and is not told apart from dev-only (`buildOnlyDistinct` is false) |
+| Component to image layer | gap: no labelled component of the image BOM carries a layer property (producer gap) |
+| Component to runtime | gap: no trace of the fixture program names a component yet (the macOS capture held none, and no Linux capture exists), so the manifest records the join as not produced |
+| Same package, two producers | measured: one component identity for the same Go module from cdxgen's source BOMs and blint's binary BOM, with both producers' records kept. Producers are counted from each BOM's metadata, not its file name, and a scan in which fewer than two ran is not assessed |
+| Same package, two manifests | measured: two components for the two declared versions; both carry cdxgen's `internal:SrcFile`, which names the lock file (`package-lock.json`, `packages/b/package-lock.json`) rather than the declaring package.json |
+
+Reachability against the oracle labels, `SemanticReachability` (the
+`FrameworkReachability` numbers are the same), means over the 30 repository
+projects with reachability evidence: `direct_purls` recall 0.943 and
+precision 0.573, reached-purls recall 0.391 and precision 0.953 (27
+projects reach a labelled package). The Python items moved when their
+directness came from their own manifests: the unused labels of celery,
+httpie and pygoat no longer list dep-scan's own environment, and undeclared
+imports their resolved environment knows (six, urllib3, kombu) became used
+labels. In the full run the supply-chain fixture scores 0.5 recall and 1.0
+precision (the CI-001 control is the known gap), the malware fixture 1.0 and
+1.0. The subset's categories score 1.0 recall and precision for malware and for the
+java-sec-code advisories, and 6 of 7 expected binary-hardening findings with
+precision 1.0 (blint reports no `CHECK_RELRO` on the build linked with
+`-z norelro`); the supply-chain fixture is not assessed under cdxgen 13.8.0,
+whose cdx-audit predates the options dep-scan passes. The categories dep-scan
+does not produce yet (memory safety, mobile, crypto, code) appear in the
+manifest as `notProduced` with their tracking issues, and the score table
+shows them as gaps.
+
+## Adding an item
+
+1. Add the item to `contrib/corpus/depscan.corpus.json`, following the schema
+   in `contrib/corpus/depscan-corpus.schema.json`: source, digest, licence,
+   storage, the scan to run, and the label file's path. A repository item
+   pins a full commit; its digest is the output of
+   `git archive --format=tar <commit> | sha256sum`. A fixture item lives
+   under `contrib/corpus/fixtures/`, and its digest is the output of
+   `python contrib/corpus/score.py --digest-fixture contrib/corpus/fixtures/<name>`.
+2. Write `contrib/corpus/labels/<item>.json`, naming a source for every
+   section, with citations for anything hand-written. For a repository item
+   whose language dep-scan's reachability supports, derive the usage labels
+   with `contrib/corpus/derive_labels.py` once the item's scan has produced
+   its BOM.
+3. Add the item to the CI subset (`"subset": "ci"`) only when the pull-request
+   job can run it: committed fixtures and repo-test data that is already
+   published. Record its floors in `contrib/corpus/floors.json` from a real
+   run of the subset with the tools the workflow installs, with the commit
+   and the tool versions.

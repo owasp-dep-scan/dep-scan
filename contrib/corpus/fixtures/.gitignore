@@ -1,0 +1,8 @@
+bin/
+obj/
+node_modules/
+.venv-trace/
+.DS_Store
+tracebom-fixture/analysis/
+binary-hardening-fixture/binary-protected
+binary-hardening-fixture/binary-unprotected

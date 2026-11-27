@@ -1,0 +1,27 @@
+{
+  "item": "dotnet-fixture",
+  "joins": {
+    "route-package": {
+      "source": "hand",
+      "routes": [
+        {
+          "path": "/weather",
+          "method": "GET",
+          "packages": [
+            "pkg:nuget/newtonsoft.json@13.0.3"
+          ],
+          "citation": "Program.cs:8 maps the route and its handler (Program.cs:8-12) serialises with Newtonsoft.Json at Program.cs:11"
+        },
+        {
+          "path": "/health",
+          "method": "GET",
+          "controls": [
+            "pkg:nuget/newtonsoft.json@13.0.3",
+            "pkg:nuget/serilog@4.2.0"
+          ],
+          "citation": "Program.cs:16 maps the route and its handler on the same line uses nothing third-party, so neither package may name it"
+        }
+      ]
+    }
+  }
+}

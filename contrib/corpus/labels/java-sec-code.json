@@ -1,0 +1,305 @@
+{
+  "item": "java-sec-code",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:maven/cn.hutool/hutool-all",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/com.alibaba/QLExpress",
+        "occurrences": 57
+      },
+      {
+        "purl": "pkg:maven/com.alibaba/fastjson",
+        "occurrences": 32
+      },
+      {
+        "purl": "pkg:maven/com.auth0/java-jwt",
+        "occurrences": 27
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.uuid/java-uuid-generator",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:maven/com.google.guava/guava",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/com.monitorjbl/xlsx-streamer",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:maven/com.squareup.okhttp/okhttp",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/com.thoughtworks.xstream/xstream",
+        "occurrences": 28
+      },
+      {
+        "purl": "pkg:maven/commons-codec/commons-codec",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:maven/commons-httpclient/commons-httpclient",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:maven/commons-io/commons-io",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:maven/commons-lang/commons-lang",
+        "occurrences": 35
+      },
+      {
+        "purl": "pkg:maven/commons-net/commons-net",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/dom4j/dom4j",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/io.jsonwebtoken/jjwt",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:maven/io.springfox/springfox-core",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/io.springfox/springfox-spi",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:maven/io.springfox/springfox-spring-web",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:maven/io.springfox/springfox-swagger2",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/junit/junit",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.apache.commons/commons-digester3",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.apache.httpcomponents/fluent-hc",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/org.apache.httpcomponents/httpasyncclient",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:maven/org.apache.httpcomponents/httpclient",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/org.apache.httpcomponents/httpcore",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:maven/org.apache.logging.log4j/log4j-api",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:maven/org.apache.poi/poi",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.apache.poi/poi-ooxml",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:maven/org.apache.shiro/shiro-core",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core",
+        "occurrences": 389
+      },
+      {
+        "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-websocket",
+        "occurrences": 62
+      },
+      {
+        "purl": "pkg:maven/org.apache.velocity/velocity",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/org.codehaus.groovy/groovy",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:maven/org.jdom/jdom2",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.jsoup/jsoup",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.mybatis/mybatis",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:maven/org.projectlombok/lombok",
+        "occurrences": 34
+      },
+      {
+        "purl": "pkg:maven/org.slf4j/slf4j-api",
+        "occurrences": 291
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-config",
+        "occurrences": 43
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-core",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.springframework.security/spring-security-web",
+        "occurrences": 47
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-beans",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 59
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-expression",
+        "occurrences": 32
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 486
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 38
+      },
+      {
+        "purl": "pkg:maven/org.xmlbeam/xmlprojector",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.yaml/snakeyaml",
+        "occurrences": 9
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-annotations"
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-core"
+      },
+      {
+        "purl": "pkg:maven/com.h2database/h2"
+      },
+      {
+        "purl": "pkg:maven/com.ibm.db2/jcc"
+      },
+      {
+        "purl": "pkg:maven/com.jayway.jsonpath/json-path"
+      },
+      {
+        "purl": "pkg:maven/commons-beanutils/commons-beanutils"
+      },
+      {
+        "purl": "pkg:maven/commons-collections/commons-collections"
+      },
+      {
+        "purl": "pkg:maven/io.springfox/springfox-swagger-ui"
+      },
+      {
+        "purl": "pkg:maven/mysql/mysql-connector-java"
+      },
+      {
+        "purl": "pkg:maven/org.apache.logging.log4j/log4j-core"
+      },
+      {
+        "purl": "pkg:maven/org.apache.tomcat/tomcat-dbcp"
+      },
+      {
+        "purl": "pkg:maven/org.dom4j/dom4j"
+      },
+      {
+        "purl": "pkg:maven/org.javassist/javassist"
+      },
+      {
+        "purl": "pkg:maven/org.jolokia/jolokia-core"
+      },
+      {
+        "purl": "pkg:maven/org.jsecurity/jsecurity"
+      },
+      {
+        "purl": "pkg:maven/org.mybatis.spring.boot/mybatis-spring-boot-starter"
+      },
+      {
+        "purl": "pkg:maven/org.postgresql/postgresql"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-security"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-thymeleaf"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-web"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.cloud/spring-cloud-starter-netflix-eureka-client"
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-test"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 54,
+      "unused": 23,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 2000
+    }
+  }
+}

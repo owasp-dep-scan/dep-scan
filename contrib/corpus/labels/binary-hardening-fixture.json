@@ -1,0 +1,58 @@
+{
+  "item": "binary-hardening-fixture",
+  "findings": {
+    "source": "fixture",
+    "expected": [
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_CANARY"],
+        "citation": "build.sh compiles the unprotected binary with -fno-stack-protector; CHECK_CANARY is blint's rule for a missing stack canary (blint/data/rules.yml)"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_NX"],
+        "citation": "build.sh links the unprotected binary with -Wl,-z,execstack, so its GNU_STACK segment is executable; CHECK_NX is blint's rule for it (blint/data/rules.yml)"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_PIE"],
+        "citation": "build.sh compiles and links the unprotected binary with -fno-pie -no-pie; CHECK_PIE is blint's rule for a position-dependent executable (blint/data/rules.yml)"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_FORTIFY"],
+        "citation": "build.sh compiles the unprotected binary with -U_FORTIFY_SOURCE at -O0, so src/vulnerable.c:13 calls the unchecked strcpy; CHECK_FORTIFY is blint's rule for it (blint/data/rules.yml)"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_RELRO"],
+        "citation": "build.sh links the unprotected binary with -Wl,-z,norelro, so it has no GNU_RELRO segment; CHECK_RELRO is blint's rule for missing RELRO (blint/data/rules.yml)"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_ABI_FLOOR"],
+        "citation": "a binary linked against glibc 2.34 or later imports __libc_start_main@GLIBC_2.34, above the 2.28 baseline_version of blint's CHECK_ABI_FLOOR rule (blint/data/rules.yml); every supported Linux runner has glibc 2.34 or later"
+      },
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-protected",
+        "rules": ["CHECK_ABI_FLOOR"],
+        "citation": "the protected build imports __libc_start_main@GLIBC_2.34 too, above the 2.28 baseline_version of CHECK_ABI_FLOOR (blint/data/rules.yml)"
+      }
+    ],
+    "forbidden": [
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-protected",
+        "rules": ["CHECK_CANARY", "CHECK_NX", "CHECK_PIE", "CHECK_FORTIFY", "CHECK_RELRO"],
+        "reason": "build.sh compiles the protected build with -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fPIE -pie -Wl,-z,relro,-z,now -Wl,-z,noexecstack, so none of the five hardening findings may fire on it"
+      }
+    ]
+  }
+}

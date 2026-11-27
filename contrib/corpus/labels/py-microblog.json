@@ -1,0 +1,200 @@
+{
+  "item": "py-microblog",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/alembic",
+        "occurrences": 56
+      },
+      {
+        "purl": "pkg:pypi/click",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/elasticsearch",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/flask",
+        "occurrences": 224
+      },
+      {
+        "purl": "pkg:pypi/flask-babel",
+        "occurrences": 66
+      },
+      {
+        "purl": "pkg:pypi/flask-httpauth",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/flask-login",
+        "occurrences": 52
+      },
+      {
+        "purl": "pkg:pypi/flask-mail",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/flask-migrate",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/flask-moment",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/flask-sqlalchemy",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/flask-wtf",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/langdetect",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/pyjwt",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/python-dotenv",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/redis",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/rq",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/sqlalchemy",
+        "occurrences": 245
+      },
+      {
+        "purl": "pkg:pypi/werkzeug",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/wtforms",
+        "occurrences": 60
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/aiosmtpd"
+      },
+      {
+        "purl": "pkg:pypi/atpublic"
+      },
+      {
+        "purl": "pkg:pypi/attrs"
+      },
+      {
+        "purl": "pkg:pypi/babel"
+      },
+      {
+        "purl": "pkg:pypi/blinker"
+      },
+      {
+        "purl": "pkg:pypi/certifi"
+      },
+      {
+        "purl": "pkg:pypi/charset-normalizer"
+      },
+      {
+        "purl": "pkg:pypi/defusedxml"
+      },
+      {
+        "purl": "pkg:pypi/dnspython"
+      },
+      {
+        "purl": "pkg:pypi/elastic-transport"
+      },
+      {
+        "purl": "pkg:pypi/email-validator"
+      },
+      {
+        "purl": "pkg:pypi/greenlet"
+      },
+      {
+        "purl": "pkg:pypi/gunicorn"
+      },
+      {
+        "purl": "pkg:pypi/idna"
+      },
+      {
+        "purl": "pkg:pypi/itsdangerous"
+      },
+      {
+        "purl": "pkg:pypi/jinja2"
+      },
+      {
+        "purl": "pkg:pypi/mako"
+      },
+      {
+        "purl": "pkg:pypi/markdown-it-py"
+      },
+      {
+        "purl": "pkg:pypi/markupsafe"
+      },
+      {
+        "purl": "pkg:pypi/mdurl"
+      },
+      {
+        "purl": "pkg:pypi/multidict"
+      },
+      {
+        "purl": "pkg:pypi/packaging"
+      },
+      {
+        "purl": "pkg:pypi/psycopg2-binary"
+      },
+      {
+        "purl": "pkg:pypi/pygments"
+      },
+      {
+        "purl": "pkg:pypi/pysocks"
+      },
+      {
+        "purl": "pkg:pypi/pytz"
+      },
+      {
+        "purl": "pkg:pypi/requests-toolbelt"
+      },
+      {
+        "purl": "pkg:pypi/rich"
+      },
+      {
+        "purl": "pkg:pypi/setuptools"
+      },
+      {
+        "purl": "pkg:pypi/six"
+      },
+      {
+        "purl": "pkg:pypi/typing-extensions"
+      },
+      {
+        "purl": "pkg:pypi/urllib3"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 21,
+      "unused": 32,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 779
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "item": "tracebom-fixture",
+  "joins": {
+    "component-runtime": {
+      "source": "fixture",
+      "packages": [
+        {
+          "purl": "pkg:pypi/pyyaml",
+          "citation": "trace_target.py:1 imports yaml, which trace-fixture.sh installs as the pyyaml distribution; a trace of the run must name it"
+        }
+      ],
+      "notes": "No trace of this fixture names a component yet (the manifest item records the gap); the label states what a capture of the run must name."
+    }
+  }
+}

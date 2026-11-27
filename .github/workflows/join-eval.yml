@@ -1,0 +1,150 @@
+name: Join eval
+
+# The scorer measures dep-scan against the labelled corpus in
+# contrib/corpus/. Pull requests that change an analysis path, the scorer's
+# inputs or the tool pins run the CI subset and fail on a dropped floor or a
+# fired negative control; the scheduled job runs the whole corpus and
+# uploads the score for the docs page.
+on:
+  pull_request:
+    paths:
+      - 'depscan/lib/**'
+      - 'depscan/commands/**'
+      - 'packages/analysis-lib/**'
+      - 'packages/xbom-lib/**'
+      - 'contrib/corpus/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/join-eval.yml'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  # The CI subset: committed fixtures plus one repo-test artifact. The job
+  # reaches the network for the vulnerability database, the test-data pull
+  # and the tool installs, and for nothing else: the supply-chain item runs
+  # under the offline profile, whose direct audit makes no registry lookup.
+  # cdxgen is installed at the version floors.json names, the version the
+  # floors were recorded with.
+  subset:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-2y:v7.0.x-xz"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          python-version: '3.14'
+      - name: Install dep-scan
+        run: |
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cdxgen/cdxgen@13.8.0
+      - name: Get repo test data
+        uses: ./.github/actions/repotests-data
+        with:
+          projects: java-sec-code
+          dest: ${{ runner.temp }}/repotests-data
+          python-executable: uv run --no-sync python
+      - name: Score the CI subset
+        env:
+          CORPUS: ${{ runner.temp }}
+        run: |
+          uv run --no-sync python contrib/corpus/score.py \
+            --subset ci \
+            --floors contrib/corpus/floors.json \
+            --testdata-root "$CORPUS/repotests-data" \
+            --scans-root "$CORPUS/corpus-scans" \
+            --output "$CORPUS/score"
+      - name: Show the score table
+        if: always()
+        run: cat "${{ runner.temp }}/score/score.md"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: join-eval-subset-score
+          path: ${{ runner.temp }}/score
+  # The whole corpus, weekly and on demand: clones the repository items at
+  # their pinned commits, builds the forgejo binary of the two-producers
+  # item, pulls the repo-test artifact the manifest names, and uploads
+  # score.json and the table.
+  full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-full-10y:v7.0.x-xz"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          python-version: '3.14'
+      - name: Install dep-scan
+        run: |
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cdxgen/cdxgen@13.8.0
+      - name: Get repo test data
+        uses: ./.github/actions/repotests-data
+        with:
+          projects: java-sec-code
+          dest: ${{ runner.temp }}/repotests-data
+          python-executable: uv run --no-sync python
+      # The dotnet fixture targets net11.0, so dosai's route records need
+      # the .NET 11 SDK.
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73  # v6.1.0
+        with:
+          dotnet-version: '11.0.x'
+      - name: Set up Go
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
+        with:
+          go-version: '1.26'
+      - name: Build the forgejo binary for the two-producers item
+        env:
+          CLONE: ${{ runner.temp }}/corpus-clones/forgejo-two-producers
+        run: |
+          if [ ! -d "$CLONE/.git" ]; then
+            git clone -q --filter=blob:none https://codeberg.org/forgejo/forgejo "$CLONE"
+          fi
+          cd "$CLONE"
+          git fetch -q --filter=blob:none origin 10615cce5019acefd625c1300cba85d228b045cc
+          git checkout -q --detach 10615cce5019acefd625c1300cba85d228b045cc
+          go build -o forgejo-bin .
+      - name: Score the whole corpus
+        env:
+          CORPUS: ${{ runner.temp }}
+        run: |
+          uv run --no-sync python contrib/corpus/score.py \
+            --fetch \
+            --floors contrib/corpus/floors.json \
+            --corpus-root "$CORPUS/corpus-clones" \
+            --testdata-root "$CORPUS/repotests-data" \
+            --scans-root "$CORPUS/corpus-scans" \
+            --output "$CORPUS/score"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: join-eval-full-score
+          path: ${{ runner.temp }}/score

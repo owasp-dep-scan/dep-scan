@@ -1,0 +1,132 @@
+{
+  "item": "js-nestjs-realworld",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/%40nestjs/common",
+        "occurrences": 167
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/core",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/swagger",
+        "occurrences": 49
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/typeorm",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:npm/argon2",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/class-transformer",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/class-validator",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:npm/express",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:npm/jsonwebtoken",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/passport-jwt",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/slug",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/ts-node",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/typeorm",
+        "occurrences": 87
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/%40nestjs/microservices"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/platform-express"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/testing"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/websockets"
+      },
+      {
+        "purl": "pkg:npm/%40types/jest"
+      },
+      {
+        "purl": "pkg:npm/%40types/node"
+      },
+      {
+        "purl": "pkg:npm/atob"
+      },
+      {
+        "purl": "pkg:npm/crypto"
+      },
+      {
+        "purl": "pkg:npm/crypto-js"
+      },
+      {
+        "purl": "pkg:npm/deep-extend"
+      },
+      {
+        "purl": "pkg:npm/extend"
+      },
+      {
+        "purl": "pkg:npm/jest"
+      },
+      {
+        "purl": "pkg:npm/mysql"
+      },
+      {
+        "purl": "pkg:npm/nodemon"
+      },
+      {
+        "purl": "pkg:npm/reflect-metadata"
+      },
+      {
+        "purl": "pkg:npm/rxjs"
+      },
+      {
+        "purl": "pkg:npm/supertest"
+      },
+      {
+        "purl": "pkg:npm/swagger-ui-express"
+      },
+      {
+        "purl": "pkg:npm/ts-jest"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 13,
+      "unused": 20,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 368
+    }
+  }
+}

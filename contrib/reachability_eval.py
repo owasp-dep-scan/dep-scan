@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""Reachability analyzer evaluation harness (roadmap R1).
+"""Reachability evaluation: real labels by default, a snapshot for refactors.
 
-Runs depscan's FrameworkReachability and SemanticReachability against a repo's
-already-generated ``reports/`` directory (atom slices + SBOMs) and emits a
-deterministic report: reached-set sizes and the sorted sets themselves,
-wall-clock, peak RSS, flows read / unique flows, and — when a VDR is present —
-a vuln x reachability cross-reference.
+The default mode scores dep-scan's reachability against the labelled corpus
+(contrib/corpus/): for every item with reachability labels and a scan
+directory under ``--scan-dir``, both analysers run over the scan directory
+the way a scan does, and their ``direct_purls`` and reached purls are scored
+against the ``used`` and ``unused`` labels. The numbers are recall and
+precision per project and per analyser, reproducible from the corpus
+manifest, the pinned commits, the repo-test data and the scorer.
 
-This is the acceptance ORACLE for the reachability workstream (R3/R4): snapshot
-a baseline, then after any refactor re-run in --check mode. The reached SETS
-must not change except where a fix is explicitly correcting a documented bug,
-and wall-clock / peak RSS must not regress.
+The old snapshot mode stays for a refactor that must not change output: it
+compares the reached sets of one or more reports directories with the
+baseline recorded in ``reachability_eval.baseline.json`` and exits 1 when
+they differ (``--snapshot`` rewrites the baseline instead), so a change that
+moves a reached purl without a documented fix fails. A repository argument,
+``--check-snapshot`` or ``--check`` selects it.
 
 Usage:
-    # Evaluate the default repos (cdxgen + juice-shop) and print a report
+    # Score the corpus items with reachability labels
     python contrib/reachability_eval.py
 
-    # Evaluate specific repos
-    python contrib/reachability_eval.py /path/to/repo1 /path/to/repo2
+    # Score two items only
+    python contrib/reachability_eval.py --items py-vulpy,js-express-realworld
 
-    # Write / update the baseline snapshot next to this script
-    python contrib/reachability_eval.py --snapshot
+    # Snapshot mode: compare a reports directory with the baseline, exit 1
+    # on a difference
+    python contrib/reachability_eval.py --check-snapshot /path/to/repo
 
-    # Fail (exit 1) if reached sets changed vs the baseline
-    python contrib/reachability_eval.py --check
-
-Notes:
-  * No network, no atom/slice regeneration. Reads existing reports/ only.
-  * Timings and RSS are informational (machine dependent); the reached SETS are
-    the correctness contract and are what --check diffs.
+    # Snapshot mode: record the baseline
+    python contrib/reachability_eval.py --snapshot /path/to/repo
 """
 
 from __future__ import annotations
@@ -38,16 +38,19 @@ import glob
 import hashlib
 import json
 import os
-import resource
 import sys
 import time
+from types import SimpleNamespace
 from typing import Dict, List, Optional
 
-# Allow running from a source checkout without installing the workspace.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ANALYSIS_SRC = os.path.join(_HERE, "..", "packages", "analysis-lib", "src")
-if os.path.isdir(_ANALYSIS_SRC):
-    sys.path.insert(0, os.path.abspath(_ANALYSIS_SRC))
+_REPO_ROOT = os.path.abspath(os.path.join(_HERE, ".."))
+for _src in (
+    os.path.join(_REPO_ROOT, "packages", "analysis-lib", "src"),
+    os.path.join(_REPO_ROOT, "packages", "xbom-lib", "src"),
+):
+    if os.path.isdir(_src):
+        sys.path.insert(0, _src)
 
 from analysis_lib import ReachabilityAnalysisKV  # noqa: E402
 from analysis_lib.reachability import (  # noqa: E402
@@ -55,19 +58,27 @@ from analysis_lib.reachability import (  # noqa: E402
     get_reachability_impl,
 )
 
-# Default evaluation repos. cdxgen + juice-shop both ship atom 2.5.x slices in
-# their reports/ dir. Rust/tui is excluded (atom has no Rust support).
-DEFAULT_REPOS = [
-    "/Users/prabhu/work/cdxgen/cdxgen",
-    "/Users/prabhu/sandbox/juice-shop",
-]
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+# The labelled score is the corpus scorer's own: the same comparable key,
+# the same analyser runs and the same recall and precision.
+from contrib.corpus import score as corpus_score  # noqa: E402
 
 BASELINE_FILE = os.path.join(_HERE, "reachability_eval.baseline.json")
 
 ANALYZERS = ("FrameworkReachability", "SemanticReachability")
 
+CORPUS_DIR = os.path.join(_HERE, "corpus")
+
 
 def _peak_rss_mb() -> float:
+    """The peak resident set size in MB, or 0.0 where the platform has no
+    ``resource`` module (Windows)."""
+    try:
+        import resource
+    except ImportError:
+        return 0.0
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     # macOS reports bytes, Linux reports kilobytes.
     return rss / (1024 * 1024) if sys.platform == "darwin" else rss / 1024
@@ -78,7 +89,7 @@ def _slice_stats(reports_dir: str) -> Dict[str, int]:
 
     Independent of the analyzer, so a refactor that changes how slices are read
     can be compared against ground truth. Streams each file element-by-element
-    (mirrors the R3c analyzer path) so the harness itself does not inflate the
+    (mirrors the analyzer path) so the harness itself does not inflate the
     process peak RSS with a full parsed tree and obscure the analyzer's RSS
     improvement.
     """
@@ -126,10 +137,13 @@ def _sorted_set(d: Optional[Dict]) -> List[str]:
 
 
 def evaluate_repo(repo: str) -> Dict:
-    reports_dir = os.path.join(repo, "reports")
+    """The snapshot-mode evaluation of one reports directory."""
+    reports_dir = (
+        os.path.join(repo, "reports") if os.path.isdir(os.path.join(repo, "reports")) else repo
+    )
     result: Dict = {"repo": repo, "reports_dir": reports_dir}
     if not os.path.isdir(reports_dir):
-        result["error"] = "no reports/ dir"
+        result["error"] = "no reports dir"
         return result
     result["slices"] = _slice_stats(reports_dir)
     vdr_file = _find_vdr(reports_dir)
@@ -160,7 +174,7 @@ def evaluate_repo(repo: str) -> Dict:
                 "reached_services": len(services),
                 "endpoint_reached_purls": len(endpoints),
             },
-            # The sorted sets are the correctness contract (what --check diffs).
+            # The sorted sets are the correctness contract (what a check diffs).
             "sets": {
                 "reached_purls": reached,
                 "reached_services": services,
@@ -168,11 +182,6 @@ def evaluate_repo(repo: str) -> Dict:
             },
         }
         if vuln_purls:
-            # R4.0: snapshot the actual vulnerable-purl SETS in each bucket so
-            # --check can detect *which* vulns move between reached /
-            # endpoint_reached / not_reached on a refactor, not just the count.
-            # Contract: reached/endpoint_reached sets must not shrink (recall),
-            # not_reached must not grow unless a fix explicitly corrects a bug.
             reached_set = set(reached)
             endpoint_set = set(endpoints)
             reached_vulns = sorted(p for p in vuln_purls if p in reached_set)
@@ -183,7 +192,6 @@ def evaluate_repo(repo: str) -> Dict:
                 "reached": len(reached_vulns),
                 "endpoint_reached": len(endpoint_vulns),
                 "not_reached": len(not_reached_vulns),
-                # Sorted purl sets — the R4 accuracy contract.
                 "reached_set": reached_vulns,
                 "endpoint_reached_set": endpoint_vulns,
                 "not_reached_set": not_reached_vulns,
@@ -191,6 +199,76 @@ def evaluate_repo(repo: str) -> Dict:
         per_analyzer[analyzer] = entry
     result["analyzers"] = per_analyzer
     return result
+
+
+# ---------------------------------------------------------------------------
+# the labelled score
+
+
+def corpus_items(manifest_path: str, wanted: List[str]):
+    """The manifest items with reachability labels, optionally filtered.
+    Raises ValueError, as the scorer refuses them, when a wanted name is no
+    item of the manifest."""
+    manifest = corpus_score.load_json(manifest_path)
+    if not isinstance(manifest, dict):
+        print(f"Cannot read the corpus manifest '{manifest_path}'.", file=sys.stderr)
+        return []
+    unknown = sorted(set(wanted) - {item.get("name") for item in manifest.get("items") or []})
+    if unknown:
+        raise ValueError("The manifest holds no item named: " + ", ".join(unknown))
+    items = []
+    for item in manifest.get("items") or []:
+        if wanted and item.get("name") not in set(wanted):
+            continue
+        labels = corpus_score.load_json(
+            os.path.join(os.path.dirname(manifest_path), item.get("labels", ""))
+        )
+        if labels and labels.get("reachability"):
+            items.append((item, labels))
+    return items
+
+
+def evaluate_labelled(item: dict, labels: dict, scan_dir: str, corpus_root: str) -> Dict:
+    """The labelled score of one item's scan directory.
+
+    The analysers read the scan directory's BOMs, slices and evidence the way
+    a scan's enrichment stage does, with the item's own source directory for
+    a repository item and the scan directory for data that arrives as BOMs.
+    """
+    name = item["name"]
+    result: Dict = {"item": name, "scan_dir": scan_dir}
+    if not os.path.isdir(scan_dir):
+        result["error"] = "no scan directory"
+        return result
+    src_dir = os.path.join(corpus_root, name) if item.get("kind") == "repository" else None
+    scan_result = SimpleNamespace(reports_dir=scan_dir, findings=[], manifest={}, project_types=[])
+    scan = corpus_score.ItemScan(item, scan_result, src_dir)
+    result["analyzers"] = corpus_score.score_reachability(scan, labels)
+    return result
+
+
+def _print_labelled(report: List[Dict]) -> None:
+    for r in report:
+        print(f"\n{'=' * 72}\n{r['item']}")
+        if r.get("error"):
+            print(f"  ERROR: {r['error']}")
+            continue
+        for analyzer, e in r["analyzers"].items():
+            if e.get("status") != "assessed":
+                print(f"  {analyzer:24} not assessed: {e.get('reason')}")
+                continue
+            for bucket in ("direct", "reached"):
+                c = e[bucket]
+                recall = c["recall"] if c["recall"] is not None else "-"
+                precision = c["precision"] if c["precision"] is not None else "-"
+                print(
+                    f"  {analyzer:24} {bucket:8} recall={recall} precision={precision} "
+                    f"missed={len(c['missed'])} wrong={len(c['wrong'])}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# the snapshot mode
 
 
 def _print_report(report: List[Dict]) -> None:
@@ -215,8 +293,6 @@ def _print_report(report: List[Dict]) -> None:
             )
             if "vuln_cross_ref" in e:
                 x = e["vuln_cross_ref"]
-                # precision = of reached purls, how many are vuln (signal-to-noise);
-                # recall = of vuln purls, how many are reached (coverage).
                 reached_n = c["reached_purls"]
                 precision = (x["reached"] / reached_n) if reached_n else 0.0
                 recall = (x["reached"] / x["vulnerable_purls"]) if x["vulnerable_purls"] else 0.0
@@ -228,14 +304,7 @@ def _print_report(report: List[Dict]) -> None:
 
 
 def _sets_only(report: List[Dict]) -> Dict:
-    """Extract the correctness contract (repo -> analyzer -> sets + cross-ref).
-
-    From R4.0 the contract has two layers: the reached/services/endpoint SETS
-    (the hard contract — must not change unless a fix corrects a documented bug)
-    and the vuln_cross_ref SETS (reached/endpoint_reached/not_reached vuln purls
-    — recall must not drop, precision should hold or improve). Both are
-    snapshotted so --check can attribute any delta to the right layer.
-    """
+    """Extract the correctness contract (repo -> analyzer -> sets + cross-ref)."""
     out = {}
     for r in report:
         if r.get("error"):
@@ -270,61 +339,135 @@ def _diff_set(repo: str, analyzer: str, key: str, baseline_list, current_list) -
         print(f"      - {p}", file=sys.stderr)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("repos", nargs="*", default=None, help="repo paths (default: cdxgen+juice-shop)")
-    ap.add_argument("--snapshot", action="store_true", help="write/update the baseline snapshot")
-    ap.add_argument("--check", action="store_true", help="diff reached sets vs baseline; exit 1 on change")
-    ap.add_argument("--json", action="store_true", help="print full JSON report to stdout")
-    args = ap.parse_args()
-
-    repos = args.repos or DEFAULT_REPOS
+def _run_snapshot(args) -> int:
+    """The old behaviour: compare reached sets with the recorded baseline and
+    exit 1 on a difference, or record the baseline with ``--snapshot``."""
+    repos = args.repos or []
+    if not repos:
+        print(
+            "Snapshot mode needs at least one repository whose reports/ to read; "
+            "the labelled score (the default) reads the corpus instead.",
+            file=sys.stderr,
+        )
+        return 2
     report = [evaluate_repo(r) for r in repos]
-
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         _print_report(report)
-
     if args.snapshot:
         with open(BASELINE_FILE, "w", encoding="utf-8") as fp:
             json.dump(_sets_only(report), fp, indent=2, sort_keys=True)
         print(f"\nBaseline written to {BASELINE_FILE}")
         return 0
+    if not os.path.exists(BASELINE_FILE):
+        print("\nNo baseline; run with --snapshot first.", file=sys.stderr)
+        return 2
+    with open(BASELINE_FILE, encoding="utf-8") as fp:
+        baseline = json.load(fp)
+    current = _sets_only(report)
+    if current == baseline:
+        print("\n[check] reached sets + vuln_cross_ref match baseline. OK")
+        return 0
+    print("\n[check] sets DIFFER from baseline:", file=sys.stderr)
+    for repo in sorted(set(baseline) | set(current)):
+        for analyzer in ANALYZERS:
+            b = baseline.get(repo, {}).get(analyzer, {})
+            c = current.get(repo, {}).get(analyzer, {})
+            b_sets = b.get("sets", {})
+            c_sets = c.get("sets", {})
+            for key in ("reached_purls", "reached_services", "endpoint_reached_purls"):
+                _diff_set(repo, analyzer, key, b_sets.get(key, []), c_sets.get(key, []))
+            b_xref = b.get("vuln_cross_ref", {})
+            c_xref = c.get("vuln_cross_ref", {})
+            for key in ("reached_set", "endpoint_reached_set", "not_reached_set"):
+                _diff_set(
+                    f"{repo} [vuln_cross_ref]",
+                    analyzer,
+                    key,
+                    b_xref.get(key, []),
+                    c_xref.get(key, []),
+                )
+    return 1
 
-    if args.check:
-        if not os.path.exists(BASELINE_FILE):
-            print("\nNo baseline; run with --snapshot first.", file=sys.stderr)
-            return 2
-        with open(BASELINE_FILE, encoding="utf-8") as fp:
-            baseline = json.load(fp)
-        current = _sets_only(report)
-        if current == baseline:
-            print("\n[check] reached sets + vuln_cross_ref match baseline. OK")
-            return 0
-        print("\n[check] sets DIFFER from baseline:", file=sys.stderr)
-        for repo in sorted(set(baseline) | set(current)):
-            for analyzer in ANALYZERS:
-                b = baseline.get(repo, {}).get(analyzer, {})
-                c = current.get(repo, {}).get(analyzer, {})
-                # Layer 1: the hard reached-set contract.
-                b_sets = b.get("sets", {})
-                c_sets = c.get("sets", {})
-                for key in ("reached_purls", "reached_services", "endpoint_reached_purls"):
-                    _diff_set(repo, analyzer, key, b_sets.get(key, []), c_sets.get(key, []))
-                # Layer 2 (R4.0): the VDR accuracy cross-ref.
-                b_xref = b.get("vuln_cross_ref", {})
-                c_xref = c.get("vuln_cross_ref", {})
-                for key in ("reached_set", "endpoint_reached_set", "not_reached_set"):
-                    _diff_set(
-                        f"{repo} [vuln_cross_ref]",
-                        analyzer,
-                        key,
-                        b_xref.get(key, []),
-                        c_xref.get(key, []),
-                    )
+
+def main(argv=None) -> int:
+    """Exit 0 when every labelled item was scored, 1 when every one of them
+    errored, and 2 on a usage error; the snapshot mode exits 1 on a changed
+    reached set."""
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "repos",
+        nargs="*",
+        default=None,
+        help="snapshot mode: repositories whose reports/ directories to read",
+    )
+    ap.add_argument(
+        "--manifest",
+        default=os.path.join(CORPUS_DIR, "depscan.corpus.json"),
+        help="the corpus manifest (default: contrib/corpus/depscan.corpus.json)",
+    )
+    ap.add_argument(
+        "--scan-dir",
+        default=corpus_score.cache_dir("scans"),
+        help="root holding the corpus scan directories, one per item, as the scorer "
+        "writes them (default: %(default)s)",
+    )
+    ap.add_argument("--items", default=None, help="comma-separated item names")
+    ap.add_argument(
+        "--corpus-root",
+        default=corpus_score.cache_dir("clones"),
+        help="directory holding the corpus clones, one per repository item (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--check-snapshot",
+        action="store_true",
+        help="run the snapshot mode instead of the labelled score: compare the reached "
+        "sets of the repositories given with the baseline, exit 1 on a change; "
+        "--snapshot, --check or a repository argument select it too",
+    )
+    ap.add_argument(
+        "--snapshot",
+        action="store_true",
+        help="snapshot mode: write the baseline instead of comparing",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="select the snapshot mode, which compares reached sets with the baseline "
+        "and exits 1 on a change",
+    )
+    ap.add_argument("--json", action="store_true", help="print the full JSON report")
+    args = ap.parse_args(argv)
+
+    if args.check_snapshot or args.snapshot or args.check or args.repos:
+        return _run_snapshot(args)
+    wanted = [n.strip() for n in (args.items or "").split(",") if n.strip()]
+    try:
+        items = corpus_items(args.manifest, wanted)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if not items:
+        print(
+            "No corpus item with reachability labels to score; pass --items or "
+            "check the manifest.",
+            file=sys.stderr,
+        )
+        return 2
+    report = [
+        evaluate_labelled(
+            item, labels, os.path.join(args.scan_dir, item["name"]), args.corpus_root
+        )
+        for item, labels in items
+    ]
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        _print_labelled(report)
+    if all(entry.get("error") for entry in report):
+        print("\nEvery labelled item errored; nothing was scored.", file=sys.stderr)
         return 1
-
     return 0
 
 

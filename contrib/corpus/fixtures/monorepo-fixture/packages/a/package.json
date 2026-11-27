@@ -1,0 +1,10 @@
+{
+  "name": "monorepo-a",
+  "version": "1.0.0",
+  "description": "Sub-project A: declares ms at the newer version and uses it in index.js.",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "ms": "2.1.3"
+  }
+}

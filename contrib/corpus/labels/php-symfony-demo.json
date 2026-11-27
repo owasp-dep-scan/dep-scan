@@ -1,0 +1,266 @@
+{
+  "item": "php-symfony-demo",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:composer/dama/doctrine-test-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/doctrine/collections",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:composer/doctrine/dbal",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:composer/doctrine/doctrine-bundle",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:composer/doctrine/doctrine-fixtures-bundle",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/doctrine/orm",
+        "occurrences": 85
+      },
+      {
+        "purl": "pkg:composer/doctrine/persistence",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:composer/friendsofphp/php-cs-fixer",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/psr/log",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/symfony/clock",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:composer/symfony/console",
+        "occurrences": 106
+      },
+      {
+        "purl": "pkg:composer/symfony/debug-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/dependency-injection",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/symfony/doctrine-bridge",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/symfony/error-handler",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/symfony/event-dispatcher",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/symfony/event-dispatcher-contracts",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/symfony/form",
+        "occurrences": 59
+      },
+      {
+        "purl": "pkg:composer/symfony/framework-bundle",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/symfony/http-foundation",
+        "occurrences": 41
+      },
+      {
+        "purl": "pkg:composer/symfony/http-kernel",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:composer/symfony/intl",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/symfony/mailer",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/symfony/maker-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/mime",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/symfony/monolog-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/options-resolver",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:composer/symfony/password-hasher",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/symfony/routing",
+        "occurrences": 37
+      },
+      {
+        "purl": "pkg:composer/symfony/security-bundle",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/symfony/security-core",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:composer/symfony/security-http",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:composer/symfony/stimulus-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/stopwatch",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/symfony/string",
+        "occurrences": 30
+      },
+      {
+        "purl": "pkg:composer/symfony/translation-contracts",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/symfony/twig-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/ux-icons",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/ux-live-component",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:composer/symfony/ux-twig-component",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfony/validator",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:composer/symfony/web-profiler-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/symfonycasts/sass-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/twig/extra-bundle",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/twig/twig",
+        "occurrences": 17
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:composer/league/commonmark"
+      },
+      {
+        "purl": "pkg:composer/phpstan/phpstan"
+      },
+      {
+        "purl": "pkg:composer/phpstan/phpstan-doctrine"
+      },
+      {
+        "purl": "pkg:composer/phpstan/phpstan-symfony"
+      },
+      {
+        "purl": "pkg:composer/phpunit/phpunit"
+      },
+      {
+        "purl": "pkg:composer/symfony/apache-pack"
+      },
+      {
+        "purl": "pkg:composer/symfony/asset"
+      },
+      {
+        "purl": "pkg:composer/symfony/asset-mapper"
+      },
+      {
+        "purl": "pkg:composer/symfony/browser-kit"
+      },
+      {
+        "purl": "pkg:composer/symfony/css-selector"
+      },
+      {
+        "purl": "pkg:composer/symfony/dotenv"
+      },
+      {
+        "purl": "pkg:composer/symfony/expression-language"
+      },
+      {
+        "purl": "pkg:composer/symfony/flex"
+      },
+      {
+        "purl": "pkg:composer/symfony/html-sanitizer"
+      },
+      {
+        "purl": "pkg:composer/symfony/http-client"
+      },
+      {
+        "purl": "pkg:composer/symfony/polyfill-intl-messageformatter"
+      },
+      {
+        "purl": "pkg:composer/symfony/runtime"
+      },
+      {
+        "purl": "pkg:composer/symfony/translation"
+      },
+      {
+        "purl": "pkg:composer/symfony/yaml"
+      },
+      {
+        "purl": "pkg:composer/twbs/bootstrap"
+      },
+      {
+        "purl": "pkg:composer/twig/intl-extra"
+      },
+      {
+        "purl": "pkg:composer/twig/markdown-extra"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 45,
+      "unused": 22,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 646
+    }
+  }
+}

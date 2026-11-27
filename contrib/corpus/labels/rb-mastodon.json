@@ -1,0 +1,840 @@
+{
+  "item": "rb-mastodon",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:gem/actionmailer",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:gem/actionpack",
+        "occurrences": 53
+      },
+      {
+        "purl": "pkg:gem/actionview",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:gem/active_model_serializers",
+        "occurrences": 156
+      },
+      {
+        "purl": "pkg:gem/activejob",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/activemodel",
+        "occurrences": 67
+      },
+      {
+        "purl": "pkg:gem/activerecord",
+        "occurrences": 1008
+      },
+      {
+        "purl": "pkg:gem/activesupport",
+        "occurrences": 116
+      },
+      {
+        "purl": "pkg:gem/addressable",
+        "occurrences": 118
+      },
+      {
+        "purl": "pkg:gem/annotaterb",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/aws-sdk-core",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:gem/aws-sdk-s3",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/base58",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/base64",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:gem/bloom_fit",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/blurhash",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/bootsnap",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/browser",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/charlock_holmes",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/chewy",
+        "occurrences": 80
+      },
+      {
+        "purl": "pkg:gem/color_diff",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/concurrent-ruby",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:gem/connection_pool",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/csv",
+        "occurrences": 19
+      },
+      {
+        "purl": "pkg:gem/date",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:gem/devise",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:gem/discard",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/doorkeeper",
+        "occurrences": 56
+      },
+      {
+        "purl": "pkg:gem/elastic-transport",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:gem/elasticsearch",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/erb",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/faraday",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:gem/fastimage",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/fog-core",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/fog-openstack",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/globalid",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/haml_lint",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/hashie",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/hcaptcha",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/htmlentities",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/http",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:gem/http_accept_language",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/httpclient",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/httplog",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:gem/i18n",
+        "occurrences": 327
+      },
+      {
+        "purl": "pkg:gem/ipaddr",
+        "occurrences": 45
+      },
+      {
+        "purl": "pkg:gem/jd-paperclip-azure",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/json",
+        "occurrences": 68
+      },
+      {
+        "purl": "pkg:gem/json-ld",
+        "occurrences": 142
+      },
+      {
+        "purl": "pkg:gem/json-schema",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/jwt",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/kaminari",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/kt-paperclip",
+        "occurrences": 85
+      },
+      {
+        "purl": "pkg:gem/letter_opener_web",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/link_header",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/linzer",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:gem/logger",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:gem/mail",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:gem/mario-redis-lock",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/mime-types",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/msgpack",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/net-http",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/net-ldap",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/nokogiri",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:gem/omniauth",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/openid_connect",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/openssl",
+        "occurrences": 51
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-api",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-exporter-otlp",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-active_job",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-active_model_serializers",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-concurrent_ruby",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-excon",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-faraday",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-http",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-http_client",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-net_http",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-pg",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-rack",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-rails",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-redis",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-instrumentation-sidekiq",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/opentelemetry-sdk",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/ox",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:gem/parslet",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:gem/pastel",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/pghero",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/premailer-rails",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/prometheus_exporter",
+        "occurrences": 27
+      },
+      {
+        "purl": "pkg:gem/public_suffix",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/pundit",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:gem/rack",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:gem/rack-cors",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/rack-proxy",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/railties",
+        "occurrences": 465
+      },
+      {
+        "purl": "pkg:gem/rake",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:gem/rdf",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/redcarpet",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:gem/redis",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:gem/rpam2",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/rqrcode",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/rubocop",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/ruby-progressbar",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/ruby-vips",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:gem/rubyzip",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/sanitize",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:gem/scenic",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/securerandom",
+        "occurrences": 29
+      },
+      {
+        "purl": "pkg:gem/sidekiq",
+        "occurrences": 132
+      },
+      {
+        "purl": "pkg:gem/sidekiq-scheduler",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/sidekiq-unique-jobs",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:gem/simple-navigation",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/simple_form",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/starry",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/stoplight",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:gem/strong_migrations",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/strscan",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:gem/terrapin",
+        "occurrences": 25
+      },
+      {
+        "purl": "pkg:gem/thor",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/timeout",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/tty-prompt",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/tty-reader",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/uri",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:gem/uts58",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/warden",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:gem/webauthn",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:gem/xorcist",
+        "occurrences": 3
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:gem/ast"
+      },
+      {
+        "purl": "pkg:gem/bcp47_spec"
+      },
+      {
+        "purl": "pkg:gem/benchmark"
+      },
+      {
+        "purl": "pkg:gem/better_errors"
+      },
+      {
+        "purl": "pkg:gem/bigdecimal"
+      },
+      {
+        "purl": "pkg:gem/binding_of_caller"
+      },
+      {
+        "purl": "pkg:gem/brakeman"
+      },
+      {
+        "purl": "pkg:gem/bundler-audit"
+      },
+      {
+        "purl": "pkg:gem/capybara"
+      },
+      {
+        "purl": "pkg:gem/capybara-playwright-driver"
+      },
+      {
+        "purl": "pkg:gem/childprocess"
+      },
+      {
+        "purl": "pkg:gem/climate_control"
+      },
+      {
+        "purl": "pkg:gem/cocoon"
+      },
+      {
+        "purl": "pkg:gem/css_parser"
+      },
+      {
+        "purl": "pkg:gem/database_cleaner-active_record"
+      },
+      {
+        "purl": "pkg:gem/debug"
+      },
+      {
+        "purl": "pkg:gem/devise-two-factor"
+      },
+      {
+        "purl": "pkg:gem/devise_pam_authenticatable2"
+      },
+      {
+        "purl": "pkg:gem/dotenv"
+      },
+      {
+        "purl": "pkg:gem/drb"
+      },
+      {
+        "purl": "pkg:gem/elasticsearch-api"
+      },
+      {
+        "purl": "pkg:gem/erubi"
+      },
+      {
+        "purl": "pkg:gem/fabrication"
+      },
+      {
+        "purl": "pkg:gem/faker"
+      },
+      {
+        "purl": "pkg:gem/faraday-httpclient"
+      },
+      {
+        "purl": "pkg:gem/fast_blank"
+      },
+      {
+        "purl": "pkg:gem/flatware-rspec"
+      },
+      {
+        "purl": "pkg:gem/haml"
+      },
+      {
+        "purl": "pkg:gem/haml-rails"
+      },
+      {
+        "purl": "pkg:gem/highline"
+      },
+      {
+        "purl": "pkg:gem/hiredis-client"
+      },
+      {
+        "purl": "pkg:gem/i18n-tasks"
+      },
+      {
+        "purl": "pkg:gem/idn-ruby"
+      },
+      {
+        "purl": "pkg:gem/inline_svg"
+      },
+      {
+        "purl": "pkg:gem/irb"
+      },
+      {
+        "purl": "pkg:gem/json-canonicalization"
+      },
+      {
+        "purl": "pkg:gem/json-ld-preloaded"
+      },
+      {
+        "purl": "pkg:gem/language_server-protocol"
+      },
+      {
+        "purl": "pkg:gem/letter_opener"
+      },
+      {
+        "purl": "pkg:gem/lint_roller"
+      },
+      {
+        "purl": "pkg:gem/lograge"
+      },
+      {
+        "purl": "pkg:gem/memory_profiler"
+      },
+      {
+        "purl": "pkg:gem/multi_json"
+      },
+      {
+        "purl": "pkg:gem/mutex_m"
+      },
+      {
+        "purl": "pkg:gem/nio4r"
+      },
+      {
+        "purl": "pkg:gem/omniauth-cas"
+      },
+      {
+        "purl": "pkg:gem/omniauth-rails_csrf_protection"
+      },
+      {
+        "purl": "pkg:gem/omniauth-saml"
+      },
+      {
+        "purl": "pkg:gem/omniauth_openid_connect"
+      },
+      {
+        "purl": "pkg:gem/ostruct"
+      },
+      {
+        "purl": "pkg:gem/parallel"
+      },
+      {
+        "purl": "pkg:gem/parser"
+      },
+      {
+        "purl": "pkg:gem/pg"
+      },
+      {
+        "purl": "pkg:gem/playwright-ruby-client"
+      },
+      {
+        "purl": "pkg:gem/pp"
+      },
+      {
+        "purl": "pkg:gem/prism"
+      },
+      {
+        "purl": "pkg:gem/propshaft"
+      },
+      {
+        "purl": "pkg:gem/puma"
+      },
+      {
+        "purl": "pkg:gem/racc"
+      },
+      {
+        "purl": "pkg:gem/rack-attack"
+      },
+      {
+        "purl": "pkg:gem/rack-test"
+      },
+      {
+        "purl": "pkg:gem/rackup"
+      },
+      {
+        "purl": "pkg:gem/rails"
+      },
+      {
+        "purl": "pkg:gem/rails-i18n"
+      },
+      {
+        "purl": "pkg:gem/rainbow"
+      },
+      {
+        "purl": "pkg:gem/rbs"
+      },
+      {
+        "purl": "pkg:gem/rdf-normalize"
+      },
+      {
+        "purl": "pkg:gem/rdoc"
+      },
+      {
+        "purl": "pkg:gem/readline"
+      },
+      {
+        "purl": "pkg:gem/redis-client"
+      },
+      {
+        "purl": "pkg:gem/regexp_parser"
+      },
+      {
+        "purl": "pkg:gem/reline"
+      },
+      {
+        "purl": "pkg:gem/rexml"
+      },
+      {
+        "purl": "pkg:gem/rspec-github"
+      },
+      {
+        "purl": "pkg:gem/rspec-rails"
+      },
+      {
+        "purl": "pkg:gem/rspec-sidekiq"
+      },
+      {
+        "purl": "pkg:gem/rspec-support"
+      },
+      {
+        "purl": "pkg:gem/rubocop-ast"
+      },
+      {
+        "purl": "pkg:gem/rubocop-capybara"
+      },
+      {
+        "purl": "pkg:gem/rubocop-i18n"
+      },
+      {
+        "purl": "pkg:gem/rubocop-performance"
+      },
+      {
+        "purl": "pkg:gem/rubocop-rails"
+      },
+      {
+        "purl": "pkg:gem/rubocop-rspec"
+      },
+      {
+        "purl": "pkg:gem/rubocop-rspec_rails"
+      },
+      {
+        "purl": "pkg:gem/ruby-prof"
+      },
+      {
+        "purl": "pkg:gem/shoulda-matchers"
+      },
+      {
+        "purl": "pkg:gem/sidekiq-bulk"
+      },
+      {
+        "purl": "pkg:gem/simplecov"
+      },
+      {
+        "purl": "pkg:gem/simplecov-lcov"
+      },
+      {
+        "purl": "pkg:gem/stackprof"
+      },
+      {
+        "purl": "pkg:gem/sysexits"
+      },
+      {
+        "purl": "pkg:gem/temple"
+      },
+      {
+        "purl": "pkg:gem/terminal-table"
+      },
+      {
+        "purl": "pkg:gem/test-prof"
+      },
+      {
+        "purl": "pkg:gem/tilt"
+      },
+      {
+        "purl": "pkg:gem/tsort"
+      },
+      {
+        "purl": "pkg:gem/tzinfo-data"
+      },
+      {
+        "purl": "pkg:gem/unicode-display_width"
+      },
+      {
+        "purl": "pkg:gem/webmock"
+      },
+      {
+        "purl": "pkg:gem/webpush"
+      },
+      {
+        "purl": "pkg:gem/webrick"
+      },
+      {
+        "purl": "pkg:gem/websocket-driver"
+      },
+      {
+        "purl": "pkg:gem/zeitwerk"
+      },
+      {
+        "purl": "pkg:generic/ruby"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 127,
+      "unused": 104,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 3567
+    }
+  }
+}

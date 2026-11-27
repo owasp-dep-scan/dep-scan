@@ -1,0 +1,124 @@
+{
+  "item": "java-mall",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:maven/cn.hutool/hutool-all",
+        "occurrences": 208
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-annotations",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:maven/io.swagger.core.v3/swagger-annotations-jakarta",
+        "occurrences": 1160
+      },
+      {
+        "purl": "pkg:maven/io.swagger.core.v3/swagger-models-jakarta",
+        "occurrences": 127
+      },
+      {
+        "purl": "pkg:maven/jakarta.annotation/jakarta.annotation-api",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/jakarta.validation/jakarta.validation-api",
+        "occurrences": 43
+      },
+      {
+        "purl": "pkg:maven/net.logstash.logback/logstash-logback-encoder",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core",
+        "occurrences": 83
+      },
+      {
+        "purl": "pkg:maven/org.aspectj/aspectjweaver",
+        "occurrences": 34
+      },
+      {
+        "purl": "pkg:maven/org.projectlombok/lombok",
+        "occurrences": 945
+      },
+      {
+        "purl": "pkg:maven/org.slf4j/slf4j-api",
+        "occurrences": 105
+      },
+      {
+        "purl": "pkg:maven/org.springdoc/springdoc-openapi-starter-common",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
+        "occurrences": 114
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-redis",
+        "occurrences": 103
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-beans",
+        "occurrences": 428
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 350
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 65
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-tx",
+        "occurrences": 63
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 1531
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 24
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-configuration-processor"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-aop"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-test"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 23,
+      "unused": 4,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 5446
+    }
+  }
+}

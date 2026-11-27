@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>DotnetFixture</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The /weather handler (Program.cs:8-12) calls this package at
+         Program.cs:11, so the route names it. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Declared but never used anywhere: the unreachability control. -->
+    <PackageReference Include="Serilog" Version="4.2.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+name: Unpinned third-party action with write permissions
+
+on: [push]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Third-party action pinned to a mutable branch
+        uses: example-org/shared-workflows@main

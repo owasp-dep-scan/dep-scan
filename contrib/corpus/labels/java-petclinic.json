@@ -1,0 +1,154 @@
+{
+  "item": "java-petclinic",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:maven/jakarta.persistence/jakarta.persistence-api",
+        "occurrences": 87
+      },
+      {
+        "purl": "pkg:maven/jakarta.validation/jakarta.validation-api",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:maven/jakarta.xml.bind/jakarta.xml.bind-api",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/javax.cache/cache-api",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-cache",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
+        "occurrences": 40
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-jpa",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 83
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 55
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-tx",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 75
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 37
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:maven/com.github.ben-manes.caffeine/caffeine"
+      },
+      {
+        "purl": "pkg:maven/com.h2database/h2"
+      },
+      {
+        "purl": "pkg:maven/com.mysql/mysql-connector-j"
+      },
+      {
+        "purl": "pkg:maven/org.postgresql/postgresql"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-devtools"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-docker-compose"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-cache"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-cache-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-jpa"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-data-jpa-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-restclient"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-restclient-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-thymeleaf"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-thymeleaf-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-validation"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-validation-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webmvc"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-webmvc-test"
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-testcontainers"
+      },
+      {
+        "purl": "pkg:maven/org.testcontainers/testcontainers-junit-jupiter"
+      },
+      {
+        "purl": "pkg:maven/org.testcontainers/testcontainers-mysql"
+      },
+      {
+        "purl": "pkg:maven/org.webjars.npm/bootstrap"
+      },
+      {
+        "purl": "pkg:maven/org.webjars.npm/font-awesome"
+      },
+      {
+        "purl": "pkg:maven/org.webjars/webjars-locator-lite"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 14,
+      "unused": 26,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 441
+    }
+  }
+}

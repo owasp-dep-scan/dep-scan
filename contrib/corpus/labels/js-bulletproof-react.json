@@ -1,0 +1,215 @@
+{
+  "item": "js-bulletproof-react",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/%40hookform/resolvers",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40mswjs/data",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/%40mswjs/http-middleware",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40ngneat/falso",
+        "occurrences": 69
+      },
+      {
+        "purl": "pkg:npm/%40playwright/test",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dialog",
+        "occurrences": 138
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dropdown-menu",
+        "occurrences": 126
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-icons",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-label",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-slot",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-switch",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40storybook/react",
+        "occurrences": 120
+      },
+      {
+        "purl": "pkg:npm/%40tailwindcss/typography",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-query",
+        "occurrences": 233
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-query-devtools",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/react",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/user-event",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40vitejs/plugin-react",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/axios",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/class-variance-authority",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/clsx",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/cors",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/dayjs",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/dompurify",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:npm/isomorphic-dompurify",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/js-cookie",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:npm/lucide-react",
+        "occurrences": 121
+      },
+      {
+        "purl": "pkg:npm/marked",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/msw",
+        "occurrences": 245
+      },
+      {
+        "purl": "pkg:npm/nanoid",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/next",
+        "occurrences": 95
+      },
+      {
+        "purl": "pkg:npm/next-router-mock",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/pino-http",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/react",
+        "occurrences": 530
+      },
+      {
+        "purl": "pkg:npm/react-dom",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/react-error-boundary",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/react-helmet-async",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/react-hook-form",
+        "occurrences": 93
+      },
+      {
+        "purl": "pkg:npm/react-query-auth",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/react-router",
+        "occurrences": 55
+      },
+      {
+        "purl": "pkg:npm/tailwind-merge",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/tailwindcss",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/tailwindcss-animate",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/vite",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/vite-tsconfig-paths",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/vitest",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/zod",
+        "occurrences": 166
+      },
+      {
+        "purl": "pkg:npm/zustand",
+        "occurrences": 6
+      }
+    ],
+    "unused": [],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 49,
+      "unused": 0,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 2366
+    }
+  }
+}

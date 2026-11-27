@@ -1,0 +1,23 @@
+{
+  "item": "monorepo-fixture",
+  "reachability": {
+    "source": "hand",
+    "used": [
+      {
+        "purl": "pkg:npm/ms",
+        "citation": "packages/a/index.js:1 and packages/b/index.js:1 both require ms"
+      }
+    ]
+  },
+  "joins": {
+    "two-manifests": {
+      "source": "hand",
+      "package": "pkg:npm/ms",
+      "versions": [
+        "2.1.3",
+        "0.7.1"
+      ],
+      "citation": "packages/a/package.json:8 declares ms 2.1.3 and packages/b/package.json:8 declares ms 0.7.1; the committed package-lock.json records both under node_modules/ms and packages/b/node_modules/ms"
+    }
+  }
+}

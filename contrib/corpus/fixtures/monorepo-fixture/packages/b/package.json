@@ -1,0 +1,10 @@
+{
+  "name": "monorepo-b",
+  "version": "1.0.0",
+  "description": "Sub-project B: declares the same dependency (ms) at the older version, which npm keeps beside 2.1.3 in a workspace install.",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "ms": "0.7.1"
+  }
+}

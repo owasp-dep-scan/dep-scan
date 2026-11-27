@@ -11,3 +11,6 @@ agent-plugin/gemini-extension.json text eol=lf
 agent-plugin/.zcode-plugin/plugin.json text eol=lf
 agent-plugin/.mcp.json text eol=lf
 agent-plugin/mcp.json text eol=lf
+# The corpus fixtures are digested byte for byte by the corpus scorer, so a
+# CRLF rewrite on Windows checkouts would break every digest.
+contrib/corpus/fixtures/** -text

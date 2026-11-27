@@ -1,0 +1,127 @@
+{
+  "item": "js-vue3-realworld",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/%40mutoe/eslint-config",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40playwright/test",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:npm/%40vitejs/plugin-vue",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/insane",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/marked",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/monocart-coverage-reports",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/pinia",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:npm/rollup-plugin-analyzer",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/vite",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/vue",
+        "occurrences": 102
+      },
+      {
+        "purl": "pkg:npm/vue-router",
+        "occurrences": 16
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/%40pinia/testing"
+      },
+      {
+        "purl": "pkg:npm/%40size-limit/preset-app"
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/jest-dom"
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/user-event"
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/vue"
+      },
+      {
+        "purl": "pkg:npm/%40types/node"
+      },
+      {
+        "purl": "pkg:npm/%40vitest/coverage-v8"
+      },
+      {
+        "purl": "pkg:npm/cross-env"
+      },
+      {
+        "purl": "pkg:npm/eslint"
+      },
+      {
+        "purl": "pkg:npm/eslint-plugin-vuejs-accessibility"
+      },
+      {
+        "purl": "pkg:npm/happy-dom"
+      },
+      {
+        "purl": "pkg:npm/lint-staged"
+      },
+      {
+        "purl": "pkg:npm/msw"
+      },
+      {
+        "purl": "pkg:npm/simple-git-hooks"
+      },
+      {
+        "purl": "pkg:npm/size-limit"
+      },
+      {
+        "purl": "pkg:npm/swagger-typescript-api"
+      },
+      {
+        "purl": "pkg:npm/tsx"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      },
+      {
+        "purl": "pkg:npm/vitest"
+      },
+      {
+        "purl": "pkg:npm/vitest-monocart-coverage"
+      },
+      {
+        "purl": "pkg:npm/vue-tsc"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 11,
+      "unused": 21,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 161
+    }
+  }
+}

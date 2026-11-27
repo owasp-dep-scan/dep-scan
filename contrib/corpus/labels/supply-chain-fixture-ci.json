@@ -1,0 +1,22 @@
+{
+  "item": "supply-chain-fixture-ci",
+  "findings": {
+    "source": "hand",
+    "expected": [
+      {
+        "category": "supply-chain",
+        "purl": "pkg:pypi/requests-git-fixture",
+        "rules": ["PKG-011"],
+        "citation": "requirements.txt:2 declares the package from a git URL, which the offline direct audit's dependency-source pack flags"
+      }
+    ],
+    "forbidden": [
+      {
+        "category": "supply-chain",
+        "purl": "pkg:pypi/requests@2.32.3",
+        "rules": ["PKG-011"],
+        "reason": "requests is declared from the registry with a pinned version in requirements.txt:1, so a direct-manifest-source finding on it is a false positive"
+      }
+    ]
+  }
+}

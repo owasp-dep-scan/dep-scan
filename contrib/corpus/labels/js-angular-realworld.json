@@ -1,0 +1,113 @@
+{
+  "item": "js-angular-realworld",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/%40analogjs/vite-plugin-angular",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40angular/common",
+        "occurrences": 49
+      },
+      {
+        "purl": "pkg:npm/%40angular/core",
+        "occurrences": 310
+      },
+      {
+        "purl": "pkg:npm/%40angular/forms",
+        "occurrences": 53
+      },
+      {
+        "purl": "pkg:npm/%40angular/platform-browser",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40angular/platform-browser-dynamic",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40angular/router",
+        "occurrences": 68
+      },
+      {
+        "purl": "pkg:npm/%40playwright/test",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40rx-angular/template",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/marked",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/rxjs",
+        "occurrences": 104
+      },
+      {
+        "purl": "pkg:npm/vitest",
+        "occurrences": 2
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/%40angular/animations"
+      },
+      {
+        "purl": "pkg:npm/%40angular/build"
+      },
+      {
+        "purl": "pkg:npm/%40angular/cli"
+      },
+      {
+        "purl": "pkg:npm/%40angular/compiler"
+      },
+      {
+        "purl": "pkg:npm/%40angular/compiler-cli"
+      },
+      {
+        "purl": "pkg:npm/%40rx-angular/cdk"
+      },
+      {
+        "purl": "pkg:npm/%40types/marked"
+      },
+      {
+        "purl": "pkg:npm/%40vitest/ui"
+      },
+      {
+        "purl": "pkg:npm/husky"
+      },
+      {
+        "purl": "pkg:npm/jsdom"
+      },
+      {
+        "purl": "pkg:npm/lint-staged"
+      },
+      {
+        "purl": "pkg:npm/playwright"
+      },
+      {
+        "purl": "pkg:npm/prettier"
+      },
+      {
+        "purl": "pkg:npm/tslib"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 12,
+      "unused": 15,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 602
+    }
+  }
+}

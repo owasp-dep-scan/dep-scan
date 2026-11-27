@@ -1,0 +1,10 @@
+{
+  "item": "forgejo-two-producers",
+  "joins": {
+    "two-producers": {
+      "source": "hand",
+      "package": "pkg:golang/github.com/google/go-github/v81",
+      "citation": "go.mod:59 requires github.com/google/go-github/v81 v81.0.0, so the Go source BOM and the binary BOM (go version -m) must both name the same module identity"
+    }
+  }
+}

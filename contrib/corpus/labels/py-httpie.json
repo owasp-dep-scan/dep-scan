@@ -1,0 +1,120 @@
+{
+  "item": "py-httpie",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/charset-normalizer",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/colorama",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/defusedxml",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/importlib-metadata",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:pypi/jinja2",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/multidict",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/pygments",
+        "occurrences": 209
+      },
+      {
+        "purl": "pkg:pypi/pyyaml",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 92
+      },
+      {
+        "purl": "pkg:pypi/requests-toolbelt",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/rich",
+        "occurrences": 93
+      },
+      {
+        "purl": "pkg:pypi/setuptools",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/urllib3",
+        "occurrences": 14
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/flake8"
+      },
+      {
+        "purl": "pkg:pypi/flake8-comprehensions"
+      },
+      {
+        "purl": "pkg:pypi/flake8-deprecated"
+      },
+      {
+        "purl": "pkg:pypi/flake8-mutable"
+      },
+      {
+        "purl": "pkg:pypi/flake8-tuple"
+      },
+      {
+        "purl": "pkg:pypi/pip"
+      },
+      {
+        "purl": "pkg:pypi/pyopenssl"
+      },
+      {
+        "purl": "pkg:pypi/pytest"
+      },
+      {
+        "purl": "pkg:pypi/pytest-cov"
+      },
+      {
+        "purl": "pkg:pypi/pytest-httpbin"
+      },
+      {
+        "purl": "pkg:pypi/pytest-mock"
+      },
+      {
+        "purl": "pkg:pypi/responses"
+      },
+      {
+        "purl": "pkg:pypi/twine"
+      },
+      {
+        "purl": "pkg:pypi/werkzeug"
+      },
+      {
+        "purl": "pkg:pypi/wheel"
+      }
+    ],
+    "unmapped": {
+      "PyInstaller": 2,
+      "pyperf": 8
+    },
+    "local": {},
+    "counts": {
+      "used": 13,
+      "unused": 15,
+      "unmapped": 2,
+      "local": 0,
+      "certainUses": 451
+    }
+  }
+}

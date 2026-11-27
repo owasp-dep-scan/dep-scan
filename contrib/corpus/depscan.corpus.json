@@ -1,0 +1,978 @@
+{
+  "schemaVersion": 1,
+  "description": "dep-scan's labelled corpus: the inputs the scorer measures dep-scan against, one item per row. Repository items are the callsites ground-truth projects and Juice Shop, pinned by commit and checked by the digest of git archive; fixture items are committed beside this manifest; the image is pinned by digest. Labels live in labels/<item>.json and every label names its source.",
+  "notProduced": [
+    {
+      "category": "memory-safety",
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/613"
+    },
+    {
+      "category": "mobile",
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/625"
+    },
+    {
+      "category": "crypto",
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/630"
+    },
+    {
+      "category": "code",
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/605"
+    }
+  ],
+  "items": [
+    {
+      "name": "java-mall",
+      "description": "java, size L, spring-boot multi-module",
+      "source": "https://github.com/macrozheng/mall@dcaa93b3150352e5044708d7211b5bed0af4509f",
+      "sha256": "7d4a2de091919f274466de4a7d950259e716ab652985faa8ec0545870dbf7774",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/macrozheng/mall"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "java"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/java-mall.json"
+    },
+    {
+      "name": "java-petclinic",
+      "description": "java, size S, spring-boot",
+      "source": "https://github.com/spring-projects/spring-petclinic@818c4136ea971c21674525f9053de0d9c7ad8cfe",
+      "sha256": "033d8d17a6be34ac478c57d20dbce3e12e88a6924623765620a7495ccef75c5c",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/spring-projects/spring-petclinic"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "java"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/java-petclinic.json"
+    },
+    {
+      "name": "java-sec-code",
+      "description": "java, size S, spring-boot",
+      "source": "https://github.com/ngcloudsec/java-sec-code@0150106152f6e38b78873a98b0797f28586f8274",
+      "sha256": "04a4b63b6ca5155bc17bee00fa029b156dd385c1d0cd02e36cf65fe5d59a4a64",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/ngcloudsec/java-sec-code"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "java"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/java-sec-code.json"
+    },
+    {
+      "name": "java-shiro",
+      "description": "java, size M, library",
+      "source": "https://github.com/apache/shiro@8e0e4ac7a7af35c8c8ec552b51cf3bd809196622",
+      "sha256": "f3d5fcb2e1549235d1c6d95dff534b2c94f440f1e5d94f9ce41538dae701b961",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/apache/shiro"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "java"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/java-shiro.json",
+      "digestNote": "The callsites manifest records ca3537a4121a..., a git archive tar of this commit whose long paths force pax headers formatted differently across git versions. This digest is the same command's output with git 2.56.1."
+    },
+    {
+      "name": "java-webgoat",
+      "description": "java, size M, spring-boot",
+      "source": "https://github.com/WebGoat/WebGoat@872d6149d4ef29e4929c2f4eda279f7fbedc52e8",
+      "sha256": "0badedda032d225f9fa27af8d3f2ed4a642a53a90129f035786d54be79b41423",
+      "license": "GPL-2.0-or-later",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/WebGoat/WebGoat"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "java"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/java-webgoat.json"
+    },
+    {
+      "name": "js-angular-realworld",
+      "description": "ts, size S, angular",
+      "source": "https://github.com/gothinkster/angular-realworld-example-app@dd99ed2cf39c805d719f943c5d7061a5683d98a8",
+      "sha256": "1b194c08b83d0bd915939d478fcf3f36eccf2a7534b077f1e0ff530284aa492f",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/gothinkster/angular-realworld-example-app"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-angular-realworld.json"
+    },
+    {
+      "name": "js-bulletproof-react",
+      "description": "ts, size M, react",
+      "source": "https://github.com/alan2207/bulletproof-react@9506629ed003a561c6627735480cce4994244bb4",
+      "sha256": "c8920eb124d2183ed6edfa02b403724dc3c1383675d238a98dc12c756ebbf65c",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/alan2207/bulletproof-react"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-bulletproof-react.json"
+    },
+    {
+      "name": "js-cdxgen",
+      "description": "js, size L, node CLI",
+      "source": "https://github.com/cdxgen/cdxgen@90baa955934985ea4a18630e8e382c96bc18a0bd",
+      "sha256": "776d75194726cd55e9794c7207adeef5ab5ad27d50e5ba5fb9f292d238fd3fc3",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/cdxgen/cdxgen"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-cdxgen.json"
+    },
+    {
+      "name": "js-express-boilerplate",
+      "description": "js, size S, express",
+      "source": "https://github.com/hagopj13/node-express-boilerplate@179ae84efec61b14206d0305d941daed6c6d07f9",
+      "sha256": "10e21a6a9d27f8a13da72d875134ff0b1f8ed16d78d18966f1bba2f0ad29a5dc",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/hagopj13/node-express-boilerplate"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-express-boilerplate.json"
+    },
+    {
+      "name": "js-express-realworld",
+      "description": "js, size S, express",
+      "source": "https://github.com/gothinkster/node-express-realworld-example-app@30b68e1e881462b2f4164ea09ab4c4f5699c7b0b",
+      "sha256": "a53e1fa6d585938a07eb0815dd70d5173ae0aed11895a2f586d353f1eb02f498",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/gothinkster/node-express-realworld-example-app"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-express-realworld.json"
+    },
+    {
+      "name": "js-juice-shop",
+      "description": "ts, size M, express+angular",
+      "source": "https://github.com/juice-shop/juice-shop@33518f5a0911e25d9df747b1e70fb7af279a755c",
+      "sha256": "63b64ae82860fde4248566f097c2d1a7d2e295bd4b39cead93d4d93b08bc1404",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/juice-shop/juice-shop"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--profile",
+          "research",
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-juice-shop.json",
+      "notes": "The vulnerable application of the advisory-to-usage join. Juice Shop ships no lockfile (.npmrc sets package-lock=false), so the versions its ranges resolve to, and the advisory counts over them, depend on the day of the scan."
+    },
+    {
+      "name": "js-nestjs-realworld",
+      "description": "ts, size S, nestjs",
+      "source": "https://github.com/lujakob/nestjs-realworld-example-app@c1c2cc4e448b279ff083272df1ac50d20c3304fa",
+      "sha256": "273f824a5cf0553ccbf03c6af8a7aff484a80712b7188e7cf7e40af68274e1e4",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/lujakob/nestjs-realworld-example-app"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-nestjs-realworld.json"
+    },
+    {
+      "name": "js-outline",
+      "description": "ts, size L, koa+react",
+      "source": "https://github.com/outline/outline@def01b0fa83567205077ccbba82fd8442661e79f",
+      "sha256": "5c42bacbc9c39d37230ee897ee371bd95ed6f50b748af5ad82da7dc142f7f516",
+      "license": "BUSL-1.1",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/outline/outline"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-outline.json"
+    },
+    {
+      "name": "js-svelte-realworld",
+      "description": "js, size S, svelte",
+      "source": "https://github.com/sveltejs/realworld@df796708040f5200ec572b28ab7f88ecee5794dd",
+      "sha256": "ea5c750533d20c6d560731e1af1b5b19b2fd15cb6bca0b01f31c93c8a2273953",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/sveltejs/realworld"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-svelte-realworld.json"
+    },
+    {
+      "name": "js-vue3-realworld",
+      "description": "ts, size S, vue",
+      "source": "https://github.com/mutoe/vue3-realworld-example-app@741c215ef0f674f90fcb03c5493a1b3a3a7f1b03",
+      "sha256": "fa720b26e5b45744486f8dadcd6a67ade6f2069229348a9fd0a50ce2055463a2",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/mutoe/vue3-realworld-example-app"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/js-vue3-realworld.json"
+    },
+    {
+      "name": "php-bookstack",
+      "description": "php, size L, laravel",
+      "source": "https://github.com/BookStackApp/BookStack@045c6a98cac21ea86906674bb91d01f375460db6",
+      "sha256": "d9cc25d9f4c5385bab944879767ee8909b27e09290b34275b72b83c9225f37ea",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/BookStackApp/BookStack"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "php"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/php-bookstack.json"
+    },
+    {
+      "name": "php-dvwa",
+      "description": "php, size S, plain",
+      "source": "https://github.com/digininja/DVWA@068d974487a297c155c48722f9fcf7180a83adc4",
+      "sha256": "4ca77a78463ce65741b711081d2b51d1877121a1328a2438568e08e0fa5ee1ed",
+      "license": "GPL-3.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/digininja/DVWA"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "php"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/php-dvwa.json"
+    },
+    {
+      "name": "php-koel",
+      "description": "php, size M, laravel",
+      "source": "https://github.com/koel/koel@4ef99acea71c212e74845522be27ac094b47f0c4",
+      "sha256": "7505e2d7b49f4702f156206df09ac523f3b1af85095e851ccbd17a0976b8125d",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/koel/koel"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "php"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/php-koel.json"
+    },
+    {
+      "name": "php-symfony-demo",
+      "description": "php, size M, symfony",
+      "source": "https://github.com/symfony/demo@8d2e2ef75c3e18df173d8bf2379a14abb58c4c31",
+      "sha256": "4dc102a6776ad02eccd3cc2ed405903eb944991f4cdfada3ce06bcc071c8b785",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/symfony/demo"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "php"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/php-symfony-demo.json"
+    },
+    {
+      "name": "py-celery",
+      "description": "py, size M, library",
+      "source": "https://github.com/celery/celery@9cc0fded120c6fa67655a444116854166279667f",
+      "sha256": "aa1db7bf180cbf5eb1f27f27e241ae94011cf4688b81b2fa88adab55630ba19d",
+      "license": "BSD-3-Clause",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/celery/celery"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-celery.json"
+    },
+    {
+      "name": "py-defectdojo",
+      "description": "py, size L, django+drf+celery",
+      "source": "https://github.com/DefectDojo/django-DefectDojo@523d2f64417f77c4a0ee2d8cd7e356b733d417fe",
+      "sha256": "d61bb9ee56390625eb5e50169574b7526de3641918ce16bf639826b43c269258",
+      "license": "BSD-3-Clause",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/DefectDojo/django-DefectDojo"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-defectdojo.json"
+    },
+    {
+      "name": "py-django-oscar",
+      "description": "py, size M, django",
+      "source": "https://github.com/django-oscar/django-oscar@cdbfc4412c87dd9037d62b04755780b76490373c",
+      "sha256": "fa030f00c70adfe649bf7b7718989c03119c2ab47d885eb3b7019364a7c6552b",
+      "license": "BSD-3-Clause",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/django-oscar/django-oscar"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-django-oscar.json"
+    },
+    {
+      "name": "py-dvpwa",
+      "description": "py, size S, aiohttp",
+      "source": "https://github.com/anxolerd/dvpwa@a1d8f89fac2e57093189853c6527c2b01fc1d9c1",
+      "sha256": "8ba6a7bfebe88bd7adbdf097e9a99c5eebe0aa75c773422e487cbc6ec7b5f30f",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/anxolerd/dvpwa"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-dvpwa.json"
+    },
+    {
+      "name": "py-fastapi-template",
+      "description": "py, size S, fastapi+sqlmodel",
+      "source": "https://github.com/fastapi/full-stack-fastapi-template@cb740b656d7a0a6c5e12c7bf8e50343ec94ee9c7",
+      "sha256": "454f8554e451ae590c54a94c42432afec93aad9e0247da93de6fd483ff405ba5",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/fastapi/full-stack-fastapi-template"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-fastapi-template.json",
+      "digestNote": "The callsites manifest records 46fcfb8e8764..., a git archive tar of this commit whose long paths force pax headers formatted differently across git versions. This digest is the same command's output with git 2.56.1."
+    },
+    {
+      "name": "py-httpie",
+      "description": "py, size M, cli",
+      "source": "https://github.com/httpie/cli@5b604c37c6c67e18e7c3e9aee6c88a8c22b98345",
+      "sha256": "10acb731a7df52d512da4dd234fe3135800bc37071bf0f1c5322272a1352d6b1",
+      "license": "BSD-3-Clause",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/httpie/cli"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-httpie.json"
+    },
+    {
+      "name": "py-microblog",
+      "description": "py, size S, flask+sqlalchemy",
+      "source": "https://github.com/miguelgrinberg/microblog@a975ef64864354867c88e0ed3a17ba7d17dca752",
+      "sha256": "57651850a8ace59e60990cceb7fbb01e972625deafdbe31fe69af9a573c0ec16",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/miguelgrinberg/microblog"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-microblog.json"
+    },
+    {
+      "name": "py-pygoat",
+      "description": "py, size S, django",
+      "source": "https://github.com/adeyosemanputra/pygoat@19d17cc8874861142b330636d068bbde54e86b85",
+      "sha256": "074f68580dcb634c1653388243f4267cec97de8dcd42b85962d09f5f39400c0c",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/adeyosemanputra/pygoat"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-pygoat.json"
+    },
+    {
+      "name": "py-vulpy",
+      "description": "py, size S, flask",
+      "source": "https://github.com/fportantier/vulpy@5249cc8b05a1c37f6b2f757b1cf16a509c327122",
+      "sha256": "b371d854004077202f4206dce35b7fe3e6dd80b8c07ff5b9152cf682050d8851",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/fportantier/vulpy"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/py-vulpy.json"
+    },
+    {
+      "name": "rb-mastodon",
+      "description": "rb, size L, rails",
+      "source": "https://github.com/mastodon/mastodon@b4076a667129c14f6d536700d40379286d3d05c5",
+      "sha256": "f843614f1a900c6d5de699be2816ff34fea20bb1caf97af6df6078e95d17a2a5",
+      "license": "AGPL-3.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/mastodon/mastodon"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "ruby"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/rb-mastodon.json"
+    },
+    {
+      "name": "rb-maybe",
+      "description": "rb, size M, rails",
+      "source": "https://github.com/maybe-finance/maybe@77b5469832758d1cbee1a940f3012a1ae1c74cd3",
+      "sha256": "af3edb68d3c0980188df5f069a760aa4f996a8c5784e8580e91cbb18473aff06",
+      "license": "AGPL-3.0",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/maybe-finance/maybe"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "ruby"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/rb-maybe.json"
+    },
+    {
+      "name": "rb-railsgoat",
+      "description": "rb, size S, rails",
+      "source": "https://github.com/OWASP/railsgoat@f5951f13089d85c979de09e7da3c8c0fb982f94a",
+      "sha256": "3ebe47b5bba2712c005a04f3ce2c23a027e40cbcc297974a9df1d29a078cdfb9",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://github.com/OWASP/railsgoat"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "ruby"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/rb-railsgoat.json"
+    },
+    {
+      "name": "supply-chain-fixture",
+      "description": "A dependency from a git URL (requirements.txt) and workflows using an unpinned third-party action beside a pinned control.",
+      "source": "fixture:supply-chain-fixture",
+      "sha256": "c191ce7f21591541b36b659a088b286283d2d71489654aff86883335f71bf98a",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/supply-chain-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "python",
+          "github"
+        ],
+        "args": [
+          "--checks",
+          "supply-chain"
+        ]
+      },
+      "labels": "labels/supply-chain-fixture.json",
+      "notes": "The direct audit of the github BOM makes no registry lookups: no component of it is registry-eligible."
+    },
+    {
+      "name": "supply-chain-fixture-ci",
+      "description": "The same fixture scanned the way the pull-request job does: the python type only, under the offline profile, whose direct audit asks for no registry lookup.",
+      "source": "fixture:supply-chain-fixture",
+      "sha256": "c191ce7f21591541b36b659a088b286283d2d71489654aff86883335f71bf98a",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/supply-chain-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "python"
+        ],
+        "args": [
+          "--profile",
+          "offline",
+          "--checks",
+          "supply-chain"
+        ]
+      },
+      "labels": "labels/supply-chain-fixture-ci.json",
+      "subset": "ci"
+    },
+    {
+      "name": "malware-fixture",
+      "description": "A manifest-only fixture naming one malicious package version (custom-solutions 20.8.9, MAL-2024-1000) the vulnerability database carries; the package itself is never installed or downloaded.",
+      "source": "fixture:malware-fixture",
+      "sha256": "35c5df52929bf84f817efcdd32085a52f35a5c4d3e2473c3ef4081e6bed80f77",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/malware-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": []
+      },
+      "labels": "labels/malware-fixture.json",
+      "subset": "ci"
+    },
+    {
+      "name": "binary-hardening-fixture",
+      "description": "Two small ELF binaries built from one C source by build.sh, without hardening and with the full set: stack protector, PIE, full RELRO, NX and fortification.",
+      "source": "fixture:binary-hardening-fixture",
+      "sha256": "fa3859d5e9897bcb3f83c0a4ddbc8be83c36213664681414d8cc222d71fd2ca8",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/binary-hardening-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "binary"
+        ],
+        "args": [
+          "--checks",
+          "binary"
+        ]
+      },
+      "labels": "labels/binary-hardening-fixture.json",
+      "subset": "ci",
+      "notes": "The scorer runs build.sh in its copy of the fixture with the system C compiler, so no binary is committed and the digest covers the sources. The build needs Linux (ELF output); elsewhere the item is not assessed with the build's reason.",
+      "build": "build.sh"
+    },
+    {
+      "name": "lifecycle-fixture",
+      "description": "A small JavaScript project with a used shipped dependency, an unused shipped dependency, a build-only dependency its build script runs and a dev-only dependency, with its package-lock committed so the scan needs no install.",
+      "source": "fixture:lifecycle-fixture",
+      "sha256": "da4c73cfbccc08aa52b8a4f79d3850b925efe36d45033edee89b79be8820e405",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/lifecycle-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ],
+        "lifecycles": [
+          "pre-build",
+          "build"
+        ]
+      },
+      "labels": "labels/lifecycle-fixture.json",
+      "subset": "ci",
+      "notes": "The scan asks for the pre-build and build BOMs only: a post-build BOM of a source scan reads an installed environment the scan never creates, so it would be empty. The lifecycle join reads the build BOM's development markers instead."
+    },
+    {
+      "name": "monorepo-fixture",
+      "description": "A two-package npm workspace declaring one dependency (ms) at two versions, with its package-lock committed.",
+      "source": "fixture:monorepo-fixture",
+      "sha256": "cb36ae5dfa83feafd7b2715728b8113986b8b7b13113e150019c2d83fb93ef93",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/monorepo-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "js"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/monorepo-fixture.json",
+      "subset": "ci"
+    },
+    {
+      "name": "dotnet-fixture",
+      "description": "A minimal ASP.NET API whose /weather handler serialises with Newtonsoft.Json, beside /health which uses nothing third-party; dosai records both routes.",
+      "source": "fixture:dotnet-fixture",
+      "sha256": "444ba94d1e0e59c26ad08acb57a7d335443368dcb0b6b960be9904ab930711be",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/dotnet-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "dotnet"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/dotnet-fixture.json"
+    },
+    {
+      "name": "tracebom-fixture",
+      "description": "A short Python program for the component-to-runtime join; trace-fixture.sh records the tracebom command that would trace one run of it.",
+      "source": "fixture:tracebom-fixture",
+      "sha256": "60f668573b121aae1488746e84a348d7d1a9e843e4668095fd9ac62b25a61c15",
+      "license": "Apache-2.0",
+      "storage": {
+        "kind": "fixture",
+        "location": "contrib/corpus/fixtures/tracebom-fixture"
+      },
+      "kind": "fixture",
+      "scan": {
+        "types": [
+          "bom"
+        ],
+        "args": [
+          "--target-kind",
+          "bom-dir"
+        ]
+      },
+      "labels": "labels/tracebom-fixture.json",
+      "notes": "No trace BOM is committed. The labels state what a trace of the run must name once a capture that records components exists.",
+      "notProduced": {
+        "join": "component-runtime",
+        "reason": "no trace of this fixture names a component: the macOS tracebom capture held none, and no Linux capture has been recorded, so the join has no input and is reported as a gap"
+      }
+    },
+    {
+      "name": "forgejo-two-producers",
+      "description": "The forgejo monorepo scanned as Go source and as its built binary in one scan: the same dependency must hold one identity across both producers.",
+      "source": "https://codeberg.org/forgejo/forgejo@10615cce5019acefd625c1300cba85d228b045cc",
+      "sha256": "41e70f7c13a58e38a937eb95a75a026435d89923256a4c2304de072af87a03c1",
+      "license": "MIT",
+      "storage": {
+        "kind": "repository",
+        "location": "https://codeberg.org/forgejo/forgejo"
+      },
+      "kind": "repository",
+      "scan": {
+        "types": [
+          "go",
+          "binary"
+        ],
+        "args": [
+          "--reachability-analyzer",
+          "SemanticReachability"
+        ]
+      },
+      "labels": "labels/forgejo-two-producers.json",
+      "notes": "The commit is the one the forgejo repo-test artifact pins. The binary is built from the clone with go build (no tags); the binary BOM names the modules go version -m records.",
+      "testdata": {
+        "artifact": "forgejo",
+        "digest": "sha256:5a6163582012068a6ced5fce4b1b5bb821bb6d6ddd2f49c4ec1353c38cdf9cd6"
+      }
+    },
+    {
+      "name": "java-sec-code-repotests",
+      "description": "The pre-generated java-sec-code repo-test data, scanned as a BOM directory: its pinned log4j-core and fastjson versions carry known advisories, and the slf4j bridge beside them must stay clean.",
+      "source": "https://github.com/HooliCorp/java-sec-code@7f7f02a9e030736dd4ef4fa657511b26c4c5c016",
+      "sha256": "8588e97394786ef18f6616c6f3bf18ce24b4c66d27e4daf26a0ad7b9d65eeec1",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "bom",
+        "location": "ghcr.io/owasp-dep-scan/depscan-testdata"
+      },
+      "kind": "bom",
+      "scan": {
+        "types": [],
+        "args": [
+          "--target-kind",
+          "bom-dir"
+        ]
+      },
+      "testdata": {
+        "artifact": "java-sec-code",
+        "digest": "sha256:8588e97394786ef18f6616c6f3bf18ce24b4c66d27e4daf26a0ad7b9d65eeec1"
+      },
+      "subset": "ci",
+      "labels": "labels/java-sec-code-repotests.json",
+      "notes": "The digest is the OCI manifest digest of the artifact the lock file pins, and the scorer verifies the pulled files against it with contrib/repotests/validate.py. The commit is the one the repo-test generation pins, not the callsites commit."
+    },
+    {
+      "name": "node-22-alpine",
+      "description": "The official node:22-alpine image pinned by digest, whose components are alpine OS packages and the Node application binaries.",
+      "source": "docker.io/library/node@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a",
+      "sha256": "1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a",
+      "license": "NOASSERTION",
+      "storage": {
+        "kind": "image",
+        "location": "docker.io/library/node:22-alpine"
+      },
+      "kind": "image",
+      "scan": {
+        "types": [
+          "container"
+        ],
+        "args": []
+      },
+      "labels": "labels/node-22-alpine.json"
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "item": "py-pygoat",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/argon2-cffi",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/django",
+        "occurrences": 952
+      },
+      {
+        "purl": "pkg:pypi/django-heroku",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/flask",
+        "occurrences": 68
+      },
+      {
+        "purl": "pkg:pypi/pillow",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/pyjwt",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/pyyaml",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 17
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/argon2-cffi-bindings"
+      },
+      {
+        "purl": "pkg:pypi/asgiref"
+      },
+      {
+        "purl": "pkg:pypi/blinker"
+      },
+      {
+        "purl": "pkg:pypi/certifi"
+      },
+      {
+        "purl": "pkg:pypi/cffi"
+      },
+      {
+        "purl": "pkg:pypi/charset-normalizer"
+      },
+      {
+        "purl": "pkg:pypi/click"
+      },
+      {
+        "purl": "pkg:pypi/crispy-bootstrap4"
+      },
+      {
+        "purl": "pkg:pypi/cryptography"
+      },
+      {
+        "purl": "pkg:pypi/defusedxml"
+      },
+      {
+        "purl": "pkg:pypi/dj-database-url"
+      },
+      {
+        "purl": "pkg:pypi/django-allauth"
+      },
+      {
+        "purl": "pkg:pypi/django-crispy-forms"
+      },
+      {
+        "purl": "pkg:pypi/gunicorn"
+      },
+      {
+        "purl": "pkg:pypi/idna"
+      },
+      {
+        "purl": "pkg:pypi/itsdangerous"
+      },
+      {
+        "purl": "pkg:pypi/jinja2"
+      },
+      {
+        "purl": "pkg:pypi/markupsafe"
+      },
+      {
+        "purl": "pkg:pypi/mccabe"
+      },
+      {
+        "purl": "pkg:pypi/oauthlib"
+      },
+      {
+        "purl": "pkg:pypi/psycopg2"
+      },
+      {
+        "purl": "pkg:pypi/pycodestyle"
+      },
+      {
+        "purl": "pkg:pypi/pycparser"
+      },
+      {
+        "purl": "pkg:pypi/pyflakes"
+      },
+      {
+        "purl": "pkg:pypi/python3-openid"
+      },
+      {
+        "purl": "pkg:pypi/pytz"
+      },
+      {
+        "purl": "pkg:pypi/requests-oauthlib"
+      },
+      {
+        "purl": "pkg:pypi/sqlparse"
+      },
+      {
+        "purl": "pkg:pypi/urllib3"
+      },
+      {
+        "purl": "pkg:pypi/werkzeug"
+      },
+      {
+        "purl": "pkg:pypi/whitenoise"
+      },
+      {
+        "purl": "pkg:pypi/zipp"
+      }
+    ],
+    "unmapped": {
+      "chatterbot": 7,
+      "colorama": 42,
+      "setuptools": 4
+    },
+    "local": {},
+    "counts": {
+      "used": 8,
+      "unused": 32,
+      "unmapped": 3,
+      "local": 0,
+      "certainUses": 1112
+    }
+  }
+}

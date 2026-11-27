@@ -1,0 +1,267 @@
+{
+  "item": "php-koel",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:composer/aws/aws-sdk-php",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:composer/enshrined/svg-sanitize",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/ezyang/htmlpurifier",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/fileeye/mimemap",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/guzzlehttp/guzzle",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:composer/intervention/image",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:composer/james-heinrich/getid3",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/jaybizzle/crawler-detect",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/jwilsson/spotify-web-api-php",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/laravel/ai",
+        "occurrences": 215
+      },
+      {
+        "purl": "pkg:composer/laravel/framework",
+        "occurrences": 7326
+      },
+      {
+        "purl": "pkg:composer/laravel/passkeys",
+        "occurrences": 47
+      },
+      {
+        "purl": "pkg:composer/laravel/prompts",
+        "occurrences": 36
+      },
+      {
+        "purl": "pkg:composer/laravel/sanctum",
+        "occurrences": 19
+      },
+      {
+        "purl": "pkg:composer/laravel/scout",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:composer/laravel/socialite",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:composer/league/flysystem",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/league/flysystem-webdav",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/mlocati/ip-lib",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:composer/monolog/monolog",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/nesbot/carbon",
+        "occurrences": 51
+      },
+      {
+        "purl": "pkg:composer/owen-it/laravel-auditing",
+        "occurrences": 44
+      },
+      {
+        "purl": "pkg:composer/paragonie/constant_time_encoding",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/phanan/poddle",
+        "occurrences": 34
+      },
+      {
+        "purl": "pkg:composer/phlak/semver",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:composer/psr/http-client",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/psr/http-message",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/robthree/twofactorauth",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:composer/sabre/dav",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/saloonphp/saloon",
+        "occurrences": 281
+      },
+      {
+        "purl": "pkg:composer/sentry/sentry-laravel",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/spatie/flysystem-dropbox",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/spatie/laravel-permission",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:composer/symfony/console",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:composer/symfony/finder",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:composer/symfony/http-foundation",
+        "occurrences": 49
+      },
+      {
+        "purl": "pkg:composer/symfony/http-kernel",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:composer/symfony/process",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:composer/teamtnt/laravel-scout-tntsearch-driver",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/teamtnt/tntsearch",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/tiben/crontab-manager",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:composer/web-auth/webauthn-lib",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:composer/webmozart/assert",
+        "occurrences": 74
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:composer/algolia/algoliasearch-client-php"
+      },
+      {
+        "purl": "pkg:composer/brianium/paratest"
+      },
+      {
+        "purl": "pkg:composer/carthage-software/mago"
+      },
+      {
+        "purl": "pkg:composer/fakerphp/faker"
+      },
+      {
+        "purl": "pkg:composer/http-interop/http-factory-guzzle"
+      },
+      {
+        "purl": "pkg:composer/larastan/larastan"
+      },
+      {
+        "purl": "pkg:composer/laravel/boost"
+      },
+      {
+        "purl": "pkg:composer/laravel/helpers"
+      },
+      {
+        "purl": "pkg:composer/laravel/nightwatch"
+      },
+      {
+        "purl": "pkg:composer/laravel/reverb"
+      },
+      {
+        "purl": "pkg:composer/laravel/tinker"
+      },
+      {
+        "purl": "pkg:composer/laravel/ui"
+      },
+      {
+        "purl": "pkg:composer/league/flysystem-aws-s3-v3"
+      },
+      {
+        "purl": "pkg:composer/league/flysystem-sftp-v3"
+      },
+      {
+        "purl": "pkg:composer/meilisearch/meilisearch-php"
+      },
+      {
+        "purl": "pkg:composer/mockery/mockery"
+      },
+      {
+        "purl": "pkg:composer/nunomaduro/collision"
+      },
+      {
+        "purl": "pkg:composer/opcodesio/log-viewer"
+      },
+      {
+        "purl": "pkg:composer/php-mock/php-mock-mockery"
+      },
+      {
+        "purl": "pkg:composer/phpunit/phpunit"
+      },
+      {
+        "purl": "pkg:composer/predis/predis"
+      },
+      {
+        "purl": "pkg:composer/pusher/pusher-php-server"
+      },
+      {
+        "purl": "pkg:composer/roave/security-advisories"
+      },
+      {
+        "purl": "pkg:composer/saloonphp/laravel-plugin"
+      },
+      {
+        "purl": "pkg:composer/spatie/laravel-ray"
+      }
+    ],
+    "unmapped": {},
+    "local": {},
+    "counts": {
+      "used": 43,
+      "unused": 25,
+      "unmapped": 0,
+      "local": 0,
+      "certainUses": 8464
+    }
+  }
+}

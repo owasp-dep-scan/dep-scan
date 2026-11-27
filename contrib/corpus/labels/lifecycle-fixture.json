@@ -1,0 +1,61 @@
+{
+  "item": "lifecycle-fixture",
+  "reachability": {
+    "source": "hand",
+    "used": [
+      {
+        "purl": "pkg:npm/express",
+        "citation": "server.js:4 requires express and the whole application hangs off it"
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/chalk@5.6.2",
+        "reason": "chalk is declared in package.json dependencies (package.json:12, resolved to 5.6.2 in package-lock.json) but no file in the fixture requires or imports it"
+      }
+    ]
+  },
+  "findings": {
+    "source": "hand",
+    "forbidden": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/eslint",
+        "reason": "eslint is a devDependency of a fixture whose code never imports it; a vulnerability finding on it would have to be justified, and none of its pinned line carries an advisory the fixture cares about"
+      }
+    ]
+  },
+  "joins": {
+    "lifecycle-phase": {
+      "source": "hand",
+      "notes": "The scan is a source scan, so its post-build BOM is empty and the build BOM's development markers say what must not ship.",
+      "packages": [
+        {
+          "purl": "pkg:npm/express",
+          "phase": "shipped",
+          "citation": "package.json:13 declares express in dependencies and server.js:4 uses it at run time, so the shipped artifact carries it"
+        },
+        {
+          "purl": "pkg:npm/chalk@5.6.2",
+          "phase": "shipped",
+          "citation": "package.json:12 declares chalk in dependencies (5.6.2 in package-lock.json), so an install ships it even though the code never uses it"
+        },
+        {
+          "purl": "pkg:npm/chalk@4.1.2",
+          "phase": "dev-only",
+          "citation": "package-lock.json:738 records chalk 4.1.2 at node_modules/eslint/node_modules/chalk with dev true: it arrives only through eslint, so it must not ship"
+        },
+        {
+          "purl": "pkg:npm/eslint",
+          "phase": "dev-only",
+          "citation": "package.json:16 declares eslint in devDependencies and only the lint script (package.json:9) runs it, so it must not ship"
+        },
+        {
+          "purl": "pkg:npm/uglify-js",
+          "phase": "build-only",
+          "citation": "package.json:17 declares uglify-js in devDependencies and only the build script (package.json:8) runs it, so it must not ship"
+        }
+      ]
+    }
+  }
+}
