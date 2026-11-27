@@ -2110,50 +2110,82 @@ def test_the_dry_run_refuses_a_reports_dir_outside_the_roots(open_session, tmp_p
 # --- the decisions tools -------------------------------------------------------------
 
 
-def test_get_decisions_returns_the_entries_and_the_gate(
-    open_session, tmp_path, make_scan_dir
-):
-    from analysis_lib.findings.decisions import load_decisions
+LIVE_ENTRY = "\n".join(
+    [
+        "[[triage]]",
+        'advisory = "CVE-2024-1111"',
+        'purl = "pkg:pypi/requests"',
+        'state = "in_triage"',
+        'author = "alice"',
+        "",
+    ]
+)
 
+
+def _project_decisions(tmp_path, text=LIVE_ENTRY):
+    """Give the project make_scan_dir scans its own decisions file."""
+    path = tmp_path / "src" / ".depscan" / "decisions.toml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _proposal(scan_dir, **extra):
+    arguments = {
+        "scan_dir": str(scan_dir),
+        "advisory": "CVE-2024-2222",
+        "purl": "pkg:pypi/requests",
+        "state": "not_affected",
+        "justification": "code_not_reachable",
+        "detail": "The client never calls the affected route",
+        "proposed_by": "triage-agent session 8123",
+    }
+    arguments.update(extra)
+    return arguments
+
+
+def test_get_decisions_returns_the_entries_and_the_gate(open_session, tmp_path, make_scan_dir):
+    _project_decisions(tmp_path)
+    # api.scan reads the scanned directory's own decisions file, as the
+    # scan verb does, and records it relative to the source root.
     scan_dir = make_scan_dir("with-decisions")
-    decisions_file = tmp_path / "decisions.toml"
-    decisions_file.write_text(
-        "\n".join(
-            [
-                "[[triage]]",
-                'advisory = "CVE-2024-1111"',
-                'purl = "pkg:pypi/requests"',
-                'state = "in_triage"',
-                'author = "alice"',
-            ]
-        ),
-        encoding="utf-8",
-    )
-    # A scan with the decisions file records it in the manifest.
-    result = api.scan(
-        api.scan_options(
-            src_dir_image=str(tmp_path / "src"),
-            project_type=["python"],
-            bom_engine="CdxgenGenerator",
-            reports_dir=str(scan_dir),
-            no_banner=True,
-        ),
-        render=False,
-        decisions=load_decisions(str(decisions_file)),
-    )
-    assert result.expectations is not None
+    manifest = json.loads((scan_dir / "depscan.manifest.json").read_text(encoding="utf-8"))
+    assert manifest["decisions"]["file"] == ".depscan/decisions.toml"
 
     async def scenario(session):
         return await call_document(
-            session, "get_decisions", {"scan_dir": str(scan_dir)}, "depscan-mcp-get_decisions-output"
+            session,
+            "get_decisions",
+            {"scan_dir": str(scan_dir)},
+            "depscan-mcp-get_decisions-output",
         )
 
     document = drive(open_session, scenario, (tmp_path,))
     assert document["decisions"]["selectedBy"] == "default"
     assert len(document["entries"]) == 1
     assert document["entries"][0]["status"] == "live"
+    assert document["entries"][0]["handle"].startswith("tr-")
     assert document["entries"][0]["matches"], "the entry matched the finding"
     assert document["gate"] is not None
+    assert "warnings" not in document
+
+
+def test_get_decisions_warns_when_the_recorded_file_is_gone(open_session, tmp_path, make_scan_dir):
+    decisions_file = _project_decisions(tmp_path)
+    scan_dir = make_scan_dir("gone")
+    decisions_file.unlink()
+
+    async def scenario(session):
+        return await call_document(
+            session,
+            "get_decisions",
+            {"scan_dir": str(scan_dir)},
+            "depscan-mcp-get_decisions-output",
+        )
+
+    document = drive(open_session, scenario, (tmp_path,))
+    assert document["entries"] == []
+    assert "cannot be found" in document["warnings"][0]
 
 
 def test_propose_triage_without_the_grant_is_refused(open_session, tmp_path, make_scan_dir):
@@ -2176,83 +2208,123 @@ def test_propose_triage_without_the_grant_is_refused(open_session, tmp_path, mak
     assert "--allow-propose" in message
 
 
-def test_propose_triage_writes_a_proposal_under_an_allowed_root(
+def test_propose_triage_writes_a_proposal_into_the_project_file(
     open_session, tmp_path, make_scan_dir
 ):
-    from analysis_lib.findings.decisions import load_decisions
-
+    decisions_file = _project_decisions(tmp_path)
     scan_dir = make_scan_dir("propose-here")
-    decisions_file = tmp_path / "decisions.toml"
-    decisions_file.write_text(
-        "\n".join(
-            [
-                "[[triage]]",
-                'advisory = "CVE-2024-1111"',
-                'purl = "pkg:pypi/requests"',
-                'state = "in_triage"',
-                'author = "alice"',
-            ]
-        ),
-        encoding="utf-8",
-    )
-    api.scan(
-        api.scan_options(
-            src_dir_image=str(tmp_path / "src"),
-            project_type=["python"],
-            bom_engine="CdxgenGenerator",
-            reports_dir=str(scan_dir),
-            no_banner=True,
-        ),
-        render=False,
-        decisions=load_decisions(str(decisions_file)),
-    )
 
     async def scenario(session):
         return await call_document(
-            session,
-            "propose_triage",
-            {
-                "decisions_file": str(decisions_file),
-                "advisory": "CVE-2024-2222",
-                "purl": "pkg:pypi/requests",
-                "state": "not_affected",
-                "justification": "code_not_reachable",
-                "detail": "The client never calls the affected route",
-                "proposed_by": "triage-agent session 8123",
-            },
-            "depscan-mcp-propose_triage-output",
+            session, "propose_triage", _proposal(scan_dir), "depscan-mcp-propose_triage-output"
         )
 
     document = drive(open_session, scenario, (tmp_path,), allow_propose=True)
     assert document["result"] == "proposed"
     assert document["entry"]["status"] == "proposal"
+    assert document["entry"]["handle"].startswith("tr-")
+    assert document["decisionsFile"].endswith("src/.depscan/decisions.toml")
     text = decisions_file.read_text(encoding="utf-8")
+    assert text.startswith(LIVE_ENTRY)
     assert 'proposed_by = "triage-agent session 8123"' in text
     assert 'author = "alice"' not in text.split("[[triage]]")[2], (
         "the proposal never sets an author"
     )
 
 
-def test_propose_triage_is_confined_to_the_allowed_roots(open_session, tmp_path):
-    outside = tmp_path / "outside"
-    outside.mkdir()
-    decisions_file = outside / "decisions.toml"
-    decisions_file.write_text("[[triage]]\n", encoding="utf-8")
-    allowed = tmp_path / "allowed"
-    allowed.mkdir()
+def test_propose_triage_never_changes_a_person_decision(open_session, tmp_path, make_scan_dir):
+    decisions_file = _project_decisions(
+        tmp_path,
+        "\n".join(
+            [
+                "# reviewed in PR 12",
+                "[[triage]]",
+                'advisory = "CVE-2024-2222"',
+                'purl = "pkg:pypi/requests"',
+                'state = "exploitable"',
+                'detail = "confirmed exploitable"',
+                'author = "alice"',
+                'approver = "bob"',
+                "",
+            ]
+        ),
+    )
+    before = decisions_file.read_text(encoding="utf-8")
+    scan_dir = make_scan_dir("person")
+
+    async def scenario(session):
+        return await call_document(
+            session, "propose_triage", _proposal(scan_dir), "depscan-mcp-propose_triage-output"
+        )
+
+    document = drive(open_session, scenario, (tmp_path,), allow_propose=True)
+    assert document["result"] == "proposed"
+    assert decisions_file.read_text(encoding="utf-8").startswith(before)
+    listing = api.triage_entries(file=str(decisions_file))
+    assert [entry["status"] for entry in listing["entries"]] == ["live", "proposal"]
+    assert listing["entries"][0]["state"] == "exploitable"
+
+
+def test_propose_triage_creates_only_the_project_decisions_file(
+    open_session, tmp_path, make_scan_dir
+):
+    scan_dir = make_scan_dir("no-file")
+    created = tmp_path / "src" / ".depscan" / "decisions.toml"
+    assert not created.exists()
+
+    async def scenario(session):
+        return await call_document(
+            session, "propose_triage", _proposal(scan_dir), "depscan-mcp-propose_triage-output"
+        )
+
+    document = drive(open_session, scenario, (tmp_path,), allow_propose=True)
+    assert document["result"] == "proposed"
+    assert created.is_file()
+
+
+def test_propose_triage_refuses_to_create_another_file(
+    open_session, tmp_path, make_scan_dir, monkeypatch
+):
+    scan_dir = make_scan_dir("elsewhere")
+    target = tmp_path / "src" / "app" / "settings.py"
+    monkeypatch.setenv("DEPSCAN_DECISIONS", str(target))
+
+    async def scenario(session):
+        return await call_error(session, "propose_triage", _proposal(scan_dir))
+
+    message = drive(open_session, scenario, (tmp_path,), allow_propose=True)
+    assert ".toml" in message or "creates no file" in message
+    assert not target.exists()
+    assert not target.parent.exists()
+
+
+def test_propose_triage_takes_no_free_file_path(open_session, tmp_path, make_scan_dir):
+    scan_dir = make_scan_dir("free-path")
 
     async def scenario(session):
         return await call_error(
             session,
             "propose_triage",
-            {
-                "decisions_file": str(decisions_file),
-                "advisory": "CVE-2024-1111",
-                "purl": "pkg:pypi/requests",
-                "state": "in_triage",
-                "proposed_by": "triage-agent session 1",
-            },
+            _proposal(scan_dir, decisions_file=str(tmp_path / "anything.toml")),
         )
 
-    message = drive(open_session, scenario, (allowed,), allow_propose=True)
+    message = drive(open_session, scenario, (tmp_path,), allow_propose=True)
+    assert "decisions_file" in message
+    assert not (tmp_path / "anything.toml").exists()
+
+
+def test_propose_triage_is_confined_to_the_allowed_roots(
+    open_session, tmp_path, make_scan_dir, monkeypatch
+):
+    scan_dir = make_scan_dir("confined")
+    outside = tmp_path.parent / f"{tmp_path.name}-outside" / "decisions.toml"
+    outside.parent.mkdir(exist_ok=True)
+    outside.write_text(LIVE_ENTRY, encoding="utf-8")
+    monkeypatch.setenv("DEPSCAN_DECISIONS", str(outside))
+
+    async def scenario(session):
+        return await call_error(session, "propose_triage", _proposal(scan_dir))
+
+    message = drive(open_session, scenario, (tmp_path,), allow_propose=True)
     assert "outside" in message or "roots" in message
+    assert outside.read_text(encoding="utf-8") == LIVE_ENTRY

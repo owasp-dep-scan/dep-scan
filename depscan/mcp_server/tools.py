@@ -797,34 +797,48 @@ def run_scan_tool(args, roots, allow_scans=False, allow_propose=False):
 
 def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
     """The decisions of one scan directory: the entries with their status,
-    the stale and expired ones, and the last gate result."""
+    the stale and expired ones, and the last gate result.
+
+    The decisions file is the one the scan recorded, found the way
+    ``depscan report`` finds it (relative to the scanned source root, the
+    scan directory or its parent), and read only inside the allowed roots.
+    A recorded file that cannot be found, or that changed since the scan,
+    is named in ``warnings``.
+    """
     del allow_scans, allow_propose
+    from depscan.lib import decisions as decisions_lib
+
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
-    recorded = (result.manifest or {}).get("decisions") or {}
+    record, found = decisions_lib.locate_recorded_file(result.manifest, scan_dir)
     document = {
         "scanDir": json_path(scan_dir),
-        "decisions": recorded or None,
+        "decisions": record,
         "entries": [],
         "stale": [],
         "expired": [],
         "proposals": [],
         "gate": _read_gate(scan_dir),
     }
-    path = recorded.get("file")
-    if isinstance(path, str) and path:
-        # The recorded path resolves inside the roots like any path the tool
-        # reads; a file elsewhere is refused with the rule that names the
-        # roots, so the operator can allow its directory.
-        decisions_file = confinement.confine(path, roots)
-        listing = api.triage_entries(file=decisions_file, scan_dir=scan_dir)
-        document.update(
-            entries=listing["entries"],
-            stale=listing["stale"],
-            expired=listing["expired"],
-            proposals=listing["proposals"],
-        )
+    if record is not None and found is None:
+        document["warnings"] = [
+            f"the decisions file the scan recorded ({record['file']}) cannot be found"
+        ]
+    if found is not None:
+        listing = api.triage_entries(file=confinement.confine(found, roots), scan_dir=scan_dir)
+        for key in ("entries", "stale", "expired", "proposals"):
+            document[key] = listing[key]
+        if record.get("sha256") and record["sha256"] != _file_digest(found):
+            document["warnings"] = [
+                f"the decisions file {record['file']} changed since the scan; the entries "
+                "are listed as the file is now"
+            ]
     return document, [document], scan_dir
+
+
+def _file_digest(path: str) -> str:
+    with open(path, "rb") as handle:
+        return hashlib.sha256(handle.read()).hexdigest()
 
 
 def _read_gate(scan_dir: str):
@@ -836,11 +850,61 @@ def _read_gate(scan_dir: str):
         return json.load(handle)
 
 
-def propose_triage_tool(args, roots, allow_scans=False, allow_propose=False):
-    """Write one triage proposal into the decisions file of a scan.
+def _proposal_file(scan_root: str, roots) -> Tuple[str, bool]:
+    """The decisions file a proposal about the scan at ``scan_root`` goes
+    into, and whether the tool may create it.
 
-    The tool writes proposals only: the entry carries proposedBy and never
-    an author or an approver, so it changes nothing until a person runs
+    The file is the one the scanned project resolves to: the file the scan
+    recorded, found the way ``depscan report`` finds it, or else the one the
+    environment, the configuration files or the project's own
+    ``.depscan/decisions.toml`` name. It must be a ``.toml`` file inside the
+    roots. The only file the tool creates is ``.depscan/decisions.toml``
+    under the scanned source root; any other missing file is refused.
+    """
+    from depscan.lib import decisions as decisions_lib
+
+    manifest = scan_directory.read_manifest(scan_root) or {}
+    source_root = decisions_lib.manifest_source_root(manifest)
+    record, found = decisions_lib.locate_recorded_file(manifest, scan_root)
+    if found is None and record is not None:
+        raise ToolError(
+            f"the decisions file the scan recorded ({record['file']}) cannot be found, so "
+            "the proposal has nowhere to go; ask the person running the server to restore it"
+        )
+    if found is None:
+        found, _selected_by = decisions_lib.resolve_decisions_path(None, source_root)
+    default = (
+        os.path.join(source_root, decisions_lib.DEFAULT_DECISIONS_FILE) if source_root else None
+    )
+    path = found or default
+    if path is None:
+        raise ToolError(
+            f"the scan at {json_path(scan_root)} names no source directory and no decisions "
+            "file, so there is no project file to propose into"
+        )
+    path = confinement.confine(path, roots)
+    if not path.endswith(".toml"):
+        raise ToolError(
+            f"the decisions file {json_path(path)} is not a .toml file; propose_triage "
+            "writes only into a decisions file"
+        )
+    may_create = default is not None and os.path.realpath(path) == os.path.realpath(default)
+    if not os.path.isfile(path) and not may_create:
+        raise ToolError(
+            f"the decisions file {json_path(path)} does not exist, and propose_triage "
+            "creates no file other than .depscan/decisions.toml under the scanned project"
+        )
+    return path, may_create
+
+
+def propose_triage_tool(args, roots, allow_scans=False, allow_propose=False):
+    """Write one triage proposal into the scanned project's decisions file.
+
+    The tool writes proposals only, through the function ``depscan triage
+    set --proposed-by`` uses: the entry carries proposed_by and never an
+    author or an approver, it is appended beside any person's decision with
+    the same selector, and it replaces only the same proposer's earlier
+    proposal for that selector. It changes nothing until a person runs
     ``depscan triage review``. The server must have been started with
     --allow-propose, and the file must resolve inside the allowed roots.
     """
@@ -852,80 +916,34 @@ def propose_triage_tool(args, roots, allow_scans=False, allow_propose=False):
             "on. Only the person who starts the server can widen this "
             "default."
         )
-    from datetime import datetime, timezone
-
-    from analysis_lib.findings.decisions import DecisionsError, TRIAGE_STATES
-    from depscan.lib import decisions_edit
-
-    state = str(args["state"])
-    if state not in TRIAGE_STATES:
+    if not args.get("scan_dir"):
         raise ToolError(
-            f"the state {state!r} is not in the CycloneDX vocabulary; valid "
-            f"values: {', '.join(TRIAGE_STATES)}"
+            "the proposal needs scan_dir: the scan whose project the proposal is about; "
+            "the tool writes into that project's decisions file"
         )
-    finding = args.get("finding")
-    advisory = args.get("advisory")
-    purl = args.get("purl")
-    if finding:
-        selector = {"finding": str(finding)}
-    elif advisory and purl:
-        selector = {"advisory": str(advisory), "purl": str(purl)}
-        if args.get("version_range"):
-            selector["version_range"] = str(args["version_range"])
-    else:
-        raise ToolError(
-            "the proposal needs a selector: finding, or advisory with purl"
-        )
-    decisions_file = args.get("decisions_file")
-    scan_dir = args.get("scan_dir")
-    if decisions_file:
-        file = confinement.confine(str(decisions_file), roots)
-    elif scan_dir:
-        scan_root = confinement.confine(str(scan_dir), roots)
-        confinement.confine_contents(scan_root, roots)
-        recorded = (scan_directory.read_manifest(scan_root) or {}).get("decisions") or {}
-        recorded_path = recorded.get("file")
-        if not isinstance(recorded_path, str) or not recorded_path:
-            raise ToolError(
-                f"the scan at {json_path(scan_root)} recorded no decisions file, "
-                "so there is nothing to propose into; name the file with "
-                "decisions_file, or ask the person running the server to scan "
-                "with a decisions file"
-            )
-        file = confinement.confine(recorded_path, roots)
-    else:
-        raise ToolError(
-            "the proposal needs a decisions file: pass decisions_file, or "
-            "scan_dir so the tool reads the file the scan recorded"
-        )
-    fields: Dict[str, Any] = {
-        "state": state,
-        "created": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-    }
-    if args.get("justification"):
-        fields["justification"] = str(args["justification"])
-    if args.get("detail"):
-        fields["detail"] = str(args["detail"])
-    if args.get("expires"):
-        fields["expires"] = str(args["expires"])
-    fields["proposed_by"] = str(args["proposed_by"])
+    scan_root = confinement.confine(str(args["scan_dir"]), roots)
+    confinement.confine_contents(scan_root, roots)
+    file, may_create = _proposal_file(scan_root, roots)
     try:
-        result = decisions_edit.set_entry(file, selector=selector, fields=fields)
-    except DecisionsError as exc:
+        written = api.triage_set(
+            file=file,
+            state=str(args["state"]),
+            proposed_by=str(args["proposed_by"]),
+            finding=args.get("finding"),
+            advisory=args.get("advisory"),
+            purl=args.get("purl"),
+            version_range=args.get("version_range"),
+            justification=args.get("justification"),
+            detail=args.get("detail"),
+            expires=args.get("expires"),
+            create=may_create,
+        )
+    except api.TriageApiError as exc:
         raise ToolError(f"the proposal cannot be written: {exc}") from exc
-    except decisions_edit.TriageEditError as exc:
-        raise ToolError(str(exc)) from exc
-    listing = api.triage_entries(file=file)
-    entry = next(
-        document
-        for document in listing["entries"]
-        if all(document.get(key) == value for key, value in selector.items())
-        and all(key in document for key in selector)
-    )
     document = {
         "decisionsFile": json_path(file),
-        "result": "proposed" if result == "added" else "updated",
-        "entry": entry,
+        "result": "proposed" if written["result"] == "added" else "updated",
+        "entry": written["entry"],
     }
     return document, [document], None
 
@@ -1014,10 +1032,13 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
     ),
     _spec(
         "propose_triage",
-        "Propose one triage decision into the decisions file of a scan, as "
-        "a proposal a person approves with depscan triage review. The "
-        "server must be started with --allow-propose; the tool never writes "
-        "an approved decision and never sets an author or an approver.",
+        "Propose one triage decision about a finding of a scan, as a "
+        "proposal a person approves with depscan triage review. The proposal "
+        "goes into the decisions file the scanned project resolves to; the "
+        "tool creates no file other than .depscan/decisions.toml under the "
+        "project. The server must be started with --allow-propose; the tool "
+        "never writes an approved decision, never sets an author or an "
+        "approver, and never changes a person's decision.",
         propose_triage_tool,
     ),
 )

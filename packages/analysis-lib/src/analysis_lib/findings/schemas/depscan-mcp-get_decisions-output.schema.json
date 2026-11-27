@@ -107,6 +107,11 @@
         {"type": "null"}
       ],
       "description": "The last gate result the scan directory holds, its depscan.expectations.json, or null when the scan ran no gate."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Why the entries are missing or may differ from what the scan applied: the decisions file the scan recorded cannot be found, or its digest changed since the scan."
     }
   }
 }
