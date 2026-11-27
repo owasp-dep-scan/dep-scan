@@ -1,0 +1,133 @@
+name: Join eval
+
+# The scorer measures dep-scan against the labelled corpus in
+# contrib/corpus/. Pull requests that change an analysis path run the CI
+# subset and fail on a dropped floor or a fired negative control; the
+# scheduled job runs the whole corpus and uploads the score for the docs
+# page.
+on:
+  pull_request:
+    paths:
+      - 'depscan/lib/**'
+      - 'packages/analysis-lib/**'
+      - 'packages/xbom-lib/**'
+      - 'contrib/corpus/**'
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+permissions:
+  contents: read
+env:
+  VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-full-10y:v7.0.x-xz"
+jobs:
+  # The CI subset: committed fixtures plus one repo-test artifact. Its only
+  # network is the vulnerability database above, the test-data pull below,
+  # and the registry lookups the offline audit skips; the floors file holds
+  # entries only for the items this subset can run.
+  subset:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          python-version: '3.14'
+      - name: Install dep-scan
+        run: |
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cdxgen/cdxgen@13.8.0
+      - name: Get repo test data
+        uses: ./.github/actions/repotests-data
+        with:
+          projects: java-sec-code
+          python-executable: uv run --no-sync python
+      - name: Score the CI subset
+        run: |
+          uv run --no-sync python contrib/corpus/score.py \
+            --subset ci \
+            --floors contrib/corpus/floors.json \
+            --testdata-root repotests-data \
+            --scans-root corpus-scans \
+            --timeout 900 \
+            --output score
+      - name: Show the score table
+        if: always()
+        run: cat score/score.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: join-eval-subset-score
+          path: score
+  # The whole corpus, weekly and on demand: clones the repository items at
+  # their pinned commits, pulls every repo-test artifact the manifest names,
+  # and uploads score.json and the table.
+  full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          python-version: '3.14'
+      - name: Install dep-scan
+        run: |
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cdxgen/cdxgen@13.8.0
+      - name: Get repo test data
+        uses: ./.github/actions/repotests-data
+        with:
+          projects: java-sec-code
+          python-executable: uv run --no-sync python
+      - name: Set up Go
+        if: github.event_name != 'pull_request'
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5  # v7.1.0
+        with:
+          go-version: '1.26'
+      - name: Build the forgejo binary for the two-producers item
+        if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p "$HOME/sandbox/p23-corpus"
+          cd "$HOME/sandbox/p23-corpus"
+          if [ ! -d forgejo-two-producers/.git ]; then
+            git clone -q --filter=blob:none https://codeberg.org/forgejo/forgejo forgejo-two-producers
+          fi
+          cd forgejo-two-producers
+          git fetch -q --filter=blob:none origin 10615cce5019acefd625c1300cba85d228b045cc
+          git checkout -q --detach 10615cce5019acefd625c1300cba85d228b045cc
+          go build -o forgejo-bin .
+      - name: Score the whole corpus
+        run: |
+          uv run --no-sync python contrib/corpus/score.py \
+            --fetch \
+            --floors contrib/corpus/floors.json \
+            --testdata-root repotests-data \
+            --scans-root corpus-scans \
+            --timeout 1800 \
+            --output score
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: always()
+        with:
+          name: join-eval-full-score
+          path: score
