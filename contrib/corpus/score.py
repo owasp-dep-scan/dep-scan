@@ -37,6 +37,7 @@ import functools
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -107,6 +108,11 @@ def split_purl(purl: str):
     separator is the last ``@`` that no ``/`` follows, so the ``@`` of an npm
     scope never reads as one; the version is None when the purl has none."""
     comparable = comparable_purl(str(purl))
+    if comparable[:9].lower() == "pkg:pypi/":
+        # PyPI names compare equal under PEP 503: case and runs of "-", "_"
+        # and "." do not matter.
+        name, sep, version = comparable[9:].partition("@")
+        comparable = "pkg:pypi/" + re.sub(r"[-_.]+", "-", name).lower() + sep + version
     head, sep, tail = comparable.rpartition("@")
     if not sep or "/" in tail or not head.partition("/")[2]:
         return comparable, None
@@ -659,18 +665,20 @@ def score_categories(scan: ItemScan, labels: dict) -> dict:
     return categories
 
 
-def score_purl_set(keys: set, used: set, unused: set) -> dict:
+def score_purl_set(keys: set, used: set, unused: set, unmapped_used: int = 0) -> dict:
     """Recall and precision of one purl set against used and unused labels.
 
-    Recall is the share of used packages the set holds. Precision is the
-    share of used packages among everything the set holds that a label
-    covers; a purl no label names counts nowhere, because the labels do not
-    pass judgement on it.
+    Recall is the share of used packages the set holds, where the
+    ``unmapped_used`` names the derivation could not turn into a purl count
+    as used packages the set misses. Precision is the share of used packages
+    among everything the set holds that a label covers; a purl no label
+    names counts nowhere, because the labels do not pass judgement on it.
     """
     labelled = keys & (used | unused)
     true_positive = keys & used
     return {
-        "recall": rate(len(true_positive), len(used)),
+        "recall": rate(len(true_positive), len(used) + unmapped_used),
+        "unmappedUsed": unmapped_used,
         "precision": rate(len(true_positive), len(labelled)),
         "missed": sorted(used - keys),
         "wrong": sorted(keys & unused),
@@ -680,17 +688,19 @@ def score_purl_set(keys: set, used: set, unused: set) -> dict:
 
 
 def usage_labels(labels: dict):
-    """The used and unused label keys of an item."""
+    """The used and unused label keys of an item, and the number of used
+    names the derivation left unmapped."""
     section = labels.get("reachability") or {}
     return (
         label_keys(e["purl"] for e in section.get("used") or []),
         label_keys(e["purl"] for e in section.get("unused") or []),
+        len(section.get("unmapped") or {}),
     )
 
 
 def score_reachability(scan: ItemScan, labels: dict) -> dict:
     """Both analysers scored against the reachability labels, per project."""
-    used, unused = usage_labels(labels)
+    used, unused, unmapped = usage_labels(labels)
     scores = {}
     for analyzer in ANALYZERS:
         res, reason = scan.reach(analyzer)
@@ -699,8 +709,8 @@ def score_reachability(scan: ItemScan, labels: dict) -> dict:
             continue
         scores[analyzer] = {
             "status": "assessed",
-            "direct": score_purl_set(keys_of(res.direct_purls), used, unused),
-            "reached": score_purl_set(keys_of(res.reached_purls), used, unused),
+            "direct": score_purl_set(keys_of(res.direct_purls), used, unused, unmapped),
+            "reached": score_purl_set(keys_of(res.reached_purls), used, unused, unmapped),
         }
     return scores
 
@@ -734,7 +744,7 @@ def score_join_advisory_usage_reach(scan: ItemScan, labels: dict) -> dict:
     positive, and a reached finding on a package no label names is counted
     apart, because the labels do not pass judgement on it.
     """
-    used, unused = usage_labels(labels)
+    used, unused, _ = usage_labels(labels)
     if not used and not unused:
         return {"outcome": "partial", "reason": "the item carries no usage labels"}
     res, reason = scan.reach("SemanticReachability")
@@ -1249,6 +1259,16 @@ def render_markdown(score_doc: dict) -> str:
             if scores.get("status") == "assessed"
             for bucket, cell in ((b, scores.get(b) or {}) for b in ("direct", "reached"))
         ]
+        unmapped = next(
+            (
+                s["reached"].get("unmappedUsed")
+                for s in (entry.get("reachability") or {}).values()
+                if s.get("status") == "assessed"
+            ),
+            0,
+        )
+        if unmapped:
+            reach_cells.append(f"{unmapped} unmapped used names counted as misses")
         category_cells = [
             f"{category}: not assessed"
             if score.get("status") == "not-assessed"

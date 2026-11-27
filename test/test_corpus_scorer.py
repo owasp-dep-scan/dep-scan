@@ -686,3 +686,18 @@ def test_hand_labels_need_citations():
     document = {"item": "t", "joins": {"two-producers": {"source": "hand", "package": "pkg:a/b"}}}
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(document, _labels_schema())
+
+
+def test_unmapped_names_count_as_recall_misses():
+    used = corpus_score.label_keys(["pkg:npm/lodash", "pkg:npm/express"])
+    reached = corpus_score.keys_of(["pkg:npm/lodash@4.17.21", "pkg:npm/express@4.19.2"])
+    scores = corpus_score.score_purl_set(reached, used, set(), unmapped_used=2)
+    assert scores["recall"] == 0.5
+    assert scores["unmappedUsed"] == 2
+    assert scores["precision"] == 1.0
+
+
+def test_pypi_names_compare_under_pep_503():
+    assert corpus_score.label_keys(["pkg:pypi/flask-sqlalchemy"]) & corpus_score.keys_of(
+        ["pkg:pypi/Flask_SQLAlchemy@3.1.1"]
+    )

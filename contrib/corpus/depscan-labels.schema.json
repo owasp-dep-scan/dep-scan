@@ -78,7 +78,15 @@
         },
         "unmapped": {
           "type": "object",
-          "description": "Truth package names the mapping could not turn into a purl, each with the number of certain uses behind it. Reported, never dropped silently.",
+          "description": "Truth package names the mapping could not turn into a purl, each with the number of certain uses behind it. The scorer counts every name as a used package no analyser matches, a recall miss reported apart as unmappedUsed.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "local": {
+          "type": "object",
+          "description": "Truth package names that are directories or modules of the project itself, each with its count of certain uses. They are no dependency, so no label and no miss.",
           "additionalProperties": {
             "type": "integer",
             "minimum": 1
@@ -98,6 +106,10 @@
               "minimum": 0
             },
             "unmapped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "local": {
               "type": "integer",
               "minimum": 0
             },

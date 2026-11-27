@@ -236,6 +236,10 @@
         "precision": {
           "type": ["number", "null"]
         },
+        "unmappedUsed": {
+          "type": "integer",
+          "description": "Used names the label derivation could not map to a purl, counted as recall misses."
+        },
         "missed": {
           "type": "array",
           "items": {

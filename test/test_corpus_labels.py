@@ -131,12 +131,25 @@ BOM = {
 }
 
 
-def test_python_labels_map_imports_to_distributions():
-    document = derive_labels.derive("py-fixture", TRUTH, BOM)
+@pytest.fixture
+def py_project(tmp_path):
+    """The project tree the truth was taken from: its requirements declare
+    click and Flask-SQLAlchemy (yaml maps through the import table)."""
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "requirements.txt").write_text(
+        "click>=8\nFlask_SQLAlchemy==3.1.1  # the ORM\n", encoding="utf-8"
+    )
+    return str(project)
+
+
+def test_python_labels_map_imports_to_distributions(py_project):
+    document = derive_labels.derive("py-fixture", TRUTH, BOM, project=py_project)
     reach = document["reachability"]
     used = {entry["purl"]: entry["occurrences"] for entry in reach["used"]}
-    # click maps by name; yaml maps through the import table; the folded
-    # distribution name of the BOM component maps the sqlalchemy import.
+    # click maps through the declared requirements; yaml through the import
+    # table; the folded name of the declared Flask_SQLAlchemy maps the
+    # flask_sqlalchemy import.
     assert "pkg:pypi/click" in used
     assert "pkg:pypi/pyyaml" in used
     assert "pkg:pypi/flask-sqlalchemy" in used
@@ -145,23 +158,23 @@ def test_python_labels_map_imports_to_distributions():
     assert used["pkg:pypi/click"] != 3
 
 
-def test_unmapped_import_name_is_reported_with_a_count():
-    document = derive_labels.derive("py-fixture", TRUTH, BOM)
+def test_unmapped_import_name_is_reported_with_a_count(py_project):
+    document = derive_labels.derive("py-fixture", TRUTH, BOM, project=py_project)
     reach = document["reachability"]
     assert reach["unmapped"] == {"notarealpkg": 2}
     assert reach["counts"]["unmapped"] == 1
 
 
-def test_builtins_and_uncertain_rows_never_become_labels():
-    document = derive_labels.derive("py-fixture", TRUTH, BOM)
+def test_builtins_and_uncertain_rows_never_become_labels(py_project):
+    document = derive_labels.derive("py-fixture", TRUTH, BOM, project=py_project)
     reach = document["reachability"]
     used = {entry["purl"] for entry in reach["used"]}
     assert "pkg:pypi/pathlib" not in used
     assert "pathlib" not in reach["unmapped"]
 
 
-def test_direct_dependency_without_use_is_unused():
-    document = derive_labels.derive("py-fixture", TRUTH, BOM)
+def test_direct_dependency_without_use_is_unused(py_project):
+    document = derive_labels.derive("py-fixture", TRUTH, BOM, project=py_project)
     reach = document["reachability"]
     unused = [entry["purl"] for entry in reach["unused"]]
     assert unused == ["pkg:pypi/unused-dep"]
@@ -207,8 +220,9 @@ def test_npm_scoped_names_map_to_the_bom_spelling():
     reach = document["reachability"]
     used = {entry["purl"] for entry in reach["used"]}
     assert "pkg:npm/%40babel/core" in used
-    # The Node builtin is reported, never silently dropped.
-    assert reach["unmapped"] == {"fs": 1}
+    # The Node builtin is no package: dropped like a row the typed truth
+    # flags as builtin, so it never counts as a recall miss.
+    assert reach["unmapped"] == {}
 
 
 def test_java_group_artifact_maps_to_maven_purl():
@@ -229,9 +243,7 @@ def test_java_group_artifact_maps_to_maven_purl():
         ],
     }
     bom = {
-        "components": [
-            {"purl": "pkg:maven/org.springframework.boot/spring-boot@3.4.0"}
-        ],
+        "components": [{"purl": "pkg:maven/org.springframework.boot/spring-boot@3.4.0"}],
         "metadata": {"component": {"bom-ref": "root"}},
         "dependencies": [],
     }
@@ -251,10 +263,90 @@ def test_derived_document_validates_against_the_labels_schema():
     import jsonschema
 
     here = os.path.dirname(os.path.abspath(__file__))
-    schema_path = os.path.join(
-        here, "..", "contrib", "corpus", "depscan-labels.schema.json"
-    )
+    schema_path = os.path.join(here, "..", "contrib", "corpus", "depscan-labels.schema.json")
     with open(schema_path, encoding="utf-8") as fp:
         schema = json.load(fp)
     document = derive_labels.derive("py-fixture", TRUTH, BOM)
     jsonschema.validate(document, schema)
+
+
+def _row(pkg, file_name="app.py"):
+    return {"file": file_name, "line": 1, "module": pkg, "pkg": pkg, "certain": True}
+
+
+def test_npm_use_of_a_package_the_bom_lacks_stays_a_label():
+    # The BOM only answers directness: a package cdxgen failed to inventory
+    # must still be a used label, so the scorer can count the miss.
+    truth = {"usages": [_row("left-pad", "a.js"), _row("lodash", "a.js")]}
+    bom = {"components": [{"purl": "pkg:npm/lodash@4.17.21", "bom-ref": "c1"}]}
+    reach = derive_labels.derive("js-fixture", truth, bom)["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:npm/left-pad", "pkg:npm/lodash"]
+    assert reach["unmapped"] == {}
+
+
+def test_python_import_the_project_does_not_declare_is_unmapped_not_used(tmp_path):
+    # vulpy imports "lib", which no requirement declares and no directory
+    # holds; a BOM component guessed from the import must not make it a label.
+    (tmp_path / "requirements.txt").write_text("flask\n", encoding="utf-8")
+    truth = {"usages": [_row("lib", "good/mod_welcome1.py"), _row("flask")]}
+    bom = {"components": [{"purl": "pkg:pypi/lib@1.0", "bom-ref": "c1"}]}
+    reach = derive_labels.derive("py-fixture", truth, bom, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/flask"]
+    assert reach["unmapped"] == {"lib": 1}
+
+
+def test_project_local_modules_are_counted_apart(tmp_path):
+    (tmp_path / "good").mkdir()
+    (tmp_path / "good" / "lib").mkdir()
+    (tmp_path / "frontend" / "src" / "app").mkdir(parents=True)
+    truth = {"usages": [_row("lib", "good/mod_welcome1.py"), _row("lib", "good/x.py")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert reach["used"] == []
+    assert reach["local"] == {"lib": 2}
+    assert reach["counts"]["local"] == 1
+    # An npm path alias that is a directory of the tree is local, while a
+    # declared package with the same name as a directory stays a package.
+    (tmp_path / "config").mkdir()
+    (tmp_path / "package.json").write_text('{"dependencies": {"config": "^3"}}', encoding="utf-8")
+    truth = {"usages": [_row("src", "frontend/src/app/x.ts"), _row("config", "server.ts")]}
+    reach = derive_labels.derive("js-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:npm/config"]
+    assert reach["local"] == {"src": 1}
+
+
+def test_top_level_names_of_installed_distributions_map_imports(tmp_path):
+    dist = tmp_path / "site" / "python_memcached-1.62.dist-info"
+    dist.mkdir(parents=True)
+    (dist / "top_level.txt").write_text("memcache_impl\n", encoding="utf-8")
+    truth = {"usages": [_row("memcache_impl")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, site_packages=[str(tmp_path / "site")])[
+        "reachability"
+    ]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/python-memcached"]
+
+
+def test_refresh_keeps_hand_findings_and_refuses_hand_reachability(tmp_path, capsys):
+    truth_path = tmp_path / "truth.json"
+    truth_path.write_text(json.dumps({"usages": [_row("lodash", "a.js")]}), encoding="utf-8")
+    bom_path = tmp_path / "bom.json"
+    bom_path.write_text("{}", encoding="utf-8")
+    out = tmp_path / "labels.json"
+    findings = {"source": "hand", "expected": []}
+    joins = {"two-producers": {"source": "hand", "package": "pkg:npm/x", "citation": "a:1"}}
+    out.write_text(
+        json.dumps({"item": "js-fixture", "findings": findings, "joins": joins}),
+        encoding="utf-8",
+    )
+    argv = ["--truth", str(truth_path), "--bom", str(bom_path), "--item", "js-fixture"]
+    argv += ["--out", str(out)]
+    assert derive_labels.main(argv) == 0
+    written = json.loads(out.read_text(encoding="utf-8"))
+    assert written["findings"] == findings
+    assert written["joins"] == joins
+    assert written["reachability"]["source"] == "oracle"
+    hand = {"source": "hand", "used": [{"purl": "pkg:npm/express", "citation": "a.js:1"}]}
+    out.write_text(json.dumps({"item": "js-fixture", "reachability": hand}), encoding="utf-8")
+    assert derive_labels.main(argv) == 2
+    assert "--force" in capsys.readouterr().err
+    assert json.loads(out.read_text(encoding="utf-8"))["reachability"] == hand
+    assert derive_labels.main(argv + ["--force"]) == 0

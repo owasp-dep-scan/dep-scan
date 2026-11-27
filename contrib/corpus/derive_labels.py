@@ -12,33 +12,51 @@ mapping could not turn into a purl, each with its count.
 
 Usage:
     python contrib/corpus/derive_labels.py \
-        --truth truth/py-vulpy.json --bom sbom-python.cdx.json \
+        --truth truth/py-vulpy.json --project ~/corpus/py-vulpy \
+        --bom scans/py-vulpy/sbom-build-python.cdx.json \
         --item py-vulpy --out contrib/corpus/labels/py-vulpy.json
 
-The BOM is the scan directory's ``sbom-<type>.cdx.json`` of the same project
-at the same pinned commit; it is what the labels are checked against, and its
-components and dependency graph are how import names become distribution purls
-and how direct dependencies are known.
+A truth package name becomes a purl without consulting the scan's output, so
+a package dep-scan fails to inventory still shows up as a recall miss:
 
-Exits non-zero when the truth or the BOM cannot be read. An unmappable
-package name is not an error: it is reported in the label file's ``unmapped``
-object with its count, and the scorer counts every such label as a miss
-waiting for a better mapping.
+- npm, Maven, Composer and gem purls follow from the name (Maven's
+  ``group:artifact``, Composer's ``vendor/name``). An npm name the project's
+  package.json files do not declare, and which is a directory or module in
+  the project tree (a path alias such as ``src``), is project-local.
+- A Python import name maps through ``IMPORT_DISTRIBUTIONS``, then the
+  ``top_level.txt`` of the distributions installed under ``--site-packages``
+  (the pinned project's environment, when one is available), then the
+  distributions the project's own requirements, pyproject.toml, setup.cfg,
+  setup.py and Pipfile declare. A name none of those maps, and which is a
+  package or module in the project tree, is project-local.
+
+Project-local names are listed under ``local`` with their counts and are not
+labels. Names still unmapped are listed under ``unmapped`` with their counts;
+the scorer counts each one as a used package no analyser can match, a recall
+miss reported apart as ``unmappedUsed``. The BOM (``--bom``) answers only
+which dependencies are direct, for the ``unused`` labels; for a JavaScript
+item the project's package.json answers that instead.
+
+Exits 2 when the inputs cannot be read, the item's language is not covered,
+or the label file's reachability section was written by hand (refreshing it
+would drop the hand labels; ``--force`` overrides).
 """
 
 from __future__ import annotations
 
 import argparse
+import configparser
 import json
 import os
 import re
 import sys
+import tomllib
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_ANALYSIS_SRC = os.path.join(_HERE, "..", "..", "packages", "analysis-lib", "src")
-if os.path.isdir(_ANALYSIS_SRC):
-    sys.path.insert(0, os.path.abspath(_ANALYSIS_SRC))
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
+from contrib.corpus.score import label_key, load_json  # noqa: E402
 from vdb.lib.utils import parse_purl  # noqa: E402
 
 #: Language of a corpus item, from the item id's prefix.
@@ -50,16 +68,13 @@ LANGUAGES = {
     "rb-": "gem",
 }
 
-#: Common Python import names that are not the distribution name, lower-cased
-#: import name to the distribution name on the index. The mapping to a BOM
-#: component tries the table first and then the case and separator fold, so a
-#: project's own odd naming only needs a row here when no BOM component
-#: matches either way.
+#: Python import names that are not their distribution's name, lower-cased
+#: import name to the distribution name on the index.
 IMPORT_DISTRIBUTIONS = {
     "bs4": "beautifulsoup4",
+    "bson": "pymongo",
     "crispy_forms": "django-crispy-forms",
     "crum": "django-crum",
-    "fieldsignals": "django-fieldsignals",
     "cv2": "opencv-python",
     "dateutil": "python-dateutil",
     "debug_toolbar": "django-debug-toolbar",
@@ -68,17 +83,20 @@ IMPORT_DISTRIBUTIONS = {
     "easy_thumbnails": "easy-thumbnails",
     "environ": "django-environ",
     "extra_views": "django-extra-views",
+    "fieldsignals": "django-fieldsignals",
     "git": "gitpython",
     "haystack": "django-haystack",
     "imagekit": "django-imagekit",
     "jwt": "pyjwt",
+    "memcache": "python-memcached",
     "multiselectfield": "django-multiselectfield",
+    "mysqldb": "mysqlclient",
     "openssl": "pyopenssl",
     "packageurl": "packageurl-python",
-    "phonenumber_field": "django-phonenumber-field",
-    "pil": "pillow",
     "pghistory": "django-pghistory",
     "pgtrigger": "django-pgtrigger",
+    "phonenumber_field": "django-phonenumber-field",
+    "pil": "pillow",
     "polymorphic": "django-polymorphic",
     "rest_framework": "djangorestframework",
     "sklearn": "scikit-learn",
@@ -88,10 +106,9 @@ IMPORT_DISTRIBUTIONS = {
     "yaml": "pyyaml",
 }
 
-#: Node's own modules. The untyped JavaScript truth records a package per use,
-#: and a use of a Node builtin names the builtin, which no BOM component
-#: matches; they are reported as unmapped like any other name, so the list
-#: only keeps them out of the package mapping, not out of the label file.
+#: Node's own modules. The untyped JavaScript truth records a package per use
+#: and does not flag the builtins, so they are dropped here like the rows the
+#: typed truth flags as builtin.
 NODE_BUILTINS = frozenset(
     """
     assert async_hooks buffer child_process cluster console constants crypto
@@ -102,188 +119,283 @@ NODE_BUILTINS = frozenset(
     """.split()
 )
 
+#: A valid npm package name, scoped or not.
+NPM_NAME = re.compile(r"^(@[a-z0-9-~][a-z0-9-._~]*/)?[a-z0-9-~][a-z0-9-._~]*$")
+
+#: A gem name.
+GEM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+#: The start of a requirement line: the distribution name.
+REQUIREMENT_NAME = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
+
+#: Directories the declared-dependency and project-local lookups skip.
+SKIPPED_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "site-packages", "__pycache__"})
+
+SOURCE_SUFFIXES = (".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte")
+
 
 def language_of(item_id: str) -> str:
     """The ecosystem of a corpus item id, or an empty string."""
-    for prefix, ecosystem in LANGUAGES.items():
-        if item_id.startswith(prefix):
-            return ecosystem
-    return ""
+    return next((eco for prefix, eco in LANGUAGES.items() if item_id.startswith(prefix)), "")
 
 
 def certain_packages(truth: dict) -> dict:
-    """Count the certain uses of every package in a truth document.
+    """Every package with a certain use, as {name: (count, files)}.
 
     A row counts when the oracle marked it certain (rows without the flag are
     certain: the JavaScript oracle records no flag), names a package, and is
-    not a use of a language builtin.
+    not a use of a language builtin. The files stay in memory for the
+    project-local check and never reach the label file.
     """
-    counts: dict = {}
+    packages: dict = {}
     for row in truth.get("usages") or []:
-        if not isinstance(row, dict):
-            continue
-        if row.get("certain") is False or row.get("builtin"):
+        if not isinstance(row, dict) or row.get("certain") is False or row.get("builtin"):
             continue
         package = row.get("pkg")
-        if not isinstance(package, str) or not package:
+        if isinstance(package, str) and package:
+            count, files = packages.get(package, (0, set()))
+            packages[package] = (count + 1, files | {str(row.get("file") or "")})
+    return packages
+
+
+def fold_name(name: str) -> str:
+    """The PEP 503 form of a Python distribution name."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _walk(project: str, wanted):
+    """The files under a project whose path ``wanted`` accepts, skipping
+    SKIPPED_DIRS and hidden directories."""
+    for base, dirs, files in os.walk(project):
+        dirs[:] = [d for d in dirs if d not in SKIPPED_DIRS and not d.startswith(".")]
+        for name in files:
+            if wanted(os.path.join(base, name)):
+                yield os.path.join(base, name)
+
+
+def python_declared(project: str) -> set:
+    """The folded distribution names a Python project's own manifests
+    declare: requirements files, pyproject.toml, setup.cfg, setup.py and
+    Pipfile."""
+    declared = set()
+
+    def add(spec):
+        match = REQUIREMENT_NAME.match(str(spec))
+        if match and match.group(1).lower() != "python":
+            declared.add(fold_name(match.group(1)))
+
+    def is_requirements(path):
+        name = os.path.basename(path)
+        in_requirements_dir = os.path.basename(os.path.dirname(path)) == "requirements"
+        return name.endswith((".txt", ".in")) and (
+            name.startswith("requirements") or in_requirements_dir
+        )
+
+    def is_manifest(path):
+        return is_requirements(path) or os.path.basename(path) in (
+            "pyproject.toml",
+            "setup.cfg",
+            "setup.py",
+            "Pipfile",
+        )
+
+    for path in _walk(project, is_manifest) if project else ():
+        name = os.path.basename(path)
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fp:
+                text = fp.read()
+        except OSError:
             continue
-        counts[package] = counts.get(package, 0) + 1
-    return counts
+        if is_requirements(path):
+            for line in text.splitlines():
+                line = line.split("#egg=", 1)[1] if "#egg=" in line else line.split("#", 1)[0]
+                if line.strip() and not line.lstrip().startswith(("-", "git+", "http")):
+                    add(line)
+        elif name in ("pyproject.toml", "Pipfile"):
+            try:
+                doc = tomllib.loads(text)
+            except tomllib.TOMLDecodeError:
+                continue
+            project_table = doc.get("project") or {}
+            specs = list(project_table.get("dependencies") or [])
+            for group in (project_table.get("optional-dependencies") or {}).values():
+                specs += list(group or [])
+            for group in (doc.get("dependency-groups") or {}).values():
+                specs += [s for s in group or [] if isinstance(s, str)]
+            poetry = (doc.get("tool") or {}).get("poetry") or {}
+            tables = [poetry.get("dependencies"), poetry.get("dev-dependencies")]
+            tables += [g.get("dependencies") for g in (poetry.get("group") or {}).values()]
+            tables += [doc.get("packages"), doc.get("dev-packages")]
+            for table in tables:
+                specs += list((table or {}).keys())
+            for spec in specs:
+                add(spec)
+        elif name == "setup.cfg":
+            parser = configparser.ConfigParser(interpolation=None)
+            try:
+                parser.read_string(text)
+            except configparser.Error:
+                continue
+            values = [parser.get("options", "install_requires", fallback="")]
+            if parser.has_section("options.extras_require"):
+                values += [value for _, value in parser.items("options.extras_require")]
+            for value in values:
+                for line in value.splitlines():
+                    add(line)
+        else:
+            for block in re.findall(r"(?:install|tests)_requires\s*=\s*\[(.*?)\]", text, re.S):
+                for spec in re.findall(r"['\"]([^'\"]+)['\"]", block):
+                    add(spec)
+    return declared
 
 
-def load_json(path: str):
-    """Read one JSON document, or None when it cannot be read."""
-    try:
-        with open(path, encoding="utf-8") as fp:
-            return json.load(fp)
-    except (OSError, ValueError):
-        return None
+def top_level_names(site_packages: list) -> dict:
+    """Import name to folded distribution name, from the ``top_level.txt``
+    of every distribution installed under the given directories."""
+    names: dict = {}
+    for directory in site_packages or []:
+        try:
+            entries = sorted(os.listdir(directory))
+        except OSError:
+            continue
+        for entry in entries:
+            if not entry.endswith((".dist-info", ".egg-info")):
+                continue
+            distribution = fold_name(entry.rsplit(".", 1)[0].split("-", 1)[0])
+            try:
+                with open(os.path.join(directory, entry, "top_level.txt"), encoding="utf-8") as fp:
+                    for line in fp:
+                        if line.strip():
+                            names.setdefault(line.strip().lower(), distribution)
+            except OSError:
+                continue
+    return names
 
 
-def component_identities(bom: dict) -> set:
-    """The version-less comparable identities of a BOM's components."""
-    identities = set()
-    for component in bom.get("components") or []:
-        purl = component.get("purl")
-        if isinstance(purl, str) and purl:
-            identity = purl_identity(purl)
-            if identity:
-                identities.add(identity)
-    return identities
+def is_project_local(project: str, name: str, files) -> bool:
+    """Whether ``name`` is a directory or module inside the project tree: at
+    the root, under ``src``, or beside any directory of a file that imports
+    it."""
+    if not project:
+        return False
+    head = name.split("/", 1)[0].split(".", 1)[0]
+    candidates = {project, os.path.join(project, "src")}
+    for file_name in files:
+        directory = os.path.dirname(os.path.join(project, file_name))
+        while directory.startswith(project):
+            candidates.add(directory)
+            parent = os.path.dirname(directory)
+            if parent == directory:
+                break
+            directory = parent
+    for directory in candidates:
+        if os.path.isdir(os.path.join(directory, head)):
+            return True
+        if any(os.path.isfile(os.path.join(directory, head + s)) for s in SOURCE_SUFFIXES):
+            return True
+    return False
 
 
-def purl_identity(purl: str):
-    """A purl reduced to (type, namespace, name), or None."""
-    parsed = parse_purl(purl)
-    if not parsed:
-        return None
-    namespace = parsed.get("namespace")
-    return (
-        str(parsed.get("type") or "").lower(),
-        namespace or "",
-        parsed.get("name") or "",
-    )
-
-
-def identity_purl(identity) -> str:
-    """The label purl of a version-less identity, in the BOM's spelling."""
-    ptype, namespace, name = identity
-    if namespace:
-        if ptype == "npm" and namespace.startswith("@"):
-            namespace = "%40" + namespace[1:]
-        return f"pkg:{ptype}/{namespace}/{name}"
-    return f"pkg:{ptype}/{name}"
+def npm_declared(project: str) -> set:
+    """Every name the project's package.json files declare."""
+    names = set()
+    for path in _walk(project, lambda p: os.path.basename(p) == "package.json") if project else ():
+        document = load_json(path)
+        for section in (
+            "dependencies",
+            "devDependencies",
+            "peerDependencies",
+            "optionalDependencies",
+        ):
+            values = document.get(section) if isinstance(document, dict) else None
+            if isinstance(values, dict):
+                names |= set(values)
+    return names
 
 
 def npm_purl(name: str) -> str:
     """A purl for an npm name, scoped names included, in cdxgen's spelling."""
-    if name.startswith("@"):
-        return f"pkg:npm/%40{name[1:]}"
-    return f"pkg:npm/{name}"
+    return f"pkg:npm/%40{name[1:]}" if name.startswith("@") else f"pkg:npm/{name}"
 
 
-def fold_name(name: str) -> str:
-    """The fold that makes ``Flask_SQLAlchemy`` and ``flask-sqlalchemy``
-    compare equal."""
-    return re.sub(r"[-_.]+", "-", name).lower()
+class Mapper:
+    """Turns one project's truth package names into purls."""
+
+    def __init__(self, ecosystem: str, project: str = "", site_packages=None):
+        self.ecosystem = ecosystem
+        self.project = os.path.abspath(project) if project else ""
+        self.npm_declared = npm_declared(self.project) if ecosystem == "npm" else set()
+        self.python_declared = python_declared(self.project) if ecosystem == "pypi" else set()
+        self.top_level = top_level_names(site_packages) if ecosystem == "pypi" else {}
+
+    def purl(self, package: str, files=()):
+        """The purl of a truth package, or "local", or None (unmapped)."""
+        if self.ecosystem == "npm":
+            if package in self.npm_declared:
+                return npm_purl(package)
+            if is_project_local(self.project, package, files):
+                return "local"
+            return npm_purl(package) if NPM_NAME.match(package) else None
+        if self.ecosystem in ("maven", "composer"):
+            parts = package.split(":" if self.ecosystem == "maven" else "/", 1)
+            if len(parts) == 2 and all(parts):
+                return f"pkg:{self.ecosystem}/{parts[0]}/{parts[1]}"
+            return None
+        if self.ecosystem == "gem":
+            return f"pkg:gem/{package}" if GEM_NAME.match(package) else None
+        lower = package.lower()
+        distribution = IMPORT_DISTRIBUTIONS.get(lower) or self.top_level.get(lower)
+        if not distribution and fold_name(package) in self.python_declared:
+            distribution = package
+        if distribution:
+            return f"pkg:pypi/{fold_name(distribution)}"
+        return "local" if is_project_local(self.project, package, files) else None
 
 
-def map_python_package(package: str, by_fold: dict):
-    """Map a Python import name to a distribution identity from the BOM.
-
-    The import name can differ from the distribution name, so the fold of the
-    import name and the fold of the well-known import's distribution are
-    looked up in the BOM's folded names. ``None`` means the name mapped to
-    nothing the BOM declares.
-    """
-    for candidate in (
-        fold_name(package),
-        fold_name(
-            IMPORT_DISTRIBUTIONS.get(package)
-            or IMPORT_DISTRIBUTIONS.get(fold_name(package))
-            or ""
-        ),
-    ):
-        if candidate and candidate in by_fold:
-            return by_fold[candidate]
-    return None
-
-
-def npm_direct_from_manifest(path: str) -> set:
-    """The package names a package.json declares as dependencies and
-    devDependencies.
-
-    cdxgen's npm dependency graph lists the whole resolved tree under the
-    root component, which makes it useless as a directness answer for a
-    JavaScript BOM; the manifest the BOM was generated from is the source of
-    truth for what the project declared.
-    """
-    document = load_json(path)
-    if not isinstance(document, dict):
-        if path:
-            print(f"The package manifest '{path}' could not be read, so the "
-            "labels carry no unused packages.", file=sys.stderr)
-        return set()
-    names = set()
-    for section in ("dependencies", "devDependencies"):
-        values = document.get(section)
-        if isinstance(values, dict):
-            names |= set(values)
-    return names
+def bom_direct_purls(bom: dict) -> set:
+    """The purls the BOM's dependency graph lists under the root component
+    and every application component: the direct dependencies."""
+    ref_to_purl = {}
+    roots = set()
+    metadata_component = (bom.get("metadata") or {}).get("component") or {}
+    for component in [*(bom.get("components") or []), metadata_component]:
+        if not isinstance(component, dict) or not component.get("bom-ref"):
+            continue
+        if isinstance(component.get("purl"), str):
+            ref_to_purl[component["bom-ref"]] = component["purl"]
+        if component.get("type") == "application" or component is metadata_component:
+            roots.add(component["bom-ref"])
+    return {
+        ref_to_purl[ref]
+        for entry in bom.get("dependencies") or []
+        if isinstance(entry, dict) and entry.get("ref") in roots
+        for ref in entry.get("dependsOn") or []
+        if ref in ref_to_purl
+    }
 
 
-def direct_dependency_identities(bom: dict, ecosystem: str = "", manifest_path: str = "") -> set:
-    """The identities a BOM declares as direct dependencies.
-
-    Direct is the dependency graph's answer: everything the root component
-    and every application component depends on, so a workspace's sub-projects
-    count too. The graph's refs are bom-refs, so each is resolved through the
-    component it names. A BOM without a dependency graph declares nothing,
-    and the label file then holds no ``unused`` labels.
-    """
-    direct = set()
-    if ecosystem == "npm" and manifest_path:
-        # The manifest overrides the graph: cdxgen's npm graph lists the
-        # whole resolved tree under the root, so it cannot answer directness.
-        # A declared name is direct, even when the BOM holds no component
-        # for it (a git or local dependency).
-        identities = component_identities(bom)
-        for name in npm_direct_from_manifest(manifest_path):
-            identity = purl_identity(npm_purl(name))
-            if identity and identity in identities:
-                direct.add(identity)
-            elif identity:
-                direct.add(identity)
-    else:
-        ref_to_purl = {}
-        application_refs = set()
-        for component in bom.get("components") or []:
-            if not isinstance(component, dict) or not component.get("bom-ref"):
-                continue
-            ref = component["bom-ref"]
-            purl = component.get("purl")
-            if isinstance(purl, str) and purl:
-                ref_to_purl[ref] = purl
-            if component.get("type") == "application":
-                application_refs.add(ref)
-        metadata_component = (bom.get("metadata") or {}).get("component") or {}
-        roots = application_refs
-        if metadata_component.get("bom-ref"):
-            roots = roots | {metadata_component["bom-ref"]}
-            metadata_purl = metadata_component.get("purl")
-            if isinstance(metadata_purl, str) and metadata_purl:
-                ref_to_purl[metadata_component["bom-ref"]] = metadata_purl
-        for entry in bom.get("dependencies") or []:
-            if not isinstance(entry, dict) or entry.get("ref") not in roots:
-                continue
-            for ref in entry.get("dependsOn") or []:
-                identity = purl_identity(ref_to_purl.get(ref, ""))
-                if identity:
-                    direct.add(identity)
-    return direct
+def version_less(purl: str) -> str:
+    """A purl without version, qualifiers or subpath, in the label spelling:
+    a scoped npm name keeps cdxgen's encoded ``%40`` and a PyPI name is
+    folded."""
+    parsed = parse_purl(purl) or {}
+    ptype = str(parsed.get("type") or "").lower()
+    namespace, name = parsed.get("namespace") or "", parsed.get("name") or ""
+    if ptype == "pypi":
+        name = fold_name(name)
+    if ptype == "npm" and namespace.startswith("@"):
+        namespace = "%40" + namespace[1:]
+    return f"pkg:{ptype}/{namespace}/{name}" if namespace else f"pkg:{ptype}/{name}"
 
 
-def derive(item_id: str, truth: dict, bom: dict, manifest_path: str = "") -> dict:
+def derive(
+    item_id: str,
+    truth: dict,
+    bom: dict,
+    manifest_path: str = "",
+    project: str = "",
+    site_packages=None,
+) -> dict:
     """The label document for one item, or raise ValueError when the item's
     language is one the oracle does not cover."""
     ecosystem = language_of(item_id)
@@ -292,47 +404,35 @@ def derive(item_id: str, truth: dict, bom: dict, manifest_path: str = "") -> dic
             f"Item '{item_id}' has no language the callsites truth covers "
             "(js-, py-, java-, php- or rb- prefixed)."
         )
-    counts = certain_packages(truth)
-    identities = component_identities(bom)
-    if ecosystem == "pypi":
-        by_fold = {fold_name(identity[2]): identity for identity in identities}
-    used = {}
-    unmapped = {}
-    for package, count in sorted(counts.items()):
-        identity = None
-        if ecosystem == "npm":
-            if package in NODE_BUILTINS:
-                unmapped[package] = count
-                continue
-            identity = purl_identity(npm_purl(package))
-        elif ecosystem == "maven":
-            parts = package.split(":", 1)
-            identity = (
-                ("maven", parts[0], parts[1]) if len(parts) == 2 else None
-            )
-        elif ecosystem == "composer":
-            parts = package.split("/", 1)
-            identity = (
-                ("composer", parts[0], parts[1]) if len(parts) == 2 else None
-            )
-        elif ecosystem == "gem":
-            identity = ("gem", "", package)
-        else:
-            identity = map_python_package(package, by_fold)
-        if identity is None or identity not in identities:
-            unmapped[package] = count
+    mapper = Mapper(ecosystem, project, site_packages)
+    packages = certain_packages(truth)
+    used: dict = {}
+    unmapped: dict = {}
+    local: dict = {}
+    for package, (count, files) in sorted(packages.items()):
+        if ecosystem == "npm" and (package in NODE_BUILTINS or package.startswith("node:")):
             continue
-        used[identity] = used.get(identity, 0) + count
-    used_list = [
-        {"purl": identity_purl(identity), "occurrences": count}
-        for identity, count in sorted(used.items())
-    ]
-    direct = direct_dependency_identities(bom, ecosystem, manifest_path)
-    unused_list = [
-        {"purl": identity_purl(identity)}
-        for identity in sorted(direct - set(used))
-    ]
-    document = {
+        purl = mapper.purl(package, files)
+        if purl is None:
+            unmapped[package] = count
+        elif purl == "local":
+            local[package] = count
+        else:
+            used[purl] = used.get(purl, 0) + count
+    if ecosystem == "npm" and manifest_path:
+        # cdxgen's npm graph lists the whole resolved tree under the root,
+        # so the manifest answers which dependencies are direct.
+        document = load_json(manifest_path)
+        declared = set()
+        for section in ("dependencies", "devDependencies"):
+            values = document.get(section) if isinstance(document, dict) else None
+            declared |= set(values) if isinstance(values, dict) else set()
+        direct = {npm_purl(name) for name in declared}
+    else:
+        direct = {version_less(purl) for purl in bom_direct_purls(bom)}
+    used_keys = {label_key(purl) for purl in used}
+    unused = sorted(purl for purl in direct if label_key(purl) not in used_keys)
+    return {
         "item": item_id,
         "reachability": {
             "source": "oracle",
@@ -340,70 +440,105 @@ def derive(item_id: str, truth: dict, bom: dict, manifest_path: str = "") -> dic
                 "Package-level reduction of the callsites oracle output for "
                 "this project at its pinned commit: a package is used when "
                 "the truth holds a certain use of it in the project's own "
-                "files, and unused when the BOM declares it as a direct "
-                "dependency and the truth holds no use of it. No truth row "
-                "is carried."
+                "files, with the purl taken from the package name and not "
+                "from any scan, and unused when the BOM or package.json "
+                "declares it as a direct dependency and the truth holds no "
+                "use of it. No truth row is carried."
             ),
-            "used": used_list,
-            "unused": unused_list,
+            "used": [{"purl": purl, "occurrences": count} for purl, count in sorted(used.items())],
+            "unused": [{"purl": purl} for purl in unused],
             "unmapped": dict(sorted(unmapped.items())),
+            "local": dict(sorted(local.items())),
             "counts": {
-                "used": len(used_list),
-                "unused": len(unused_list),
+                "used": len(used),
+                "unused": len(unused),
                 "unmapped": len(unmapped),
-                "certainUses": sum(counts.values()),
+                "local": len(local),
+                "certainUses": sum(count for count, _ in packages.values()),
             },
         },
     }
-    return document
 
 
-def main() -> int:
+def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--truth", required=True, help="The project's truth JSON.")
-    parser.add_argument("--bom", required=True, help="The scan's sbom-<type>.cdx.json.")
+    parser.add_argument(
+        "--bom", required=True, help="The scan's BOM, read for the direct dependencies only."
+    )
     parser.add_argument("--item", required=True, help="The corpus item id.")
+    parser.add_argument(
+        "--project",
+        default="",
+        help="The project's clone at the pinned commit, for its declared dependencies "
+        "and its project-local modules.",
+    )
     parser.add_argument(
         "--package-manifest",
         default="",
-        help="The project's package.json, required for a JavaScript item: "
-        "cdxgen's npm dependency graph cannot answer which dependencies are "
-        "direct.",
+        help="The project's package.json (default: the one at --project's root), "
+        "which answers directness for a JavaScript item.",
+    )
+    parser.add_argument(
+        "--site-packages",
+        action="append",
+        default=[],
+        help="A site-packages directory of the project's environment, whose "
+        "distributions' top_level.txt map Python import names; repeatable.",
     )
     parser.add_argument("--out", required=True, help="Label file to write.")
-    args = parser.parse_args()
-    try:
-        with open(args.truth, encoding="utf-8") as fp:
-            truth = json.load(fp)
-        with open(args.bom, encoding="utf-8") as fp:
-            bom = json.load(fp)
-    except (OSError, ValueError) as exc:
-        print(f"Cannot read the inputs: {exc}", file=sys.stderr)
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace a reachability section that was not derived from the oracle.",
+    )
+    args = parser.parse_args(argv)
+    truth = load_json(args.truth)
+    bom = load_json(args.bom)
+    if not isinstance(truth, dict) or not isinstance(bom, dict):
+        print(f"Cannot read the truth '{args.truth}' or the BOM '{args.bom}'.", file=sys.stderr)
         return 2
+    project = os.path.expanduser(args.project)
+    manifest_path = os.path.expanduser(args.package_manifest) or (
+        os.path.join(project, "package.json") if project else ""
+    )
     try:
         document = derive(
-            args.item, truth, bom, os.path.expanduser(args.package_manifest)
+            args.item,
+            truth,
+            bom,
+            manifest_path,
+            project,
+            [os.path.expanduser(p) for p in args.site_packages],
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    # The derivation owns the reachability section only. An existing label
-    # file's hand-written findings and joins survive the rewrite, so
-    # refreshing the oracle labels never drops them.
+    # The derivation owns the oracle reachability section only. Hand-written
+    # findings and joins survive the rewrite, and a hand-written
+    # reachability section is refused unless --force says to replace it.
     existing = load_json(args.out)
     if isinstance(existing, dict):
-        for section in ("item", "findings", "joins"):
+        source = (existing.get("reachability") or {}).get("source")
+        if source not in (None, "oracle") and not args.force:
+            print(
+                f"The reachability section of '{args.out}' has source '{source}'; "
+                "refreshing it from the oracle would drop those labels. Pass --force "
+                "to replace it.",
+                file=sys.stderr,
+            )
+            return 2
+        for section in ("findings", "joins"):
             if section in existing:
                 document[section] = existing[section]
-    out_dir = os.path.dirname(os.path.abspath(args.out))
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fp:
         json.dump(document, fp, indent=2, ensure_ascii=False)
         fp.write("\n")
     counts = document["reachability"]["counts"]
     print(
-        f"{args.item}: used {counts['used']}, unused {counts['unused']}, "
-        f"unmapped {counts['unmapped']} of {counts['certainUses']} certain uses"
+        f"{args.item}: used {counts['used']}, unused {counts['unused']}, unmapped "
+        f"{counts['unmapped']}, local {counts['local']} of {counts['certainUses']} certain uses"
     )
     return 0
 
