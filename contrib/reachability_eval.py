@@ -396,14 +396,15 @@ def main(argv=None) -> int:
     )
     ap.add_argument(
         "--scan-dir",
-        default=os.path.expanduser("~/sandbox/p23-corpus/scans"),
-        help="root holding the corpus scan directories, one per item",
+        default=corpus_score.cache_dir("scans"),
+        help="root holding the corpus scan directories, one per item, as the scorer "
+        "writes them (default: %(default)s)",
     )
     ap.add_argument("--items", default=None, help="comma-separated item names")
     ap.add_argument(
         "--corpus-root",
-        default=os.path.expanduser("~/sandbox/p23-corpus"),
-        help="directory holding the corpus clones, one per repository item",
+        default=corpus_score.cache_dir("clones"),
+        help="directory holding the corpus clones, one per repository item (default: %(default)s)",
     )
     ap.add_argument(
         "--check-snapshot",

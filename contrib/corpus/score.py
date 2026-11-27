@@ -8,9 +8,9 @@ Markdown table beside it. A result dep-scan did not assess is its own column
 with its reason; it is never a miss and never a clean pass.
 
 Usage:
-    # Run every item whose inputs are present
-    python contrib/corpus/score.py --scans-root /tmp/corpus-scans \
-        --corpus-root ~/corpus --testdata-root ~/repotests-data
+    # Run every item whose inputs are present, cloning what is missing; the
+    # clones, scans and pulled data default to ~/.cache/depscan/corpus/
+    python contrib/corpus/score.py --fetch
 
     # Score a few items, from scans made earlier
     python contrib/corpus/score.py --scan-dir /tmp/corpus-scans \
@@ -41,7 +41,6 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -145,6 +144,14 @@ def keys_of(purls) -> set:
     for purl in purls or []:
         keys |= {purl_key(purl), label_key(purl)}
     return keys
+
+
+def cache_dir(name: str) -> str:
+    """A directory under the user cache for the corpus's clones, scans and
+    pulled data: ``$XDG_CACHE_HOME/depscan/corpus/<name>``, with
+    ``~/.cache`` standing in for an unset XDG_CACHE_HOME."""
+    root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
+    return os.path.join(root, "depscan", "corpus", name)
 
 
 def rate(hit_count: int, total: int):
@@ -313,9 +320,12 @@ def resolve_fixture(item: dict, scans_root: str):
     checked, reason = _digest_checked(item, fixture_digest(directory), directory)
     if checked is None:
         return None, reason
-    if not scans_root:
-        return None, "run mode needs --scans-root to copy the fixture into"
     copy_dir = os.path.abspath(os.path.join(scans_root, "payloads", item["name"]))
+    if os.path.commonpath([copy_dir, _REPO_ROOT]) == _REPO_ROOT:
+        return None, (
+            f"the scans root {scans_root} is inside the dep-scan checkout, whose uv "
+            "workspace a fixture scan would pick up; pass a --scans-root outside it"
+        )
     shutil.rmtree(copy_dir, ignore_errors=True)
     os.makedirs(os.path.dirname(copy_dir), exist_ok=True)
     shutil.copytree(
@@ -376,13 +386,13 @@ def build_scan_options(item: dict, payload, reports_dir: str):
     return options, resolution
 
 
-def run_item_scan(item: dict, payload, reports_dir: str, timeout: float):
+def run_item_scan(item: dict, payload, reports_dir: str):
     """Run the item's scan through :func:`depscan.api.scan` with rendering
-    off, and return (result, None) or (None, reason)."""
+    off, and return (result, None) or (None, reason). The scan runs to its
+    end; the workflow's job timeout bounds a scan that hangs."""
     from depscan import api
 
     options, resolution = build_scan_options(item, payload, reports_dir)
-    started = time.time()
     try:
         result = api.scan(
             options, render=False, checks_not_assessed=resolution.not_assessed or None
@@ -391,9 +401,6 @@ def run_item_scan(item: dict, payload, reports_dir: str, timeout: float):
         return None, f"the scan stopped early: {exc}"
     except Exception as exc:  # noqa: BLE001 - a failed scan is the item's result
         return None, f"{type(exc).__name__}: {exc}"
-    elapsed = time.time() - started
-    if timeout and elapsed > timeout:
-        return None, f"the scan took {elapsed:.0f}s, over the {timeout:.0f}s budget"
     return result, None
 
 
@@ -1198,10 +1205,8 @@ def score_one(item: dict, labels, args) -> dict:
         payload, reason = resolve_payload(item, args)
         if payload is None:
             return not_assessed(reason)
-        if not args.scans_root:
-            return not_assessed("run mode needs --scans-root (or score scans with --scan-dir)")
         reports_dir = os.path.abspath(os.path.join(args.scans_root, item["name"]))
-        result, reason = run_item_scan(item, payload, reports_dir, args.timeout)
+        result, reason = run_item_scan(item, payload, reports_dir)
         if result is None:
             return not_assessed(reason)
     scan = ItemScan(item, result, payload)
@@ -1320,17 +1325,20 @@ def parse_args(argv=None):
         help="Score existing scan directories under this root instead of running.",
     )
     parser.add_argument(
-        "--scans-root", default=None, help="Directory the scans are written to (run mode)."
+        "--scans-root",
+        default=cache_dir("scans"),
+        help="Directory the scans and the fixture copies are written to in run mode; keep "
+        "it outside the dep-scan checkout (default: %(default)s).",
     )
     parser.add_argument(
         "--corpus-root",
-        default=os.path.expanduser("~/sandbox/p23-corpus"),
-        help="Directory holding the corpus clones (run mode).",
+        default=cache_dir("clones"),
+        help="Directory holding the repository items' clones (default: %(default)s).",
     )
     parser.add_argument(
         "--testdata-root",
-        default=os.path.expanduser("~/sandbox/p23-testdata"),
-        help="Directory holding the pulled repo-test data.",
+        default=cache_dir("repotests-data"),
+        help="Directory holding the pulled repo-test data (default: %(default)s).",
     )
     parser.add_argument(
         "--floors",
@@ -1339,12 +1347,6 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--output", default=".", help="Directory score.json and the Markdown table are written to."
-    )
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        default=3600.0,
-        help="Per-item scan budget in seconds (default: 3600).",
     )
     parser.add_argument(
         "--fetch",

@@ -701,3 +701,26 @@ def test_pypi_names_compare_under_pep_503():
     assert corpus_score.label_keys(["pkg:pypi/flask-sqlalchemy"]) & corpus_score.keys_of(
         ["pkg:pypi/Flask_SQLAlchemy@3.1.1"]
     )
+
+
+def test_paths_default_to_the_user_cache_and_there_is_no_timeout(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+    args = corpus_score.parse_args([])
+    for root in (args.scans_root, args.corpus_root, args.testdata_root):
+        assert root.startswith(str(tmp_path / "depscan" / "corpus"))
+    # The budget was checked only after a scan finished; the option is gone.
+    with pytest.raises(SystemExit):
+        corpus_score.parse_args(["--timeout", "10"])
+
+
+def test_fixture_copies_never_land_inside_the_checkout():
+    item = {
+        "name": "malware-fixture",
+        "source": "fixture:malware-fixture",
+        "sha256": corpus_score.fixture_digest(
+            os.path.join(REPO_ROOT, "contrib", "corpus", "fixtures", "malware-fixture")
+        ),
+    }
+    payload, reason = corpus_score.resolve_fixture(item, os.path.join(REPO_ROOT, "corpus-scans"))
+    assert payload is None
+    assert "inside the dep-scan checkout" in reason
