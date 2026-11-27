@@ -688,8 +688,11 @@ def test_an_edit_keeps_the_file_mode(tmp_path):
     path = tmp_path / "decisions.toml"
     path.write_text(AUTHORED_FILE, encoding="utf-8")
     os.chmod(path, 0o644)
+    # Windows keeps only the read-only bit, so compare with the mode the
+    # platform actually set rather than with 0o644.
+    before = stat.S_IMODE(os.stat(path).st_mode)
     api.triage_set(file=str(path), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
-    assert stat.S_IMODE(os.stat(path).st_mode) == 0o644
+    assert stat.S_IMODE(os.stat(path).st_mode) == before
 
 
 @pytest.mark.skipif(os.name == "nt", reason="symbolic links need a privilege on Windows")

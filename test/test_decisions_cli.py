@@ -635,7 +635,8 @@ def test_an_environment_file_that_differs_from_the_recorded_one_is_named(
     monkeypatch.setenv("DEPSCAN_DECISIONS", other)
     capsys.readouterr()
     assert run_main(monkeypatch, ["report", str(reports)]) == 0
-    out = "".join(capsys.readouterr().out.split())
+    # The warning names absolute paths, which use backslashes on Windows.
+    out = "".join(capsys.readouterr().out.split()).replace("\\", "/")
     assert "thisrunevaluatesthedecisionsfile" in out
     assert "other.toml(selectedbyenvironment);thescanused" in out
     assert out.count("project/.depscan/decisions.toml") >= 1
