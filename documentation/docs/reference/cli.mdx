@@ -108,12 +108,13 @@ options:
   --report-name REPORT_NAME
                         Filename of the custom report written to the --reports-dir
   --decisions DECISIONS
-                        Path to the decisions file (.depscan/decisions.toml) holding triage decisions, the baseline and the gate expectations. Default: the scanned directory's own
-                        .depscan/decisions.toml, when the target is a directory.
-  --baseline BASELINE   Reference scan (a scan directory or a depscan.findings.json path) that marks every finding new or existing for this run, instead of the [baseline] the decisions file names.
+                        Path to the decisions file (.depscan/decisions.toml) holding triage decisions, the baseline and the gate expectations. Default: DEPSCAN_DECISIONS, then the [scan] decisions
+                        key of the configuration file (--config) or the user's, then the scanned directory's own .depscan/decisions.toml when the target is a directory.
+  --baseline BASELINE   Reference scan (a scan directory or a depscan.findings.json path, relative to the working directory) that marks every finding new or existing for this run, instead of the
+                        [baseline] the decisions file names.
   --fail-on SELECTORS   Gate for one run, as key=value selector pairs joined by commas, for example "grade=high,reach=reached". Each occurrence is an expectation with action fail; list selectors
                         take ids joined by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions file's [[expect]] entries.
-  --vex FILE            Load a CycloneDX VEX or OpenVEX document as triage decisions, proposed by the document. Repeatable.
+  --vex FILE            Load a CycloneDX VEX or OpenVEX document as triage decisions that apply at once, with the document named as their author. Repeatable.
   --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
                         Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
@@ -203,7 +204,7 @@ The table is generated from the exit-code constant in `depscan/commands/output.p
 | 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
-Findings change the exit code only when a run has a gate, which a decisions file, `--fail-on` or `--baseline` gives it: then 3 means a fail-action expectation matched and 4 means a required capability was not assessed, with 4 winning over 3 and 1 and 2 winning over both. Without a gate a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
+Findings change the exit code only when the run has expectations: `[[expect]]` or `[[require]]` entries in the decisions file, or `--fail-on`. Then 3 means a fail-action expectation matched and 4 means a required capability was not assessed, with 4 winning over 3 and 1 and 2 winning over both. Triage entries, a baseline or a `--vex` document alone mark and annotate findings but never exit 3 or 4, and a baseline that cannot be read exits 1. Without a gate a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
 
 ## Target detection
 
@@ -304,26 +305,36 @@ file and its grammar; the options are:
 
 | Option | On | What it does |
 | --- | --- | --- |
-| `--decisions FILE` | `scan`, `report` | Apply this decisions file. Default: the scanned directory's own `.depscan/decisions.toml` for a directory target; a target that is not a directory reads a file only when one is named. |
-| `--baseline SCAN` | `scan`, `report` | Mark every finding new or existing against this scan directory or findings file, replacing the file's `[baseline]` for the run. |
-| `--fail-on SELECTORS` | `scan`, `report` | Add one fail-action expectation for the run, as `key=value` pairs joined by commas (`grade=high,reach=reached`); list selectors take ids joined by a pipe (`rule=CVE-1|CVE-2`). Repeatable. |
-| `--vex FILE` | `scan`, `report` | Load a CycloneDX VEX or OpenVEX document as triage decisions, proposed by the document. Repeatable. |
+| `--decisions FILE` | `scan`, `report`, `triage` | Apply this decisions file. Default for `scan`: `DEPSCAN_DECISIONS`, then the `[scan] decisions` key of the configuration file (`--config`) or the user's, then the scanned directory's own `.depscan/decisions.toml` for a directory target; a target that is not a directory reads a file only when one is named. `report` resolves the same options first and then the file the scan's manifest records; `triage` resolves them first and then `.depscan/decisions.toml` in the working directory. |
+| `--config FILE` | `scan`, `report`, `triage` | The configuration file whose `[scan] decisions` key names the decisions file, in place of `DEPSCAN_CONFIG` or `.config/depscan.toml`. |
+| `--baseline SCAN` | `scan`, `report` | Mark every finding new or existing against this scan directory or findings file, relative to the working directory, replacing the file's `[baseline]` for the run. On its own it marks findings and gates nothing. |
+| `--fail-on SELECTORS` | `scan`, `report` | Add one fail-action expectation for the run, as `key=value` pairs joined by commas (`category=vulnerability,reach=reached`); list selectors take ids joined by a pipe (`rule=CVE-1|CVE-2`). Repeatable; the entries take the ids `fail-on:1`, `fail-on:2` and so on. |
+| `--vex FILE` | `scan`, `report` | Load a CycloneDX VEX or OpenVEX document whose statements apply at once as live triage decisions, with `VEX document <file name>` as their author and no `proposed_by`. Repeatable. |
 | `--out FILE` | `report` | Write the re-evaluated gate result there; without it the evaluation writes nothing into the scan directory. |
 
 A decisions file that breaks its schema is a usage error (exit 2), naming
 the key, the line and the valid values. The exit codes the gate adds are in
 the table above.
 
+`depscan report` re-evaluates a saved scan with the decisions as they are
+now. When the file the scan recorded cannot be found it warns and keeps the
+gate result and exit code the scan saved; when the file changed since the
+scan it evaluates the current file and warns. [The triage and gating
+page](../results/triage-and-gating#re-evaluating-a-saved-scan) has the
+details. `depscan scan` prints the decisions and gate block at the end of
+its output; `report` prints it first.
+
 ## The triage verb
 
-`depscan triage` records, reviews and checks the decisions file. The entry
-handle is the 1-based position `triage list` prints, because the file gives
-triage entries no id of their own. The author and the approver are required
-options, never guessed from git or the environment; a command missing one
-exits 2.
+`depscan triage` records, reviews and checks the decisions file, the one a
+scan of the working directory reads. Entries are named by their handle,
+`tr-` and ten hex digits of the digest of the entry's selector, which
+`triage list` prints and which does not move when other entries change. The
+author and the approver are required options, never guessed from git or the
+environment.
 
 ```bash
-# Record a decision by fingerprint, updating the entry with the same selector
+# Record a decision by fingerprint; it replaces the live entry with the same selector
 depscan triage set dsf1:9485b7ed... --state not_affected \
   --justification code_not_reachable --detail "Not reachable from any route" \
   --author alice
@@ -332,19 +343,34 @@ depscan triage set dsf1:9485b7ed... --state not_affected \
 depscan triage set --advisory CVE-2021-23337 --purl pkg:npm/lodash \
   --state in_triage --author alice --expires 2027-03-01T00:00:00Z
 
-# List the entries, with what each matches in a scan directory
+# Write a proposal for someone else to review; no --author needed
+depscan triage set --advisory CVE-2021-23337 --purl pkg:npm/lodash \
+  --state not_affected --justification code_not_reachable --proposed-by bob
+
+# List the entries, with their handles and what each matches in a scan directory
 depscan triage list reports/scan-dir --decisions .depscan/decisions.toml
 
-# Approve or reject a proposal
-depscan triage review --approve 2 --approver alice
+# List the proposals, then approve or reject one by its handle
+depscan triage review
+depscan triage review --approve tr-1a2b3c4d5e --approver alice
+depscan triage review --reject tr-1a2b3c4d5e --approver alice
 
 # Remove an entry, and validate the file the way a gate would
-depscan triage remove 3
+depscan triage remove tr-0f9e8d7c6b
 depscan triage check reports/scan-dir
 ```
 
-`check` exits 3 when the file carries errors a gate would hit, naming the
-key, the line and the valid values. Every subcommand takes `--format json`.
+`set` without `--proposed-by` writes a live decision and replaces the live
+entry with the same selector as a whole, so the earlier justification,
+expiry and approver do not survive. `set --proposed-by` writes a proposal
+that never replaces a person's decision and replaces only the same
+proposer's earlier proposal. `review --approve` records the approver, and
+the approver as the author when the proposal names none. `review --reject`
+removes proposals only; a live decision is removed with `remove`. A missing
+author or approver, a handle that matches no entry or more than one, and a
+file that does not parse exit 2. `check` exits 3 when the file does not
+parse or carries errors a gate would hit, naming the key, the line and the
+valid values. Every subcommand takes `--format json`.
 
 ## Several targets
 
