@@ -19,12 +19,17 @@
     "entry": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["index", "state", "status"],
+      "required": ["index", "handle", "state", "status"],
       "properties": {
         "index": {
           "type": "integer",
           "minimum": 1,
-          "description": "The proposal's 1-based position among the triage decisions, the handle depscan triage review takes."
+          "description": "The proposal's 1-based position among the triage decisions."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^tr-[0-9a-f]{10}$",
+          "description": "The proposal's stable handle, which depscan triage review takes: tr- and the first ten hex digits of the SHA-256 of its canonical selector and proposed_by."
         },
         "state": {
           "type": "string",

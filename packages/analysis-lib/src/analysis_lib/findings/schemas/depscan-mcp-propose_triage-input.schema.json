@@ -75,12 +75,7 @@
     "scan_dir": {
       "type": "string",
       "minLength": 1,
-      "description": "A scan directory inside the allowed roots whose recorded decisions file receives the proposal."
-    },
-    "decisions_file": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The decisions file to write into, inside the allowed roots. Takes precedence over scan_dir."
+      "description": "A scan directory inside the allowed roots. The proposal is written into the decisions file the scanned project resolves to, which must be a .toml file; the tool creates no file other than .depscan/decisions.toml under the project root."
     }
   }
 }

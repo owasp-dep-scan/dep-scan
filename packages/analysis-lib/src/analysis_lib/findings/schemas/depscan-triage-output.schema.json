@@ -96,13 +96,19 @@
       "additionalProperties": false,
       "required": [
         "index",
+        "handle",
         "state"
       ],
       "properties": {
         "index": {
           "type": "integer",
           "minimum": 1,
-          "description": "The entry's 1-based position among the triage decisions, the handle review and remove take."
+          "description": "The entry's 1-based position among the triage decisions."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^tr-[0-9a-f]{10}$",
+          "description": "The entry's stable handle, which depscan triage review and remove take: tr- and the first ten hex digits of the SHA-256 of its canonical selector, with proposed_by for a proposal."
         },
         "finding": {
           "type": "string",

@@ -374,7 +374,7 @@
         },
         "author": {
           "type": "string",
-          "description": "Who made the triage decision. A person, never a tool: an agent-proposed decision carries proposedBy until a person approves it."
+          "description": "Who made the triage decision. A person, never a tool: an agent-proposed decision carries proposed_by, and applies once a person approves it."
         },
         "approver": {
           "type": "string",
@@ -382,7 +382,7 @@
         },
         "proposed_by": {
           "type": "string",
-          "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and neither approver nor author is a proposal that changes nothing until it is approved."
+          "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and no approver is a proposal that changes nothing until it is approved, so a finding only carries one that was approved."
         },
         "expires": {
           "type": "string",

@@ -109,7 +109,7 @@
           "properties": {
             "file": {
               "type": "string",
-              "description": "The decisions file the scan read, as its path was given."
+              "description": "The decisions file the scan read: relative to the scanned source root with / separators when it is inside that root, otherwise absolute."
             },
             "sha256": {
               "type": "string",
