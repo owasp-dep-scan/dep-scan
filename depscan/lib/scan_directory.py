@@ -377,11 +377,7 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         else:
             entry.update(role="bom", producer="user")
         return entry
-    if (
-        name in _REPORT_FILES
-        or name.startswith("cdx-audit-")
-        or name.startswith("license-")
-    ):
+    if name in _REPORT_FILES or name.startswith("cdx-audit-") or name.startswith("license-"):
         entry.update(role="report", producer="dep-scan")
         return entry
     if name.endswith(".json") and is_cyclonedx is not None:
@@ -609,8 +605,9 @@ class ScanDirectory:
             database = dict(report_doc["data"]["vulnerabilityDatabase"])
             database["directory"] = home_relative(database.get("directory"))
             manifest["database"]["vulnerabilityDatabase"] = database
-        if self.decisions_record is not None:
-            manifest["decisions"] = self.decisions_record
+        # Written whether or not a file was read, so a scan that read none
+        # says so and is told apart from a manifest older than the key.
+        manifest["decisions"] = self.decisions_record
         return manifest
 
 

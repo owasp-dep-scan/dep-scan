@@ -515,9 +515,6 @@ def scan(
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
     decisions=None,
-    cli_expects: Optional[List[Any]] = None,
-    baseline_override=None,
-    decisions_base_dir: Optional[str] = None,
 ) -> ScanResult:
     """Run a scan with the given options and return its result.
 
@@ -541,15 +538,15 @@ def scan(
     it instead of probing the machine a second time. ``checks_not_assessed``
     lists checks, as ``{"name": ..., "reason": ...}`` dictionaries, that a
     caller decided cannot run; each is recorded in the manifest as a
-    ``check-<name>`` stage with status ``not-assessed``. ``decisions`` is a
-    loaded decisions document (:mod:`analysis_lib.findings.decisions`);
-    ``cli_expects`` are the expect entries a ``--fail-on`` expression built;
-    ``baseline_override`` is a baseline specification that replaces the
-    decisions file's for this run; ``decisions_base_dir`` is the directory
-    a relative baseline resolves against, the decisions file's own. All
-    four travel only through these keywords: every value of the options
-    namespace is copied into the manifest and the sample config, so a
-    report object must never land there.
+    ``check-<name>`` stage with status ``not-assessed``. ``decisions`` is
+    the :class:`depscan.lib.decisions.RunDecisions` the scan applies, as
+    the scan verb loads them from its options; without it the scan reads
+    the decisions file the scanned directory resolves to (the environment,
+    the configuration files named by ``options.config``, then its own
+    ``.depscan/decisions.toml``), exactly as ``depscan scan`` does. These
+    travel only through the keywords: every value of the options namespace
+    is copied into the manifest and the sample config, so a report object
+    must never land there.
 
     :param options: An ``argparse.Namespace`` from the CLI parser or from
         :func:`scan_options`.
@@ -557,19 +554,19 @@ def scan(
     :param doctor_report: Reuse this :class:`DoctorReport` instead of
         collecting one.
     :param checks_not_assessed: Check entries to record as not assessed.
-    :param decisions: The loaded decisions document to apply.
-    :param cli_expects: Expect entries from the command line to gate with.
-    :param baseline_override: Baseline specification replacing the file's.
-    :param decisions_base_dir: Directory a relative baseline resolves
-        against.
+    :param decisions: The decisions to apply; None resolves the scanned
+        directory's.
     :returns: The :class:`ScanResult` of the scan, carrying the manifest,
         findings and expectations of the scan directory it wrote.
     :raises ScanError: When a stage stops the scan, with the message the
-        stage logged. The function never calls ``sys.exit`` and never
+        stage logged, or the decisions file cannot be used. The function
+        never calls ``sys.exit`` and never
         returns a result in place of a stopped scan. A scan that stopped
         partway still leaves its directory with a manifest naming the
         failed stage.
     """
+    if decisions is None:
+        decisions = _scanned_directory_decisions(options)
     return _run_stages(
         options,
         render=render,
@@ -578,10 +575,33 @@ def scan(
         doctor_report=doctor_report,
         checks_not_assessed=checks_not_assessed,
         decisions=decisions,
-        cli_expects=cli_expects,
-        baseline_override=baseline_override,
-        decisions_base_dir=decisions_base_dir,
     )
+
+
+def _scanned_directory_decisions(options):
+    """The decisions a scan of ``options`` reads when the caller passed
+    none: those of the scanned source directory, or those the environment
+    and the configuration files name for a target that is not a directory.
+
+    :raises ScanError: When the file cannot be used.
+    """
+    from depscan.lib import decisions as decisions_lib
+
+    target = getattr(options, "src_dir_image", None)
+    reads_directory = not (
+        getattr(options, "bom", None)
+        or getattr(options, "bom_dir", None)
+        or getattr(options, "search_purl", None)
+    )
+    target_dir = str(target) if reads_directory and target and os.path.isdir(str(target)) else None
+    try:
+        run = decisions_lib.load_for_target(
+            decisions_lib.parse_options(verb="scan", config=getattr(options, "config", None)),
+            target_dir=target_dir,
+        )
+    except decisions_lib.DecisionsUsageError as exc:
+        raise ScanError(str(exc)) from exc
+    return run if run.active else None
 
 
 def _run_stages(
@@ -593,9 +613,6 @@ def _run_stages(
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
     decisions=None,
-    cli_expects: Optional[List[Any]] = None,
-    baseline_override=None,
-    decisions_base_dir: Optional[str] = None,
 ) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
@@ -612,13 +629,7 @@ def _run_stages(
     ctx.write_scan_dir = write_scan_dir
     if doctor_report is not None:
         ctx.doctor_report = doctor_report
-    ctx.decisions = decisions
-    ctx.cli_expects = list(cli_expects or [])
-    ctx.baseline_override = baseline_override
-    ctx.decisions_base_dir = decisions_base_dir
-    ctx.decisions_active = bool(
-        (decisions is not None and decisions.has_decisions) or ctx.cli_expects or baseline_override
-    )
+    ctx.decisions = decisions if decisions is not None and decisions.active else None
     pipeline.configure_output(ctx)
     written = None
     try:
@@ -651,15 +662,7 @@ def _run_stages(
             # A requested blint review that failed ran during the inventory;
             # its failure is a stage of its own beside the inventory that
             # kept going, so a review problem never leaves only a warning.
-            for reason in tscan.review_not_assessed:
-                if ctx.scan_dir is not None:
-                    ctx.scan_dir.record_stage(
-                        "binary-review",
-                        "failed",
-                        project_type=project_type,
-                        reason=reason,
-                        capabilities=["binary"],
-                    )
+            _record_binary_review(ctx, tscan)
             ctx.scans.append(tscan)
             _stage(
                 ctx,
@@ -683,6 +686,7 @@ def _run_stages(
                 ctx,
                 tscan,
                 project_type=project_type,
+                capabilities=["supply-chain"],
                 skipped_reason="the supply-chain audit was not requested",
                 failed_reason=lambda: tscan.risk_error,
                 not_assessed_reason=lambda: tscan.risk_not_assessed,
@@ -694,7 +698,7 @@ def _run_stages(
                             _relative_output(ctx, path) for path in tscan.audit_output_files
                         )
                         for output in outputs
-                    ]
+                    ],
                 },
             )
             pipeline.announce_scan_targets(ctx, tscan)
@@ -753,7 +757,7 @@ def _run_stages(
         # The decisions stage builds the findings, applies the triage
         # decisions and the baseline, and evaluates the gate, before the
         # reports render, so the saved reports carry its result.
-        if write_scan_dir and ctx.decisions_active:
+        if write_scan_dir and ctx.decisions is not None:
             _stage(
                 ctx,
                 "decisions",
@@ -848,6 +852,31 @@ def _stage(
     else:
         record("completed")
     return result
+
+
+def _record_binary_review(ctx, tscan) -> None:
+    """Record the blint binary review of one project type as its own stage.
+
+    The review runs inside the inventory stage. A review that failed is
+    recorded as failed with each reason, and one whose reports the blint
+    adapter read is recorded as completed, so a requirement on the binary
+    capability sees what ran.
+    """
+    if ctx.scan_dir is None:
+        return
+    for reason in tscan.review_not_assessed:
+        ctx.scan_dir.record_stage(
+            "binary-review",
+            "failed",
+            project_type=tscan.project_type,
+            reason=reason,
+            capabilities=["binary"],
+        )
+    review = tscan.adapter_results.get("blint")
+    if not tscan.review_not_assessed and review is not None and review.status == "completed":
+        ctx.scan_dir.record_stage(
+            "binary-review", "completed", project_type=tscan.project_type, capabilities=["binary"]
+        )
 
 
 def _record_checks_not_assessed(ctx, checks_not_assessed):

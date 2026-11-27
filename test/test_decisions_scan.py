@@ -13,14 +13,11 @@ from pathlib import Path
 
 import pytest
 
-from analysis_lib.findings.decisions import (
-    BaselineSpec,
-    Decisions,
-    EXPECTATIONS_FILE,
-)
+from analysis_lib.findings.decisions import BaselineSpec, Decisions
 from analysis_lib.findings.schemas import validate
 from depscan import api
 from depscan.lib import doctor as doctor_mod
+from depscan.lib import decisions as decisions_lib
 from depscan.lib import pipeline, scan_directory, vdb_setup
 
 VULN_REQUESTS = {
@@ -122,17 +119,22 @@ _FULL_VDB_DATA = {
 }
 
 
+def _run_decisions(decisions=None, cli_expects=None, baseline=None):
+    """The decisions a scan applies, built the way the scan verb builds
+    them from a loaded file and its command-line options."""
+    return decisions_lib.load_for_target(
+        decisions_lib.DecisionOptions(
+            named=decisions, cli_expects=list(cli_expects or []), baseline=baseline
+        )
+    )
+
+
 def _scan(tmp_path, *, decisions=None, cli_expects=None, baseline=None):
     bom = _write_bom(tmp_path / "app.cdx.json")
     reports = tmp_path / "reports"
     options = api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True)
     return api.scan(
-        options,
-        render=False,
-        decisions=decisions,
-        cli_expects=cli_expects,
-        baseline_override=baseline,
-        decisions_base_dir=str(tmp_path),
+        options, render=False, decisions=_run_decisions(decisions, cli_expects, baseline)
     )
 
 
@@ -147,9 +149,8 @@ def _read_vdr(result):
 
 
 def _decisions(tmp_path, document, name="decisions.toml"):
-    import tomllib
 
-    from analysis_lib.findings.decisions import decisions_from_document, load_decisions
+    from analysis_lib.findings.decisions import load_decisions
 
     path = tmp_path / name
     path.write_text(document, encoding="utf-8")
@@ -305,7 +306,7 @@ def test_the_gate_fails_on_a_matching_expectation(scan_stubs, tmp_path):
     assert document["results"][0]["status"] == "fail"
     assert len(document["results"][0]["findings"]) == 1
     assert document["results"][0]["evidence"] == ["depscan.findings.json"]
-    written = _read(result.reports_dir, EXPECTATIONS_FILE)
+    written = _read(result.reports_dir, scan_directory.EXPECTATIONS_FILE)
     assert written == document
     manifest = result.manifest
     assert manifest is not None
@@ -364,18 +365,20 @@ def test_the_gate_runs_from_the_command_line_without_a_file(scan_stubs, tmp_path
     validate("depscan-expectations", document)
     assert document["decisions"] is None
     assert document["summary"]["fail"] == 1
-    assert document["results"][0]["id"].startswith("cli-")
+    assert document["results"][0]["id"] == "fail-on:1"
     assert document["results"][0]["description"].startswith("the --fail-on expression")
 
 
 def test_a_scan_without_decisions_writes_no_expectations(scan_stubs, tmp_path):
     result = _scan(tmp_path)
     assert result.expectations is None
-    assert not (Path(result.reports_dir) / EXPECTATIONS_FILE).exists()
+    assert not (Path(result.reports_dir) / scan_directory.EXPECTATIONS_FILE).exists()
     manifest = result.manifest
     assert manifest is not None
     assert not [s for s in manifest["stages"] if s["name"] in ("decisions", "expectations")]
-    assert manifest.get("decisions") is None
+    # The manifest says no decisions file was read, rather than leaving the
+    # key out the way a manifest older than the key does.
+    assert "decisions" in manifest and manifest["decisions"] is None
 
 
 # --- the baseline ---------------------------------------------------------------------
@@ -425,7 +428,7 @@ def test_a_baseline_with_a_wrong_digest_stops_the_scan(scan_stubs, tmp_path):
     bom = _write_bom(tmp_path / "app.cdx.json")
     options = api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True)
     with pytest.raises(api.ScanError) as excinfo:
-        api.scan(options, render=False, decisions=decisions, decisions_base_dir=str(tmp_path))
+        api.scan(options, render=False, decisions=_run_decisions(decisions))
     assert "digest" in str(excinfo.value)
     manifest = json.loads(
         (tmp_path / "reports" / "depscan.manifest.json").read_text(encoding="utf-8")
@@ -440,7 +443,7 @@ def test_an_unreadable_baseline_stops_the_scan(scan_stubs, tmp_path):
     bom = _write_bom(tmp_path / "app.cdx.json")
     options = api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True)
     with pytest.raises(api.ScanError) as excinfo:
-        api.scan(options, render=False, decisions=decisions)
+        api.scan(options, render=False, decisions=_run_decisions(decisions))
     assert "cannot be read" in str(excinfo.value)
 
 
@@ -458,7 +461,7 @@ def test_the_baseline_override_replaces_the_file(scan_stubs, tmp_path):
     result = _scan(
         second,
         decisions=decisions,
-        baseline=BaselineSpec(scan=str(first.reports_dir)),
+        baseline=str(first.reports_dir),
     )
     assert {f["baseline"] for f in result.findings} == {"existing"}
 
@@ -485,3 +488,38 @@ def test_the_alias_map_folds_the_vdr_aliases(scan_stubs, tmp_path):
     document = result.expectations
     assert document is not None
     assert len(document["triage"]["stale"]) == 1
+
+
+# --- the capabilities a requirement reads ------------------------------------------------
+
+
+def test_a_completed_blint_review_records_the_binary_capability(tmp_path):
+    from types import SimpleNamespace
+
+    from analysis_lib.findings.decisions import RequireEntry, evaluate_gate
+
+    scan_dir = scan_directory.ScanDirectory(str(tmp_path), depscan_version="7.0.0")
+    ctx = SimpleNamespace(scan_dir=scan_dir)
+    tscan = SimpleNamespace(
+        project_type="binary",
+        review_not_assessed=[],
+        adapter_results={"blint": SimpleNamespace(status="completed")},
+    )
+    api._record_binary_review(ctx, tscan)
+    assert scan_dir.stages == [
+        {
+            "name": "binary-review",
+            "status": "completed",
+            "capabilities": ["binary"],
+            "projectType": "binary",
+        }
+    ]
+    gate = evaluate_gate([], scan_dir.stages, Decisions(requires=[RequireEntry("binary")]))
+    assert gate.results[0].status == "pass"
+    # A review that did not run leaves the requirement failing.
+    failed = scan_directory.ScanDirectory(str(tmp_path), depscan_version="7.0.0")
+    tscan.review_not_assessed = ["blint is not installed"]
+    api._record_binary_review(SimpleNamespace(scan_dir=failed), tscan)
+    assert [stage["status"] for stage in failed.stages] == ["failed"]
+    gate = evaluate_gate([], failed.stages, Decisions(requires=[RequireEntry("binary")]))
+    assert gate.results[0].status == "fail"

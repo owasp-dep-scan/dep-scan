@@ -29,11 +29,10 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass, field as dataclasses_field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
-from analysis_lib.findings.decisions import load_decisions as decisions_lib_load
 
 from depscan import api
 from depscan.cli_options import build_parser, validate_spec_version
@@ -112,15 +111,18 @@ def _add_decisions_options(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         help="Path to the decisions file (.depscan/decisions.toml) holding "
         "triage decisions, the baseline and the gate expectations. Default: "
-        "the scanned directory's own .depscan/decisions.toml, when the "
-        "target is a directory.",
+        "DEPSCAN_DECISIONS, then the [scan] decisions key of the "
+        "configuration file (--config) or the user's, then the scanned "
+        "directory's own .depscan/decisions.toml when the target is a "
+        "directory.",
     )
     parser.add_argument(
         "--baseline",
         default=argparse.SUPPRESS,
         help="Reference scan (a scan directory or a depscan.findings.json "
-        "path) that marks every finding new or existing for this run, "
-        "instead of the [baseline] the decisions file names.",
+        "path, relative to the working directory) that marks every finding "
+        "new or existing for this run, instead of the [baseline] the "
+        "decisions file names.",
     )
     parser.add_argument(
         "--fail-on",
@@ -130,7 +132,7 @@ def _add_decisions_options(parser: argparse.ArgumentParser) -> None:
         metavar="SELECTORS",
         help="Gate for one run, as key=value selector pairs joined by "
         'commas, for example "grade=high,reach=reached". Each occurrence is '
-        'an expectation with action fail; list selectors take ids joined '
+        "an expectation with action fail; list selectors take ids joined "
         'by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions '
         "file's [[expect]] entries.",
     )
@@ -139,8 +141,9 @@ def _add_decisions_options(parser: argparse.ArgumentParser) -> None:
         action="append",
         default=argparse.SUPPRESS,
         metavar="FILE",
-        help="Load a CycloneDX VEX or OpenVEX document as triage decisions, "
-        "proposed by the document. Repeatable.",
+        help="Load a CycloneDX VEX or OpenVEX document as triage decisions "
+        "that apply at once, with the document named as their author. "
+        "Repeatable.",
     )
 
 
@@ -933,105 +936,44 @@ def _capability_gate(args: argparse.Namespace, names, skip_requirements: Tuple[s
 # --- the scans -------------------------------------------------------------------
 
 
-@dataclass
-class _PreparedDecisions:
-    """The decisions options a whole run shares, validated up front.
-
-    ``named`` is the loaded decisions file ``--decisions`` named, applied to
-    every target. ``vex_entries`` are the triage entries the ``--vex``
-    documents loaded; every target's decisions carry them beside its own
-    file's.
-    """
-
-    cli_expects: Optional[List[Any]] = None
-    named: Optional[Any] = None
-    vex_entries: List[Any] = dataclasses_field(default_factory=list)
-    baseline: Optional[Any] = None
-
-
-def _prepare_decisions(args) -> Tuple[Optional[_PreparedDecisions], Optional[_Refusal]]:
-    """Parse and load the decisions options before any target resolves.
+def _prepare_decisions(args) -> Tuple[Optional[Any], Optional[_Refusal]]:
+    """Check the decisions options before any target resolves.
 
     A --fail-on expression, a VEX document or a named decisions file that
     cannot be used is a usage error whatever else is wrong, the same
     treatment as a broken exploitability rule table.
     """
-    from analysis_lib.findings.decisions import (
-        BaselineSpec,
-        DecisionsError,
-        parse_fail_on,
-    )
-
-    cli_expects: List[Any] = []
-    for index, expression in enumerate(getattr(args, "fail_on", None) or []):
-        try:
-            cli_expects.append(parse_fail_on(expression, index=index))
-        except DecisionsError as exc:
-            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
-    vex_entries: List[Any] = []
-    for vex_file in getattr(args, "vex", None) or []:
-        try:
-            vex_entries.extend(decisions_lib.load_vex_decisions(str(vex_file)))
-        except DecisionsError as exc:
-            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
-    named = None
-    named_path = getattr(args, "decisions", None)
-    if named_path:
-        try:
-            named = decisions_lib_load(str(named_path), selected_by="option")
-        except DecisionsError as exc:
-            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
-    baseline = BaselineSpec(scan=str(args.baseline)) if getattr(args, "baseline", None) else None
-    return (
-        _PreparedDecisions(
-            cli_expects=cli_expects, named=named, vex_entries=vex_entries, baseline=baseline
-        ),
-        None,
-    )
+    try:
+        return (
+            decisions_lib.parse_options(
+                verb="scan",
+                decisions=getattr(args, "decisions", None),
+                fail_on=getattr(args, "fail_on", None) or (),
+                vex=getattr(args, "vex", None) or (),
+                baseline=getattr(args, "baseline", None),
+                config=getattr(args, "config", None),
+            ),
+            None,
+        )
+    except decisions_lib.DecisionsUsageError as exc:
+        return None, _Refusal(EXIT_USAGE, str(exc))
 
 
 def _decisions_for_target(
-    prepared: Optional[_PreparedDecisions], target: str, kind: str
-) -> Tuple[Optional[Any], Optional[str], Optional[_Refusal]]:
-    """The decisions one target's scan applies, and the directory its
-    relative baseline resolves against.
+    prepared, target: str, kind: str
+) -> Tuple[Optional[Any], Optional[_Refusal]]:
+    """The decisions one target's scan applies.
 
     A named file applies to every target. Otherwise the target resolves its
     own: the environment, the configuration files, and a directory target's
     own .depscan/decisions.toml. A file that cannot be used refuses the
     target, and the run exits 2, because it is a usage error.
     """
-    from analysis_lib.findings.decisions import Decisions, DecisionsError
-
-    if prepared is None:
-        return None, None, None
-    named = prepared.named
-    if named is not None:
-        base_dir = os.path.dirname(os.path.abspath(str(named.path))) if named.path else None
-        decisions = Decisions(
-            triage=list(named.triage) + list(prepared.vex_entries),
-            expects=list(named.expects),
-            requires=list(named.requires),
-            baseline=named.baseline,
-            path=named.path,
-            digest=named.digest,
-            selected_by=named.selected_by,
-        )
-        return decisions, base_dir, None
     target_dir = target if kind == "source" and os.path.isdir(target) else None
-    path, selected_by = decisions_lib.resolve_decisions_path(None, target_dir)
-    if not path and not prepared.vex_entries and prepared.baseline is None:
-        return None, None, None
-    base_dir = None
-    decisions = Decisions(selected_by=selected_by)
-    if path:
-        try:
-            decisions = decisions_lib_load(str(path), selected_by=selected_by)
-        except DecisionsError as exc:
-            return None, None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
-        base_dir = os.path.dirname(os.path.abspath(str(path)))
-    decisions.triage.extend(prepared.vex_entries)
-    return decisions, base_dir, None
+    try:
+        return decisions_lib.load_for_target(prepared, target_dir=target_dir), None
+    except decisions_lib.DecisionsUsageError as exc:
+        return None, _Refusal(EXIT_USAGE, str(exc))
 
 
 def run(args: argparse.Namespace) -> int:
@@ -1180,7 +1122,7 @@ def _unexpected_error_message(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
 
 
-def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared=None):
+def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared):
     """One scan per given target; a single scan for zero or one target.
 
     Returns one ``(exit_code, entry)`` per given target, in the given order:
@@ -1203,23 +1145,14 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared=
         # Zero targets means the current directory, with the internal
         # default and no per-target override.
         target = _zero_target_target(internal)
-        decisions, decisions_base_dir, refusal = _decisions_for_target(
-            prepared, str(internal.src_dir_image), "source"
-        )
+        decisions, refusal = _decisions_for_target(prepared, str(internal.src_dir_image), "source")
         if refusal is not None:
             return [
                 (refusal.exit_code, {"target": target, "kind": None, "error": refusal.message})
             ]
         options = argparse.Namespace(**vars(internal))
         try:
-            code, document = _scan_one(
-                options,
-                resolution,
-                doctor_report,
-                decisions=decisions,
-                decisions_base_dir=decisions_base_dir,
-                prepared=prepared,
-            )
+            code, document = _scan_one(options, resolution, doctor_report, decisions=decisions)
         except Exception as exc:
             return [(1, _crash_entry(target, exc))]
         return [(code, {"target": target, "kind": "source", **document})]
@@ -1245,9 +1178,7 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared=
                 # is never empty (the env variable or <cwd>/reports), so the
                 # pipeline's own rule cannot fire from this verb.
                 options.reports_dir = os.path.realpath(target)
-            decisions, decisions_base_dir, decisions_refusal = _decisions_for_target(
-                prepared, target, kind
-            )
+            decisions, decisions_refusal = _decisions_for_target(prepared, target, kind)
             if decisions_refusal is not None:
                 LOG.error(decisions_refusal.message)
                 outcomes.append(
@@ -1261,14 +1192,7 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared=
                     )
                 )
                 continue
-            code, document = _scan_one(
-                options,
-                resolution,
-                doctor_report,
-                decisions=decisions,
-                decisions_base_dir=decisions_base_dir,
-                prepared=prepared,
-            )
+            code, document = _scan_one(options, resolution, doctor_report, decisions=decisions)
         except Exception as exc:
             outcomes.append((1, _crash_entry(target, exc)))
             continue
@@ -1356,7 +1280,7 @@ def _apply_target_options(options, target: str, kind: str, args, resolution) -> 
         options.project_type = [forced_type, *appended]
 
 
-def _scan_one(options, resolution, doctor_report, *, decisions=None, decisions_base_dir=None, prepared=None):
+def _scan_one(options, resolution, doctor_report, *, decisions=None):
     """Run one scan, reusing the gate's doctor report and recording the
     not-assessed checks; returns the exit code and the json document.
 
@@ -1377,9 +1301,6 @@ def _scan_one(options, resolution, doctor_report, *, decisions=None, decisions_b
             doctor_report=doctor_report,
             checks_not_assessed=resolution.not_assessed or None,
             decisions=decisions,
-            cli_expects=list(getattr(prepared, "cli_expects", None) or []),
-            baseline_override=getattr(prepared, "baseline", None),
-            decisions_base_dir=decisions_base_dir,
         )
     except api.ScanError:
         # The stage already logged why the scan stopped.
@@ -1398,7 +1319,7 @@ def _scan_one(options, resolution, doctor_report, *, decisions=None, decisions_b
         "findings": result.findings,
         "expectations": result.expectations,
     }
-    return (decisions_lib.combine_exit(0, decisions_lib.gate_exit(result.expectations)), document)
+    return decisions_lib.gate_exit(result.expectations), document
 
 
 def _target_directory_name(target: str) -> str:

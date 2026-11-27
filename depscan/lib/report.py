@@ -9,16 +9,18 @@ non-zero rather than printing something the scan did not produce.
 
 The command also re-evaluates the decisions: the current decisions file is
 applied to the saved findings and the gate runs again, so a decision made
-after the scan takes effect without rescanning and a CI job can gate a scan
-made earlier. The re-evaluation writes nothing into the scan directory
-unless ``--out`` names a file.
+after the scan takes effect without rescanning, one removed or expired
+since stops applying, and a CI job can gate a scan made earlier. When the
+decisions file the scan recorded cannot be found, the gate result the scan
+saved is kept, with a warning, instead of passing silently. The
+re-evaluation writes nothing into the scan directory unless ``--out`` names
+a file.
 """
 
 import argparse
 import os
 import sys
-from types import SimpleNamespace
-from typing import Any, List, Optional
+from typing import List, Optional, Tuple
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.findings import decisions as decision_lib
@@ -70,22 +72,30 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--decisions",
         help="Path to the decisions file to apply to the saved findings. "
-        "Default: the file the scan's manifest records, when it can be "
-        "read; the environment and the configuration files are consulted "
-        "before it.",
+        "Default: DEPSCAN_DECISIONS, then the decisions key of the "
+        "configuration files, then the file the scan's manifest records, "
+        "found relative to the scanned source root, the scan directory or "
+        "its parent.",
+    )
+    parser.add_argument(
+        "--config",
+        help="Path to the configuration file whose [scan] decisions key names "
+        "a decisions file. Default: DEPSCAN_CONFIG, then "
+        "$PWD/.config/depscan.toml.",
     )
     parser.add_argument(
         "--baseline",
         help="Reference scan (a scan directory or a depscan.findings.json "
-        "path) that marks every finding new or existing for this run, "
-        "instead of the [baseline] the decisions file names.",
+        "path, relative to the working directory) that marks every finding "
+        "new or existing for this run, instead of the [baseline] the "
+        "decisions file names.",
     )
     parser.add_argument(
         "--fail-on",
         action="append",
         dest="fail_on",
         metavar="SELECTORS",
-        help='Gate for this evaluation, as key=value selector pairs joined by '
+        help="Gate for this evaluation, as key=value selector pairs joined by "
         'commas, for example "grade=high,reach=reached". Same grammar as the '
         "decisions file's [[expect]] entries.",
     )
@@ -93,8 +103,9 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         "--vex",
         action="append",
         metavar="FILE",
-        help="Load a CycloneDX VEX or OpenVEX document as triage decisions, "
-        "proposed by the document. Repeatable.",
+        help="Load a CycloneDX VEX or OpenVEX document as triage decisions "
+        "that apply at once, with the document named as their author. "
+        "Repeatable.",
     )
     parser.add_argument(
         "--out",
@@ -156,7 +167,9 @@ def _table_entry(vuln):
     # The affects versions are where the scan's writer puts the fix; an
     # entry that instead carries the transient field itself (a hand-made or
     # stub-written VDR) keeps it.
-    entry["fixed_location"] = affects_fix_version(affects[0]) or str(entry.get("fixed_location") or "")
+    entry["fixed_location"] = affects_fix_version(affects[0]) or str(
+        entry.get("fixed_location") or ""
+    )
     rating = (entry.get("ratings") or [{}])[0]
     _, entry["p_rich_tree"] = pkg_sub_tree(
         ref,
@@ -310,144 +323,77 @@ def _unexpected_failure(json_output: bool, exc: Exception) -> int:
     return EXIT_FAILURE
 
 
-def _load_decisions_for_report(
-    args: argparse.Namespace, manifest: Optional[dict]
-) -> tuple[Optional[Any], Optional[str], List[Any]]:
-    """The decisions this evaluation applies, and why the run is refused.
+def _reevaluate(args: argparse.Namespace, result) -> Tuple[Optional[dict], int]:
+    """The decisions applied to the saved findings, as a gate result.
 
-    The precedence is the command line, the environment, the configuration
-    files, and then the file the scan's manifest records, which is the
-    scanned directory's own decisions file as the scan read it. The
-    ``--fail-on`` expressions and the ``--vex`` documents are validated
-    whatever the file resolution decided.
+    The decisions resolve through :func:`depscan.lib.decisions.load_for_saved_scan`
+    and apply through :func:`depscan.lib.decisions.apply_run_decisions`, the
+    function the scan's decisions stage calls. The findings are changed in
+    place, so the renderings and the JSON document show the decisions as
+    they stand now; the saved files keep the scan's own application. When
+    the decisions file the scan recorded cannot be found, the gate result
+    the scan saved is kept, with the warning, and its exit code stands
+    beside whatever the command-line options evaluate to.
 
-    :returns: ``(decisions, base_dir, cli_expects)`` where ``base_dir`` is
-        the directory a relative baseline resolves against, or the refusal
-        message through :class:`DecisionsUsageError`.
+    :returns: The expectations document, None when there is nothing to
+        evaluate and the scan saved no gate result, and the gate's exit code.
+    :raises DecisionsUsageError: When a decisions option cannot be used.
+    :raises analysis_lib.findings.decisions.BaselineError: When the baseline
+        cannot be read.
     """
-    from analysis_lib.findings.decisions import Decisions, DecisionsError, parse_fail_on
-
-    cli_expects: List[object] = []
-    for index, expression in enumerate(getattr(args, "fail_on", None) or []):
-        try:
-            cli_expects.append(parse_fail_on(expression, index=index))
-        except DecisionsError as exc:
-            raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
-    vex_entries: List[Any] = []
-    for vex_file in getattr(args, "vex", None) or []:
-        try:
-            vex_entries.extend(decisions_lib.load_vex_decisions(str(vex_file)))
-        except DecisionsError as exc:
-            raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
-    named_path = getattr(args, "decisions", None)
-    baseline_path = getattr(args, "baseline", None)
-    # A run with none of the options still reads the decisions file the
-    # scan's manifest records, so a decision made after the scan applies to
-    # a plain report of it; a scan that read no file leaves the report with
-    # nothing to apply.
-    decisions = None
-    base_dir = None
-    if named_path:
-        try:
-            decisions = decision_lib.load_decisions(str(named_path), selected_by="option")
-        except DecisionsError as exc:
-            raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
-        base_dir = os.path.dirname(os.path.abspath(str(named_path)))
-    if decisions is None:
-        path, selected_by = decisions_lib.resolve_decisions_path(None, None)
-        if path:
-            try:
-                decisions = decision_lib.load_decisions(str(path), selected_by=selected_by)
-            except DecisionsError as exc:
-                raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
-            base_dir = os.path.dirname(os.path.abspath(str(path)))
-    if decisions is None:
-        recorded = (manifest or {}).get("decisions") or {}
-        recorded_path = recorded.get("file")
-        if isinstance(recorded_path, str) and os.path.isfile(recorded_path):
-            try:
-                decisions = decision_lib.load_decisions(
-                    recorded_path, selected_by=str(recorded.get("selectedBy") or "default")
-                )
-            except DecisionsError as exc:
-                raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
-            base_dir = os.path.dirname(os.path.abspath(recorded_path))
-    if decisions is None and not vex_entries and not cli_expects and not baseline_path:
-        return None, None, []
-    if decisions is None:
-        decisions = Decisions(selected_by="default")
-    decisions.triage.extend(vex_entries)
-    return decisions, base_dir, cli_expects
-
-
-def _evaluate_again(result, args, decisions, base_dir, cli_expects) -> dict:
-    """Apply the decisions to the saved findings and evaluate the gate.
-
-    The findings are mutated in place, so the renderings and the JSON
-    document show the decisions as they stand now; the saved files keep the
-    scan's own application. The result document carries the evaluation with
-    ``report`` as its source, and nothing is written into the scan
-    directory unless ``--out`` names a file.
-    """
-    from datetime import datetime, timezone
-
-    findings = result.findings
-    alias_map = decision_lib.alias_map_from_vulns(
-        vuln for tscan in result.types for vuln in tscan.vulnerabilities
+    options = decisions_lib.parse_options(
+        verb="report",
+        decisions=getattr(args, "decisions", None),
+        fail_on=getattr(args, "fail_on", None) or (),
+        vex=getattr(args, "vex", None) or (),
+        baseline=getattr(args, "baseline", None),
+        config=getattr(args, "config", None),
     )
-    baseline_spec = getattr(args, "baseline", None) or (decisions.baseline if decisions else None)
-    baseline_document = None
-    has_baseline = False
-    new = existing = 0
-    application = None
-    if baseline_spec is not None:
-        baseline_ids = decision_lib.read_baseline(
-            decision_lib.BaselineSpec(scan=str(baseline_spec.scan), digest=baseline_spec.digest)
-            if isinstance(baseline_spec, decision_lib.BaselineSpec)
-            else decision_lib.BaselineSpec(scan=str(baseline_spec)),
-            base_dir=base_dir,
+    saved = _saved_expectations(result.reports_dir)
+    run = decisions_lib.load_for_saved_scan(options, result.manifest, result.reports_dir, saved)
+    document = None
+    if run.active:
+        document = decisions_lib.apply_run_decisions(
+            run,
+            result.findings,
+            stages=(result.manifest or {}).get("stages") or [],
+            vulns=(vuln for tscan in result.types for vuln in tscan.vulnerabilities),
+            source="report",
         )
-        has_baseline = True
-        new, existing = decision_lib.apply_baseline(findings, baseline_ids)
-        baseline_document = {
-            "scan": str(baseline_spec.scan if isinstance(baseline_spec, decision_lib.BaselineSpec) else baseline_spec),
-            "digest": baseline_spec.digest if isinstance(baseline_spec, decision_lib.BaselineSpec) else None,
-            "findings": len(baseline_ids),
-        }
-    if decisions is not None and decisions.triage:
-        application = decision_lib.apply_triage(findings, decisions.triage, alias_map=alias_map)
-    stages = (result.manifest or {}).get("stages") or []
-    evaluation = decision_lib.evaluate_gate(
-        findings,
-        stages,
-        decisions if decisions is not None else decision_lib.Decisions(),
-        cli_expects=cli_expects,
-        has_baseline=has_baseline,
-        baseline_document=baseline_document,
-        decisions_document=(
-            {
-                "file": decisions.path,
-                "sha256": decisions.digest,
-                "selectedBy": decisions.selected_by,
-            }
-            if decisions is not None and decisions.path
-            else None
-        ),
-        application=application,
-        suppressed=application.suppressed if application else 0,
-        new=new,
-        existing=existing,
-        alias_map=alias_map,
-    )
-    document = evaluation.to_document(
-        evaluated_utc=datetime.now(timezone.utc).isoformat(), source="report"
-    )
+    exit_code = decisions_lib.gate_exit(document)
+    if run.saved is not None:
+        kept = dict(run.saved)
+        kept["warnings"] = list(kept.get("warnings") or []) + list(run.warnings)
+        saved_exit = decisions_lib.gate_exit(kept)
+        if document is None:
+            document, exit_code = kept, saved_exit
+        else:
+            # 4 over 3 over 0, so the higher code is the one that stands.
+            exit_code = max(exit_code, saved_exit)
+            document["warnings"] = kept["warnings"] + [
+                f"the gate result the scan saved exits {saved_exit}; this run exits with "
+                "the higher of that code and this evaluation's"
+            ]
     out = getattr(args, "out", None)
-    if out:
+    if out and document is not None:
         from depscan.lib.scan_directory import atomic_write_json
 
         atomic_write_json(str(out), document)
-    return document
+    return document, exit_code
+
+
+def _saved_expectations(reports_dir: str) -> Optional[dict]:
+    """The gate result the scan saved, or None when it saved none."""
+    import json
+
+    from depscan.lib.scan_directory import EXPECTATIONS_FILE
+
+    try:
+        with open(os.path.join(reports_dir, EXPECTATIONS_FILE), encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (OSError, ValueError):
+        return None
+    return document if isinstance(document, dict) else None
 
 
 def run_report_args(args: argparse.Namespace) -> int:
@@ -481,7 +427,7 @@ def run_report_args(args: argparse.Namespace) -> int:
     except Exception as exc:
         return _unexpected_failure(json_output, exc)
     try:
-        decisions, base_dir, cli_expects = _load_decisions_for_report(args, result.manifest)
+        expectations, gate_exit_code = _reevaluate(args, result)
     except decisions_lib.DecisionsUsageError as exc:
         message = str(exc)
         if json_output:
@@ -489,26 +435,22 @@ def run_report_args(args: argparse.Namespace) -> int:
         else:
             print(message, file=sys.stderr)
         return EXIT_USAGE
+    except decision_lib.BaselineError as exc:
+        message = str(exc)
+        if json_output:
+            print_error_document(EXIT_FAILURE, "report", message)
+        else:
+            print(f"depscan report: {message}", file=sys.stderr)
+        return EXIT_FAILURE
     except Exception as exc:
         return _unexpected_failure(json_output, exc)
-    expectations = None
-    gate_exit_code = 0
-    if decisions is not None or cli_expects:
-        try:
-            expectations = _evaluate_again(result, args, decisions, base_dir, cli_expects)
-        except decision_lib.BaselineError as exc:
-            message = str(exc)
-            if json_output:
-                print_error_document(EXIT_FAILURE, "report", message)
-            else:
-                print(f"depscan report: {message}", file=sys.stderr)
-            return EXIT_FAILURE
-        except Exception as exc:
-            return _unexpected_failure(json_output, exc)
-        gate_exit_code = decisions_lib.gate_exit(expectations)
-        decisions = decisions or SimpleNamespace(path=None, triage=[])
     if json_output:
-        return decisions_lib.combine_exit(_run_json_report(result, expectations), gate_exit_code)
+        # The text rendering prints the warnings in the decisions block; the
+        # json document carries them, and stderr names them for a reader.
+        for warning in (expectations or {}).get("warnings") or []:
+            LOG.warning("depscan report: %s", warning)
+        _run_json_report(result, expectations)
+        return gate_exit_code
     manifest = result.manifest or {}
     console.print(
         f"Scan of {result.reports_dir}: dep-scan "
@@ -517,14 +459,7 @@ def run_report_args(args: argparse.Namespace) -> int:
     )
     # The decisions and gate block prints ahead of the full tables, so a
     # reviewer reads the verdict and the entries that need attention first.
-    if expectations is not None:
-        block = pipeline_decisions_block(result, decisions, expectations)
-        from rich.markup import escape
-
-        console.print()
-        console.rule("Decisions and gate")
-        for line in block:
-            console.print(escape(line))
+    decisions_lib.print_block(expectations, len(result.findings))
     for tscan in result.types:
         _render_results(tscan, result.findings)
     _render_binary_review(result)
@@ -536,56 +471,7 @@ def run_report_args(args: argparse.Namespace) -> int:
             print(f"depscan report: {exc}", file=sys.stderr)
             return EXIT_FAILURE
         console.print(text)
-    return decisions_lib.combine_exit(0, gate_exit_code)
-
-
-def pipeline_decisions_block(result, decisions, expectations):
-    """The decisions and gate block, rebuilt from the re-evaluation.
-
-    The scan's block is built from the pipeline context; the report's is
-    built from the evaluation document it just produced, with the loaded
-    decisions beside it, so the two renderings carry the same lines.
-    """
-    from analysis_lib.findings.decisions import GateEvaluation, ExpectationResult, TriageApplication
-
-    evaluation = GateEvaluation(
-        results=[
-            ExpectationResult(
-                kind=entry.get("kind", "expect"),
-                id=str(entry.get("id")),
-                status=str(entry.get("status")),
-                findings=list(entry.get("findings") or []),
-                action=entry.get("action"),
-                description=entry.get("description"),
-                reason=entry.get("reason"),
-                capability=entry.get("capability"),
-                project_type=entry.get("projectType"),
-                stages=list(entry.get("stages") or []),
-                evidence=list(entry.get("evidence") or []),
-            )
-            for entry in expectations.get("results") or []
-        ],
-        triage=TriageApplication(
-            applied=int((expectations.get("triage") or {}).get("applied") or 0),
-            suppressed_ids=[],
-            expired=[],
-            stale=[],
-            proposals=[],
-        ),
-        suppressed=int((expectations.get("summary") or {}).get("suppressed") or 0),
-        new=int((expectations.get("summary") or {}).get("new") or 0),
-        existing=int((expectations.get("summary") or {}).get("existing") or 0),
-        decisions_document=expectations.get("decisions"),
-        baseline_document=expectations.get("baseline"),
-    )
-    fake_ctx = SimpleNamespace(
-        decisions=decisions,
-        gate=evaluation,
-        findings_list=result.findings,
-    )
-    from depscan.lib.pipeline import decisions_block
-
-    return decisions_block(fake_ctx)
+    return gate_exit_code
 
 
 def run_report_command(argv: List[str]) -> int:

@@ -179,6 +179,11 @@
       },
       "description": "One result per expect and require entry, in file order with the command-line entries last."
     },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "What the reader must know about how this result was reached: a decisions file the scan recorded that could not be found, so the gate result the scan saved was kept, or one whose digest changed since the scan, so the result reflects the file as it is now."
+    },
     "triage": {
       "type": "object",
       "additionalProperties": false,
