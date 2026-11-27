@@ -276,3 +276,206 @@ def test_component_layer_gap_when_no_component_carries_a_layer(tmp_path):
     assert scored["outcome"] == "gap"
     assert scored["labelledSeen"] == 2
     assert scored["withLayer"] == 0
+
+
+def _scan(item, reports_dir, findings=None):
+    result = _result(reports_dir)
+    result.findings = findings or []
+    return corpus_score.ItemScan(item, result)
+
+
+class _Reach:
+    def __init__(self, reached):
+        self.reached_purls = {p: 1 for p in reached}
+        self.direct_purls = {}
+        self.success = True
+
+
+def test_advisory_join_counts_reached_findings_on_used_packages_only(tmp_path):
+    findings = [
+        {
+            "category": "vulnerability",
+            "rule": "A",
+            "components": ["pkg:npm/chalk@5.3.0"],
+            "id": "a",
+        },
+        {"category": "vulnerability", "rule": "B", "components": ["pkg:npm/koa@1.0.0"], "id": "b"},
+        {
+            "category": "malware",
+            "rule": "MAL-1",
+            "components": ["pkg:npm/lodash@4.0.0"],
+            "id": "c",
+        },
+        {
+            "category": "vulnerability",
+            "rule": "D",
+            "components": ["pkg:npm/express@4.0.0"],
+            "id": "d",
+        },
+    ]
+    scan = _scan({"scan": {"types": ["js"]}}, tmp_path, findings)
+    scan._reach["SemanticReachability"] = (
+        _Reach(["pkg:npm/chalk@5.3.0", "pkg:npm/koa@1.0.0", "pkg:npm/lodash@4.0.0"]),
+        None,
+    )
+    labels = {
+        "reachability": {
+            "used": [{"purl": "pkg:npm/lodash"}, {"purl": "pkg:npm/express"}],
+            "unused": [{"purl": "pkg:npm/chalk"}],
+        }
+    }
+    scored = corpus_score.score_join_advisory_usage_reach(scan, labels)
+    assert scored["findings"] == 4
+    # Only the malware finding on used lodash is reached on a used package.
+    assert scored["reachedOnUsed"] == 1
+    assert [f["id"] for f in scored["reachedOnUnused"]] == ["a"]
+    assert scored["reachedUnlabelled"] == 1
+    assert [f["id"] for f in scored["notReachedOnUsed"]] == ["d"]
+
+
+def _write_props_bom(path, components):
+    path.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": components}),
+        encoding="utf-8",
+    )
+
+
+def test_component_layer_ignores_unrelated_layer_like_properties(tmp_path):
+    _write_props_bom(
+        tmp_path / "sbom-container.cdx.json",
+        [
+            {"purl": "pkg:apk/alpine/busybox@1.37.0", "properties": []},
+            {"purl": "pkg:npm/x@1.0.0", "properties": [{"name": "cdx:npm:player", "value": "1"}]},
+        ],
+    )
+    labels = {
+        "joins": {
+            "component-layer": {
+                "source": "hand",
+                "packages": [{"purl": "pkg:apk/alpine/busybox", "layer": "os"}],
+            }
+        }
+    }
+    scored = corpus_score.score_join_component_layer(_scan({}, tmp_path), labels)
+    assert scored["outcome"] == "gap"
+
+
+def test_component_layer_compares_the_labelled_layer(tmp_path):
+    def layer(value):
+        return [{"name": "aquasecurity:trivy:LayerDiffID", "value": value}]
+
+    _write_props_bom(
+        tmp_path / "sbom-container.cdx.json",
+        [
+            {"purl": "pkg:apk/alpine/busybox@1.37.0", "properties": layer("sha256:base")},
+            {"purl": "pkg:apk/alpine/musl@1.2.5", "properties": layer("sha256:node")},
+            {"purl": "pkg:generic/node@22.23.5", "properties": layer("sha256:node")},
+        ],
+    )
+    labels = {
+        "joins": {
+            "component-layer": {
+                "source": "hand",
+                "packages": [
+                    {"purl": "pkg:apk/alpine/busybox", "layer": "os"},
+                    {"purl": "pkg:apk/alpine/musl", "layer": "os"},
+                    {"purl": "pkg:generic/node@22.23.5", "layer": "application"},
+                ],
+            }
+        }
+    }
+    scored = corpus_score.score_join_component_layer(_scan({}, tmp_path), labels)
+    # musl shares the application's layer, so it is attributed wrongly.
+    assert scored["outcome"] == "partial"
+    assert scored["withLayer"] == 3
+    assert scored["matched"] == 1
+    assert [m["purl"] for m in scored["missed"]] == [
+        "pkg:apk/alpine/musl",
+        "pkg:generic/node@22.23.5",
+    ]
+
+
+def test_openapi_route_matches_on_method_and_path(tmp_path):
+    spec = {
+        "paths": {
+            "/rest/user/login": {
+                "get": {"x-atom-usages": {"call": {"routes/login.ts": [12]}}},
+            }
+        }
+    }
+    (tmp_path / "js-openapi.json").write_text(json.dumps(spec), encoding="utf-8")
+    _write_evidence(
+        tmp_path,
+        [
+            _record(
+                "atom",
+                "reached-flow",
+                ["pkg:npm/jsonwebtoken@0.4.0"],
+                locations=[("routes/login.ts", 12)],
+            )
+        ],
+    )
+    route = {"path": "/rest/user/login", "method": "POST", "packages": ["pkg:npm/jsonwebtoken"]}
+    labels = {"joins": {"route-package": {"source": "hand", "routes": [route]}}}
+    scored = corpus_score.score_join_route_package(_scan({}, tmp_path), labels)
+    assert scored["routesMatched"] == 0
+    route["method"] = "GET"
+    scored = corpus_score.score_join_route_package(_scan({}, tmp_path), labels)
+    assert scored["routesMatched"] == 1
+
+
+def test_bom_phases_come_from_the_file_name_not_the_path(tmp_path):
+    reports_dir = tmp_path / "postbuild-runs" / "node-22-alpine"
+    reports_dir.mkdir(parents=True)
+    _write_bom(reports_dir, "sbom-container.cdx.json", ["pkg:apk/alpine/busybox@1.37.0"])
+    labels = {
+        "joins": {
+            "component-layer": {
+                "source": "hand",
+                "packages": [{"purl": "pkg:apk/alpine/busybox", "layer": "os"}],
+            }
+        }
+    }
+    scored = corpus_score.score_join_component_layer(_scan({}, reports_dir), labels)
+    assert scored["labelledSeen"] == 1
+
+
+def test_two_manifests_reads_cdxgen_internal_srcfile(tmp_path):
+    _write_props_bom(
+        tmp_path / "sbom-build-js.cdx.json",
+        [
+            {
+                "purl": "pkg:npm/ms@2.1.3",
+                "properties": [{"name": "internal:SrcFile", "value": "package-lock.json"}],
+            },
+            {
+                "purl": "pkg:npm/ms@0.7.1",
+                "properties": [
+                    {"name": "internal:SrcFile", "value": "packages/b/package-lock.json"}
+                ],
+            },
+        ],
+    )
+    labels = {
+        "joins": {
+            "two-manifests": {
+                "source": "hand",
+                "package": "pkg:npm/ms",
+                "versions": ["2.1.3", "0.7.1"],
+            }
+        }
+    }
+    scored = corpus_score.score_join_two_manifests(_scan({}, tmp_path), labels)
+    assert scored["withDeclaringPath"] == 2
+    assert scored["distinctVersionCount"] == 2
+
+
+def test_runtime_join_reason_does_not_assume_an_operating_system(tmp_path):
+    labels = {
+        "joins": {
+            "component-runtime": {"source": "fixture", "packages": [{"purl": "pkg:pypi/pyyaml"}]}
+        }
+    }
+    scored = corpus_score.score_join_component_runtime(_scan({}, tmp_path), labels)
+    assert scored["outcome"] == "partial"
+    assert "macOS" not in scored["reason"]

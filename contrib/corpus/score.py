@@ -70,6 +70,21 @@ STAGE_CATEGORIES = {
     "binary-review": ("binary-hardening",),
 }
 
+#: The finding categories an advisory match produces.
+ADVISORY_CATEGORIES = ("vulnerability", "malware")
+
+#: Component properties that record the image layer a component was found
+#: in: the field the draft upstream issue asks for, and the two trivy writes.
+LAYER_PROPERTIES = (
+    "cdx:image:layerDigest",
+    "aquasecurity:trivy:LayerDigest",
+    "aquasecurity:trivy:LayerDiffID",
+)
+
+#: Component properties that name the manifest or lock file a component was
+#: read from; cdxgen writes internal:SrcFile.
+DECLARING_PATH_PROPERTIES = ("SrcFile", "internal:SrcFile", "depscan:srcFile")
+
 #: The lifecycle phase each BOM file-name prefix stands for.
 PHASE_PREFIXES = {"prebuild-": "pre-build", "build-": "build", "postbuild-": "post-build"}
 
@@ -707,8 +722,14 @@ def _location_key(location):
 
 
 def score_join_advisory_usage_reach(scan: ItemScan, labels: dict) -> dict:
-    """Reached and not-reached vulnerability findings against used and
-    unused labels."""
+    """Reached and not-reached advisory findings (vulnerability and malware,
+    the categories a match produces) against the used and unused labels.
+
+    ``reachedOnUsed`` counts the reached findings on a used package, the
+    join working; a reached finding on an unused package is its false
+    positive, and a reached finding on a package no label names is counted
+    apart, because the labels do not pass judgement on it.
+    """
     used, unused = usage_labels(labels)
     if not used and not unused:
         return {"outcome": "partial", "reason": "the item carries no usage labels"}
@@ -716,25 +737,31 @@ def score_join_advisory_usage_reach(scan: ItemScan, labels: dict) -> dict:
     if res is None:
         return {"outcome": "partial", "reason": reason}
     reached = keys_of(res.reached_purls)
-    vulns = [f for f in scan.findings if f.get("category") == "vulnerability"]
+    advisories = [f for f in scan.findings if f.get("category") in ADVISORY_CATEGORIES]
     reached_on_used = 0
+    reached_unlabelled = 0
     not_reached_on_used = []
     reached_on_unused = []
-    for finding in vulns:
+    for finding in advisories:
         keys = keys_of(finding.get("components"))
-        if keys & reached:
-            if keys & unused:
-                reached_on_unused.append({"id": finding.get("id"), "rule": finding.get("rule")})
-            reached_on_used += 1
+        brief = {"id": finding.get("id"), "rule": finding.get("rule")}
+        if not keys & reached:
+            if keys & used:
+                not_reached_on_used.append(brief)
         elif keys & used:
-            not_reached_on_used.append({"id": finding.get("id"), "rule": finding.get("rule")})
+            reached_on_used += 1
+        elif keys & unused:
+            reached_on_unused.append(brief)
+        else:
+            reached_unlabelled += 1
     return {
         "outcome": "measured",
-        "findings": len(vulns),
-        "reachedFindings": reached_on_used,
+        "findings": len(advisories),
+        "reachedOnUsed": reached_on_used,
         "notReachedOnUsed": not_reached_on_used,
         "reachedOnUnused": reached_on_unused,
-        "reachedPurls": len(reached),
+        "reachedUnlabelled": reached_unlabelled,
+        "reachedPurls": len({purl_key(p) for p in res.reached_purls or []}),
     }
 
 
@@ -752,18 +779,20 @@ def score_join_route_package(scan: ItemScan, labels: dict) -> dict:
     routes = ((labels.get("joins") or {}).get("route-package") or {}).get("routes") or []
     if not routes:
         return {"outcome": "partial", "reason": "the item labels no routes"}
-    by_path = _openapi_usage_locations(scan.reports_dir)
+    by_route = _openapi_usage_locations(scan.reports_dir)
     entry_points = _dosai_entry_points(scan.evidence)
     matched = 0
     missed = []
     for route in routes:
         found = None
-        if route["path"] in by_path:
+        method = str(route.get("method") or "GET").upper()
+        locations = by_route.get((method, route["path"]))
+        if locations is not None:
             mechanism = "openapi"
-            found = _packages_where(scan.evidence, lambda key: key in by_path[route["path"]])
+            found = _packages_where(scan.evidence, lambda key: key in locations)
         else:
             mechanism = "dosai"
-            span = _handler_span(entry_points, route["path"], route.get("method", "GET"))
+            span = _handler_span(entry_points, route["path"], method)
             if span is not None:
                 file_name, start, end = span
                 found = _packages_where(
@@ -799,8 +828,9 @@ def score_join_route_package(scan: ItemScan, labels: dict) -> dict:
 
 
 def _openapi_usage_locations(reports_dir: str) -> dict:
-    """Route path to the (file, line) set its OpenAPI operations occupy."""
-    by_path: dict = {}
+    """(method, path) to the (file, line) set the OpenAPI operation's
+    handlers occupy."""
+    by_route: dict = {}
     try:
         names = sorted(
             n for n in os.listdir(reports_dir) if "openapi" in n and n.endswith(".json")
@@ -810,7 +840,9 @@ def _openapi_usage_locations(reports_dir: str) -> dict:
     for name in names:
         spec = load_json(os.path.join(reports_dir, name)) or {}
         for path, operations in (spec.get("paths") or {}).items():
-            for operation in (operations or {}).values() if isinstance(operations, dict) else ():
+            for method, operation in (
+                (operations or {}).items() if isinstance(operations, dict) else ()
+            ):
                 usages = operation.get("x-atom-usages") if isinstance(operation, dict) else None
                 for kind in ("call", "target"):
                     by_file = (usages or {}).get(kind) if isinstance(usages, dict) else None
@@ -819,10 +851,10 @@ def _openapi_usage_locations(reports_dir: str) -> dict:
                     ):
                         for line in lines if isinstance(lines, list) else ():
                             if isinstance(line, int):
-                                by_path.setdefault(path, set()).add(
+                                by_route.setdefault((method.upper(), path), set()).add(
                                     (os.path.normpath(file_name), line)
                                 )
-    return by_path
+    return by_route
 
 
 def _dosai_entry_points(records: list) -> list:
@@ -907,47 +939,53 @@ def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
 
 
 def score_join_component_layer(scan: ItemScan, labels: dict) -> dict:
-    """The layer dep-scan assigns a component of an image, or none.
+    """The image layer each labelled component is attributed to.
 
-    A BOM that records per-layer attribution carries it on the component: a
-    property naming the layer it was found in. No such property anywhere
-    means the join is a gap today, and the draft issue names the producer.
+    A component's layer is the value of one of ``LAYER_PROPERTIES``. The
+    labels say whether a package belongs to the OS base or the application
+    layers; an attribution holds when no component of the other kind shares
+    the layer. No labelled component with a layer property means the join is
+    a gap today, and the draft issue names the producer.
     """
     entries = ((labels.get("joins") or {}).get("component-layer") or {}).get("packages") or []
     components = scan.components()
     if not components:
         return {"outcome": "partial", "reason": "the scan directory holds no component BOM"}
-    wanted = label_keys(e["purl"] for e in entries)
-    layer_words = ("layer", "layerid", "diffid")
-    layer_props = set()
-    with_layer = 0
-    labelled_seen = 0
-    for component in components:
-        props = [
-            str(p.get("name") or "").lower()
-            for p in component.get("properties") or []
-            if isinstance(p, dict)
-        ]
-        found = {p for p in props if any(word in p for word in layer_words)}
-        layer_props |= found
-        if wanted & keys_of([component.get("purl") or ""]):
-            labelled_seen += 1
-            with_layer += bool(found)
-    if layer_props or with_layer:
+    layers = {}
+    seen = set()
+    for entry in entries:
+        key = label_key(entry["purl"])
+        for component in components:
+            if key in keys_of([component.get("purl") or ""]):
+                seen.add(entry["purl"])
+                for prop in component.get("properties") or []:
+                    if isinstance(prop, dict) and prop.get("name") in LAYER_PROPERTIES:
+                        layers[entry["purl"]] = str(prop.get("value") or "")
+    if not layers:
         return {
-            "outcome": "measured",
-            "labelledSeen": labelled_seen,
-            "withLayer": with_layer,
-            "layerProperties": sorted(layer_props),
+            "outcome": "gap",
+            "labelledSeen": len(seen),
+            "withLayer": 0,
+            "reason": (
+                "no labelled component of the image BOM carries a layer property: "
+                "the join cannot be made from what the BOM records today"
+            ),
         }
+    by_kind: dict = {}
+    for entry in entries:
+        if entry["purl"] in layers:
+            by_kind.setdefault(entry.get("layer"), set()).add(layers[entry["purl"]])
+    missed = []
+    for entry in entries:
+        others = set().union(*(v for k, v in by_kind.items() if k != entry.get("layer")))
+        if entry["purl"] not in layers or layers[entry["purl"]] in others:
+            missed.append({**entry, "observedLayer": layers.get(entry["purl"], "")})
     return {
-        "outcome": "gap",
-        "labelledSeen": labelled_seen,
-        "withLayer": 0,
-        "reason": (
-            "no component of the image BOM carries layer attribution: "
-            "the join cannot be made from what cdxgen records today"
-        ),
+        "outcome": "partial" if missed else "measured",
+        "labelledSeen": len(seen),
+        "withLayer": len(layers),
+        "matched": len(entries) - len(missed),
+        "missed": missed,
     }
 
 
@@ -963,10 +1001,9 @@ def score_join_component_runtime(scan: ItemScan, labels: dict) -> dict:
         return {
             "outcome": "partial",
             "reason": (
-                "no tracebom record reached the evidence store: the trace "
-                "carries no components the adapter can attribute (a macOS "
-                "tracebom capture names none, so dep-scan's detector refuses "
-                "the trace as a trace BOM)"
+                "no tracebom record reached the evidence store: the scan "
+                "read no trace BOM whose components the tracebom adapter "
+                "could attribute"
             ),
         }
     observed = keys_of(p for r in records for p in r.subject.purls)
@@ -1039,7 +1076,7 @@ def score_join_two_manifests(scan: ItemScan, labels: dict) -> dict:
         declaring = [
             str(p.get("value") or "")
             for p in component.get("properties") or []
-            if isinstance(p, dict) and p.get("name") in ("SrcFile", "depscan:srcFile")
+            if isinstance(p, dict) and p.get("name") in DECLARING_PATH_PROPERTIES
         ]
         components.append(
             {
@@ -1058,6 +1095,7 @@ def score_join_two_manifests(scan: ItemScan, labels: dict) -> dict:
         "outcome": "measured" if (expected_versions <= distinct and two) else "partial",
         "components": components,
         "distinctVersions": sorted(distinct),
+        "distinctVersionCount": len(distinct),
         "withDeclaringPath": sum(1 for c in components if c["declaringPath"]),
         "reason": None
         if two
