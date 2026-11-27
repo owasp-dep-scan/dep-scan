@@ -57,14 +57,34 @@ LANGUAGES = {
 #: matches either way.
 IMPORT_DISTRIBUTIONS = {
     "bs4": "beautifulsoup4",
+    "crispy_forms": "django-crispy-forms",
+    "crum": "django-crum",
+    "fieldsignals": "django-fieldsignals",
     "cv2": "opencv-python",
     "dateutil": "python-dateutil",
+    "debug_toolbar": "django-debug-toolbar",
+    "django_filters": "django-filter",
     "dotenv": "python-dotenv",
+    "easy_thumbnails": "easy-thumbnails",
+    "environ": "django-environ",
+    "extra_views": "django-extra-views",
     "git": "gitpython",
+    "haystack": "django-haystack",
+    "imagekit": "django-imagekit",
     "jwt": "pyjwt",
+    "multiselectfield": "django-multiselectfield",
     "openssl": "pyopenssl",
+    "packageurl": "packageurl-python",
+    "phonenumber_field": "django-phonenumber-field",
     "pil": "pillow",
+    "pghistory": "django-pghistory",
+    "pgtrigger": "django-pgtrigger",
+    "polymorphic": "django-polymorphic",
+    "rest_framework": "djangorestframework",
     "sklearn": "scikit-learn",
+    "sorl": "sorl-thumbnail",
+    "tagulous": "django-tagulous",
+    "treebeard": "django-treebeard",
     "yaml": "pyyaml",
 }
 
@@ -178,7 +198,11 @@ def map_python_package(package: str, by_fold: dict):
     """
     for candidate in (
         fold_name(package),
-        fold_name(IMPORT_DISTRIBUTIONS.get(fold_name(package), "")),
+        fold_name(
+            IMPORT_DISTRIBUTIONS.get(package)
+            or IMPORT_DISTRIBUTIONS.get(fold_name(package))
+            or ""
+        ),
     ):
         if candidate and candidate in by_fold:
             return by_fold[candidate]

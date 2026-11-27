@@ -1,0 +1,74 @@
+{
+  "item": "py-django-oscar",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/babel",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/django",
+        "occurrences": 6794
+      },
+      {
+        "purl": "pkg:pypi/django-extra-views",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/django-haystack",
+        "occurrences": 27
+      },
+      {
+        "purl": "pkg:pypi/django-phonenumber-field",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/django-tables2",
+        "occurrences": 47
+      },
+      {
+        "purl": "pkg:pypi/django-treebeard",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:pypi/phonenumbers",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/pillow",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/purl",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/setuptools",
+        "occurrences": 6
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/django-widget-tweaks"
+      },
+      {
+        "purl": "pkg:pypi/factory-boy"
+      }
+    ],
+    "unmapped": {
+      "easy_thumbnails": 4,
+      "environ": 8,
+      "pycountry": 2,
+      "sorl": 6,
+      "sphinx_rtd_theme": 2
+    },
+    "counts": {
+      "used": 11,
+      "unused": 2,
+      "unmapped": 5,
+      "certainUses": 6932
+    }
+  }
+}

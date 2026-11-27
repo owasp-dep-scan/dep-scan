@@ -1,0 +1,71 @@
+{
+  "item": "py-fastapi-template",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/emails",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/fastapi",
+        "occurrences": 104
+      },
+      {
+        "purl": "pkg:pypi/jinja2",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/pwdlib",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:pypi/pydantic",
+        "occurrences": 27
+      },
+      {
+        "purl": "pkg:pypi/pydantic-settings",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/pyjwt",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/sentry-sdk",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/sqlalchemy",
+        "occurrences": 68
+      },
+      {
+        "purl": "pkg:pypi/sqlmodel",
+        "occurrences": 106
+      },
+      {
+        "purl": "pkg:pypi/starlette",
+        "occurrences": 2
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/prek"
+      },
+      {
+        "purl": "pkg:pypi/smokeshow"
+      },
+      {
+        "purl": "pkg:pypi/zizmor"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 11,
+      "unused": 3,
+      "unmapped": 0,
+      "certainUses": 338
+    }
+  }
+}
