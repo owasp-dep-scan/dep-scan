@@ -1,0 +1,36 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_62a28a1c3d6dbf::t_13b35756dae1ea 12-17
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_62a28a1c3d6dbf::t_24e9f3e7084481 377-382,384
+  s_62a28a1c3d6dbf::t_7db9c47b5aaeb8 383,385
+  s_62a28a1c3d6dbf::t_e586110c4e5760 94-98
+  s_62a28a1c3d6dbf::t_2019228f79dd51 3
+packages/analysis-lib/src/analysis_lib/findings/model.py
+  s_62a28a1c3d6dbf::t_9706b869607aa0 156-162,169-170
+  s_62a28a1c3d6dbf::t_972ec14a0a7396 226
+packages/analysis-lib/tests/test_findings_schema.py
+  s_62a28a1c3d6dbf::t_a6e87dfe0d80ca 101
+packages/analysis-lib/tests/test_output_schemas.py
+  s_62a28a1c3d6dbf::t_a6e87dfe0d80ca 101
+  s_62a28a1c3d6dbf::t_7d3e73fb1c4b42 79-83
+packages/analysis-lib/tests/test_findings_model.py
+  s_62a28a1c3d6dbf::t_45b30b2e67d7ca 78-88
+packages/analysis-lib/tests/data/findings/vulnerability.json
+  s_62a28a1c3d6dbf::t_b0f5aac9fcbaa0 18,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f51abff884b970f64c32ba6251d79addeeba59ca",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
