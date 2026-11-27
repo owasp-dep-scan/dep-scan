@@ -1,0 +1,45 @@
+{
+  "item": "java-shiro",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:maven/jakarta.servlet.jsp/jakarta.servlet.jsp-api",
+        "occurrences": 62
+      },
+      {
+        "purl": "pkg:maven/org.assertj/assertj-core",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:maven/org.junit.jupiter/junit-jupiter-api",
+        "occurrences": 11
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:maven/org.apache.groovy/groovy"
+      },
+      {
+        "purl": "pkg:maven/org.easymock/easymock"
+      },
+      {
+        "purl": "pkg:maven/org.hamcrest/hamcrest-core"
+      },
+      {
+        "purl": "pkg:maven/org.junit.jupiter/junit-jupiter-engine"
+      },
+      {
+        "purl": "pkg:maven/org.mockito/mockito-core"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 3,
+      "unused": 5,
+      "unmapped": 0,
+      "certainUses": 83
+    }
+  }
+}
