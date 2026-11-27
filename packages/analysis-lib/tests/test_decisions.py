@@ -129,8 +129,10 @@ def test_load_valid_file(tmp_path):
     assert decisions.baseline is not None
     assert decisions.baseline.scan == "../baseline/first-scan"
     assert decisions.baseline.digest == digest
+    # The digest is of the file's bytes as written, which carry the host's
+    # line endings, so the expectation hashes the bytes on disk.
     assert decisions.digest == hashlib.sha256(
-        (VALID_FILE % ("a" * 64, digest)).encode("utf-8")
+        (tmp_path / "decisions.toml").read_bytes()
     ).hexdigest()
     assert decisions.selected_by == "default"
 
@@ -532,7 +534,9 @@ def test_read_baseline_resolves_against_the_decisions_dir(tmp_path):
 def test_read_baseline_checks_the_digest(tmp_path):
     path = tmp_path / FINDINGS_FILE
     raw = json.dumps({"schemaVersion": "2", "findings": [_finding()]})
-    path.write_text(raw, encoding="utf-8")
+    # Write in binary mode so the digest is of exactly these bytes on every
+    # platform; a text-mode write would translate the newlines on Windows.
+    path.write_bytes(raw.encode("utf-8"))
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
     assert read_baseline(BaselineSpec(scan=str(path), digest=digest))
     with pytest.raises(BaselineError) as excinfo:
