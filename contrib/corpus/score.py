@@ -61,6 +61,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from contrib.corpus.inputs import cache_dir, fixture_digest, git, resolve_payload  # noqa: E402
+from vdb.lib.utils import parse_purl  # noqa: E402
 
 #: The analysers the reachability scores are reported for, in report order.
 ANALYZERS = ("FrameworkReachability", "SemanticReachability")
@@ -107,20 +108,25 @@ def load_json(path: str):
         return None
 
 
+@functools.lru_cache(maxsize=None)
 def split_purl(purl: str):
-    """A purl's comparable_purl form split into (key, version). The version
-    separator is the last ``@`` that no ``/`` follows, so the ``@`` of an npm
-    scope never reads as one; the version is None when the purl has none."""
+    """A purl's comparable_purl form split into (key, version), or
+    (comparable form, None) when it has no version. The version comes from
+    the parsed purl, so a version that holds a slash once decoded
+    (``refs/heads/main``) and the ``@`` of an npm scope are both read right."""
     comparable = comparable_purl(str(purl))
     if comparable[:9].lower() == "pkg:pypi/":
         # PyPI names compare equal under PEP 503: case and runs of "-", "_"
         # and "." do not matter.
         name, sep, version = comparable[9:].partition("@")
         comparable = "pkg:pypi/" + re.sub(r"[-_.]+", "-", name).lower() + sep + version
-    head, sep, tail = comparable.rpartition("@")
-    if not sep or "/" in tail or not head.partition("/")[2]:
-        return comparable, None
-    return head, tail
+    try:
+        version = (parse_purl(str(purl)) or {}).get("version")
+    except Exception:  # noqa: BLE001 - an unparsable purl has no version to split
+        version = None
+    if version and comparable.lower().endswith("@" + str(version).lower()):
+        return comparable[: -len(str(version)) - 1], comparable[-len(str(version)) :]
+    return comparable, None
 
 
 def purl_key(purl: str) -> str:

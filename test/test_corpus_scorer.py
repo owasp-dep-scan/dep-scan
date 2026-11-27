@@ -895,3 +895,24 @@ def test_items_with_floors_check_only_the_selected_items_floors(tmp_path):
     assert summary["floors"]["checked"] == 1
     assert summary["floors"]["skipped"] == 1
     assert summary["floors"]["violations"] == []
+
+
+def test_a_version_holding_a_slash_splits_off_the_key():
+    for purl in (
+        "pkg:github/actions/checkout@refs/heads/main",
+        "pkg:github/actions/checkout@refs%2Fheads%2Fmain",
+    ):
+        assert corpus_score.split_purl(purl) == ("pkg:github/actions/checkout", "refs/heads/main")
+        assert corpus_score.label_key("pkg:github/actions/checkout") in corpus_score.keys_of(
+            [purl]
+        )
+    assert corpus_score.split_purl("pkg:github/actions/checkout@release/v1")[1] == "release/v1"
+    assert corpus_score.split_purl("pkg:npm/%40babel/core@7.1.0") == (
+        "pkg:npm/@babel/core",
+        "7.1.0",
+    )
+    assert corpus_score.split_purl("pkg:npm/@babel/core") == ("pkg:npm/@babel/core", None)
+    assert corpus_score.split_purl("pkg:pypi/Flask_SQLAlchemy@3.1.1") == (
+        "pkg:pypi/flask-sqlalchemy",
+        "3.1.1",
+    )
