@@ -34,7 +34,6 @@ import glob
 import hashlib
 import json
 import os
-import resource
 import sys
 import time
 from types import SimpleNamespace
@@ -70,6 +69,12 @@ CORPUS_DIR = os.path.join(_HERE, "corpus")
 
 
 def _peak_rss_mb() -> float:
+    """The peak resident set size in MB, or 0.0 where the platform has no
+    ``resource`` module (Windows)."""
+    try:
+        import resource
+    except ImportError:
+        return 0.0
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     # macOS reports bytes, Linux reports kilobytes.
     return rss / (1024 * 1024) if sys.platform == "darwin" else rss / 1024
