@@ -1,0 +1,22 @@
+{
+  "item": "binary-hardening-fixture",
+  "findings": {
+    "source": "fixture",
+    "expected": [
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-unprotected",
+        "rules": ["CHECK_CANARY", "CHECK_NX", "CHECK_PIE", "CHECK_FORTIFY"],
+        "citation": "build.sh compiles src/vulnerable.c with -fno-stack-protector -no-pie -Wl,-z,norelro -Wl,-z,execstack, so the binary lacks all four properties and one finding per property is expected"
+      }
+    ],
+    "forbidden": [
+      {
+        "category": "binary-hardening",
+        "purl": "pkg:generic/binary-protected",
+        "rules": ["CHECK_CANARY", "CHECK_NX", "CHECK_PIE", "CHECK_FORTIFY"],
+        "reason": "build.sh compiles the protected build with -fstack-protector-strong -D_FORTIFY_SOURCE=2 -pie -Wl,-z,relro,-z,now, so none of the four hardening findings may fire on it; CHECK_ABI_FLOOR is environmental and deliberately unnamed by any label"
+      }
+    ]
+  }
+}

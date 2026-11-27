@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.readthedocs.io/schemas/depscan-labels.schema.json",
+  "title": "dep-scan corpus labels",
+  "description": "One item's labels: what a scan must find and what it must not. Every section names its source. A source of hand requires a citation for each expectation: a file:line reference for a used package or an expected finding, a sentence for an unused package or a forbidden one. oracle labels are derived from the callsites ground truth at package level; fixture labels are built into the fixture they describe.",
+  "type": "object",
+  "required": ["item"],
+  "additionalProperties": false,
+  "properties": {
+    "item": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*$"
+    },
+    "reachability": {
+      "$ref": "#/$defs/reachability"
+    },
+    "findings": {
+      "$ref": "#/$defs/findings"
+    },
+    "joins": {
+      "type": "object",
+      "description": "Expected join records, one section per join of the vision's table this item carries. Each section requires its own source; the remaining shape is join-specific and described in contrib/corpus/README.md.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/joinSection"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "enum": ["oracle", "hand", "fixture"]
+    },
+    "joinSection": {
+      "type": "object",
+      "required": ["source"],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "reachability": {
+      "type": "object",
+      "required": ["source", "used", "unused"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "derivedFrom": {
+          "type": "string",
+          "description": "For oracle labels: how the labels were derived and from what."
+        },
+        "used": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/usedPackage"
+          }
+        },
+        "unused": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/unusedPackage"
+          }
+        },
+        "unmapped": {
+          "type": "object",
+          "description": "Truth package names the mapping could not turn into a purl, each with the number of certain uses behind it. Reported, never dropped silently.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "counts": {
+          "type": "object",
+          "required": ["used", "unused"],
+          "additionalProperties": false,
+          "properties": {
+            "used": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unused": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmapped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "certainUses": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "used": {
+                "items": {
+                  "required": ["purl", "citation"]
+                }
+              },
+              "unused": {
+                "items": {
+                  "required": ["purl", "reason"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "usedPackage": {
+      "type": "object",
+      "required": ["purl"],
+      "additionalProperties": false,
+      "properties": {
+        "purl": {
+          "$ref": "#/$defs/purl"
+        },
+        "occurrences": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Certain uses of the package in the project's own files, when the source counts them."
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A file:line reference for a hand label."
+        }
+      }
+    },
+    "unusedPackage": {
+      "type": "object",
+      "required": ["purl"],
+      "additionalProperties": false,
+      "properties": {
+        "purl": {
+          "$ref": "#/$defs/purl"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the package is unused, for a hand label: a sentence over the project's own source."
+        }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "expected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["category", "purl", "rules"],
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "$ref": "#/$defs/category"
+              },
+              "purl": {
+                "$ref": "#/$defs/purl"
+              },
+              "rules": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "citation": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["category", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "$ref": "#/$defs/category"
+              },
+              "purl": {
+                "$ref": "#/$defs/purl",
+                "description": "The negative control: no finding of this category on this purl. Omit to forbid the rules on every purl."
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Rule ids that must not fire. Omit to forbid every rule of the category."
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Why the result is forbidden, for example a sentence over the control's source."
+              }
+            }
+          }
+        }
+      }
+    },
+    "purl": {
+      "type": "string",
+      "pattern": "^pkg:",
+      "description": "A package URL with or without version; comparisons fold spelling through the same comparable_purl rule the product uses."
+    },
+    "category": {
+      "enum": [
+        "vulnerability",
+        "malware",
+        "memory-safety",
+        "supply-chain",
+        "binary-hardening",
+        "mobile",
+        "code",
+        "license",
+        "crypto",
+        "health"
+      ]
+    }
+  }
+}

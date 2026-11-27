@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.readthedocs.io/schemas/depscan-corpus.schema.json",
+  "title": "dep-scan corpus manifest",
+  "description": "The labelled corpus the scorer (contrib/corpus/score.py) and the CI join-eval jobs read. Every item is fetchable or committed, carries a digest, and names a label file whose sections each carry their own source.",
+  "type": "object",
+  "required": ["schemaVersion", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "notProduced": {
+      "type": "array",
+      "description": "Finding categories dep-scan does not produce yet, each with the issue that tracks it. The score table shows them as gaps rather than leaving them out.",
+      "items": {
+        "type": "object",
+        "required": ["category", "issue"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/$defs/category"
+          },
+          "issue": {
+            "type": "string",
+            "pattern": "^https://"
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/item"
+      }
+    }
+  },
+  "$defs": {
+    "category": {
+      "enum": [
+        "vulnerability",
+        "malware",
+        "memory-safety",
+        "supply-chain",
+        "binary-hardening",
+        "mobile",
+        "code",
+        "license",
+        "crypto",
+        "health"
+      ]
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Lower-case hex SHA-256 without a prefix. For repository items this is the digest of `git archive --format=tar <commit>`; for image items the hex form of the image manifest digest; for fixture items the digest of the fixture directory as `contrib/corpus/score.py --digest-fixture <dir>` computes it."
+    },
+    "item": {
+      "type": "object",
+      "required": ["name", "description", "source", "sha256", "license", "storage", "kind", "scan", "labels"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9.-]*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the input comes from: `<url>@<commit>` for a repository, `<image>@sha256:<hex>` for an image, `fixture:<name>` for a fixture committed under contrib/corpus/fixtures/."
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "digestNote": {
+          "type": "string",
+          "description": "Present only where the digest of a public upstream manifest does not verify with the current git, for example a tar whose long paths force pax headers formatted differently across git versions."
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storage": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": ["repository", "image", "binary", "bom", "fixture"]
+            },
+            "location": {
+              "type": "string"
+            }
+          }
+        },
+        "kind": {
+          "enum": ["repository", "image", "binary", "bom", "fixture"]
+        },
+        "scan": {
+          "$ref": "#/$defs/scan"
+        },
+        "testdata": {
+          "type": "object",
+          "description": "The repo-test artifact this item's inputs are served as, when one exists.",
+          "required": ["artifact", "digest"],
+          "additionalProperties": false,
+          "properties": {
+            "artifact": {
+              "type": "string",
+              "description": "Project name in contrib/repotests/projects.json and testdata.lock.json."
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "The OCI manifest digest the lock file pins."
+            }
+          }
+        },
+        "subset": {
+          "enum": ["ci"],
+          "description": "Present when the pull-request CI job can run this item today: committed fixtures and repo-test artifacts that are already published."
+        },
+        "labels": {
+          "type": "string",
+          "pattern": "^labels/[a-z0-9][a-z0-9.-]*\\.json$",
+          "description": "The item's label file beside this manifest."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "scan": {
+      "type": "object",
+      "description": "The scan dep-scan runs on the item. `types` are the project types (empty for a BOM directory scan, which reads the types off the BOMs); `args` are further command line arguments; `bomDir` is a sub-path of the item's data holding pre-generated BOMs to scan instead of the source.",
+      "additionalProperties": false,
+      "properties": {
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "bomDir": {
+          "type": "string"
+        },
+        "lifecycles": {
+          "type": "array",
+          "items": {
+            "enum": ["pre-build", "build", "post-build"]
+          }
+        }
+      }
+    }
+  }
+}

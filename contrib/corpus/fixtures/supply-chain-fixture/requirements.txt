@@ -1,0 +1,2 @@
+requests==2.32.3
+git+https://github.com/psf/requests.git@v2.32.3#egg=requests-git-fixture

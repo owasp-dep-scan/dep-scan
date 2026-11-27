@@ -1,0 +1,26 @@
+{
+  "item": "node-22-alpine",
+  "joins": {
+    "component-layer": {
+      "source": "hand",
+      "packages": [
+        {
+          "purl": "pkg:apk/alpine/busybox",
+          "layer": "os",
+          "citation": "the base layer: the official image builds FROM alpine:3.24, whose apk world installs busybox"
+        },
+        {
+          "purl": "pkg:apk/alpine/musl",
+          "layer": "os",
+          "citation": "the base layer: musl is alpine's libc, installed by the alpine base image before the Node layers"
+        },
+        {
+          "purl": "pkg:generic/node@22.23.5",
+          "layer": "application",
+          "citation": "the application layer: the official image's Dockerfile copies the Node 22 binaries into the later layers"
+        }
+      ],
+      "notes": "The label states what the layer attribution would say; dep-scan's image BOM records no layer today, which is what the score reports."
+    }
+  }
+}

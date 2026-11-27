@@ -1,0 +1,50 @@
+{
+  "item": "lifecycle-fixture",
+  "reachability": {
+    "source": "hand",
+    "used": [
+      {
+        "purl": "pkg:npm/express",
+        "citation": "server.js:4 requires express and the whole application hangs off it"
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/chalk",
+        "reason": "chalk is declared in package.json dependencies but no file in the fixture requires or imports it"
+      }
+    ]
+  },
+  "findings": {
+    "source": "hand",
+    "forbidden": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/eslint",
+        "reason": "eslint is a devDependency of a fixture whose code never imports it; a vulnerability finding on it would have to be justified, and none of its pinned line carries an advisory the fixture cares about"
+      }
+    ]
+  },
+  "joins": {
+    "lifecycle-phase": {
+      "source": "hand",
+      "packages": [
+        {
+          "purl": "pkg:npm/express",
+          "phase": "shipped",
+          "citation": "server.js:4 uses express at run time, so the shipped artifact carries it"
+        },
+        {
+          "purl": "pkg:npm/chalk",
+          "phase": "shipped",
+          "citation": "chalk sits in dependencies, so an install ships it even though the code never uses it"
+        },
+        {
+          "purl": "pkg:npm/eslint",
+          "phase": "dev-only",
+          "citation": "eslint sits in devDependencies, so it must not ship with the artifact"
+        }
+      ]
+    }
+  }
+}

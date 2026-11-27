@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.readthedocs.io/schemas/depscan-score.schema.json",
+  "title": "dep-scan corpus score",
+  "description": "What the scorer (contrib/corpus/score.py) measured in one run: per item, per finding category and per join, with the not-assessed entries and their reasons kept beside the numbers.",
+  "type": "object",
+  "required": ["schemaVersion", "items", "summary"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "commit": {
+      "type": "string",
+      "description": "The dep-scan commit the run scored, or unknown."
+    },
+    "depscanVersion": {
+      "type": "string"
+    },
+    "subset": {
+      "enum": ["ci", null]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/itemScore"
+      }
+    },
+    "notProduced": {
+      "type": "array",
+      "description": "The categories dep-scan does not produce yet, carried over from the manifest.",
+      "items": {
+        "type": "object",
+        "required": ["category", "issue"],
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["items", "scored", "notAssessed"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "integer"
+        },
+        "scored": {
+          "type": "integer"
+        },
+        "notAssessed": {
+          "type": "integer"
+        },
+        "forbiddenFired": {
+          "type": "array",
+          "description": "Every negative control that fired, with the finding id.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "floors": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "commit": {
+              "type": "string"
+            },
+            "checked": {
+              "type": "integer"
+            },
+            "violations": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "itemScore": {
+      "type": "object",
+      "required": ["item", "state"],
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "state": {
+          "enum": ["scored", "not-assessed"]
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the item was not assessed."
+        },
+        "components": {
+          "type": "integer"
+        },
+        "findings": {
+          "type": "integer"
+        },
+        "categories": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/categoryScore"
+          }
+        },
+        "reachability": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/analyzerScore"
+          }
+        },
+        "reachabilityNotAssessed": {
+          "type": "array",
+          "description": "The manifest's own not-assessed entries for the reachability analysers.",
+          "items": {
+            "type": "object"
+          }
+        },
+        "joins": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/joinScore"
+          }
+        },
+        "depscanVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "categoryScore": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["assessed", "unlabelled", "not-assessed"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "expected": {
+          "type": "integer"
+        },
+        "hits": {
+          "type": "integer"
+        },
+        "recall": {
+          "type": ["number", "null"]
+        },
+        "unexpected": {
+          "type": "integer"
+        },
+        "precision": {
+          "type": ["number", "null"]
+        },
+        "missed": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "unexpectedFindings": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "forbiddenFired": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "analyzerScore": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["assessed", "not-assessed"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "wallClockSeconds": {
+          "type": "number"
+        },
+        "direct": {
+          "$ref": "#/$defs/purlSetScore"
+        },
+        "reached": {
+          "$ref": "#/$defs/purlSetScore"
+        }
+      }
+    },
+    "purlSetScore": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recall": {
+          "type": ["number", "null"]
+        },
+        "precision": {
+          "type": ["number", "null"]
+        },
+        "missed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wrong": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "labelledSeen": {
+          "type": "integer"
+        },
+        "seen": {
+          "type": "integer"
+        }
+      }
+    },
+    "joinScore": {
+      "type": "object",
+      "required": ["outcome"],
+      "additionalProperties": true,
+      "properties": {
+        "outcome": {
+          "enum": ["measured", "partial", "gap"]
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

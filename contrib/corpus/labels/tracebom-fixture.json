@@ -1,0 +1,15 @@
+{
+  "item": "tracebom-fixture",
+  "joins": {
+    "component-runtime": {
+      "source": "fixture",
+      "packages": [
+        {
+          "purl": "pkg:pypi/pyyaml",
+          "citation": "trace_target.py imports yaml and the tracing venv (trace-fixture.sh) installs pyyaml; a trace that captures the run names the distribution the run loaded"
+        }
+      ],
+      "notes": "The committed trace was recorded on macOS, where tracebom captures no component records; the scorer reports the join against this label with whatever the trace carries."
+    }
+  }
+}

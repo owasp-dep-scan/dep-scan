@@ -1,0 +1,14 @@
+{
+  "name": "lifecycle-fixture",
+  "version": "1.0.0",
+  "description": "A fixture for the lifecycle phase join: a shipped dependency the code uses, a shipped dependency the code never uses, and a dev-only dependency that must not ship.",
+  "main": "server.js",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "express": "^4.19.2",
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

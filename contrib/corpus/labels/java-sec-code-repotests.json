@@ -1,0 +1,28 @@
+{
+  "item": "java-sec-code-repotests",
+  "findings": {
+    "source": "hand",
+    "expected": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.9.1",
+        "rules": ["CVE-2021-44228", "CVE-2021-45046", "CVE-2021-45105"],
+        "citation": "the artifact's pinned source (HooliCorp/java-sec-code@7f7f02a9) declares log4j-core 2.9.1 in pom.xml:104, below every Log4Shell fix in 2.15.0 through 2.17.1"
+      },
+      {
+        "category": "vulnerability",
+        "purl": "pkg:maven/com.alibaba/fastjson@1.2.24",
+        "rules": ["CVE-2017-18336"],
+        "citation": "the artifact's pinned source declares fastjson 1.2.24 in pom.xml:50, below the 1.2.24 RCE fixes"
+      }
+    ],
+    "forbidden": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:maven/org.slf4j/log4j-over-slf4j@1.7.22",
+        "rules": ["CVE-2021-44228", "CVE-2021-45046", "CVE-2021-45105"],
+        "reason": "log4j-over-slf4j is the bridge that replaces log4j-core, carries none of the Log4Shell advisories, so a Log4Shell finding on it is a false positive"
+      }
+    ]
+  }
+}

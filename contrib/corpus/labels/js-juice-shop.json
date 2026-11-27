@@ -1,0 +1,65 @@
+{
+  "item": "js-juice-shop",
+  "reachability": {
+    "source": "oracle"
+  },
+  "findings": {
+    "source": "hand",
+    "expected": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/jsonwebtoken@0.4.0",
+        "rules": ["CVE-2022-23529", "CVE-2022-23540", "CVE-2022-23541", "CVE-2022-23539"],
+        "citation": "package.json:132 pins jsonwebtoken 0.4.0, below every advisory fixed in 8.5.1 and 9.0.0; the project's own code uses it at lib/insecurity.ts:11"
+      },
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/express-jwt@0.1.3",
+        "rules": ["CVE-2020-15084"],
+        "citation": "package.json:112 pins express-jwt 0.1.3, below the authorization bypass fixed in 6.7.1; used at lib/insecurity.ts:10"
+      },
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/colors@1.4.0",
+        "rules": ["CVE-2021-23567"],
+        "citation": "package.json:101 pins colors 1.4.0, one below the ReDoS fix in 1.4.1; the project's own code imports it at server.ts:16"
+      }
+    ],
+    "forbidden": [
+      {
+        "category": "vulnerability",
+        "purl": "pkg:npm/express@4.22.1",
+        "reason": "express is pinned at 4.22.1, above every advisory in the database for the 4.x line, so a finding on it is a false positive"
+      }
+    ]
+  },
+  "joins": {
+    "route-package": {
+      "source": "hand",
+      "routes": [
+        {
+          "path": "/api/Users",
+          "method": "GET",
+          "packages": ["pkg:npm/sequelize"],
+          "citation": "server.ts:363 registers the route over the user model, whose own code queries sequelize (models/user.ts:36 and :124)"
+        },
+        {
+          "path": "/rest/user/login",
+          "method": "POST",
+          "packages": ["pkg:npm/jsonwebtoken"],
+          "citation": "server.ts:596 registers routes/login.ts, whose login signs through lib/insecurity.ts:54 with the jsonwebtoken imported at lib/insecurity.ts:11"
+        },
+        {
+          "path": "/rest/admin/application-version",
+          "method": "GET",
+          "packages": ["pkg:npm/express"],
+          "citation": "routes/appVersion.ts returns an express handler (express is the framework, package.json:24) using config and utils; no third-party data layer"
+        }
+      ]
+    },
+    "advisory-usage-reach": {
+      "source": "hand",
+      "notes": "Scored from the reachability labels plus the findings labels of this file: a vulnerability finding on a used package that the analyser reaches is the join working, and a reached finding on an unused package is its false positive."
+    }
+  }
+}
