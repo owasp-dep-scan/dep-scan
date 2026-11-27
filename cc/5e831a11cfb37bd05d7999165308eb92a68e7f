@@ -1,0 +1,20 @@
+packages/analysis-lib/tests/test_decisions.py
+  s_62a28a1c3d6dbf::t_9326c2a9f98154 132-133,135
+  s_62a28a1c3d6dbf::t_bae34f2b8272fa 537-539
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc5e831a11cfb37bd05d7999165308eb92a68e7f",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
