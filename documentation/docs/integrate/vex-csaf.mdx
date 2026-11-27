@@ -6,7 +6,7 @@ title: CSAF VEX guide for compliance
 
 ## What VEX is and why reachability changes it
 
-A Vulnerability Exploitability eXchange (VEX) document tells a consumer, per product and per vulnerability, whether a given product is affected. Without reachability, a VEX statement can only say "a fixed version exists" or leave the status at "under investigation", which forces the consumer to treat every dependency CVE as potentially exploitable. dep-scan's VEX is different because it folds reachability into the assessment: dependencies whose code is observed on an executed path are marked `known_affected`, and every other affected dependency stays `under_investigation`. dep-scan does not write `known_not_affected` on its own, because a dependency missing from a reached set was simply not observed, which does not show that its vulnerable code is outside the execute path. The document helps a consumer put the observed, reachable dependency CVEs first.
+A Vulnerability Exploitability eXchange (VEX) document tells a consumer, per product and per vulnerability, whether a given product is affected. Without reachability, a VEX statement can only say "a fixed version exists" or leave the status at "under investigation", which forces the consumer to treat every dependency CVE as potentially exploitable. dep-scan's VEX is different because it folds reachability into the assessment: dependencies whose code is observed on an executed path are marked `known_affected`, and every other affected dependency stays `under_investigation`. dep-scan does not write `known_not_affected` from reachability, because a dependency missing from a reached set was simply not observed, which does not show that its vulnerable code is outside the execute path; only a triage decision a person recorded, or a VEX document stated, sets it. The document helps a consumer put the observed, reachable dependency CVEs first.
 
 dep-scan emits VEX as an OASIS Common Security Advisory Framework (CSAF) document, defaulting to CSAF 2.1 with an option for 2.0. The CSAF VEX content lives under `packages/analysis-lib/src/analysis_lib/vex/`, and the behavior described here is the source of truth for the `contrib/CSAF_README.md` operator notes.
 
@@ -49,9 +49,24 @@ The fields are summarized below; required fields are in **bold**.
 | **tracking** | **status**<br/>**version**<br/>id<br/>current_release_date<br/>initial_release_date | dates default to now (RFC 3339 UTC); version defaults to the latest revision number. |
 | tracking.revision_history | date<br/>number<br/>summary | the document always carries at least one revision entry. |
 
+## Triage decisions set the status first
+
+A VDR entry carries the winning triage decision for each affected component that a decisions file or a `--vex` document the scan applied selects ([triage, baselines and gating](../results/triage-and-gating)), as a `depscan:triage:component:<bom-ref>` property whose value is the decision as JSON: the state, justification, responses and detail, with the author, approver, proposer and expiry. CycloneDX has one `analysis` object per vulnerability entry, so dep-scan writes the entry's `analysis`, and the people and the expiry as `depscan:triage:*` properties, only when every affected component of the entry has the same winning decision. When an entry lists two components and only one is decided, or they are decided differently, the entry's `analysis` stays as the scan wrote it. The CSAF export reads each product's own decision before reachability, so a decision about one component never states anything about another:
+
+| Decision | CSAF `product_status` | Flag / justification |
+|---|---|---|
+| `not_affected` with a justification | `known_not_affected` | the flag matching the justification, for example `vulnerable_code_not_in_execute_path` for `code_not_reachable` and `vulnerable_code_not_present` for `code_not_present` |
+| `false_positive` | `known_not_affected` | `vulnerable_code_not_present` |
+| `exploitable` | `known_affected` | (none) |
+| `in_triage` | `under_investigation` | (none) |
+| `resolved`, `resolved_with_pedigree` | `fixed` | (none) |
+| `not_affected` with no justification | from reachability, below | CSAF has no flag to carry it |
+
+Only an analysis object a decision wrote counts: the `in_triage` or `exploitable` analysis the matching stage writes on its own, for a dependency tree or a known exploit, is a hint rather than a decision and leaves the status to reachability. A proposal no one has approved never reaches the VDR.
+
 ## The reachability-to-status mapping
 
-This is the central compliance story, and it is encoded in `analysis_lib/vex/reachability.py`. The classifier reads the affected purls from each VDR vulnerability and bins them into CSAF `product_status` buckets based on the reached-purls map. The decision, applied per affected purl, is shown below.
+This is the central compliance story for every entry without a decision, and it is encoded in `analysis_lib/vex/reachability.py`. The classifier reads the affected purls from each VDR vulnerability and bins them into CSAF `product_status` buckets based on the reached-purls map. The decision, applied per affected purl, is shown below.
 
 ```mermaid
 flowchart TD
@@ -70,7 +85,7 @@ flowchart TD
 | Not observed          | `under_investigation` | (none)                                            |
 | Unknown / no data     | `under_investigation` | (none)                                            |
 
-The logic is precise. When reachability data is absent, every affected purl lands in `under_investigation`, which is the honest status when no slicing was performed. When reachability data is present, a purl found in `reached_purls` (or its product id) lands in `known_affected` with no flag. A purl that is affected but not reached also lands in `under_investigation`, with no flag. The analyzers record what they observed, and a call made through reflection, an interface, a callback or a language the analyzer does not follow leaves no trace, so absence from the reached set is not evidence that the vulnerable code is outside the execute path. No analyzer records positive evidence of that today, so the classifier never writes `known_not_affected` and never sets `vulnerable_code_not_in_execute_path`. Only product ids that resolve in the product tree are emitted, so a status can never reference an undefined product. A publisher who has verified that a dependency is not executed can record that decision in a document they author.
+The logic is precise. When reachability data is absent, every affected purl lands in `under_investigation`, which is the honest status when no slicing was performed. When reachability data is present, a purl found in `reached_purls` (or its product id) lands in `known_affected` with no flag. A purl that is affected but not reached also lands in `under_investigation`, with no flag. The analyzers record what they observed, and a call made through reflection, an interface, a callback or a language the analyzer does not follow leaves no trace, so absence from the reached set is not evidence that the vulnerable code is outside the execute path. No analyzer records positive evidence of that today, so reachability alone never writes `known_not_affected` and never sets `vulnerable_code_not_in_execute_path`. Only product ids that resolve in the product tree are emitted, so a status can never reference an undefined product. A publisher who has verified that a dependency is not executed records that decision in the decisions file, and the next scan carries it into the VDR and the CSAF.
 
 ## A representative VEX fragment
 
@@ -146,5 +161,5 @@ The two schema versions differ in ways that affect what dep-scan can emit. CSAF 
 
 ## How a VEX consumer uses the document
 
-A VEX consumer, whether a vulnerability-management platform, an SBOM hub, or a gate in a deployment pipeline, walks the `vulnerabilities` array and applies the `product_status` and `flags` to its own findings. It escalates a CVE when the product appears under `known_affected`. And it leaves a CVE open for human review when the product appears under `under_investigation`, which is the status both for a product the analyzers did not observe and for a scan where reachability was not computed. dep-scan writes no `known_not_affected` statement itself, so a consumer that finds one in a document should check who authored it. This is the analyst-to-compliance thread: the `reached_purls` map an analyst reads in the VDR becomes the `known_affected` bucket a compliance reviewer relies on, with no manual translation in between. The [VDR guide](vdr) is the analyst's view of the same data.
+A VEX consumer, whether a vulnerability-management platform, an SBOM hub, or a gate in a deployment pipeline, walks the `vulnerabilities` array and applies the `product_status` and `flags` to its own findings. It escalates a CVE when the product appears under `known_affected`. And it leaves a CVE open for human review when the product appears under `under_investigation`, which is the status both for a product the analyzers did not observe and for a scan where reachability was not computed. dep-scan writes a `known_not_affected` statement only from a triage decision about that product, so a consumer that finds one can read who made it from the VDR's `depscan:triage:component:<bom-ref>` property for it. This is the analyst-to-compliance thread: the `reached_purls` map an analyst reads in the VDR becomes the `known_affected` bucket a compliance reviewer relies on, with no manual translation in between. The [VDR guide](vdr) is the analyst's view of the same data.
 

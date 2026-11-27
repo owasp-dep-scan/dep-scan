@@ -45,7 +45,336 @@ __all__ = [
     "query",
     "scan",
     "scan_options",
+    "triage_check",
+    "triage_entries",
+    "triage_remove",
+    "triage_review",
+    "triage_set",
 ]
+
+
+class TriageApiError(ValueError):
+    """A triage request the API refuses: a missing required name, a file
+    that cannot be read or does not parse, an entry that does not exist, or
+    a state the vocabulary does not carry. The CLI turns it into exit 2; the
+    server turns it into a refused tool call."""
+
+
+def _load_for_edit(file: str, *, create: bool = False):
+    from depscan.lib import decisions_edit
+
+    try:
+        return decisions_edit.load(str(file), create=create)
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+
+
+def _scan_findings_for_triage(reports_dir: str):
+    """The findings and the advisory aliases of a scan directory, for the
+    triage listings.
+
+    The VDR entries the manifest lists build the alias map the advisory
+    selectors match through; a directory that cannot load as a scan still
+    lists against its findings document, with exact rule ids only.
+    """
+    from analysis_lib.findings.decisions import alias_map_from_vulns
+    from depscan.lib.scan_directory import read_findings
+
+    findings = (read_findings(reports_dir) or {}).get("findings") or []
+    aliases: Dict[str, set] = {}
+    try:
+        result = load_scan(reports_dir)
+        aliases = alias_map_from_vulns(
+            vuln for tscan in result.types for vuln in tscan.vulnerabilities
+        )
+    except ScanError:
+        pass
+    return findings, aliases
+
+
+def triage_entries(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, Any]:
+    """The decisions file's triage entries, with what each matches.
+
+    Every entry carries its handle and its computed status: a proposal,
+    expired, stale or shadowed against the given scan directory, or live.
+    A shadowed entry matches findings, but another decision wins every one
+    of them (see :func:`analysis_lib.findings.decisions.apply_triage`), so
+    it changes nothing. A live entry names the findings it matched. This is
+    the listing the ``depscan triage list`` verb renders and the
+    ``get_decisions`` server tool returns.
+
+    :param file: The decisions file to read.
+    :param scan_dir: A scan directory to match the entries against, its
+        stale, shadowed and expired entries included in the result.
+    :returns: The document with ``entries`` and the ``stale``, ``shadowed``,
+        ``expired`` and ``proposals`` handle lists.
+    :raises TriageApiError: When the file cannot be read or breaks its
+        schema, or the scan directory cannot be read.
+    """
+    import copy
+
+    from analysis_lib.findings.decisions import apply_triage, entry_matches_finding, is_expired
+    from depscan.lib.decisions_edit import entry_document
+
+    loaded = _load_for_edit(file)
+    findings: List[Dict[str, Any]] = []
+    aliases: Dict[str, set] = {}
+    winners: set = set()
+    if scan_dir:
+        if not os.path.isdir(str(scan_dir)):
+            raise TriageApiError(f"the scan directory '{scan_dir}' does not exist")
+        findings, aliases = _scan_findings_for_triage(str(scan_dir))
+        application = apply_triage(
+            copy.deepcopy(findings), loaded.entries, alias_map=aliases or None
+        )
+        winners = {id(entry) for _finding, entry in application.winners}
+    document: Dict[str, Any] = {
+        "decisionsFile": str(file),
+        "entries": [],
+        "stale": [],
+        "shadowed": [],
+        "expired": [],
+        "proposals": [],
+        "scanDir": scan_dir,
+    }
+    for entry in loaded.entries:
+        matches = [
+            str(finding.get("id"))
+            for finding in findings
+            if entry_matches_finding(entry, finding, alias_map=aliases or None)
+        ]
+        listed = entry_document(entry)
+        if entry.is_proposal:
+            status = "proposal"
+        elif is_expired(entry.expires):
+            status = "expired"
+        elif scan_dir and not matches:
+            status = "stale"
+        elif scan_dir and id(entry) not in winners:
+            status = "shadowed"
+        else:
+            status = "live"
+        listed["status"] = status
+        listed["source"] = entry.source
+        if scan_dir:
+            listed["matches"] = matches
+        document["entries"].append(listed)
+    _count_statuses(document)
+    return document
+
+
+def _count_statuses(document: Dict[str, Any]) -> None:
+    """Fill a listing's stale, shadowed, expired and proposals arrays with
+    the handles of its entries that have that status."""
+    keys = {"stale": "stale", "shadowed": "shadowed", "expired": "expired"}
+    keys["proposal"] = "proposals"
+    for key in keys.values():
+        document[key] = []
+    for listed in document["entries"]:
+        if listed["status"] in keys:
+            document[keys[listed["status"]]].append(listed["handle"])
+
+
+def triage_set(
+    *,
+    file: str,
+    state: str,
+    author: Optional[str] = None,
+    proposed_by: Optional[str] = None,
+    finding: Optional[str] = None,
+    advisory: Optional[str] = None,
+    purl: Optional[str] = None,
+    version_range: Optional[str] = None,
+    justification: Optional[str] = None,
+    responses: Optional[List[str]] = None,
+    detail: Optional[str] = None,
+    created: Optional[str] = None,
+    expires: Optional[str] = None,
+    create: bool = True,
+) -> Dict[str, Any]:
+    """Record one triage decision, or one proposal, in the decisions file.
+
+    The entry is selected by ``finding`` (a ``dsf1:`` id) or by ``advisory``
+    with ``purl``. With ``proposed_by`` the entry is a proposal: it applies
+    only once a person approves it with :func:`triage_review`, it may omit
+    the author, and it replaces only a proposal with the same selector from
+    the same proposer, never a person's decision. Without it the entry is a
+    live decision that needs an author, never guessed, and it replaces the
+    live entry with the same selector as a whole. ``create`` lets the call
+    create a missing file. The saved file is validated against the published
+    schema before it is written, so a call cannot leave a file a scan would
+    refuse.
+
+    :returns: The document with the file, the result (added or updated) and
+        the entry as written.
+    :raises TriageApiError: When a required value is missing, the selector
+        is empty, the file cannot be read or changed meanwhile, or the entry
+        would break the file.
+    """
+    from datetime import datetime, timezone
+
+    from analysis_lib.findings.decisions import TRIAGE_STATES
+    from depscan.lib import decisions_edit
+
+    author = str(author).strip() if author else None
+    proposed_by = str(proposed_by).strip() if proposed_by else None
+    if not author and not proposed_by:
+        raise TriageApiError(
+            "the entry needs an author; pass --author, or --proposed-by to write a proposal"
+        )
+    if state not in TRIAGE_STATES:
+        raise TriageApiError(
+            f"the state {state!r} is not in the CycloneDX vocabulary; valid values: "
+            f"{', '.join(TRIAGE_STATES)}"
+        )
+    if state == "not_affected" and not justification:
+        raise TriageApiError("a not_affected state needs a justification from the CycloneDX list")
+    if finding:
+        selector = {"finding": str(finding)}
+    elif advisory and purl:
+        selector = {"advisory": str(advisory), "purl": str(purl)}
+        if version_range:
+            selector["version_range"] = str(version_range)
+    else:
+        raise TriageApiError("the entry needs a selector: a finding id, or an advisory and a purl")
+    fields = {
+        "state": state,
+        "justification": justification,
+        "responses": [str(value) for value in responses] if responses else None,
+        "detail": detail,
+        "author": author,
+        "proposed_by": proposed_by,
+        "created": created
+        or datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "expires": expires,
+    }
+    loaded = _load_for_edit(file, create=create)
+    try:
+        result, position, entries = decisions_edit.write_entry(
+            loaded, selector=selector, fields=fields
+        )
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+    entry = decisions_edit.entry_document(entries[position])
+    entry["status"] = "proposal" if entries[position].is_proposal else "live"
+    return {"decisionsFile": str(file), "result": result, "entry": entry}
+
+
+def triage_review(
+    *,
+    file: str,
+    approver: Optional[str] = None,
+    approve: Optional[str] = None,
+    reject: Optional[str] = None,
+) -> Dict[str, Any]:
+    """List the proposals, or approve or reject one by its handle.
+
+    With neither ``approve`` nor ``reject`` the result is the listing of the
+    proposals awaiting review, with the counts of that listing. Approval
+    writes the approver's name into the entry, and the author's when it
+    names none, and the entry applies from then on: a decision with the same
+    selector is replaced by it, and the result names that decision under
+    ``replaced``. Rejection removes the proposal and records nothing else; a
+    person's decision cannot be rejected, only removed with
+    :func:`triage_remove`. The approver is never guessed: an approval or
+    rejection without one is refused.
+
+    :raises TriageApiError: When the approver is missing, no single entry
+        has the handle, or the entry is not a proposal.
+    """
+    from depscan.lib import decisions_edit
+
+    if approve is None and reject is None:
+        listing = triage_entries(file=file)
+        listing["entries"] = [e for e in listing["entries"] if e["status"] == "proposal"]
+        _count_statuses(listing)
+        return listing
+    if approve is not None and reject is not None:
+        raise TriageApiError("review approves or rejects one entry, not both")
+    if not approver or not str(approver).strip():
+        raise TriageApiError("the review needs an approver; pass --approver")
+    loaded = _load_for_edit(file)
+    try:
+        position = decisions_edit.find_handle(loaded, str(approve or reject))
+        if approve is not None:
+            entries, position, replaced = decisions_edit.approve_entry(
+                loaded, position, str(approver).strip()
+            )
+            document = {
+                "decisionsFile": str(file),
+                "result": "approved",
+                "entry": decisions_edit.entry_document(entries[position]),
+            }
+            if replaced is not None:
+                document["replaced"] = decisions_edit.entry_document(replaced)
+            return document
+        entry = loaded.entries[position]
+        if not entry.is_proposal:
+            raise TriageApiError(
+                f"triage entry {entry.handle} is a person's decision, not a proposal; "
+                "reject takes proposals only, and depscan triage remove deletes a decision"
+            )
+        decisions_edit.remove_entry(loaded, position)
+        return {
+            "decisionsFile": str(file),
+            "result": "rejected",
+            "entry": decisions_edit.entry_document(entry),
+        }
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+
+
+def triage_remove(*, file: str, handle: str) -> Dict[str, Any]:
+    """Remove the triage entry with ``handle``, whatever kind it is.
+
+    :returns: The document with the file, the result and the removed entry.
+    :raises TriageApiError: When no single entry has the handle.
+    """
+    from depscan.lib import decisions_edit
+
+    loaded = _load_for_edit(file)
+    try:
+        position = decisions_edit.find_handle(loaded, str(handle))
+        entry = loaded.entries[position]
+        decisions_edit.remove_entry(loaded, position)
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+    return {
+        "decisionsFile": str(file),
+        "result": "removed",
+        "entry": decisions_edit.entry_document(entry),
+    }
+
+
+def triage_check(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, Any]:
+    """Validate the decisions file the way a gate would.
+
+    The file is loaded and validated against the published schema; a file
+    that cannot be read, or that the schema refuses, is reported with the
+    loader's message naming the key and the line, and ``valid`` false: the
+    exit code the command's caller gives such a file is 3. With a scan
+    directory, the stale and expired entries are matched against its
+    findings and reported beside the verdict.
+
+    :returns: The listing document with ``valid`` and, on a broken file,
+        ``errors``.
+    """
+    try:
+        document = triage_entries(file=str(file), scan_dir=scan_dir)
+    except TriageApiError as exc:
+        return {
+            "decisionsFile": str(file),
+            "entries": [],
+            "stale": [],
+            "shadowed": [],
+            "expired": [],
+            "proposals": [],
+            "scanDir": scan_dir,
+            "valid": False,
+            "errors": [str(exc)],
+        }
+    document["valid"] = True
+    return document
 
 
 class ScanError(RuntimeError):
@@ -89,6 +418,9 @@ class ScanResult:
     :func:`load_scan`, and carry the earlier values (None and []) when a
     directory without a manifest is loaded. ``findings_version`` is the
     findings document's ``schemaVersion`` as read, or None without one.
+    ``expectations`` is the gate result the scan's decisions evaluated to,
+    the ``depscan.expectations.json`` document, or None when the scan ran
+    no gate.
     """
 
     reports_dir: str
@@ -97,6 +429,7 @@ class ScanResult:
     manifest: Optional[Dict[str, Any]] = None
     findings: List[Dict[str, Any]] = field(default_factory=list)
     findings_version: Optional[str] = None
+    expectations: Optional[Dict[str, Any]] = None
 
     @property
     def vulnerabilities(self) -> List[Dict[str, Any]]:
@@ -182,6 +515,7 @@ def scan(
     render: bool = True,
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
+    decisions=None,
 ) -> ScanResult:
     """Run a scan with the given options and return its result.
 
@@ -190,7 +524,8 @@ def scan(
     the same files to ``options.reports_dir``: the BOM documents, the VDR
     files, the license reports and the cdx-audit reports and ``depscan.toml.sample``, plus
     the scan directory's own ``depscan.findings.json`` and
-    ``depscan.manifest.json``.
+    ``depscan.manifest.json``, and ``depscan.expectations.json`` when a
+    gate runs.
 
     With ``render=False`` the rendering is skipped (the console tables, the
     HTML and text reports, the template report, the explanation, the CSAF
@@ -204,10 +539,15 @@ def scan(
     it instead of probing the machine a second time. ``checks_not_assessed``
     lists checks, as ``{"name": ..., "reason": ...}`` dictionaries, that a
     caller decided cannot run; each is recorded in the manifest as a
-    ``check-<name>`` stage with status ``not-assessed``. Both travel only
-    through these keywords: every value of the options namespace is copied
-    into the manifest and the sample config, so a report object must never
-    land there.
+    ``check-<name>`` stage with status ``not-assessed``. ``decisions`` is
+    the :class:`depscan.lib.decisions.RunDecisions` the scan applies, as
+    the scan verb loads them from its options; without it the scan reads
+    the decisions file the scanned directory resolves to (the environment,
+    the configuration files named by ``options.config``, then its own
+    ``.depscan/decisions.toml``), exactly as ``depscan scan`` does. These
+    travel only through the keywords: every value of the options namespace
+    is copied into the manifest and the sample config, so a report object
+    must never land there.
 
     :param options: An ``argparse.Namespace`` from the CLI parser or from
         :func:`scan_options`.
@@ -215,14 +555,19 @@ def scan(
     :param doctor_report: Reuse this :class:`DoctorReport` instead of
         collecting one.
     :param checks_not_assessed: Check entries to record as not assessed.
-    :returns: The :class:`ScanResult` of the scan, carrying the manifest and
-        findings of the scan directory it wrote.
+    :param decisions: The decisions to apply; None resolves the scanned
+        directory's.
+    :returns: The :class:`ScanResult` of the scan, carrying the manifest,
+        findings and expectations of the scan directory it wrote.
     :raises ScanError: When a stage stops the scan, with the message the
-        stage logged. The function never calls ``sys.exit`` and never
+        stage logged, or the decisions file cannot be used. The function
+        never calls ``sys.exit`` and never
         returns a result in place of a stopped scan. A scan that stopped
         partway still leaves its directory with a manifest naming the
         failed stage.
     """
+    if decisions is None:
+        decisions = _scanned_directory_decisions(options)
     return _run_stages(
         options,
         render=render,
@@ -230,7 +575,34 @@ def scan(
         write_scan_dir=True,
         doctor_report=doctor_report,
         checks_not_assessed=checks_not_assessed,
+        decisions=decisions,
     )
+
+
+def _scanned_directory_decisions(options):
+    """The decisions a scan of ``options`` reads when the caller passed
+    none: those of the scanned source directory, or those the environment
+    and the configuration files name for a target that is not a directory.
+
+    :raises ScanError: When the file cannot be used.
+    """
+    from depscan.lib import decisions as decisions_lib
+
+    target = getattr(options, "src_dir_image", None)
+    reads_directory = not (
+        getattr(options, "bom", None)
+        or getattr(options, "bom_dir", None)
+        or getattr(options, "search_purl", None)
+    )
+    target_dir = str(target) if reads_directory and target and os.path.isdir(str(target)) else None
+    try:
+        run = decisions_lib.load_for_target(
+            decisions_lib.parse_options(verb="scan", config=getattr(options, "config", None)),
+            target_dir=target_dir,
+        )
+    except decisions_lib.DecisionsUsageError as exc:
+        raise ScanError(str(exc)) from exc
+    return run if run.active else None
 
 
 def _run_stages(
@@ -241,6 +613,7 @@ def _run_stages(
     write_scan_dir: bool = False,
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
+    decisions=None,
 ) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
@@ -248,8 +621,8 @@ def _run_stages(
     leaves the scan directory unwritten. Only the server uses these: it
     prepares the database once when it starts, so a request never downloads
     or replaces the database the server is reading, and a request's output is
-    the response rather than a directory. ``doctor_report`` and
-    ``checks_not_assessed`` see :func:`scan`.
+    the response rather than a directory. ``doctor_report``,
+    ``checks_not_assessed`` and the decisions keywords see :func:`scan`.
     """
     if not render:
         options.no_vuln_table = True
@@ -257,6 +630,7 @@ def _run_stages(
     ctx.write_scan_dir = write_scan_dir
     if doctor_report is not None:
         ctx.doctor_report = doctor_report
+    ctx.decisions = decisions if decisions is not None and decisions.active else None
     pipeline.configure_output(ctx)
     written = None
     try:
@@ -289,15 +663,7 @@ def _run_stages(
             # A requested blint review that failed ran during the inventory;
             # its failure is a stage of its own beside the inventory that
             # kept going, so a review problem never leaves only a warning.
-            for reason in tscan.review_not_assessed:
-                if ctx.scan_dir is not None:
-                    ctx.scan_dir.record_stage(
-                        "binary-review",
-                        "failed",
-                        project_type=project_type,
-                        reason=reason,
-                        capabilities=["binary"],
-                    )
+            _record_binary_review(ctx, tscan)
             ctx.scans.append(tscan)
             _stage(
                 ctx,
@@ -321,6 +687,7 @@ def _run_stages(
                 ctx,
                 tscan,
                 project_type=project_type,
+                capabilities=["supply-chain"],
                 skipped_reason="the supply-chain audit was not requested",
                 failed_reason=lambda: tscan.risk_error,
                 not_assessed_reason=lambda: tscan.risk_not_assessed,
@@ -332,7 +699,7 @@ def _run_stages(
                             _relative_output(ctx, path) for path in tscan.audit_output_files
                         )
                         for output in outputs
-                    ]
+                    ],
                 },
             )
             pipeline.announce_scan_targets(ctx, tscan)
@@ -359,6 +726,10 @@ def _run_stages(
                 capabilities=["vulnerabilities"],
                 record_extra=lambda: {"notAssessed": _matching_not_assessed(tscan)},
             )
+            # The triage decisions annotate the VDR entries before the VDR
+            # stage writes them, so the analysis objects reach the file, the
+            # CSAF export and the annotations.
+            pipeline.annotate_type_decisions(ctx, tscan)
             _stage(
                 ctx,
                 "vdr",
@@ -384,6 +755,17 @@ def _run_stages(
                         else []
                     },
                 )
+        # The decisions stage builds the findings, applies the triage
+        # decisions and the baseline, and evaluates the gate, before the
+        # reports render, so the saved reports carry its result.
+        if write_scan_dir and ctx.decisions is not None:
+            _stage(
+                ctx,
+                "decisions",
+                pipeline.stage_decisions,
+                ctx,
+                capabilities=[],
+            )
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
     except BaseException as exc:
@@ -402,6 +784,7 @@ def _run_stages(
     if written is not None:
         result.manifest = written.get("manifest")
         result.findings = written.get("findings") or []
+        result.expectations = written.get("expectations")
     return result
 
 
@@ -470,6 +853,31 @@ def _stage(
     else:
         record("completed")
     return result
+
+
+def _record_binary_review(ctx, tscan) -> None:
+    """Record the blint binary review of one project type as its own stage.
+
+    The review runs inside the inventory stage. A review that failed is
+    recorded as failed with each reason, and one whose reports the blint
+    adapter read is recorded as completed, so a requirement on the binary
+    capability sees what ran.
+    """
+    if ctx.scan_dir is None:
+        return
+    for reason in tscan.review_not_assessed:
+        ctx.scan_dir.record_stage(
+            "binary-review",
+            "failed",
+            project_type=tscan.project_type,
+            reason=reason,
+            capabilities=["binary"],
+        )
+    review = tscan.adapter_results.get("blint")
+    if not tscan.review_not_assessed and review is not None and review.status == "completed":
+        ctx.scan_dir.record_stage(
+            "binary-review", "completed", project_type=tscan.project_type, capabilities=["binary"]
+        )
 
 
 def _record_checks_not_assessed(ctx, checks_not_assessed):

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-propose_triage-input:1",
+  "title": "dep-scan mcp propose_triage input",
+  "description": "The arguments of the propose_triage tool: one triage proposal, with who proposes it. The tool writes proposals only; it never sets an author or an approver, so the proposal changes nothing until a person runs depscan triage review. The server must have been started with --allow-propose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "proposed_by", "scan_dir"],
+  "oneOf": [
+    {"required": ["finding"]},
+    {"required": ["advisory", "purl"]}
+  ],
+  "properties": {
+    "finding": {
+      "type": "string",
+      "pattern": "^dsf1:[0-9a-f]{64}$",
+      "description": "The dsf1 fingerprint of the finding the proposal is about, from list_findings or get_finding."
+    },
+    "advisory": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The advisory id, or one of its aliases, the proposal selects. Needs purl."
+    },
+    "purl": {
+      "type": "string",
+      "pattern": "^pkg:",
+      "description": "The package the proposal selects, compared with comparable_purl. Needs advisory."
+    },
+    "version_range": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A vers range narrowing the purl selection, for example vers:npm/>=4.17.0|<4.17.21."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "resolved",
+        "resolved_with_pedigree",
+        "exploitable",
+        "in_triage",
+        "false_positive",
+        "not_affected"
+      ],
+      "description": "The proposed CycloneDX impact analysis state. not_affected needs a justification."
+    },
+    "justification": {
+      "type": "string",
+      "enum": [
+        "code_not_present",
+        "code_not_reachable",
+        "requires_configuration",
+        "requires_dependency",
+        "requires_environment",
+        "protected_by_compiler",
+        "protected_at_runtime",
+        "protected_at_perimeter",
+        "protected_by_mitigating_control"
+      ],
+      "description": "The proposed CycloneDX justification."
+    },
+    "detail": {
+      "type": "string",
+      "description": "Free-form detail about the proposal, including the evidence ids the reasoning cites."
+    },
+    "expires": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the proposal should expire, as an RFC 3339 date-time."
+    },
+    "proposed_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Who proposes: the agent and its session, recorded on the entry so the reviewer sees it."
+    },
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A scan directory inside the allowed roots. The proposal is written into the decisions file depscan report would read for that scan: one the environment or configuration names, else the file the manifest records, resolved against the scan directory. It must be a .toml file; the tool creates no file other than .depscan/decisions.toml under the source root the manifest records."
+    }
+  }
+}

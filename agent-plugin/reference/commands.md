@@ -69,8 +69,10 @@ with the user's consent, and never pass `--allow-scans`.
 | `CDXGEN_TIMEOUT_MS` | Environment variable for cdxgen's own time budget; 30 minutes by default. A cdxgen failure names the budget that was in effect, and a scan whose inventory is slow (an image-pulling tree, for example) raises it rather than cutting the tree. |
 | `VDB_HOME` | Environment variable naming the vulnerability database directory. |
 
-Exit codes: 0 success, 1 could not run, 2 usage error, 4 capability
-unavailable. Findings never change the exit code. The full contract, the
+Exit codes: 0 success, 1 could not run, 2 usage error, 3 a fail-action
+expectation of the decisions file or `--fail-on` matched, 4 a capability
+unavailable or a `[[require]]` entry not met. Findings change the exit
+code only when the run has expectations. The full contract, the
 error document and the paths rule are in
 [the agents page](https://depscan.readthedocs.io/agents).
 

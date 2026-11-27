@@ -1071,7 +1071,14 @@ def _assert_case_document(case, document, scratch):
         assert list(document) == ["scans"]
         assert len(document["scans"]) == 1
         entry = document["scans"][0]
-        assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+        assert set(entry) == {
+            "target",
+            "kind",
+            "scanDir",
+            "manifest",
+            "findings",
+            "expectations",
+        }
         assert entry["target"] == "pkg:pypi/requests@2.32.1"
         assert entry["kind"] == "purl"
         assert entry["scanDir"] == str(reports_dir_of(scratch)).replace(os.sep, "/")

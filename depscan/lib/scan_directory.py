@@ -46,6 +46,7 @@ LAYOUT_MAJOR = 2
 
 MANIFEST_FILE = "depscan.manifest.json"
 FINDINGS_FILE = "depscan.findings.json"
+EXPECTATIONS_FILE = "depscan.expectations.json"
 
 #: Named in the layout and in the enrichment stage's outputs. The store is
 #: written once per project type after the adapters run, and the index is
@@ -332,6 +333,9 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
     if name == FINDINGS_FILE:
         entry.update(role="findings", producer="dep-scan")
         return entry
+    if name == EXPECTATIONS_FILE:
+        entry.update(role="expectations", producer="dep-scan")
+        return entry
     if name == EVIDENCE_FILE or name == EVIDENCE_INDEX_FILE:
         entry.update(role="evidence", producer="dep-scan")
         return entry
@@ -373,11 +377,7 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         else:
             entry.update(role="bom", producer="user")
         return entry
-    if (
-        name in _REPORT_FILES
-        or name.startswith("cdx-audit-")
-        or name.startswith("license-")
-    ):
+    if name in _REPORT_FILES or name.startswith("cdx-audit-") or name.startswith("license-"):
         entry.update(role="report", producer="dep-scan")
         return entry
     if name.endswith(".json") and is_cyclonedx is not None:
@@ -521,6 +521,32 @@ def _sanitize_doctor_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized
 
 
+def recorded_path(path: str, scan_dir: str) -> str:
+    """A path the manifest records for later use: relative to the scan
+    directory with ``/`` separators whenever a relative path exists,
+    otherwise (another drive on Windows) absolute. A project moved together
+    with its scan directory, or a report run from any working directory,
+    then finds the same file."""
+    absolute = os.path.abspath(path)
+    try:
+        relative = os.path.relpath(absolute, os.path.abspath(scan_dir))
+    except ValueError:
+        return absolute.replace(os.sep, "/")
+    return relative.replace(os.sep, "/")
+
+
+def source_root_entry(options: Dict[str, Any], scan_dir: str) -> Optional[str]:
+    """The scanned source directory as the manifest's ``sourceRoot``
+    records it (see :func:`recorded_path`), or None when the scan read a
+    BOM, a BOM directory, a purl or an image instead of a directory."""
+    if any(options.get(key) for key in ("bom", "bom_dir", "search_purl")):
+        return None
+    source = options.get("src_dir") or "."
+    if not os.path.isdir(str(source)):
+        return None
+    return recorded_path(str(source), scan_dir)
+
+
 class ScanDirectory:
     """The manifest builder one scan fills in as its stages run."""
 
@@ -536,6 +562,9 @@ class ScanDirectory:
         self.doctor_report = doctor_report
         self.started_utc = _utcnow()
         self.stages: List[Dict[str, Any]] = []
+        #: The decisions record the manifest carries: which decisions file
+        #: was read, with its digest, or None when none was.
+        self.decisions_record: Optional[Dict[str, Any]] = None
 
     def record_stage(
         self,
@@ -602,6 +631,12 @@ class ScanDirectory:
             database = dict(report_doc["data"]["vulnerabilityDatabase"])
             database["directory"] = home_relative(database.get("directory"))
             manifest["database"]["vulnerabilityDatabase"] = database
+        source_root = source_root_entry(options, self.reports_dir)
+        if source_root is not None:
+            manifest["sourceRoot"] = source_root
+        # Written whether or not a file was read, so a scan that read none
+        # says so and is told apart from a manifest older than the key.
+        manifest["decisions"] = self.decisions_record
         return manifest
 
 
@@ -637,6 +672,40 @@ def write_manifest(scan_dir: ScanDirectory, manifest: Dict[str, Any]) -> None:
     atomic_write_json(os.path.join(scan_dir.reports_dir, MANIFEST_FILE), manifest)
 
 
+def build_findings(
+    vulnerabilities: List[Dict[str, Any]],
+    depscan_version: str,
+    exploitability: Optional[Dict[Any, Any]] = None,
+    blint_reviews: bool = False,
+    supply_chain: bool = False,
+    evidence_records: Optional[Iterable[Any]] = None,
+    usage_not_assessed: Optional[Dict[str, str]] = None,
+) -> List[Dict[str, Any]]:
+    """Build the findings list of ``depscan.findings.json`` without writing
+    it, one document per finding.
+
+    The caller applies the triage decisions and the baseline to the returned
+    documents before they are written, so a decisions file runs on plain
+    finding documents the same way in the scan, in ``depscan report`` and in
+    the server tools.
+    """
+    from analysis_lib.findings.blint_convert import findings_from_blint_records
+    from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
+    from analysis_lib.findings.vdr_convert import findings_from_vdr
+
+    findings = findings_from_vdr(
+        vulnerabilities,
+        producer_version=depscan_version,
+        exploitability=exploitability,
+        usage_not_assessed=usage_not_assessed,
+    )
+    if blint_reviews:
+        findings.extend(findings_from_blint_records(evidence_records))
+    if supply_chain:
+        findings.extend(findings_from_cdx_audit_records(evidence_records))
+    return [finding.to_dict() for finding in findings]
+
+
 def write_findings(
     reports_dir: str,
     vulnerabilities: List[Dict[str, Any]],
@@ -646,6 +715,7 @@ def write_findings(
     supply_chain: bool = False,
     evidence_records: Optional[Iterable[Any]] = None,
     usage_not_assessed: Optional[Dict[str, str]] = None,
+    findings: Optional[List[Dict[str, Any]]] = None,
 ):
     """Write ``depscan.findings.json`` from the scan's VDR entries, the blint
     binary review and the cdx-audit supply-chain audit.
@@ -664,26 +734,25 @@ def write_findings(
     maps a comparable purl to the reason usage evidence of that package in
     a BOM of the scan was not assessed; every vulnerability finding of
     that package that carries an exploitability assessment names the
-    reason in its coverage, proven presence included.
+    reason in its coverage, proven presence included. ``findings`` passes
+    finding documents built by :func:`build_findings` in, for a caller that
+    applied decisions to them before the write; without it they are built
+    here.
     Returns the document written.
     """
-    from analysis_lib.findings.blint_convert import findings_from_blint_records
-    from analysis_lib.findings.cdx_audit_convert import findings_from_cdx_audit_records
-    from analysis_lib.findings.vdr_convert import findings_from_vdr
-
-    findings = findings_from_vdr(
-        vulnerabilities,
-        producer_version=depscan_version,
-        exploitability=exploitability,
-        usage_not_assessed=usage_not_assessed,
-    )
-    if blint_reviews:
-        findings.extend(findings_from_blint_records(evidence_records))
-    if supply_chain:
-        findings.extend(findings_from_cdx_audit_records(evidence_records))
+    if findings is None:
+        findings = build_findings(
+            vulnerabilities,
+            depscan_version,
+            exploitability=exploitability,
+            blint_reviews=blint_reviews,
+            supply_chain=supply_chain,
+            evidence_records=evidence_records,
+            usage_not_assessed=usage_not_assessed,
+        )
     document = {
         "schemaVersion": FINDINGS_SCHEMA_VERSION,
-        "findings": [finding.to_dict() for finding in findings],
+        "findings": findings,
     }
     atomic_write_json(os.path.join(reports_dir, FINDINGS_FILE), document)
     return document

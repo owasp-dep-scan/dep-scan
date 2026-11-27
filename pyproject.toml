@@ -15,6 +15,7 @@ dependencies = [
     "Jinja2~=3.1.6",
     "packageurl-python~=0.17.6",
     "cvss~=3.6",
+    "tomlkit~=0.13.3",
     "ds-xbom-lib~=7.0.0a4",
     "ds-analysis-lib~=7.0.0a4",
     "ds-reporting-lib~=7.0.0a4"

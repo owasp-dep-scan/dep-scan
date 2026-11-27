@@ -18,6 +18,7 @@ The VDR is named `depscan-universal.vdr.json` whether the scan read the universa
 reports/
 ├── depscan.manifest.json          the manifest, written last of every file
 ├── depscan.findings.json          one finding per advisory and component
+├── depscan.expectations.json      the gate result, when the scan ran a gate
 ├── evidence.jsonl                 the evidence store, one record per line
 ├── evidence.index.json            record ids by component purl and by finding
 ├── sbom-python.cdx.json           the BOM documents, named as before
@@ -43,6 +44,7 @@ A scan writes only the files that apply to it: a package URL target has no BOM, 
 | `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | cdxgen, or blint for any BOM blint wrote; `user` for a BOM the user placed here |
 | `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
 | `findings` | `depscan.findings.json` | dep-scan |
+| `expectations` | `depscan.expectations.json` | dep-scan |
 | `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |
 | `slices` | `*.slices.json` | cdxgen |
 | `raw-report` | everything under `analysis/<producer>/` | the tool named by the directory |
@@ -52,7 +54,7 @@ A scan writes only the files that apply to it: a package URL target has no BOM, 
 
 ## The findings file
 
-`depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that requested the supply-chain check also writes the cdx-audit findings, one per cdx-audit rule and component, with cdxgen's rule id as the rule and `cdx-audit` with the cdxgen version that ran as the producer. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
+`depscan.expectations.json` is the gate result the decisions file evaluated to, written when the scan had one; [triage, baselines and gating](triage-and-gating) documents it. `depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that requested the supply-chain check also writes the cdx-audit findings, one per cdx-audit rule and component, with cdxgen's rule id as the rule and `cdx-audit` with the cdxgen version that ran as the producer. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
 
 ## The supply-chain audit report
 
@@ -72,7 +74,8 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | `depscanVersion` | The version of dep-scan that ran the scan. |
 | `startUtc` | When the scan started, in UTC, as an RFC 3339 date-time. |
 | `endUtc` | When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end. |
-| `inputs` | Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place an absolute path, a username or a hostname may appear. |
+| `inputs` | Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place a username or a hostname may appear; sourceRoot and the decisions record hold an absolute path only when no path relative to the scan directory exists. |
+| `sourceRoot` | The scanned source directory, relative to the scan directory with / separators when a relative path exists, otherwise absolute. Absent when the scan read a BOM, a BOM directory, a package URL or an image. The server's propose_triage creates .depscan/decisions.toml under it. |
 | `tools` | The doctor report's tool entries, collected once for this scan. |
 | `platform` | The doctor report's platform entry: os, arch and, on Linux, libc. |
 | `capabilities` | The doctor report's evaluated capability table, collected once for this scan. |
@@ -80,6 +83,7 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | `stages` | One entry per stage, in the order the stages ran. A stage that stopped the scan is recorded as failed with its reason; the stages after it are absent. |
 | `options` | The parsed scan options. Options whose name can hold a secret are recorded as the string "&lt;redacted&gt;" when they were set, and path-valued options are recorded in inputs instead, so no absolute path appears here. |
 | `files` | Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes. |
+| `decisions` | The decisions the scan applied: the decisions file with its digest, the VEX documents and the --fail-on expressions, or null when it had none of them. A file the scan read is data about findings, reviewed in pull requests; the manifest records which one it was, so a report evaluates the same decisions. |
 
 ### input fields
 
@@ -106,7 +110,7 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | `projectType` | The project type the stage ran for, for stages that run once per type. |
 | `status` | completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason. |
 | `reason` | Why the status is failed, skipped or not-assessed. Absent for completed. |
-| `capabilities` | The capability names the stage needed, named the way depscan doctor names them. |
+| `capabilities` | The capability names the stage needed or assessed, named the way depscan doctor names them. |
 | `notAssessed` | Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran. |
 | `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the analyzer's evidence adapter read a report. |
 | `outputs` | The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently. |
@@ -134,7 +138,7 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | Field | What it holds |
 | --- | --- |
 | `path` | The path relative to the scan directory, always with forward slashes. |
-| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index. |
+| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index; expectations is the gate result the decisions file evaluated to. |
 | `producer` | The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here. |
 | `projectType` | The project type the file belongs to, when the name carries one. |
 | `sha256` | The SHA-256 digest of the file's bytes. |
@@ -142,7 +146,7 @@ The manifest is written last, through a temporary file and a rename, so a direct
 
 One naming detail prevents a common misreading: options are recorded under their internal names, and both `--bom-profile` and `--profile` land on the same key, `profile`. A manifest from a scan run with `--bom-profile research` alone shows `profile: research` although no scan profile was set. Which checks ran is not an options key at all: the stage list is the record, with a `licenses`, `risk` or `explain` stage skipped when a check or explanation was not requested, and a `check-<name>` stage per check `--checks all` had to leave off.
 
-No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
+No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it, and the `sourceRoot` field and `decisions` record, which hold the scanned directory, the decisions file and the VEX documents relative to the scan directory and are absolute only when no relative path exists. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
 
 ## Loading a directory back
 
@@ -158,3 +162,5 @@ depscan report reports --explain --explanation-mode EndpointsAndReachables
 ```
 
 `depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database, so it is fast and safe to run anywhere. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
+
+When the scan applied a decisions file, VEX documents or `--fail-on` expressions, or `--decisions`, `DEPSCAN_DECISIONS` or the configuration files name a file, `report` re-evaluates the saved findings against them as they are now and prints the decisions and gate block first, with the exit codes the gate adds. Recorded paths resolve against the scan directory, never the working directory. A recorded file that cannot be found is warned about and the scan's saved gate result is shown and sets the exit code; when that saved result is gone too, `report` exits 1. [Triage, baselines and gating](triage-and-gating#re-evaluating-a-saved-scan) has the order in which the file is looked for.

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-get_decisions-input:1",
+  "title": "dep-scan mcp get_decisions input",
+  "description": "The arguments of the get_decisions tool: one scan directory inside the allowed roots. The decisions file the scan's manifest records is read from where it was recorded; a file outside the allowed roots is refused with the rule naming the roots.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_dir"],
+  "properties": {
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan directory a depscan scan wrote, inside the allowed roots."
+    }
+  }
+}

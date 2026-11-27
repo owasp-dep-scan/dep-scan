@@ -70,7 +70,7 @@ def test_bare_depscan_is_a_usage_error(monkeypatch, capsys):
     assert run_main(monkeypatch, []) == 2
     captured = capsys.readouterr()
     assert "usage: depscan" in captured.err
-    assert "{scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help}" in captured.err
+    assert "{scan,report,triage,vdb,doctor,schema,config,serve,mcp,validate,version,help}" in captured.err
 
 
 def test_unknown_verb_is_a_usage_error(monkeypatch, capsys):

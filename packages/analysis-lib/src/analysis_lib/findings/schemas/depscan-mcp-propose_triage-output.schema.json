@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-propose_triage-output:1",
+  "title": "dep-scan mcp propose_triage output",
+  "description": "The document the propose_triage tool returns: the proposal as it now stands in the decisions file, with the computed status a proposal carries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decisionsFile", "result", "entry"],
+  "properties": {
+    "decisionsFile": {
+      "type": "string",
+      "description": "The decisions file the proposal was written into, absolute and normalised, with / as the separator on every platform."
+    },
+    "result": {
+      "type": "string",
+      "enum": ["proposed", "updated"],
+      "description": "proposed added a new proposal; updated rewrote an existing proposal with the same selector."
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["index", "handle", "state", "status"],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The proposal's 1-based position among the triage decisions."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^tr-[0-9a-f]{10}$",
+          "description": "The proposal's stable handle, which depscan triage review takes: tr- and the first ten hex digits of the SHA-256 of its canonical selector and proposed_by."
+        },
+        "state": {
+          "type": "string",
+          "description": "The proposed CycloneDX impact analysis state."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["live", "proposal", "expired", "stale"],
+          "description": "A written proposal reads proposal; it changes nothing until a person approves it."
+        },
+        "proposedBy": {
+          "type": "string",
+          "description": "Who proposed, as the call named it."
+        },
+        "expires": {
+          "type": "string",
+          "description": "When the proposal expires."
+        }
+      },
+      "description": "The proposal as the decisions file now holds it."
+    }
+  }
+}

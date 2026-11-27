@@ -28,24 +28,43 @@ EXIT_FAILURE = 1
 #: Exit code: a usage error.
 EXIT_USAGE = 2
 
-#: Exit code: a requested capability that cannot run here.
+#: Exit code: an expectation with action fail matched a finding. The number
+#: cdxgen's cdx-validate and cdx-audit use for findings.
+EXIT_EXPECTATION_FAILED = 3
+
+#: Exit code: a requested capability cannot run here, or a decision
+#: requirement found the capability it names was not assessed.
 EXIT_REQUIREMENT_NOT_MET = 4
 
 #: The exit codes and their meanings, as the CLI usage page and the agents
-#: page embed them through :func:`exit_code_table_markdown`. Findings never
-#: change the exit code in this version.
+#: page embed them through :func:`exit_code_table_markdown`. Findings change
+#: the exit code only when a decisions file or --fail-on gives the run a
+#: gate; without one they never do.
 EXIT_CODES = (
     (EXIT_SUCCESS, "Success."),
     (
         EXIT_FAILURE,
         "A scan or command that could not run, for example an unusable "
-        "vulnerability database or a source target that does not exist.",
+        "vulnerability database, a source target that does not exist, a "
+        "baseline that cannot be read or does not match its digest, or a "
+        "report on a scan whose recorded gate can no longer be evaluated.",
     ),
-    (EXIT_USAGE, "A usage error, including any dep-scan 6 command line."),
+    (
+        EXIT_USAGE,
+        "A usage error, including any dep-scan 6 command line and a decisions file the schema refuses.",
+    ),
+    (
+        EXIT_EXPECTATION_FAILED,
+        'A decisions file expectation with action = "fail" matched a finding, '
+        "so the gate the file (or --fail-on) describes is not met.",
+    ),
     (
         EXIT_REQUIREMENT_NOT_MET,
-        "A requested capability that cannot run, for example a named check "
-        "whose analyzer is missing, or an iOS or firmware target.",
+        "A requested capability cannot run, for example a named check whose "
+        "analyzer is missing or an iOS or firmware target; or a decisions "
+        "file [[require]] entry found the capability it names was not "
+        "assessed, which wins over an expectation failure, because a gate "
+        "over missing coverage cannot be trusted.",
     ),
 )
 

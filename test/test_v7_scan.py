@@ -1180,7 +1180,7 @@ def test_json_format_prints_one_document_and_nothing_else(
     assert list(document) == ["scans"]
     assert len(document["scans"]) == 1
     entry = document["scans"][0]
-    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
     assert entry["target"] == json_path(bom)
     assert entry["kind"] == "bom"
     assert entry["scanDir"] == str(reports).replace(os.sep, "/")
@@ -1232,7 +1232,7 @@ def test_json_format_with_two_targets_prints_one_object(scan_stubs, monkeypatch,
         str(reports / "2-second.cdx.json").replace(os.sep, "/"),
     ]
     for entry in entries:
-        assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+        assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
         assert Path(entry["scanDir"]).is_dir(), "each target writes its own directory"
     # Positive control: two scans ran, one per target.
     assert len(scan_stubs["matching"]) == 2
@@ -1288,7 +1288,7 @@ def test_json_format_follows_the_number_of_targets_given(scan_stubs, monkeypatch
     assert code == 1
     entries = json.loads(capfd.readouterr().out)["scans"]
     assert len(entries) == 2
-    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
     assert set(entries[1]) == {"target", "kind", "error"}
     assert entries[1]["target"] == json_path(tmp_path / "no-such-project")
     assert entries[1]["kind"] is None
@@ -1342,7 +1342,7 @@ def test_json_format_zero_targets_scans_the_current_directory(
     entry = document["scans"][0]
     assert entry["target"] == os.getcwd().replace(os.sep, "/")
     assert entry["kind"] == "source"
-    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
     # Positive control: the scan ran against the current directory.
     assert scan_stubs["matching"], "the matching stage never ran"
 
@@ -1532,7 +1532,7 @@ def test_a_crash_in_the_second_target_keeps_the_scans_object(
     assert code == 1
     entries = json.loads(capfd.readouterr().out)["scans"]
     assert len(entries) == 2
-    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
     assert entries[0]["target"] == json_path(first)
     assert set(entries[1]) == {"target", "kind", "error"}
     assert entries[1]["target"] == json_path(second)
@@ -1603,7 +1603,7 @@ def test_json_format_zero_targets_reports_a_non_path_source_verbatim(
     entry = json.loads(capfd.readouterr().out)["scans"][0]
     assert entry["target"] == "registry.example/app:1.0"
     assert entry["kind"] == "source"
-    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings", "expectations"}
     # Positive control: the scan ran against the configured source.
     assert scan_stubs["matching"], "the matching stage never ran"
 

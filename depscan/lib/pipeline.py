@@ -54,6 +54,7 @@ from analysis_lib.output import (
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.evidence import store as evidence_store
 from analysis_lib.evidence.adapters import bom_tool_version
+from analysis_lib.findings import decisions as decision_lib
 from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
@@ -71,6 +72,7 @@ from depscan.lib import binary_review, cdx_audit, explainer, supply_chain_review
 from depscan.lib.exclusions import ExclusionSet
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
+from depscan.lib import decisions as decisions_mod
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.bom import (
     ScanFailureError,
@@ -332,6 +334,21 @@ class ScanContext:
     atom_results: Dict[Tuple[str, ...], "AdapterResult"] = field(default_factory=dict)
     #: The rule table this scan grades with, loaded once before matching.
     grading_rules: Optional[Any] = None
+    #: The decisions this scan applies (depscan.lib.decisions.RunDecisions):
+    #: the decisions file, the VEX statements, the command-line expectations
+    #: and the baseline; None for a scan without decisions work. It travels
+    #: on the context and never through the options, whose every value the
+    #: manifest copies.
+    decisions: Optional[Any] = None
+    #: pending until the decisions stage ran, then done, or failed with the
+    #: reason on a baseline that could not be read; the manifest writer on a
+    #: stopped scan reads it to skip the work that already failed.
+    decisions_outcome: str = "pending"
+    #: The gate result the decisions stage wrote, the
+    #: depscan.expectations.json document the render stage prints.
+    expectations: Optional[Dict[str, Any]] = None
+    #: The findings this scan built, kept for the manifest writer.
+    findings_list: List = field(default_factory=list)
     all_pkg_group_rows: Dict = field(default_factory=dict)
     summary: Optional[Dict] = None
     vdr_file: Optional[str] = None
@@ -893,14 +910,22 @@ def _start_scan_directory(ctx):
 
 
 def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
-    """Write the findings file, the evidence index, and then the manifest, in
-    that order.
+    """Write the evidence index and then the manifest, in that order.
+
+    The findings file and, when a gate ran, ``depscan.expectations.json``
+    are written earlier, by :func:`stage_decisions`, so the render stage can
+    show the gate result; this function then indexes the findings and writes
+    the manifest listing them. A scan without decisions work keeps the old
+    order: its findings are built and written here. A scan that stopped
+    before the decisions stage also builds them here, from whatever the
+    stages produced on the way, and a stage whose baseline failed leaves the
+    findings alone.
 
     The index is built from the store the enrichment stage wrote and the
-    findings just written, so it lands after both exist. The manifest is
-    written last, through a temporary file and a rename, so it lists only
-    files that exist, the evidence files included. A scan that stopped
-    partway still gets one, carrying the failed stage and its reason.
+    findings, so it lands after both exist. The manifest is written last,
+    through a temporary file and a rename, so it lists only files that
+    exist, the evidence files included. A scan that stopped partway still
+    gets one, carrying the failed stage and its reason.
 
     A scan where no project type produced a result (every type's inventory
     failed or listed no packages) and no blint review ran writes no findings
@@ -910,14 +935,20 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     file, because its binary-hardening findings are findings even when the
     BOM it reviewed lists no components to scan. The
     manifest it still writes shows no matching stage completed, which is
-    what refuses the directory at load time. Returns the manifest and the
-    findings array, or None when this run writes no scan directory.
+    what refuses the directory at load time. Returns the manifest, the
+    findings array and the expectations document, or None when this run
+    writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
-    findings: List = []
-    if ctx.scans or ctx.blint_review_ran:
+    findings: List = getattr(ctx, "findings_list", [])
+    decisions = getattr(ctx, "decisions", None)
+    if decisions is not None:
+        scan_dir.decisions_record = decisions.record_for(str(ctx.reports_dir))
+    if getattr(ctx, "decisions_outcome", "pending") == "pending" and (
+        ctx.scans or ctx.blint_review_ran
+    ):
         findings_document = scan_directory.write_findings(
             ctx.reports_dir,
             ctx.all_pkg_vulnerabilities,
@@ -941,7 +972,98 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         shards_used=ctx.shards_connected,
     )
     scan_directory.write_manifest(scan_dir, manifest)
-    return {"manifest": manifest, "findings": findings}
+    return {
+        "manifest": manifest,
+        "findings": findings,
+        "expectations": getattr(ctx, "expectations", None),
+    }
+
+
+def annotate_type_decisions(ctx, tscan) -> None:
+    """Write the live triage decisions into one project type's VDR entries.
+
+    This runs between the matching and VDR stages, so the VDR file, the
+    CSAF export and the annotated rendering all carry the analysis objects.
+    The entries are applied to the findings the VDR entries convert to, by
+    the same precedence rule the decisions stage applies to the findings
+    file, so both name the same winner.
+    """
+    triage = ctx.decisions.triage if ctx.decisions is not None else []
+    vdr_result = tscan.vdr_result
+    if not triage or vdr_result is None or not vdr_result.pkg_vulnerabilities:
+        return
+    vulns = vdr_result.pkg_vulnerabilities
+    annotated = decision_lib.annotate_vdr_analysis(
+        vulns, triage, alias_map=decision_lib.alias_map_from_vulns(vulns)
+    )
+    if annotated:
+        LOG.info(
+            "Applied triage decisions to %d of the %s findings",
+            annotated,
+            tscan.project_type,
+        )
+
+
+def stage_decisions(ctx) -> bool:
+    """Build the findings, apply the decisions and evaluate the gate.
+
+    The stage runs once, after every project type and before the reports
+    render, so the console block can show the triage counts and the gate
+    result. The findings file and ``depscan.expectations.json`` are written
+    here; :func:`finish_scan_directory` then indexes the findings and writes
+    the manifest. A baseline that cannot be read, or whose digest does not
+    match, fails the stage and stops the scan: a run whose baseline is
+    missing never turns every finding into a new one.
+
+    Suppressed findings stay in the findings file with their triage state,
+    and a proposal changes nothing. The caller runs the stage only for a
+    scan with decisions work, so a scan without it keeps its manifest
+    unchanged.
+    """
+    scan_dir = ctx.scan_dir
+    if scan_dir is None or ctx.decisions is None or ctx.decisions_outcome != "pending":
+        return False
+    wrote_findings = bool(ctx.scans or ctx.blint_review_ran)
+    findings: List[Dict[str, Any]] = []
+    if wrote_findings:
+        findings = scan_directory.build_findings(
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            exploitability=ctx.exploitability,
+            blint_reviews=_scan_requested_blint_reviews(ctx),
+            supply_chain=ctx.perform_risk_audit,
+            evidence_records=ctx.evidence_records,
+            usage_not_assessed=ctx.usage_not_assessed,
+        )
+    try:
+        document = decisions_mod.apply_run_decisions(
+            ctx.decisions,
+            findings,
+            stages=scan_dir.stages,
+            vulns=ctx.all_pkg_vulnerabilities,
+            source="scan",
+            scan_dir=str(ctx.reports_dir),
+        )
+    except decision_lib.BaselineError as exc:
+        ctx.decisions_outcome = "failed"
+        raise ScanStageError(str(exc)) from exc
+    if wrote_findings:
+        scan_directory.write_findings(
+            ctx.reports_dir, ctx.all_pkg_vulnerabilities, get_version(), findings=findings
+        )
+    ctx.findings_list = findings
+    scan_directory.atomic_write_json(
+        os.path.join(str(ctx.reports_dir), scan_directory.EXPECTATIONS_FILE), document
+    )
+    scan_dir.record_stage(
+        "expectations",
+        "completed",
+        capabilities=[],
+        outputs=[{"file": scan_directory.EXPECTATIONS_FILE, "status": "completed"}],
+    )
+    ctx.expectations = document
+    ctx.decisions_outcome = "done"
+    return True
 
 
 def stage_database(ctx):
@@ -1984,8 +2106,14 @@ def stage_analysis_risk(ctx, scan) -> bool:
         caveats.extend(adapter_result.caveats)
     if predictive_boms:
         _run_predictive_audit(
-            ctx, scan, cmd, version, [bom.path for bom in predictive_boms], private_ns,
-            records, caveats,
+            ctx,
+            scan,
+            cmd,
+            version,
+            [bom.path for bom in predictive_boms],
+            private_ns,
+            records,
+            caveats,
         )
     # Kept in the order the reports stated them, so a rescan of the same
     # tree writes the same list.
@@ -3147,6 +3275,9 @@ def stage_render_reports(ctx):
     console.record = True
     _render_binary_review(ctx)
     _render_supply_chain(ctx)
+    # The decisions and gate block prints last, where a CI log is read, and
+    # goes into the saved console reports beside the tables.
+    decisions_mod.print_block(ctx.expectations, len(ctx.findings_list))
     # Export the console output
     console.save_html(
         ctx.html_report_file,

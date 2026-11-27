@@ -41,18 +41,26 @@ def run_main(monkeypatch, argv):
 # --- the exit codes ----------------------------------------------------------------
 
 
-def test_the_exit_code_table_lists_the_four_codes_with_their_meanings():
-    """0, 1, 2 and 4, with the meanings the exit-code section documents."""
-    assert [code for code, _ in EXIT_CODES] == [0, 1, 2, 4]
+def test_the_exit_code_table_lists_the_five_codes_with_their_meanings():
+    """0, 1, 2, 3 and 4, with the meanings the exit-code section documents."""
+    assert [code for code, _ in EXIT_CODES] == [0, 1, 2, 3, 4]
     assert exit_code_table_markdown() == (
         "| Code | Meaning |\n"
         "| --- | --- |\n"
         "| 0 | Success. |\n"
         "| 1 | A scan or command that could not run, for example an unusable "
-        "vulnerability database or a source target that does not exist. |\n"
-        "| 2 | A usage error, including any dep-scan 6 command line. |\n"
-        "| 4 | A requested capability that cannot run, for example a named "
-        "check whose analyzer is missing, or an iOS or firmware target. |\n"
+        "vulnerability database, a source target that does not exist, a "
+        "baseline that cannot be read or does not match its digest, or a report "
+        "on a scan whose recorded gate can no longer be evaluated. |\n"
+        "| 2 | A usage error, including any dep-scan 6 command line and a decisions "
+        "file the schema refuses. |\n"
+        '| 3 | A decisions file expectation with action = "fail" matched a finding, '
+        "so the gate the file (or --fail-on) describes is not met. |\n"
+        "| 4 | A requested capability cannot run, for example a named check whose "
+        "analyzer is missing or an iOS or firmware target; or a decisions file "
+        "[[require]] entry found the capability it names was not assessed, which "
+        "wins over an expectation failure, because a gate over missing coverage "
+        "cannot be trusted. |\n"
     )
 
 

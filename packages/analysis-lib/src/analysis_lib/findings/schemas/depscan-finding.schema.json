@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:finding:2",
+  "$id": "urn:owasp:depscan:schema:finding:3",
   "title": "dep-scan finding",
   "description": "One result reported by dep-scan. Every category dep-scan writes, from classic vulnerabilities through memory-safety defects, binary hardening and license issues, uses this one shape. The id field carries the line-free fingerprint (dsf1) that baselines and suppressions key on; locations and evidence carry the reasons; coverage says whether the analysis that owns the finding actually ran. Extensions go in the properties array, which is why the objects stay closed.",
   "type": "object",
@@ -90,6 +90,11 @@
     "triage": {
       "$ref": "#/$defs/triage",
       "description": "The human decision about this finding, using the CycloneDX 1.7 impact analysis vocabulary."
+    },
+    "baseline": {
+      "type": "string",
+      "enum": ["new", "existing"],
+      "description": "Whether this finding is new or existing against the baseline the scan compared with. Present only when a scan ran with a baseline; a finding that no baseline covered is new."
     },
     "fix": {
       "$ref": "#/$defs/fix",
@@ -369,7 +374,15 @@
         },
         "author": {
           "type": "string",
-          "description": "Who made the triage decision."
+          "description": "Who made the triage decision: a person, or a VEX document the scan applied, named as VEX document followed by its file name. Never an agent: an agent-proposed decision carries proposed_by, and applies once a person approves it."
+        },
+        "approver": {
+          "type": "string",
+          "description": "The person who approved a proposed decision. Present only after depscan triage review approved it."
+        },
+        "proposed_by": {
+          "type": "string",
+          "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and no approver is a proposal that changes nothing until it is approved, so a finding only carries one that was approved."
         },
         "expires": {
           "type": "string",

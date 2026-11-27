@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:manifest:2",
+  "$id": "urn:owasp:depscan:schema:manifest:3",
   "title": "dep-scan scan directory manifest",
-  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
+  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist. The decisions field names the decisions file, the VEX documents and the --fail-on expressions the scan applied, with the files' digests.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -44,7 +44,11 @@
       "items": {
         "$ref": "#/$defs/input"
       },
-      "description": "Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place an absolute path, a username or a hostname may appear."
+      "description": "Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place a username or a hostname may appear; sourceRoot and the decisions record hold an absolute path only when no path relative to the scan directory exists."
+    },
+    "sourceRoot": {
+      "type": "string",
+      "description": "The scanned source directory, relative to the scan directory with / separators when a relative path exists, otherwise absolute. Absent when the scan read a BOM, a BOM directory, a package URL or an image. The server's propose_triage creates .depscan/decisions.toml under it."
     },
     "tools": {
       "type": "array",
@@ -78,7 +82,14 @@
     "options": {
       "type": "object",
       "additionalProperties": {
-        "type": ["string", "boolean", "integer", "number", "array", "null"]
+        "type": [
+          "string",
+          "boolean",
+          "integer",
+          "number",
+          "array",
+          "null"
+        ]
       },
       "description": "The parsed scan options. Options whose name can hold a secret are recorded as the string \"<redacted>\" when they were set, and path-valued options are recorded in inputs instead, so no absolute path appears here."
     },
@@ -88,17 +99,88 @@
         "$ref": "#/$defs/file"
       },
       "description": "Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes."
+    },
+    "decisions": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "dependentRequired": {
+            "file": [
+              "sha256",
+              "selectedBy"
+            ]
+          },
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "The decisions file the scan read: relative to the scan directory with / separators when a relative path exists, otherwise absolute. depscan report and the server's decisions tools resolve a relative value against the scan directory only, never against their working directory."
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "The SHA-256 hex digest of that file."
+            },
+            "selectedBy": {
+              "type": "string",
+              "description": "What selected the file: default (the scanned directory's .depscan/decisions.toml), option, environment, project-config or user-config."
+            },
+            "vex": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "sha256"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The VEX document, recorded the way the decisions file is."
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "The SHA-256 hex digest of that document."
+                  }
+                }
+              },
+              "description": "Each --vex document the scan applied, in the order given. depscan report reads them again unless it is given its own --vex."
+            },
+            "failOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Each --fail-on expression the scan evaluated, as given. depscan report evaluates them again unless it is given its own --fail-on."
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The decisions the scan applied: the decisions file with its digest, the VEX documents and the --fail-on expressions, or null when it had none of them. A file the scan read is data about findings, reviewed in pull requests; the manifest records which one it was, so a report evaluates the same decisions."
     }
   },
   "$defs": {
     "input": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "path"],
+      "required": [
+        "type",
+        "path"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["dir", "file", "purl"],
+          "enum": [
+            "dir",
+            "file",
+            "purl"
+          ],
           "description": "dir is a directory the scan read, file a single BOM or template file, purl a package URL search."
         },
         "path": {
@@ -119,7 +201,10 @@
     "gitInput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["commit", "dirty"],
+      "required": [
+        "commit",
+        "dirty"
+      ],
       "properties": {
         "commit": {
           "type": "string",
@@ -136,14 +221,21 @@
     "database": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["vulnerabilityDatabase", "flavorUsed", "shardsUsed"],
+      "required": [
+        "vulnerabilityDatabase",
+        "flavorUsed",
+        "shardsUsed"
+      ],
       "properties": {
         "vulnerabilityDatabase": {
           "$ref": "depscan-doctor.schema.json#/$defs/vulnerabilityDatabase",
           "description": "The doctor report's read-only database inspection."
         },
         "flavorUsed": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "The database flavor the matching stage actually used for this scan."
         },
         "shardsUsed": {
@@ -158,7 +250,11 @@
     "stage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "status", "capabilities"],
+      "required": [
+        "name",
+        "status",
+        "capabilities"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -171,7 +267,12 @@
         },
         "status": {
           "type": "string",
-          "enum": ["completed", "failed", "skipped", "not-assessed"],
+          "enum": [
+            "completed",
+            "failed",
+            "skipped",
+            "not-assessed"
+          ],
           "description": "completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason."
         },
         "reason": {
@@ -183,7 +284,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The capability names the stage needed, named the way depscan doctor names them."
+          "description": "The capability names the stage needed or assessed, named the way depscan doctor names them."
         },
         "notAssessed": {
           "type": "array",
@@ -211,7 +312,11 @@
     "analyzer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "capability", "status"],
+      "required": [
+        "name",
+        "capability",
+        "status"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -225,7 +330,10 @@
         },
         "status": {
           "type": "string",
-          "enum": ["completed", "not-assessed"],
+          "enum": [
+            "completed",
+            "not-assessed"
+          ],
           "description": "completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the reason the adapter gave: what was wrong with the report it found, or, when it found none, the doctor's reason when the capability is unavailable on this machine and otherwise the report names it looked for. The doctor's reason stands in only when no adapter ran."
         },
         "reason": {
@@ -245,7 +353,10 @@
     "stageOutput": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["file", "status"],
+      "required": [
+        "file",
+        "status"
+      ],
       "properties": {
         "file": {
           "type": "string",
@@ -254,7 +365,10 @@
         },
         "status": {
           "type": "string",
-          "enum": ["completed", "not-assessed"],
+          "enum": [
+            "completed",
+            "not-assessed"
+          ],
           "description": "completed when this version writes the file. not-assessed when it does not, with the reason."
         },
         "reason": {
@@ -266,7 +380,12 @@
     "file": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "role", "producer", "sha256"],
+      "required": [
+        "path",
+        "role",
+        "producer",
+        "sha256"
+      ],
       "properties": {
         "path": {
           "type": "string",
@@ -282,11 +401,12 @@
             "evidence",
             "slices",
             "raw-report",
+            "expectations",
             "csaf",
             "report",
             "other"
           ],
-          "description": "What the file is in the scan directory layout. evidence is the scan's evidence store and its index."
+          "description": "What the file is in the scan directory layout. evidence is the scan's evidence store and its index; expectations is the gate result the decisions file evaluated to."
         },
         "producer": {
           "type": "string",

@@ -18,8 +18,8 @@ The commands live in `documentation/lessons/07-ci-gating/run.sh` (and `expect.tx
 # Lesson 07: CI gating with a profile, the exit codes and a findings gate.
 #
 # Runs the CI profile over a pinned package URL, shows the exit code and the
-# JSON output contract, and gates on the findings file the way the CI page
-# does, reading the coverage block so an unassessed finding cannot pass as a
+# JSON output contract, and gates on the findings file with a short Python
+# step, reading the coverage block so an unassessed finding cannot pass as a
 # clean one.
 #
 # Needs: dep-scan and an app-only vulnerability database. The scan itself is
@@ -80,7 +80,7 @@ set -e
 
 ## Reading the run
 
-The scan exits 0 (findings never change the exit code in this version), and stdout is exactly one JSON document:
+The scan exits 0 (findings change the exit code only when the run has expectations, from a decisions file or `--fail-on`), and stdout is exactly one JSON document:
 
 ```text
 scan exit code: 0
@@ -89,7 +89,7 @@ target kind: purl
 findings in the entry: 3
 ```
 
-The gate reads the findings file the way the CI page's `jq` does, and the coverage filter is the part that keeps it honest:
+The gate is a few lines of Python over the findings file, and the coverage filter is the part that keeps it honest:
 
 ```text
 assessed critical findings: 0
@@ -103,7 +103,7 @@ refused scan exit code: 4
 error verb: scan exitCode: 4
 ```
 
-What this lesson does not show is dep-scan failing the build because findings exist. There is no policy gate in this version: exit 0 means the scan ran, not that everything is fine, and the honest gate is the workflow's own step over the findings file, coverage included. The policy gate with its own exit code is [planned work](https://github.com/owasp-dep-scan/dep-scan/issues/594), and this lesson's gate is the shape it will replace.
+What this lesson shows is the workflow's own gate, and the decisions file now gives that gate a home in the repository: a committed `.depscan/decisions.toml` fails the build on the findings that matter (exit 3 when a fail-action expectation matches, 4 when a required capability was not assessed) while the decisions themselves are reviewed in pull requests. This lesson's Python gate remains the shape for a policy the team does not want to commit, and the coverage filter is the part any gate must keep.
 
 ## Takeaways
 

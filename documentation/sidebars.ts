@@ -30,6 +30,7 @@ const sidebars: SidebarsConfig = {
         'results/evidence',
         'results/coverage',
         'results/prioritization',
+        'results/triage-and-gating',
         'results/scan-directory',
       ],
     },

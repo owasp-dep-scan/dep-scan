@@ -675,4 +675,5 @@ def test_the_lifespan_state_carries_the_startup_configuration(monkeypatch):
     assert asyncio.run(exercise()) == {
         "startup_roots": ("/some/root",),
         "allow_scans": True,
+        "allow_propose": False,
     }

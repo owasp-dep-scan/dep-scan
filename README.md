@@ -120,14 +120,15 @@ Lessons that walk a real project end to end are under [Tutorials](https://depsca
 The verbs and the full list of scan options (`depscan --help`):
 
 ```text
-usage: depscan [-h] {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help} ...
+usage: depscan [-h] {scan,report,triage,vdb,doctor,schema,config,serve,mcp,validate,version,help} ...
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 positional arguments:
-  {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help}
+  {scan,report,triage,vdb,doctor,schema,config,serve,mcp,validate,version,help}
     scan                Scan a project, BOM, purl or container image for vulnerabilities.
     report              Render the console tables and explanations of a saved scan.
+    triage              Record, review and check triage decisions and the gate.
     vdb                 Download and inspect the vdb vulnerability database.
     doctor              Report the tools, data and capabilities a scan can use here.
     schema              Print the published finding schemas.

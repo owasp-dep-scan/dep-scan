@@ -9,9 +9,12 @@ A schema's name is its file name without ``.schema.json``:
 ``depscan-scan-output`` for ``depscan-scan-output.schema.json``. Each schema's
 ``$id`` is ``urn:owasp:depscan:schema:<name without depscan->:1``; the finding,
 doctor and manifest identifiers predate the output schemas and are unchanged,
-except the finding schema, which is at ``:2`` since its exploitability axes
-dropped Pressure and gained sources, and the manifest schema, which is at
-``:2`` since its analyzer entries gained their caveats array. The evidence
+except the finding schema, which is at ``:3`` since its exploitability axes
+dropped Pressure and gained sources (``:2``) and its triage object gained
+``approver`` and ``proposed_by`` beside a per-finding ``baseline`` state
+(``:3``), and the manifest schema, which is at ``:3`` since its analyzer
+entries gained their caveats array (``:2``) and it gained the decisions record
+and the expectations file role (``:3``). The evidence
 schema is the one file that lives outside this package: it ships with the
 ``analysis_lib.evidence`` package, whose ``schemas/`` directory it
 documents, and the loader serves it from there without moving the others.
@@ -51,10 +54,17 @@ _SCHEMA_FILES = (
     # The data-file schema: the shape of the exploitability rule table a
     # scan grades with and an organisation may replace.
     "depscan-exploitability-rules.schema.json",
+    # The data-file schema: the shape of a decisions file, the triage,
+    # baseline and expectations statements people make about findings.
+    "depscan-decisions.schema.json",
+    # The data-file schema: the shape of the gate result a decisions file
+    # evaluates to, written as depscan.expectations.json.
+    "depscan-expectations.schema.json",
     # The output schemas, verb by verb in the verb registry's order, each
     # verb's subcommands in the order the verb registers them.
     "depscan-scan-output.schema.json",
     "depscan-report-output.schema.json",
+    "depscan-triage-output.schema.json",
     "depscan-vdb-download-output.schema.json",
     "depscan-vdb-info-output.schema.json",
     "depscan-vdb-path-output.schema.json",
@@ -88,6 +98,10 @@ _SCHEMA_FILES = (
     "depscan-mcp-vdb_status-output.schema.json",
     "depscan-mcp-run_scan-input.schema.json",
     "depscan-mcp-run_scan-output.schema.json",
+    "depscan-mcp-get_decisions-input.schema.json",
+    "depscan-mcp-get_decisions-output.schema.json",
+    "depscan-mcp-propose_triage-input.schema.json",
+    "depscan-mcp-propose_triage-output.schema.json",
     # The shared error document.
     "depscan-error.schema.json",
 )
@@ -215,6 +229,19 @@ def _registry() -> Registry:
     return registry
 
 
+def validation_errors(name: str, document: Any) -> List[Any]:
+    """The schema violations of a document, as structured jsonschema errors.
+
+    Callers that report each problem with its own context, the decisions
+    file loader naming the key, line and valid values among them, read the
+    violation's path and message from these; :func:`validate` turns them
+    into one message for everyone else.
+    """
+    schema = load_schema(name)
+    validator = Draft202012Validator(schema, registry=_registry(), format_checker=FORMAT_CHECKER)
+    return sorted(validator.iter_errors(document), key=lambda e: [str(p) for p in e.path])
+
+
 def validate(name: str, document: Any) -> None:
     """Validate a document against the named schema.
 
@@ -222,9 +249,7 @@ def validate(name: str, document: Any) -> None:
     message lists every violation, so a caller sees all problems at once
     instead of fixing them one by one.
     """
-    schema = load_schema(name)
-    validator = Draft202012Validator(schema, registry=_registry(), format_checker=FORMAT_CHECKER)
-    errors = sorted(validator.iter_errors(document), key=lambda e: [str(p) for p in e.path])
+    errors = validation_errors(name, document)
     if errors:
         lines = [
             f"{'/'.join(str(p) for p in error.path) or '<doc>'}: {error.message}"

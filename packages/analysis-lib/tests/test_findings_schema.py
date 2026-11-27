@@ -58,8 +58,11 @@ def test_schema_names():
         "depscan-manifest",
         "depscan-evidence",
         "depscan-exploitability-rules",
+        "depscan-decisions",
+        "depscan-expectations",
         "depscan-scan-output",
         "depscan-report-output",
+        "depscan-triage-output",
         "depscan-vdb-download-output",
         "depscan-vdb-info-output",
         "depscan-vdb-path-output",
@@ -91,6 +94,10 @@ def test_schema_names():
         "depscan-mcp-vdb_status-output",
         "depscan-mcp-run_scan-input",
         "depscan-mcp-run_scan-output",
+        "depscan-mcp-get_decisions-input",
+        "depscan-mcp-get_decisions-output",
+        "depscan-mcp-propose_triage-input",
+        "depscan-mcp-propose_triage-output",
         "depscan-error",
     ]
 
@@ -98,7 +105,7 @@ def test_schema_names():
 def test_load_schema_metadata():
     schema = load_schema("finding")
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["$id"] == "urn:owasp:depscan:schema:finding:2"
+    assert schema["$id"] == "urn:owasp:depscan:schema:finding:3"
     assert schema["additionalProperties"] is False
 
 

@@ -153,13 +153,21 @@ class Exploitability(_SchemaObject):
 @dataclass
 class Triage(_SchemaObject):
     """The human decision about the finding, using the CycloneDX 1.7 impact
-    analysis vocabulary for the state, justification and response values."""
+    analysis vocabulary for the state, justification and response values.
+
+    ``author`` names the person who entered the decision and ``approver`` the
+    person who approved a proposed one. ``proposed_by`` names who or what
+    proposed it, a person or an agent with its session; a decision that
+    carries ``proposed_by`` and neither ``approver`` nor ``author`` is a
+    proposal and changes nothing until it is approved."""
 
     state: Optional[str] = None
     justification: Optional[str] = None
     responses: Optional[List[str]] = None
     detail: Optional[str] = None
     author: Optional[str] = None
+    approver: Optional[str] = None
+    proposed_by: Optional[str] = None
     expires: Optional[str] = None
 
 
@@ -215,6 +223,7 @@ class Finding(_SchemaObject):
     evidence: Optional[List[str]] = None
     exploitability: Optional[Exploitability] = None
     triage: Optional[Triage] = None
+    baseline: Optional[str] = None
     fix: Optional[Fix] = None
     references: Optional[List[Reference]] = None
     properties: Optional[List[FindingProperty]] = None

@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:triage-output:1",
+  "title": "dep-scan triage output",
+  "description": "The document a depscan triage subcommand writes on stdout in json format: what the command did to the decisions file, or the listing it printed. A refused command produces the error document instead of this one, with exit 2; the check subcommand exits 3 when the file carries errors a gate would hit, with the errors in this document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decisionsFile",
+    "subcommand"
+  ],
+  "properties": {
+    "decisionsFile": {
+      "type": "string",
+      "description": "The decisions file the command read or wrote, as its path was given or the default it resolved to."
+    },
+    "subcommand": {
+      "type": "string",
+      "enum": [
+        "set",
+        "list",
+        "review",
+        "remove",
+        "check"
+      ],
+      "description": "Which triage subcommand produced the document."
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "added",
+        "updated",
+        "approved",
+        "rejected",
+        "removed"
+      ],
+      "description": "What the set, review and remove subcommands did."
+    },
+    "entry": {
+      "$ref": "#/$defs/entry",
+      "description": "The entry the command wrote, approved, rejected or removed, as it now stands."
+    },
+    "replaced": {
+      "$ref": "#/$defs/entry",
+      "description": "The decision an approval replaced: the review subcommand's approval of a proposal removes the decision with the same selector, because the approver has decided the finding. Absent when the approval replaced none."
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      },
+      "description": "The entries the list and check subcommands printed, in file order; the review subcommand lists the proposals only, and its handle lists count those."
+    },
+    "stale": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
+      },
+      "description": "The handles of the entries that matched no finding in the scan directory."
+    },
+    "shadowed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
+      },
+      "description": "The handles of the entries that match findings in the scan directory, every one of which another entry decides, so they change nothing."
+    },
+    "expired": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
+      },
+      "description": "The handles of the entries past their expiry."
+    },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
+      },
+      "description": "The handles of the entries waiting for a person to approve them."
+    },
+    "scanDir": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The scan directory the entries were matched against, when one was given."
+    },
+    "valid": {
+      "type": "boolean",
+      "description": "The check subcommand's verdict: whether the file loads and satisfies its schema, so a gate can read it."
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The check subcommand's refusals, each naming the key, the line and the valid values, the way a scan refuses the file."
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "handle",
+        "state"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The entry's 1-based position among the triage decisions."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^tr-[0-9a-f]{10}$",
+          "description": "The entry's stable handle, which depscan triage review and remove take: tr- and the first ten hex digits of the SHA-256 of its canonical selector, with proposed_by for a proposal."
+        },
+        "finding": {
+          "type": "string",
+          "pattern": "^dsf1:[0-9a-f]{64}$",
+          "description": "The dsf1 fingerprint the entry selects, when it selects by finding."
+        },
+        "advisory": {
+          "type": "string",
+          "description": "The advisory id or alias the entry selects, when it selects by advisory."
+        },
+        "purl": {
+          "type": "string",
+          "description": "The package the entry selects."
+        },
+        "versionRange": {
+          "type": "string",
+          "description": "The vers range narrowing the purl selection."
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "resolved",
+            "resolved_with_pedigree",
+            "exploitable",
+            "in_triage",
+            "false_positive",
+            "not_affected"
+          ],
+          "description": "The CycloneDX impact analysis state."
+        },
+        "justification": {
+          "type": "string",
+          "description": "The CycloneDX impact analysis justification."
+        },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The CycloneDX responses."
+        },
+        "detail": {
+          "type": "string",
+          "description": "The free-form detail about the decision."
+        },
+        "author": {
+          "type": "string",
+          "description": "Who entered the decision."
+        },
+        "approver": {
+          "type": "string",
+          "description": "Who approved the proposal."
+        },
+        "proposedBy": {
+          "type": "string",
+          "description": "Who or what proposed the decision."
+        },
+        "created": {
+          "type": "string",
+          "description": "When the decision was recorded, as an RFC 3339 date-time."
+        },
+        "expires": {
+          "type": "string",
+          "description": "When the decision expires, as an RFC 3339 date-time."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "live",
+            "proposal",
+            "expired",
+            "stale",
+            "shadowed"
+          ],
+          "description": "The computed state of the entry: live applies, a proposal waits for a person, an expired entry suppresses nothing, a stale entry matched no finding in the scan, and a shadowed entry matches findings another entry decides, so it changes nothing."
+        },
+        "source": {
+          "type": "string",
+          "description": "Where the entry came from: the decisions file, or the VEX document it was loaded from."
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^dsf1:[0-9a-f]{64}$"
+          },
+          "description": "The findings the entry matches in the scan directory, when one was given."
+        }
+      }
+    }
+  }
+}

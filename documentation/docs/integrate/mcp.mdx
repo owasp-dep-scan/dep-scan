@@ -1,11 +1,11 @@
 ---
 title: MCP server
-description: The depscan mcp server, ten tools over stdio for saved scan directories, confined to allowed roots, with paging, resources and prompts.
+description: The depscan mcp server, twelve tools over stdio for saved scan directories and their decisions, confined to allowed roots, with paging, resources and prompts.
 ---
 
 # The MCP server
 
-`depscan mcp` runs dep-scan as a Model Context Protocol (MCP) server over stdio. An MCP client starts the process, lists the tools, and reads saved scan directories through them: the manifest summary, the findings with filters, one finding, its explanation, the coverage of the scan, the BOM's components, the difference between two scans, the doctor report, the vulnerability database state, and, when the operator allows it, a scan itself. The server is built on the official Python MCP SDK (`mcp[cli]>=2.0.0,<3.0.0`).
+`depscan mcp` runs dep-scan as a Model Context Protocol (MCP) server over stdio. An MCP client starts the process, lists the tools, and reads saved scan directories through them: the manifest summary, the findings with filters, one finding, its explanation, the coverage of the scan, the BOM's components, the difference between two scans, the doctor report, the vulnerability database state, the triage decisions of a scan, and, when the operator allows it, a scan itself or a triage proposal written into its decisions file. The server is built on the official Python MCP SDK (`mcp[cli]>=2.0.0,<3.0.0`).
 
 Every path a tool takes stays inside the allowed roots, scan requests are dry runs until the operator allows them when the server starts, and every oversized result pages or spills into the scan directory it came from. The rest of this page describes each of those rules, and the tools that follow them. The agent plugin ships this server's configuration, so installing the plugin in a client that reads one connects the tools without a manual client setup; see [the agent plugin](agent-plugin).
 
@@ -28,10 +28,10 @@ uvx --from "owasp-depscan[mcp]" depscan mcp --allow-dir /path/to/scan-dir
 ## Starting the server
 
 ```bash
-depscan mcp [--allow-dir DIR]... [--allow-scans]
+depscan mcp [--allow-dir DIR]... [--allow-scans] [--allow-propose]
 ```
 
-`--allow-dir` adds a directory to the allowed roots; repeat it for several. `--allow-scans` lets the `run_scan` tool run real scans for the life of the session; without it, every scan request stays a dry run. Both options are read once when the server starts, and no tool argument can widen them afterwards. The verb has no `--format` option, because stdout is the protocol channel: every line the server writes to stdout is a protocol message, and logs, warnings and any stray library output go to stderr for the whole session.
+`--allow-dir` adds a directory to the allowed roots; repeat it for several. `--allow-scans` lets the `run_scan` tool run real scans for the life of the session; without it, every scan request stays a dry run. `--allow-propose` lets the `propose_triage` tool write triage proposals into the decisions file of a scan inside the roots; without it, every proposal call is refused. Both grants are read once when the server starts, and no tool argument can widen them afterwards. The startup line on stderr names the grants that are on, and every `scan_summary` result carries them in its `grants` object, so an agent knows its own permissions. The verb has no `--format` option, because stdout is the protocol channel: every line the server writes to stdout is a protocol message, and logs, warnings and any stray library output go to stderr for the whole session.
 
 ## Client configuration
 
@@ -102,13 +102,15 @@ The allowed roots are the client's MCP roots plus each `--allow-dir` given when 
 
 The `run_scan` tool is the only tool that runs a scan, and it is a dry run by default: it returns the exact `depscan scan` command line the server would run, together with the effective options the `depscan config show` machinery produces, and does nothing else.
 
-A real run needs two things at once. The server must have been started with `--allow-scans`, and the tool call must pass `execute: true`. Without the flag, `execute: true` is a tool error that names the flag which was never given; no combination of tool arguments turns scans on. Only the person who starts the server can widen this default.
+A real run needs two things at once. The server must have been started with `--allow-scans`, and the tool call must pass `execute: true`. Without the flag, `execute: true` is a tool error that names the flag which was never given; no combination of tool arguments turns scans on. Only the person who starts the server can widen this default. The same rule keeps the decisions file safe: `propose_triage` writes a proposal, with the proposing agent named in `proposed_by`, only on a server started with `--allow-propose`. It never writes an author or an approver and never changes or replaces a live decision: it appends the proposal beside a person's decision with the same selector, and replaces only the same proposer's earlier proposal for that selector. A proposal changes no gate, no report and no exit code until a person runs `depscan triage review --approve <handle> --approver <name>` with the handle the result carries.
 
-A real run takes local targets (a directory, a BOM file, an archive or an OCI layout) only when they resolve inside the allowed roots; a package URL, a git URL or a container image reference is not a local path and is fetched by cdxgen as on the command line. Either way the scan directory must resolve inside the roots. A real run never runs a project's install or build steps, and always runs cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`), the same constraint an untrusted source target gets on the command line. The result is the scan entry the `depscan scan --format json` document carries for a target: `target`, `kind`, `scanDir`, `manifest` and `findings`.
+`propose_triage` takes no file path. It needs `scan_dir` and writes only into the decisions file `depscan report` would read for that scan: one that `DEPSCAN_DECISIONS` or the configuration files name, else the file the scan's manifest records, resolved against the scan directory and never against the server's working directory. A scan that read no file gets `.depscan/decisions.toml` under the source root the manifest records (its `sourceRoot`, also relative to the scan directory). The file must be a `.toml` file inside the allowed roots, and that default is the only file the tool creates. `get_decisions` resolves the file the same way, names in `warnings` a recorded file that cannot be found, changed since the scan or is overridden, and lists a shadowed entry as `shadowed`.
+
+A real run takes local targets (a directory, a BOM file, an archive or an OCI layout) only when they resolve inside the allowed roots; a package URL, a git URL or a container image reference is not a local path and is fetched by cdxgen as on the command line. Either way the scan directory must resolve inside the roots. A real run never runs a project's install or build steps, and always runs cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`), the same constraint an untrusted source target gets on the command line. The result is the scan entry the `depscan scan --format json` document carries for a target: `target`, `kind`, `scanDir`, `manifest`, `findings` and `expectations`. A real run of a directory target applies that directory's decisions file the way `depscan scan` does.
 
 ## The tools
 
-Ten tools are registered. Each is a thin layer over `depscan.api` or a verb's JSON document, so results match what the command line produces. Argument names are snake_case; field names inside JSON documents keep the camelCase forms the published schemas define.
+Twelve tools are registered. Each is a thin layer over `depscan.api` or a verb's JSON document, so results match what the command line produces. Argument names are snake_case; field names inside JSON documents keep the camelCase forms the published schemas define.
 
 | Tool | Arguments | Result |
 | --- | --- | --- |
@@ -122,6 +124,8 @@ Ten tools are registered. Each is a thin layer over `depscan.api` or a verb's JS
 | `doctor` | none | The doctor report document. |
 | `vdb_status` | none | The vdb info document. |
 | `run_scan` | `target`, `execute?`, `reports_dir?`, `profile?`, `checks?`, `reachability_analyzer?`, `explain?` | The dry-run command line and effective options, or the scan entry of a real run. |
+| `get_decisions` | `scan_dir` | The decisions record the scan's manifest carries (null when the scan had no decisions work), every triage entry with its `handle`, its status (`live`, `proposal`, `expired`, `stale`, `shadowed`) and what it matches, the handles of each kind, the last gate result, and `warnings` when the recorded file cannot be found, changed since the scan or is overridden by another file. |
+| `propose_triage` | `scan_dir`, `state`, `proposed_by`, `finding` or `advisory` with `purl`, `version_range?`, `justification?`, `detail?`, `expires?` | The decisions file, `proposed` or `updated`, and the entry with its `handle` and `status`. Needs `--allow-propose`; writes proposals only, never an approved decision. |
 
 Optional arguments carry the question mark above. `mode` defaults to `EndpointsAndReachables`, the `--explanation-mode` default; `execute` defaults to false.
 

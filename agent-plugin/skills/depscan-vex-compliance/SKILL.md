@@ -29,21 +29,36 @@ The scan writes the CSAF next to the BOM in the reports directory, named
 after it: `sbom-<type>.csaf.json` (for example `sbom-docker.csaf.json`),
 or `depscan-universal.csaf.json` for a BOM directory, like the VDR below
 (CSAF 2.1 by default; `--csaf-version 2.0` selects the older version).
-The document's vulnerabilities carry the findings the scan
-matched, and their product status comes from the scan's reachability
-result:
+The document's vulnerabilities carry the findings the scan matched. A
+triage decision the scan applied, from the project's decisions file or a
+`--vex` document, sets the status of the product it decides first, and of
+no other product of the same vulnerability:
+
+| Triage decision | CSAF product status |
+| --- | --- |
+| `not_affected` with a justification | `known_not_affected`, with the flag that matches the justification (`code_not_reachable` gives `vulnerable_code_not_in_execute_path`) |
+| `false_positive` | `known_not_affected`, with `vulnerable_code_not_present` |
+| `exploitable` | `known_affected` |
+| `in_triage` | `under_investigation` |
+| `resolved` | `fixed` |
+| `not_affected` with no justification | from reachability, below, because CSAF has no flag for it |
+
+Without a decision, the status comes from the scan's reachability result:
 
 | Reachability result | CSAF product status |
 | --- | --- |
 | The package is in the scan's reached set | `known_affected` |
 | Anything else (not in the reached set, no reachability ran, `--profile quick`, `--reachability-analyzer off`) | `under_investigation` |
 
-dep-scan never writes `known_not_affected`: absence from a reached set is
-not evidence that the vulnerable code is outside the execute path, and no
-analyzer gives that evidence today. Before the document goes anywhere,
-tell the user which packages are `known_affected` and what that rests on:
-the analyzer named in the manifest, its root set, and the stages that
-completed.
+Reachability never gives `known_not_affected`: absence from a reached set
+is not evidence that the vulnerable code is outside the execute path, and
+no analyzer gives that evidence today. Only a person's decision does, and
+an agent's proposal reaches the document only after a person approves it.
+Before the document goes anywhere, tell the user which packages are
+`known_affected` and `known_not_affected` and what each rests on: the
+analyzer named in the manifest, its root set and the stages that
+completed, or the decision and who made it (the VDR's
+`depscan:triage:component:<bom-ref>` property for that package).
 
 A target without a BOM cannot carry the export: a purl scan with `--csaf`
 exits 0 but skips the export with a stderr warning, because there is no BOM
@@ -71,8 +86,18 @@ and one `depscan:exploitability:axis:<name>` per axis. CycloneDX
 properties belong to the vulnerability, not to an affected component, so
 an entry that lists several affected components carries the grade of its
 most severely graded one; quote a component's own grade from
-`depscan.findings.json`. The grade is triage context only: it never
-changes a CSAF product status and is never a `not_affected` justification.
+`depscan.findings.json`. A triage decision a person entered or approved
+is written per affected component, as a `depscan:triage:component:<bom-ref>`
+property holding the decision as JSON. The entry's CycloneDX `analysis`
+state and justification, with the people and the expiry as
+`depscan:triage:*` properties, are written only when every affected
+component of the entry has the same decision; otherwise the entry's
+`analysis` is what the scan wrote, and a package's decision is the one in
+its own property. When several decisions select one finding, the one the
+findings file records wins, and the CSAF product status of that package
+follows it as the table above shows.
+The exploitability grade stays triage context only: it never overrides a
+decision and is never a `not_affected` justification.
 
 ## Validate a document
 
@@ -104,12 +129,15 @@ A valid document proves its structure matches the CSAF or CycloneDX schema.
 It does not prove the statements inside are true beyond the scan: each
 status reflects what the scan assessed as of the database date, and a
 `known_affected` is as strong as the analyzer and root set behind it.
-`under_investigation` means "not established either way". Never edit a statement to
+`under_investigation` means "not established either way". A triage decision
+recorded in the decisions file flows into the product status through the
+VDR's `analysis` object, and an agent's proposal reaches it only after a
+person approves it with `depscan triage review`. Never edit a statement to
 `not_affected` by hand; a `not_affected` claim needs evidence that covers
 the vulnerable function and the deployed entry points, and saying plainly
 what the evidence covers is the correct disclosure.
 
 ## After the document
 
-- Explain the findings behind it: `depscan-triage`
+- Explain the findings behind it, or propose a decision for the user to approve: `depscan-triage`
 - Check the database the statements rest on: suggest `/depscan:depscan-vdb`
