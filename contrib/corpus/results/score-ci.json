@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-27T19:16:07+00:00",
-  "commit": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
+  "generatedAt": "2026-11-27T20:01:39+00:00",
+  "commit": "b3b7f85aee1a42c68be7d6248e188a049ddac482",
   "depscanVersion": "7.0.0a4",
   "subset": "ci",
   "items": [
@@ -160,6 +160,50 @@
           "measuredFrom": "build-scope",
           "packages": 5,
           "matched": 5,
+          "byPhase": {
+            "shipped": {
+              "packages": 2,
+              "matched": 2,
+              "observed": [
+                {
+                  "purl": "pkg:npm/express",
+                  "state": "shipped"
+                },
+                {
+                  "purl": "pkg:npm/chalk@5.6.2",
+                  "state": "shipped"
+                }
+              ]
+            },
+            "build-only": {
+              "packages": 1,
+              "matched": 1,
+              "observed": [
+                {
+                  "purl": "pkg:npm/uglify-js",
+                  "state": "development",
+                  "marker": "cdx:npm:package:development"
+                }
+              ]
+            },
+            "dev-only": {
+              "packages": 2,
+              "matched": 2,
+              "observed": [
+                {
+                  "purl": "pkg:npm/chalk@4.1.2",
+                  "state": "development",
+                  "marker": "cdx:npm:package:development"
+                },
+                {
+                  "purl": "pkg:npm/eslint",
+                  "state": "development",
+                  "marker": "cdx:npm:package:development"
+                }
+              ]
+            }
+          },
+          "buildOnlyDistinct": false,
           "missed": []
         }
       },
@@ -381,6 +425,13 @@
     "items": 6,
     "scored": 6,
     "notAssessed": 0,
-    "forbiddenFired": []
+    "errors": 0,
+    "forbiddenFired": [],
+    "floors": {
+      "commit": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
+      "checked": 13,
+      "skipped": 0,
+      "violations": []
+    }
   }
 }

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "description": "The floors the pull-request subset enforces, recorded from one real run of score.py --subset ci (contrib/corpus/results/score-ci.json). Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs and only for numbers the labels can judge. supply-chain-fixture-ci carries no floor: cdx-audit 13.8.0, the version the job installs, predates the options dep-scan's audit passes, so the category is not assessed until the job installs cdxgen 13.9.0 or later. The binary-hardening recall floor is 6 of 7 because blint does not report CHECK_RELRO on the unprotected build, which build.sh links with -z norelro.",
-  "commit": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
-  "recordedAt": "2026-11-27T19:16:07Z",
+  "description": "The floors the pull-request subset enforces, recorded from one real run of score.py --subset ci (contrib/corpus/results/score-ci.json) against the app-2y vulnerability database the job pulls. Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs and only for numbers the labels can judge. supply-chain-fixture-ci carries no floor: cdx-audit 13.8.0, the version the job installs, predates the options dep-scan's audit passes, so the category is not assessed until the job installs cdxgen 13.9.0 or later. The binary-hardening recall floor is 6 of 7 because blint does not report CHECK_RELRO on the unprotected build, which build.sh links with -z norelro.",
+  "commit": "b3b7f85aee1a42c68be7d6248e188a049ddac482",
+  "recordedAt": "2026-11-27T20:01:39Z",
   "tools": {
     "platform": "linux/amd64, an ubuntu:24.04 container with the runner's gcc 13.3",
     "cdxgen": "13.8.0",
@@ -10,7 +10,7 @@
     "blint": "4.1.1",
     "python": "3.14",
     "node": "24.22.3",
-    "vdb": "the full flavour created 2026-11-26; the job pulls vdb7-app-2y, which keeps application advisories of every year"
+    "vdb": "vdb7-app-2y:v7.0.x-xz built 2026-11-27, the flavour the job pulls"
   },
   "floors": [
     {
