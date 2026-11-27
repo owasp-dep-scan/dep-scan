@@ -138,8 +138,9 @@ def py_project(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     (project / "requirements.txt").write_text(
-        "click>=8\nFlask_SQLAlchemy==3.1.1  # the ORM\n", encoding="utf-8"
+        "click>=8\nFlask_SQLAlchemy==3.1.1  # the ORM\npyyaml\n", encoding="utf-8"
     )
+    (project / "requirements-dev.txt").write_text("unused-dep\n", encoding="utf-8")
     return str(project)
 
 
@@ -182,9 +183,16 @@ def test_direct_dependency_without_use_is_unused(py_project):
 
 
 def test_bom_without_dependency_graph_declares_nothing_unused():
-    bom = {**BOM, "dependencies": []}
-    document = derive_labels.derive("py-fixture", TRUTH, bom)
-    assert document["reachability"]["unused"] == []
+    truth = {"usages": [_row("org.example:used", "A.java")]}
+    bom = {
+        "metadata": {"component": {"bom-ref": "root"}},
+        "components": [{"purl": "pkg:maven/org.example/other@1.0", "bom-ref": "c1"}],
+        "dependencies": [],
+    }
+    assert derive_labels.derive("java-fixture", truth, bom)["reachability"]["unused"] == []
+    bom["dependencies"] = [{"ref": "root", "dependsOn": ["c1"]}]
+    reach = derive_labels.derive("java-fixture", truth, bom)["reachability"]
+    assert reach["unused"] == [{"purl": "pkg:maven/org.example/other"}]
 
 
 def test_npm_scoped_names_map_to_the_bom_spelling():
@@ -298,6 +306,7 @@ def test_python_import_the_project_does_not_declare_is_unmapped_not_used(tmp_pat
 def test_project_local_modules_are_counted_apart(tmp_path):
     (tmp_path / "good").mkdir()
     (tmp_path / "good" / "lib").mkdir()
+    (tmp_path / "good" / "lib" / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "frontend" / "src" / "app").mkdir(parents=True)
     (tmp_path / "frontend" / "tsconfig.json").write_text("{}", encoding="utf-8")
     truth = {"usages": [_row("lib", "good/mod_welcome1.py"), _row("lib", "good/x.py")]}
@@ -431,3 +440,166 @@ def test_an_imported_but_undeclared_package_is_never_unused(tmp_path):
     reach = derive_labels.derive("py-fixture", truth, bom, project=str(tmp_path))["reachability"]
     assert reach["unmapped"] == {"passlib": 1}
     assert reach["unused"] == []
+
+
+def _write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def test_python_directness_comes_from_the_manifests_never_the_bom(tmp_path):
+    # A BOM made in the wrong environment lists dep-scan's own workspace and
+    # the project itself as direct dependencies; none of that is a label.
+    _write(tmp_path / "pyproject.toml", '[project]\nname = "MyApp"\ndependencies = ["flask"]\n')
+    _write(tmp_path / "requirements-dev.txt", "-e .\nmyapp\npytest\n")
+    _write(tmp_path / "myapp" / "__init__.py", "")
+    truth = {"usages": [_row("flask"), _row("myapp", "tests/test_app.py")]}
+    bom = {
+        "metadata": {"component": {"bom-ref": "root"}},
+        "components": [
+            {"purl": "pkg:pypi/owasp-depscan@7.0.0", "bom-ref": "c1"},
+            {"purl": "pkg:pypi/myapp@1.0", "bom-ref": "c2"},
+        ],
+        "dependencies": [{"ref": "root", "dependsOn": ["c1", "c2"]}],
+    }
+    reach = derive_labels.derive("py-fixture", truth, bom, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/flask"]
+    assert reach["unused"] == [{"purl": "pkg:pypi/pytest"}]
+    assert reach["local"] == {"myapp": 1}
+
+
+def test_the_projects_own_distribution_is_never_a_label(tmp_path):
+    # An import of the project's own distribution that the tree does not
+    # hold at an import root (a src layout under another directory name).
+    _write(tmp_path / "setup.cfg", "[metadata]\nname = httpie\n")
+    truth = {"usages": [_row("httpie")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert reach["used"] == []
+    assert reach["unmapped"] == {}
+    assert reach["local"] == {"httpie": 1}
+
+
+def test_an_undeclared_import_known_to_the_environment_is_a_used_label(tmp_path):
+    # six and urllib3 are installed but undeclared; pymongo is imported both
+    # as bson (the import table) and as pymongo, and counts once.
+    _write(tmp_path / "requirements.txt", "requests\n")
+    lock = tmp_path / "env.txt"
+    _write(lock, "# via requests\nrequests==2.32.3\nsix==1.16.0\nurllib3==2.2.0 \\\n")
+    site = tmp_path / "site"
+    (site / "colorama-0.4.6.dist-info").mkdir(parents=True)
+    truth = {
+        "usages": [
+            _row("requests"),
+            _row("six"),
+            _row("urllib3"),
+            _row("colorama"),
+            _row("bson"),
+            _row("pymongo"),
+            _row("pymongo"),
+            _row("IPython"),
+        ]
+    }
+    reach = derive_labels.derive(
+        "py-fixture",
+        truth,
+        {},
+        project=str(tmp_path / "missing-tree"),
+        site_packages=[str(site)],
+        lock_files=[str(lock)],
+    )["reachability"]
+    used = {e["purl"]: e["occurrences"] for e in reach["used"]}
+    assert used == {
+        "pkg:pypi/colorama": 1,
+        "pkg:pypi/pymongo": 3,
+        "pkg:pypi/requests": 1,
+        "pkg:pypi/six": 1,
+        "pkg:pypi/urllib3": 1,
+    }
+    # A name no declaration, lock or environment knows stays unmapped.
+    assert reach["unmapped"] == {"IPython": 1}
+
+
+def test_a_declared_variant_claims_its_import_name(tmp_path):
+    _write(
+        tmp_path / "requirements.txt",
+        "psycopg2-binary==2.9\nopencv-python-headless\nbeautifulsoup4\n",
+    )
+    truth = {"usages": [_row("psycopg2"), _row("cv2"), _row("bs4")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == [
+        "pkg:pypi/beautifulsoup4",
+        "pkg:pypi/opencv-python-headless",
+        "pkg:pypi/psycopg2-binary",
+    ]
+    assert reach["unused"] == []
+    assert reach["unmapped"] == {}
+
+
+def test_the_uv_lock_root_package_is_the_project_not_a_dependency(tmp_path):
+    _write(tmp_path / "app" / "__init__.py", "")
+    _write(
+        tmp_path / "uv.lock",
+        "version = 1\n"
+        '[[package]]\nname = "app"\nversion = "0.1.0"\nsource = { editable = "." }\n'
+        'dependencies = [{ name = "fastapi" }]\n'
+        '[package.optional-dependencies]\nmail = [{ name = "emails" }]\n'
+        '[package.dev-dependencies]\ndev = [{ name = "pytest" }]\n'
+        '[[package]]\nname = "fastapi"\nversion = "0.115.0"\n'
+        'source = { registry = "https://pypi.org/simple" }\n'
+        '[[package]]\nname = "starlette"\nversion = "0.40.0"\n'
+        'source = { registry = "https://pypi.org/simple" }\n',
+    )
+    truth = {"usages": [_row("app", "app/main.py"), _row("fastapi", "app/main.py")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/fastapi"]
+    assert reach["local"] == {"app": 1}
+    # The root's dependencies are direct; the locked transitive is not.
+    assert reach["unused"] == [{"purl": "pkg:pypi/emails"}, {"purl": "pkg:pypi/pytest"}]
+
+
+def test_the_project_local_check_runs_before_the_declared_lookup(tmp_path):
+    # utils is both a declared distribution and a package of the tree: the
+    # tree's package wins. redis.py inside a package does not shadow the
+    # redis distribution its own "import redis" names.
+    _write(tmp_path / "requirements.txt", "utils\nredis\n")
+    _write(tmp_path / "utils" / "__init__.py", "")
+    _write(tmp_path / "proj" / "__init__.py", "")
+    _write(tmp_path / "proj" / "backends" / "__init__.py", "")
+    _write(tmp_path / "proj" / "backends" / "redis.py", "import redis\n")
+    _write(tmp_path / "docs" / "redis" / "index.rst", "")
+    truth = {"usages": [_row("utils", "proj/app.py"), _row("redis", "proj/backends/redis.py")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/redis"]
+    assert reach["local"] == {"utils": 1}
+    assert reach["unused"] == []
+
+
+def test_a_reviewed_missing_module_is_neither_a_label_nor_a_miss(tmp_path):
+    import jsonschema
+
+    _write(tmp_path / "project" / "requirements.txt", "flask\n")
+    truth_path = tmp_path / "truth.json"
+    truth_path.write_text(
+        json.dumps({"usages": [_row("lib", "good/mod.py"), _row("flask"), _row("passlib")]}),
+        encoding="utf-8",
+    )
+    out = tmp_path / "labels.json"
+    argv = ["--truth", str(truth_path), "--item", "py-fixture", "--out", str(out)]
+    argv += ["--project", str(tmp_path / "project")]
+    reason = "good/mod.py:4 imports lib.posts1, which the tree does not hold"
+    assert derive_labels.main(argv + ["--missing-module", f"lib={reason}"]) == 0
+    reach = json.loads(out.read_text(encoding="utf-8"))["reachability"]
+    assert reach["missingModules"] == {"lib": {"occurrences": 1, "reason": reason}}
+    assert reach["counts"]["missingModule"] == 1
+    assert reach["unmapped"] == {"passlib": 1}
+    # The reviewed reason survives a refresh without the option.
+    assert derive_labels.main(argv) == 0
+    document = json.loads(out.read_text(encoding="utf-8"))
+    assert document["reachability"]["missingModules"]["lib"]["reason"] == reason
+    here = os.path.dirname(os.path.abspath(__file__))
+    with open(
+        os.path.join(here, "..", "contrib", "corpus", "depscan-labels.schema.json"),
+        encoding="utf-8",
+    ) as fp:
+        jsonschema.validate(document, json.load(fp))
+    assert derive_labels.main(argv + ["--missing-module", "lib"]) == 2

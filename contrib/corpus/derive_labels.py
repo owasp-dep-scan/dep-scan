@@ -4,17 +4,17 @@
 The oracle output of the callsites work names a file, a line and a package for
 every certain use of a dependency in a project's own code. This script reduces
 one project's oracle output to package level: a package is ``used`` when the
-truth holds at least one certain use of it, and ``unused`` when the project's
-BOM declares it as a direct dependency and the truth holds no use of it at
-all. The rows themselves (files, lines, members) never leave the private
-harness; the label file carries purls, occurrence counts and the names the
-mapping could not turn into a purl, each with its count.
+truth holds at least one certain use of it, and ``unused`` when the project
+declares it as a direct dependency and the truth holds no use of it at all.
+The rows themselves (files, lines, members) never leave the private harness;
+the label file carries purls, occurrence counts and the names the mapping
+could not turn into a purl, each with its count.
 
 Usage:
     python contrib/corpus/derive_labels.py \
         --truth truth/py-vulpy.json --project ~/corpus/py-vulpy \
-        --bom scans/py-vulpy/sbom-build-python.cdx.json \
-        --item py-vulpy --out contrib/corpus/labels/py-vulpy.json
+        --lock env/py-vulpy.txt --item py-vulpy \
+        --out contrib/corpus/labels/py-vulpy.json
 
 A truth package name becomes a purl without consulting the scan's output, so
 a package dep-scan fails to inventory still shows up as a recall miss:
@@ -25,21 +25,32 @@ a package dep-scan fails to inventory still shows up as a recall miss:
   a base a path alias resolves from (a parent directory of the importing
   file holding a package.json, tsconfig.json or jsconfig.json, such as
   Juice Shop's ``src``), is project-local. Node builtins are dropped.
-- A Python import name maps through ``IMPORT_DISTRIBUTIONS``, then the
-  ``top_level.txt`` of the distributions installed under ``--site-packages``
-  (the pinned project's environment, when one is available), then the
-  distributions the project's own requirements files, pyproject.toml,
-  setup.cfg, setup.py, Pipfile and lock files (uv.lock, poetry.lock,
-  pdm.lock, Pipfile.lock) declare. A name none of those maps, and which is a
-  package or module in the project tree, is project-local. Python 2 modules
-  and interpreter internals the truth does not flag as builtin are dropped.
+- A Python import name that is a package or module of the project tree is
+  project-local, whatever distribution shares its name. Any other name maps
+  through the import names of the distributions the project declares
+  (``DISTRIBUTION_IMPORTS`` holds the variants, such as psycopg2-binary for
+  ``psycopg2``), then ``IMPORT_DISTRIBUTIONS``, then the ``top_level.txt``
+  of the distributions installed under ``--site-packages``, then a
+  distribution of the same folded name that the project declares, that its
+  lock files (uv.lock, poetry.lock, pdm.lock, Pipfile.lock) install, or
+  that its environment holds (``--lock`` files written outside the tree and
+  ``--site-packages``). The project's own distribution is never a label,
+  and an import named like a distribution another import already maps to
+  joins that label. Python 2 modules and interpreter internals the truth
+  does not flag as builtin are dropped.
 
 Project-local names are listed under ``local`` with their counts and are not
-labels. Names still unmapped are listed under ``unmapped`` with their counts;
-the scorer counts each one as a used package no analyser can match, a recall
-miss reported apart as ``unmappedUsed``. The BOM (``--bom``) answers only
-which dependencies are direct, for the ``unused`` labels; for a JavaScript
-item the project's package.json answers that instead.
+labels. A reviewed name given with ``--missing-module`` (a module the project
+imports that neither its tree nor any distribution holds) is listed under
+``missingModules`` with its reason and is no label and no miss. Names still
+unmapped are listed under ``unmapped`` with their counts; the scorer counts
+each one as a used package no analyser can match, a recall miss reported
+apart as ``unmappedUsed``.
+
+Directness, for the ``unused`` labels, comes from the project's own files
+for Python (its requirements files, pyproject.toml, setup.cfg, setup.py,
+Pipfile and uv.lock's root package) and JavaScript (package.json), never
+from a scan; for the other languages the BOM (``--bom``) answers it.
 
 Exits 2 when the inputs cannot be read, the item's language is not covered,
 or the label file's reachability section was written by hand (refreshing it
@@ -112,6 +123,27 @@ IMPORT_DISTRIBUTIONS = {
     "vcr_unittest": "vcrpy-unittest",
     "watson": "django-watson",
     "yaml": "pyyaml",
+}
+
+#: Import names of distributions that ship under another distribution's
+#: import name: a binary build or a variant of one project. A declared
+#: variant claims the import before the import table's choice, so a project
+#: that declares psycopg2-binary has its ``psycopg2`` imports labelled as
+#: psycopg2-binary, never as an unused psycopg2-binary beside a missed
+#: psycopg2.
+DISTRIBUTION_IMPORTS = {
+    "opencv-contrib-python": ("cv2",),
+    "opencv-contrib-python-headless": ("cv2",),
+    "opencv-python-headless": ("cv2",),
+    "pillow-simd": ("pil",),
+    "psycopg-binary": ("psycopg",),
+    "psycopg2-binary": ("psycopg2",),
+    "pycryptodome": ("crypto",),
+    "pycryptodomex": ("cryptodome",),
+    "python-jose": ("jose",),
+    "python-magic": ("magic",),
+    "python-magic-bin": ("magic",),
+    "tensorflow-cpu": ("tensorflow",),
 }
 
 #: Node's own modules. The untyped JavaScript truth records a package per use
@@ -202,22 +234,47 @@ def _walk(project: str, wanted):
                 yield os.path.join(base, name)
 
 
-def python_declared(project: str) -> set:
-    """The folded distribution names a Python project's own manifests
-    declare: requirements files, pyproject.toml, setup.cfg, setup.py and
-    Pipfile."""
-    declared = set()
+def _requirement_lines(text: str):
+    """The distribution specs of a requirements-format file: one per line,
+    comments, options, includes and URL or VCS lines skipped, an
+    ``#egg=`` name kept."""
+    for line in text.splitlines():
+        line = line.split("#egg=", 1)[1] if "#egg=" in line else line.split("#", 1)[0]
+        if line.strip() and not line.lstrip().startswith(("-", "git+", "http")):
+            yield line
 
-    def add(spec):
+
+def python_manifests(project: str):
+    """What a Python project's own files say, as three sets of folded
+    distribution names: ``direct``, the dependencies its requirements files,
+    pyproject.toml, setup.cfg, setup.py, Pipfile and uv.lock's root package
+    declare; ``locked``, every other distribution a lock file (uv.lock,
+    poetry.lock, pdm.lock, Pipfile.lock) installs; and ``own``, the
+    project's own distributions (a pyproject.toml, setup.cfg or setup.py
+    name, and a uv.lock package whose source is the tree itself), which are
+    never dependencies."""
+    direct: set = set()
+    locked: set = set()
+    own: set = set()
+
+    def name_of(spec):
         match = REQUIREMENT_NAME.match(str(spec))
         if match and match.group(1).lower() != "python":
-            declared.add(fold_name(match.group(1)))
+            return fold_name(match.group(1))
+        return None
+
+    def add(target, spec):
+        name = name_of(spec)
+        if name:
+            target.add(name)
 
     def is_requirements(path):
         name = os.path.basename(path)
         in_requirements_dir = "requirements" in os.path.relpath(path, project).split(os.sep)[:-1]
-        return name.endswith((".txt", ".in")) and (
-            name.startswith("requirements") or in_requirements_dir
+        return (
+            name.endswith((".txt", ".in"))
+            and "constraint" not in name
+            and (name.startswith("requirements") or in_requirements_dir)
         )
 
     def is_manifest(path):
@@ -231,10 +288,8 @@ def python_declared(project: str) -> set:
         except OSError:
             continue
         if is_requirements(path):
-            for line in text.splitlines():
-                line = line.split("#egg=", 1)[1] if "#egg=" in line else line.split("#", 1)[0]
-                if line.strip() and not line.lstrip().startswith(("-", "git+", "http")):
-                    add(line)
+            for line in _requirement_lines(text):
+                add(direct, line)
         elif name == "Pipfile.lock":
             try:
                 doc = json.loads(text)
@@ -242,47 +297,102 @@ def python_declared(project: str) -> set:
                 continue
             for section in ("default", "develop"):
                 for spec in doc.get(section) or {}:
-                    add(spec)
+                    add(locked, spec)
         elif name in ("pyproject.toml", "Pipfile", "uv.lock", "poetry.lock", "pdm.lock"):
             try:
                 doc = tomllib.loads(text)
             except tomllib.TOMLDecodeError:
                 continue
-            # A lock file lists every distribution the project installs.
             for package in doc.get("package") or []:
-                if isinstance(package, dict) and package.get("name"):
-                    add(package["name"])
+                if not isinstance(package, dict) or not package.get("name"):
+                    continue
+                source = package.get("source") if isinstance(package.get("source"), dict) else {}
+                if name != "uv.lock" or not set(source) & {"editable", "virtual", "directory"}:
+                    add(locked, package["name"])
+                    continue
+                # uv.lock lists the project itself, with its source in the
+                # tree; its dependencies are the project's direct ones.
+                add(own, package["name"])
+                specs = list(package.get("dependencies") or [])
+                for key in ("optional-dependencies", "dev-dependencies"):
+                    for group in (package.get(key) or {}).values():
+                        specs += list(group or [])
+                for spec in specs:
+                    add(direct, spec.get("name") if isinstance(spec, dict) else spec)
             project_table = doc.get("project") or {}
+            poetry = (doc.get("tool") or {}).get("poetry") or {}
+            for table in (project_table, poetry):
+                if table.get("name"):
+                    add(own, table["name"])
             specs = list(project_table.get("dependencies") or [])
             for group in (project_table.get("optional-dependencies") or {}).values():
                 specs += list(group or [])
             for group in (doc.get("dependency-groups") or {}).values():
                 specs += [s for s in group or [] if isinstance(s, str)]
-            poetry = (doc.get("tool") or {}).get("poetry") or {}
             tables = [poetry.get("dependencies"), poetry.get("dev-dependencies")]
             tables += [g.get("dependencies") for g in (poetry.get("group") or {}).values()]
             tables += [doc.get("packages"), doc.get("dev-packages")]
             for table in tables:
                 specs += list((table or {}).keys())
             for spec in specs:
-                add(spec)
+                add(direct, spec)
         elif name == "setup.cfg":
             parser = configparser.ConfigParser(interpolation=None)
             try:
                 parser.read_string(text)
             except configparser.Error:
                 continue
+            add(own, parser.get("metadata", "name", fallback=""))
             values = [parser.get("options", "install_requires", fallback="")]
             if parser.has_section("options.extras_require"):
                 values += [value for _, value in parser.items("options.extras_require")]
             for value in values:
                 for line in value.splitlines():
-                    add(line)
+                    add(direct, line)
         else:
+            match = re.search(r"\bname\s*=\s*['\"]([A-Za-z0-9._-]+)['\"]", text)
+            if match:
+                add(own, match.group(1))
             for block in re.findall(r"(?:install|tests)_requires\s*=\s*\[(.*?)\]", text, re.S):
                 for spec in re.findall(r"['\"]([^'\"]+)['\"]", block):
-                    add(spec)
-    return declared
+                    add(direct, spec)
+    return direct - own, locked - own - direct, own
+
+
+def python_declared(project: str) -> set:
+    """The folded distribution names a Python project's own manifests
+    declare as direct dependencies; :func:`python_manifests` lists the
+    files."""
+    return python_manifests(project)[0]
+
+
+def environment_distributions(lock_files, site_packages) -> set:
+    """The folded names of the distributions a project's environment holds:
+    every ``name==version`` line of the given requirements-format lock
+    files (``uv pip compile`` output, say), and every distribution installed
+    under the given site-packages directories."""
+    names = set()
+    for path in lock_files or []:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fp:
+                text = fp.read()
+        except OSError:
+            continue
+        for line in _requirement_lines(text):
+            match = REQUIREMENT_NAME.match(line)
+            if match:
+                names.add(fold_name(match.group(1)))
+    for directory in site_packages or []:
+        try:
+            entries = os.listdir(directory)
+        except OSError:
+            continue
+        names |= {
+            fold_name(entry.rsplit(".", 1)[0].split("-", 1)[0])
+            for entry in entries
+            if entry.endswith((".dist-info", ".egg-info"))
+        }
+    return names
 
 
 def top_level_names(site_packages: list) -> dict:
@@ -308,26 +418,60 @@ def top_level_names(site_packages: list) -> dict:
     return names
 
 
+def _python_roots(project: str, files) -> set:
+    """The directories a Python import of the project resolves against: the
+    project root, ``src``, and for each importing file the first directory
+    above it that is not a package (no ``__init__.py``), which is the
+    directory a script runs from or the root its package is imported from.
+    A module beside its importer inside a package is not on that path, so
+    ``import redis`` in ``celery/backends/redis.py`` names the distribution,
+    not the module itself."""
+    roots = {project, os.path.join(project, "src")}
+    for file_name in files:
+        directory = os.path.dirname(os.path.join(project, file_name))
+        while directory.startswith(project) and os.path.isfile(
+            os.path.join(directory, "__init__.py")
+        ):
+            directory = os.path.dirname(directory)
+        if directory.startswith(project):
+            roots.add(directory)
+    return roots
+
+
+def _is_python_package(path: str) -> bool:
+    """Whether a directory is a Python package: it holds ``__init__.py`` or,
+    as a namespace package, at least one module."""
+    try:
+        return any(name.endswith((".py", ".pyi")) for name in os.listdir(path))
+    except OSError:
+        return False
+
+
 def is_project_local(project: str, name: str, files, javascript: bool = False) -> bool:
     """Whether ``name`` is a directory or module inside the project tree.
 
-    A Python import resolves against the project root, ``src`` and the
-    directory of the importing script and its parents, so the name is local
-    when one of them holds it. A bare JavaScript import never resolves
-    against the importing file's own directory, only against a base a path
-    alias points at, so for JavaScript only the parents that hold a
-    package.json, tsconfig.json or jsconfig.json count.
+    A Python import resolves against the roots :func:`_python_roots`
+    lists, and only a package directory or a module file there counts. A
+    bare JavaScript import never resolves against the importing file's own
+    directory, only against a base a path alias points at, so for
+    JavaScript only the importer's parents that hold a package.json,
+    tsconfig.json or jsconfig.json count, and any directory or source file
+    there does.
     """
     if not project:
         return False
     head = name.split("/", 1)[0].split(".", 1)[0]
-    candidates = {project} if javascript else {project, os.path.join(project, "src")}
+    if not javascript:
+        return any(
+            _is_python_package(os.path.join(directory, head))
+            or any(os.path.isfile(os.path.join(directory, head + s)) for s in (".py", ".pyi"))
+            for directory in _python_roots(project, files)
+        )
+    candidates = {project}
     for file_name in files:
         directory = os.path.dirname(os.path.join(project, file_name))
         while directory.startswith(project):
-            if not javascript or any(
-                os.path.isfile(os.path.join(directory, base)) for base in JS_PROJECT_BASES
-            ):
+            if any(os.path.isfile(os.path.join(directory, base)) for base in JS_PROJECT_BASES):
                 candidates.add(directory)
             parent = os.path.dirname(directory)
             if parent == directory:
@@ -362,15 +506,37 @@ def npm_purl(name: str) -> str:
     return f"pkg:npm/%40{name[1:]}" if name.startswith("@") else f"pkg:npm/{name}"
 
 
+def import_names(distribution: str) -> set:
+    """The lower-cased import names a distribution is known to provide:
+    its own name with underscores, the import table's names for it and
+    DISTRIBUTION_IMPORTS."""
+    names = {distribution.replace("-", "_")}
+    names |= {imp for imp, dist in IMPORT_DISTRIBUTIONS.items() if fold_name(dist) == distribution}
+    return names | set(DISTRIBUTION_IMPORTS.get(distribution, ()))
+
+
 class Mapper:
     """Turns one project's truth package names into purls."""
 
-    def __init__(self, ecosystem: str, project: str = "", site_packages=None):
+    def __init__(self, ecosystem: str, project: str = "", site_packages=None, lock_files=None):
         self.ecosystem = ecosystem
         self.project = os.path.abspath(project) if project else ""
         self.npm_declared = npm_declared(self.project) if ecosystem == "npm" else set()
-        self.python_declared = python_declared(self.project) if ecosystem == "pypi" else set()
+        direct, locked, own = (
+            python_manifests(self.project) if ecosystem == "pypi" else (set(), set(), set())
+        )
+        self.python_declared = direct
+        self.python_own = own
+        self.python_known = (
+            locked | environment_distributions(lock_files, site_packages)
+            if ecosystem == "pypi"
+            else set()
+        )
         self.top_level = top_level_names(site_packages) if ecosystem == "pypi" else {}
+        self.declared_imports: dict = {}
+        for distribution in sorted(direct):
+            for name in import_names(distribution):
+                self.declared_imports.setdefault(name, distribution)
 
     def purl(self, package: str, files=()):
         """The purl of a truth package, or "local", or None (unmapped)."""
@@ -387,13 +553,28 @@ class Mapper:
             return None
         if self.ecosystem == "gem":
             return f"pkg:gem/{package}" if GEM_NAME.match(package) else None
+        # A module of the tree shadows any distribution of the same name, so
+        # the project-local check comes first.
+        if is_project_local(self.project, package, files):
+            return "local"
         lower = package.lower()
-        distribution = IMPORT_DISTRIBUTIONS.get(lower) or self.top_level.get(lower)
-        if not distribution and fold_name(package) in self.python_declared:
+        if any(lower in import_names(own) for own in self.python_own):
+            return "local"
+        distribution = (
+            self.declared_imports.get(lower)
+            or IMPORT_DISTRIBUTIONS.get(lower)
+            or self.top_level.get(lower)
+        )
+        if not distribution and fold_name(package) in self.python_declared | self.python_known:
             distribution = package
-        if distribution:
-            return f"pkg:pypi/{fold_name(distribution)}"
-        return "local" if is_project_local(self.project, package, files) else None
+        if not distribution:
+            return None
+        # The project's own distribution is never one of its dependencies.
+        return (
+            "local"
+            if fold_name(distribution) in self.python_own
+            else (f"pkg:pypi/{fold_name(distribution)}")
+        )
 
 
 def bom_direct_purls(bom: dict) -> set:
@@ -439,32 +620,51 @@ def derive(
     manifest_path: str = "",
     project: str = "",
     site_packages=None,
+    lock_files=None,
+    missing_modules=None,
 ) -> dict:
     """The label document for one item, or raise ValueError when the item's
-    language is one the oracle does not cover."""
+    language is one the oracle does not cover.
+
+    ``missing_modules`` maps a truth package name to the reviewed reason it
+    is a module the project imports but neither its tree nor any
+    distribution holds; such a name is listed under ``missingModules`` and
+    is neither a label nor a miss."""
     ecosystem = language_of(item_id)
     if not ecosystem:
         raise ValueError(
             f"Item '{item_id}' has no language the callsites truth covers "
             "(js-, py-, java-, php- or rb- prefixed)."
         )
-    mapper = Mapper(ecosystem, project, site_packages)
+    mapper = Mapper(ecosystem, project, site_packages, lock_files)
     packages = certain_packages(truth)
+    missing_modules = missing_modules or {}
     used: dict = {}
     unmapped: dict = {}
     local: dict = {}
+    missing: dict = {}
     for package, (count, files) in sorted(packages.items()):
         if ecosystem == "npm" and (package in NODE_BUILTINS or package.startswith("node:")):
             continue
         if ecosystem == "pypi" and package in PYTHON_NOT_DISTRIBUTIONS:
             continue
         purl = mapper.purl(package, files)
-        if purl is None:
+        if purl is None and package in missing_modules:
+            missing[package] = {"occurrences": count, "reason": missing_modules[package]}
+        elif purl is None:
             unmapped[package] = count
         elif purl == "local":
             local[package] = count
         else:
             used[purl] = used.get(purl, 0) + count
+    if ecosystem == "pypi":
+        # An undeclared import named like a distribution another import
+        # already maps to (pymongo beside bson) is that distribution: its
+        # uses join the label instead of counting as a second, unmapped one.
+        for package in list(unmapped):
+            purl = f"pkg:pypi/{fold_name(package)}"
+            if purl in used:
+                used[purl] += unmapped.pop(package)
     if ecosystem == "npm" and manifest_path:
         # cdxgen's npm graph lists the whole resolved tree under the root,
         # so the manifest answers which dependencies are direct.
@@ -474,48 +674,57 @@ def derive(
             values = document.get(section) if isinstance(document, dict) else None
             declared |= set(values) if isinstance(values, dict) else set()
         direct = {npm_purl(name) for name in declared}
+    elif ecosystem == "pypi":
+        # The project's own manifests answer directness; a BOM of the scan
+        # may hold the environment cdxgen ran in.
+        direct = {f"pkg:pypi/{name}" for name in mapper.python_declared}
     else:
         direct = {version_less(purl) for purl in bom_direct_purls(bom)}
     # A direct dependency is unused only when the truth holds no use of it.
-    # An import the mapping could not place (or placed in the project) still
-    # names its package when the names fold equal, as vulpy's passlib does.
+    # An import the mapping could not place still names its package when
+    # the names fold equal.
     used_keys = {label_key(purl) for purl in used}
     if ecosystem == "pypi":
         used_keys |= {label_key(f"pkg:pypi/{fold_name(name)}") for name in packages}
     unused = sorted(purl for purl in direct if label_key(purl) not in used_keys)
-    return {
-        "item": item_id,
-        "reachability": {
-            "source": "oracle",
-            "derivedFrom": (
-                "Package-level reduction of the callsites oracle output for "
-                "this project at its pinned commit: a package is used when "
-                "the truth holds a certain use of it in the project's own "
-                "files, with the purl taken from the package name and not "
-                "from any scan, and unused when the BOM or package.json "
-                "declares it as a direct dependency and the truth holds no "
-                "use of it. No truth row is carried."
-            ),
-            "used": [{"purl": purl, "occurrences": count} for purl, count in sorted(used.items())],
-            "unused": [{"purl": purl} for purl in unused],
-            "unmapped": dict(sorted(unmapped.items())),
-            "local": dict(sorted(local.items())),
-            "counts": {
-                "used": len(used),
-                "unused": len(unused),
-                "unmapped": len(unmapped),
-                "local": len(local),
-                "certainUses": sum(count for count, _ in packages.values()),
-            },
-        },
+    reachability = {
+        "source": "oracle",
+        "derivedFrom": (
+            "Package-level reduction of the callsites oracle output for "
+            "this project at its pinned commit: a package is used when "
+            "the truth holds a certain use of it in the project's own "
+            "files, with the purl taken from the package name and not "
+            "from any scan, and unused when the project's manifests (for "
+            "Python and JavaScript) or the BOM (for the other languages) "
+            "declare it as a direct dependency and the truth holds no "
+            "use of it. No truth row is carried."
+        ),
+        "used": [{"purl": purl, "occurrences": count} for purl, count in sorted(used.items())],
+        "unused": [{"purl": purl} for purl in unused],
+        "unmapped": dict(sorted(unmapped.items())),
+        "local": dict(sorted(local.items())),
     }
+    if missing:
+        reachability["missingModules"] = dict(sorted(missing.items()))
+    reachability["counts"] = {
+        "used": len(used),
+        "unused": len(unused),
+        "unmapped": len(unmapped),
+        "local": len(local),
+        "certainUses": sum(count for count, _ in packages.values()),
+    }
+    if missing:
+        reachability["counts"]["missingModule"] = len(missing)
+    return {"item": item_id, "reachability": reachability}
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--truth", required=True, help="The project's truth JSON.")
     parser.add_argument(
-        "--bom", required=True, help="The scan's BOM, read for the direct dependencies only."
+        "--bom",
+        default="",
+        help="The scan's BOM, read for the direct dependencies of a Java, PHP or Ruby item only.",
     )
     parser.add_argument("--item", required=True, help="The corpus item id.")
     parser.add_argument(
@@ -537,6 +746,22 @@ def main(argv=None) -> int:
         help="A site-packages directory of the project's environment, whose "
         "distributions' top_level.txt map Python import names; repeatable.",
     )
+    parser.add_argument(
+        "--lock",
+        action="append",
+        default=[],
+        help="A requirements-format lock file of the project's environment made outside "
+        "the tree (uv pip compile output, say); its distributions map undeclared Python "
+        "imports and never count as direct; repeatable.",
+    )
+    parser.add_argument(
+        "--missing-module",
+        action="append",
+        default=[],
+        metavar="NAME=REASON",
+        help="A Python import that names a module neither the tree nor any distribution "
+        "holds, with the reviewed reason; repeatable. The label file keeps earlier ones.",
+    )
     parser.add_argument("--out", required=True, help="Label file to write.")
     parser.add_argument(
         "--force",
@@ -545,7 +770,7 @@ def main(argv=None) -> int:
     )
     args = parser.parse_args(argv)
     truth = load_json(args.truth)
-    bom = load_json(args.bom)
+    bom = load_json(args.bom) if args.bom else {}
     if not isinstance(truth, dict) or not isinstance(bom, dict):
         print(f"Cannot read the truth '{args.truth}' or the BOM '{args.bom}'.", file=sys.stderr)
         return 2
@@ -553,6 +778,31 @@ def main(argv=None) -> int:
     manifest_path = os.path.expanduser(args.package_manifest) or (
         os.path.join(project, "package.json") if project else ""
     )
+    # The derivation owns the oracle reachability section only. Hand-written
+    # findings and joins survive the rewrite, as do the reviewed missing
+    # modules, and a hand-written reachability section is refused unless
+    # --force says to replace it.
+    existing = load_json(args.out)
+    reachability = (existing.get("reachability") or {}) if isinstance(existing, dict) else {}
+    if reachability.get("source") not in (None, "oracle") and not args.force:
+        print(
+            f"The reachability section of '{args.out}' has source "
+            f"'{reachability.get('source')}'; refreshing it from the oracle would drop "
+            "those labels. Pass --force to replace it.",
+            file=sys.stderr,
+        )
+        return 2
+    missing_modules = {
+        name: entry.get("reason", "")
+        for name, entry in (reachability.get("missingModules") or {}).items()
+        if isinstance(entry, dict)
+    }
+    for spec in args.missing_module:
+        name, sep, reason = spec.partition("=")
+        if not sep or not name.strip() or not reason.strip():
+            print(f"--missing-module needs NAME=REASON, not '{spec}'.", file=sys.stderr)
+            return 2
+        missing_modules[name.strip()] = reason.strip()
     try:
         document = derive(
             args.item,
@@ -561,24 +811,13 @@ def main(argv=None) -> int:
             manifest_path,
             project,
             [os.path.expanduser(p) for p in args.site_packages],
+            [os.path.expanduser(p) for p in args.lock],
+            missing_modules,
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    # The derivation owns the oracle reachability section only. Hand-written
-    # findings and joins survive the rewrite, and a hand-written
-    # reachability section is refused unless --force says to replace it.
-    existing = load_json(args.out)
     if isinstance(existing, dict):
-        source = (existing.get("reachability") or {}).get("source")
-        if source not in (None, "oracle") and not args.force:
-            print(
-                f"The reachability section of '{args.out}' has source '{source}'; "
-                "refreshing it from the oracle would drop those labels. Pass --force "
-                "to replace it.",
-                file=sys.stderr,
-            )
-            return 2
         for section in ("findings", "joins"):
             if section in existing:
                 document[section] = existing[section]
@@ -589,7 +828,8 @@ def main(argv=None) -> int:
     counts = document["reachability"]["counts"]
     print(
         f"{args.item}: used {counts['used']}, unused {counts['unused']}, unmapped "
-        f"{counts['unmapped']}, local {counts['local']} of {counts['certainUses']} certain uses"
+        f"{counts['unmapped']}, local {counts['local']}, missing modules "
+        f"{counts.get('missingModule', 0)} of {counts['certainUses']} certain uses"
     )
     return 0
 

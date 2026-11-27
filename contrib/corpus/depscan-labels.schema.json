@@ -92,6 +92,25 @@
             "minimum": 1
           }
         },
+        "missingModules": {
+          "type": "object",
+          "description": "Truth package names that are modules the project imports but neither its tree nor any distribution holds, each with its count of certain uses and the reviewed reason. They are no dependency, so no label and no miss.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["occurrences", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "occurrences": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
         "counts": {
           "type": "object",
           "required": ["used", "unused"],
@@ -110,6 +129,10 @@
               "minimum": 0
             },
             "local": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missingModule": {
               "type": "integer",
               "minimum": 0
             },
