@@ -387,6 +387,14 @@ def main() -> int:
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    # The derivation owns the reachability section only. An existing label
+    # file's hand-written findings and joins survive the rewrite, so
+    # refreshing the oracle labels never drops them.
+    existing = load_json(args.out)
+    if isinstance(existing, dict):
+        for section in ("item", "findings", "joins"):
+            if section in existing:
+                document[section] = existing[section]
     out_dir = os.path.dirname(os.path.abspath(args.out))
     os.makedirs(out_dir, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fp:
