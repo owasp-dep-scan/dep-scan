@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:manifest:3",
   "title": "dep-scan scan directory manifest",
-  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist. The decisions field names the decisions file the scan read, with its digest, when one was.",
+  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist. The decisions field names the decisions file, the VEX documents and the --fail-on expressions the scan applied, with the files' digests.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -44,7 +44,11 @@
       "items": {
         "$ref": "#/$defs/input"
       },
-      "description": "Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place an absolute path, a username or a hostname may appear."
+      "description": "Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place a username or a hostname may appear; sourceRoot and the decisions record hold an absolute path only when no path relative to the scan directory exists."
+    },
+    "sourceRoot": {
+      "type": "string",
+      "description": "The scanned source directory, relative to the scan directory with / separators when a relative path exists, otherwise absolute. Absent when the scan read a BOM, a BOM directory, a package URL or an image. The server's propose_triage creates .depscan/decisions.toml under it."
     },
     "tools": {
       "type": "array",
@@ -101,15 +105,17 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "file",
-            "sha256",
-            "selectedBy"
-          ],
+          "minProperties": 1,
+          "dependentRequired": {
+            "file": [
+              "sha256",
+              "selectedBy"
+            ]
+          },
           "properties": {
             "file": {
               "type": "string",
-              "description": "The decisions file the scan read: relative to the scanned source root with / separators when it is inside that root, otherwise absolute."
+              "description": "The decisions file the scan read: relative to the scan directory with / separators when a relative path exists, otherwise absolute. depscan report and the server's decisions tools resolve a relative value against the scan directory only, never against their working directory."
             },
             "sha256": {
               "type": "string",
@@ -119,6 +125,36 @@
             "selectedBy": {
               "type": "string",
               "description": "What selected the file: default (the scanned directory's .depscan/decisions.toml), option, environment, project-config or user-config."
+            },
+            "vex": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "sha256"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The VEX document, recorded the way the decisions file is."
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "The SHA-256 hex digest of that document."
+                  }
+                }
+              },
+              "description": "Each --vex document the scan applied, in the order given. depscan report reads them again unless it is given its own --vex."
+            },
+            "failOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Each --fail-on expression the scan evaluated, as given. depscan report evaluates them again unless it is given its own --fail-on."
             }
           }
         },
@@ -126,7 +162,7 @@
           "type": "null"
         }
       ],
-      "description": "The decisions file the scan applied, with its digest, or null when the scan read none. A file the scan read is data about findings, reviewed in pull requests; the manifest records which one it was."
+      "description": "The decisions the scan applied: the decisions file with its digest, the VEX documents and the --fail-on expressions, or null when it had none of them. A file the scan read is data about findings, reviewed in pull requests; the manifest records which one it was, so a report evaluates the same decisions."
     }
   },
   "$defs": {
@@ -248,7 +284,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The capability names the stage needed, named the way depscan doctor names them."
+          "description": "The capability names the stage needed or assessed, named the way depscan doctor names them."
         },
         "notAssessed": {
           "type": "array",

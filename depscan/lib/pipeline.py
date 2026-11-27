@@ -945,7 +945,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     findings: List = getattr(ctx, "findings_list", [])
     decisions = getattr(ctx, "decisions", None)
     if decisions is not None:
-        scan_dir.decisions_record = decisions.record
+        scan_dir.decisions_record = decisions.record_for(str(ctx.reports_dir))
     if getattr(ctx, "decisions_outcome", "pending") == "pending" and (
         ctx.scans or ctx.blint_review_ran
     ):
@@ -1042,6 +1042,7 @@ def stage_decisions(ctx) -> bool:
             stages=scan_dir.stages,
             vulns=ctx.all_pkg_vulnerabilities,
             source="scan",
+            scan_dir=str(ctx.reports_dir),
         )
     except decision_lib.BaselineError as exc:
         ctx.decisions_outcome = "failed"

@@ -45,13 +45,17 @@ EXIT_CODES = (
     (
         EXIT_FAILURE,
         "A scan or command that could not run, for example an unusable "
-        "vulnerability database, a source target that does not exist, or a "
-        "baseline that cannot be read or does not match its digest.",
+        "vulnerability database, a source target that does not exist, a "
+        "baseline that cannot be read or does not match its digest, or a "
+        "report on a scan whose recorded gate can no longer be evaluated.",
     ),
-    (EXIT_USAGE, "A usage error, including any dep-scan 6 command line and a decisions file the schema refuses."),
+    (
+        EXIT_USAGE,
+        "A usage error, including any dep-scan 6 command line and a decisions file the schema refuses.",
+    ),
     (
         EXIT_EXPECTATION_FAILED,
-        "A decisions file expectation with action = \"fail\" matched a finding, "
+        'A decisions file expectation with action = "fail" matched a finding, '
         "so the gate the file (or --fail-on) describes is not met.",
     ),
     (

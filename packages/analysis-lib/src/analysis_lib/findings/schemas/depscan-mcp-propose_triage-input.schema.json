@@ -5,7 +5,7 @@
   "description": "The arguments of the propose_triage tool: one triage proposal, with who proposes it. The tool writes proposals only; it never sets an author or an approver, so the proposal changes nothing until a person runs depscan triage review. The server must have been started with --allow-propose.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["state", "proposed_by"],
+  "required": ["state", "proposed_by", "scan_dir"],
   "oneOf": [
     {"required": ["finding"]},
     {"required": ["advisory", "purl"]}
@@ -75,7 +75,7 @@
     "scan_dir": {
       "type": "string",
       "minLength": 1,
-      "description": "A scan directory inside the allowed roots. The proposal is written into the decisions file the scanned project resolves to, which must be a .toml file; the tool creates no file other than .depscan/decisions.toml under the project root."
+      "description": "A scan directory inside the allowed roots. The proposal is written into the decisions file depscan report would read for that scan: one the environment or configuration names, else the file the manifest records, resolved against the scan directory. It must be a .toml file; the tool creates no file other than .depscan/decisions.toml under the source root the manifest records."
     }
   }
 }

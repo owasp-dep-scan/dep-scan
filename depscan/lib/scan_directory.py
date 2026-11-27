@@ -521,6 +521,32 @@ def _sanitize_doctor_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
     return sanitized
 
 
+def recorded_path(path: str, scan_dir: str) -> str:
+    """A path the manifest records for later use: relative to the scan
+    directory with ``/`` separators whenever a relative path exists,
+    otherwise (another drive on Windows) absolute. A project moved together
+    with its scan directory, or a report run from any working directory,
+    then finds the same file."""
+    absolute = os.path.abspath(path)
+    try:
+        relative = os.path.relpath(absolute, os.path.abspath(scan_dir))
+    except ValueError:
+        return absolute.replace(os.sep, "/")
+    return relative.replace(os.sep, "/")
+
+
+def source_root_entry(options: Dict[str, Any], scan_dir: str) -> Optional[str]:
+    """The scanned source directory as the manifest's ``sourceRoot``
+    records it (see :func:`recorded_path`), or None when the scan read a
+    BOM, a BOM directory, a purl or an image instead of a directory."""
+    if any(options.get(key) for key in ("bom", "bom_dir", "search_purl")):
+        return None
+    source = options.get("src_dir") or "."
+    if not os.path.isdir(str(source)):
+        return None
+    return recorded_path(str(source), scan_dir)
+
+
 class ScanDirectory:
     """The manifest builder one scan fills in as its stages run."""
 
@@ -605,6 +631,9 @@ class ScanDirectory:
             database = dict(report_doc["data"]["vulnerabilityDatabase"])
             database["directory"] = home_relative(database.get("directory"))
             manifest["database"]["vulnerabilityDatabase"] = database
+        source_root = source_root_entry(options, self.reports_dir)
+        if source_root is not None:
+            manifest["sourceRoot"] = source_root
         # Written whether or not a file was read, so a scan that read none
         # says so and is told apart from a manifest older than the key.
         manifest["decisions"] = self.decisions_record

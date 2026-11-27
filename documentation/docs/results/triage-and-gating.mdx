@@ -237,20 +237,32 @@ action = "fail"
 
 ## Re-evaluating a saved scan
 
-`depscan report <scan-dir>` applies the decisions as they are now. It
-resolves the file from `--decisions`, then `DEPSCAN_DECISIONS`, then the
-`[scan] decisions` key of the configuration files (`--config` names one),
-then the file the scan's manifest records. The manifest records that file
-relative to the scanned source root when it lies inside it, so the report
-looks for it under the source root, then the scan directory, then the scan
-directory's parent. When the recorded file cannot be found, the report warns
-and keeps the gate result the scan saved, with its exit code; a missing
-file is never a silent pass. When the file's digest differs from the one the
-scan recorded, the report evaluates the file as it is now and warns that it
-changed since the scan. A scan gated only with `--fail-on`, followed by a
-report that names no decisions, shows the saved result with a warning. The
-warnings are in the expectations document's `warnings` array as well as on
-the console.
+`depscan report <scan-dir>` applies the decisions as they are now. The
+scan's manifest records what it applied: the decisions file and each
+`--vex` document with their SHA-256 digests, written relative to the scan
+directory with `/` separators (absolute only when no relative path exists,
+as with another drive on Windows), and the `--fail-on` expressions as
+given. The report resolves a recorded path against the scan directory and
+nothing else, so the working directory it runs from never chooses the file,
+and a project moved together with its scan directory still finds it.
+
+A file named by `--decisions`, `DEPSCAN_DECISIONS` or the `[scan]
+decisions` key of the configuration files (`--config` names one) wins over
+the recorded one; when it is a different file, the report warns and names
+the file the scan used. The recorded `--fail-on` expressions and VEX
+documents apply again unless the report is given its own `--fail-on` or
+`--vex`, which replace them.
+
+When the recorded file's digest differs from the one the scan recorded,
+the report evaluates the file as it is now and warns that it changed since
+the scan. When a recorded file cannot be found, the report keeps the gate
+result the scan saved in `depscan.expectations.json`: the console block,
+the JSON document's `expectations` and the exit code all come from that
+saved result, with a warning, and the findings keep the scan's own triage.
+When that saved result is gone as well, the recorded gate cannot be
+evaluated, and the report exits 1 with a message saying so; a missing file
+is never a silent pass. The warnings are in the expectations document's
+`warnings` array as well as on the console.
 
 The console block, headed "Decisions and gate", names the file, the
 warnings, the suppressed count, the new and existing counts against a

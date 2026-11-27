@@ -16,26 +16,64 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["file", "sha256", "selectedBy"],
+          "minProperties": 1,
+          "dependentRequired": {
+            "file": [
+              "sha256",
+              "selectedBy"
+            ]
+          },
           "properties": {
             "file": {
               "type": "string",
-              "description": "The decisions file the scan read: relative to the scanned source root with / separators when it is inside that root, otherwise absolute."
+              "description": "The decisions file: relative to the scan directory with / separators when a relative path exists, otherwise absolute."
             },
             "sha256": {
               "type": "string",
               "pattern": "^[0-9a-f]{64}$",
-              "description": "The SHA-256 hex digest of that file."
+              "description": "The SHA-256 hex digest of the decisions file."
             },
             "selectedBy": {
               "type": "string",
-              "description": "What selected the file when the scan ran."
+              "description": "What selected the file: default, option, environment, project-config or user-config."
+            },
+            "vex": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "sha256"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The VEX document, recorded the way the decisions file is."
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "The SHA-256 hex digest of that document."
+                  }
+                }
+              },
+              "description": "Each VEX document the evaluation applied."
+            },
+            "failOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Each --fail-on expression the evaluation applied, as given."
             }
           }
         },
-        {"type": "null"}
+        {
+          "type": "null"
+        }
       ],
-      "description": "The decisions record from the scan's manifest, or null when the scan read no decisions file."
+      "description": "The decisions record from the scan's manifest, or null when the scan had no decisions work."
     },
     "entries": {
       "type": "array",
@@ -111,7 +149,7 @@
     "warnings": {
       "type": "array",
       "items": {"type": "string"},
-      "description": "Why the entries are missing or may differ from what the scan applied: the decisions file the scan recorded cannot be found, or its digest changed since the scan."
+      "description": "Why the entries are missing or may differ from what the scan applied: the decisions file the scan recorded cannot be found, its digest changed since the scan, or a file the environment or configuration names is read instead."
     }
   }
 }

@@ -27,11 +27,17 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["file", "sha256", "selectedBy"],
+          "minProperties": 1,
+          "dependentRequired": {
+            "file": [
+              "sha256",
+              "selectedBy"
+            ]
+          },
           "properties": {
             "file": {
               "type": "string",
-              "description": "The decisions file: relative to the scanned source root with / separators when it is inside that root, otherwise absolute."
+              "description": "The decisions file: relative to the scan directory with / separators when a relative path exists, otherwise absolute."
             },
             "sha256": {
               "type": "string",
@@ -41,12 +47,44 @@
             "selectedBy": {
               "type": "string",
               "description": "What selected the file: default, option, environment, project-config or user-config."
+            },
+            "vex": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "file",
+                  "sha256"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "The VEX document, recorded the way the decisions file is."
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "The SHA-256 hex digest of that document."
+                  }
+                }
+              },
+              "description": "Each VEX document the evaluation applied."
+            },
+            "failOn": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Each --fail-on expression the evaluation applied, as given."
             }
           }
         },
-        {"type": "null"}
+        {
+          "type": "null"
+        }
       ],
-      "description": "The decisions file the evaluation read, or null when the run had none and worked from command-line expectations only."
+      "description": "The decisions the evaluation applied: the decisions file, the VEX documents and the --fail-on expressions, or null when it had none of them and worked from a baseline only."
     },
     "baseline": {
       "oneOf": [

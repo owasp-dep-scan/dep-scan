@@ -799,46 +799,38 @@ def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
     """The decisions of one scan directory: the entries with their status,
     the stale and expired ones, and the last gate result.
 
-    The decisions file is the one the scan recorded, found the way
-    ``depscan report`` finds it (relative to the scanned source root, the
-    scan directory or its parent), and read only inside the allowed roots.
-    A recorded file that cannot be found, or that changed since the scan,
-    is named in ``warnings``.
+    The decisions file is the one ``depscan report`` would read for the
+    scan (:func:`depscan.lib.decisions.resolve_for_saved_scan`): a file the
+    server's environment or configuration names, else the file the scan
+    recorded, resolved against the scan directory only. It is read only
+    inside the allowed roots. A recorded file that cannot be found, that
+    changed since the scan, or that another file overrides is named in
+    ``warnings``.
     """
     del allow_scans, allow_propose
     from depscan.lib import decisions as decisions_lib
 
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
-    record, found = decisions_lib.locate_recorded_file(result.manifest, scan_dir)
+    resolution = decisions_lib.resolve_for_saved_scan(result.manifest, scan_dir)
     document = {
         "scanDir": json_path(scan_dir),
-        "decisions": record,
+        "decisions": resolution.record,
         "entries": [],
         "stale": [],
         "expired": [],
         "proposals": [],
         "gate": _read_gate(scan_dir),
     }
-    if record is not None and found is None:
-        document["warnings"] = [
-            f"the decisions file the scan recorded ({record['file']}) cannot be found"
-        ]
-    if found is not None:
-        listing = api.triage_entries(file=confinement.confine(found, roots), scan_dir=scan_dir)
+    if resolution.path is not None:
+        listing = api.triage_entries(
+            file=confinement.confine(resolution.path, roots), scan_dir=scan_dir
+        )
         for key in ("entries", "stale", "expired", "proposals"):
             document[key] = listing[key]
-        if record.get("sha256") and record["sha256"] != _file_digest(found):
-            document["warnings"] = [
-                f"the decisions file {record['file']} changed since the scan; the entries "
-                "are listed as the file is now"
-            ]
+    if resolution.warnings:
+        document["warnings"] = list(resolution.warnings)
     return document, [document], scan_dir
-
-
-def _file_digest(path: str) -> str:
-    with open(path, "rb") as handle:
-        return hashlib.sha256(handle.read()).hexdigest()
 
 
 def _read_gate(scan_dir: str):
@@ -854,29 +846,29 @@ def _proposal_file(scan_root: str, roots) -> Tuple[str, bool]:
     """The decisions file a proposal about the scan at ``scan_root`` goes
     into, and whether the tool may create it.
 
-    The file is the one the scanned project resolves to: the file the scan
-    recorded, found the way ``depscan report`` finds it, or else the one the
-    environment, the configuration files or the project's own
-    ``.depscan/decisions.toml`` name. It must be a ``.toml`` file inside the
-    roots. The only file the tool creates is ``.depscan/decisions.toml``
-    under the scanned source root; any other missing file is refused.
+    The file is the one ``depscan report`` and ``get_decisions`` resolve for
+    the scan (:func:`depscan.lib.decisions.resolve_for_saved_scan`): one the
+    server's environment or configuration names, else the file the scan
+    recorded, resolved against the scan directory. A scan that read no file
+    gets ``.depscan/decisions.toml`` under the source root its manifest
+    records, resolved against the scan directory too. The file must be a
+    ``.toml`` file inside the roots, and that default is the only file the
+    tool creates; a recorded file that cannot be found is refused.
     """
     from depscan.lib import decisions as decisions_lib
 
     manifest = scan_directory.read_manifest(scan_root) or {}
-    source_root = decisions_lib.manifest_source_root(manifest)
-    record, found = decisions_lib.locate_recorded_file(manifest, scan_root)
-    if found is None and record is not None:
+    resolution = decisions_lib.resolve_for_saved_scan(manifest, scan_root)
+    if resolution.missing:
         raise ToolError(
-            f"the decisions file the scan recorded ({record['file']}) cannot be found, so "
-            "the proposal has nowhere to go; ask the person running the server to restore it"
+            f"{resolution.warnings[0]}, so the proposal has nowhere to go; ask the person "
+            "running the server to restore it"
         )
-    if found is None:
-        found, _selected_by = decisions_lib.resolve_decisions_path(None, source_root)
+    source_root = decisions_lib.manifest_source_root(manifest, scan_root)
     default = (
         os.path.join(source_root, decisions_lib.DEFAULT_DECISIONS_FILE) if source_root else None
     )
-    path = found or default
+    path = resolution.path or default
     if path is None:
         raise ToolError(
             f"the scan at {json_path(scan_root)} names no source directory and no decisions "
@@ -1034,9 +1026,9 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
         "propose_triage",
         "Propose one triage decision about a finding of a scan, as a "
         "proposal a person approves with depscan triage review. The proposal "
-        "goes into the decisions file the scanned project resolves to; the "
-        "tool creates no file other than .depscan/decisions.toml under the "
-        "project. The server must be started with --allow-propose; the tool "
+        "goes into the decisions file depscan report would read for the scan, "
+        "found relative to the scan directory; the tool creates no file other "
+        "than .depscan/decisions.toml under the scanned project. The server must be started with --allow-propose; the tool "
         "never writes an approved decision, never sets an author or an "
         "approver, and never changes a person's decision.",
         propose_triage_tool,

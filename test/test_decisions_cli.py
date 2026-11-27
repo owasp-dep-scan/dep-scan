@@ -570,21 +570,31 @@ def test_a_relative_baseline_resolves_against_the_working_directory(
 # --- where the decisions file is found -----------------------------------------------------
 
 
-def test_the_recorded_path_is_relative_to_the_source_root(scan_stubs, tmp_path, monkeypatch):
-    project = tmp_path / "project"
+def test_the_recorded_path_is_relative_to_the_scan_directory(
+    scan_stubs, tmp_path, monkeypatch, capsys
+):
+    project = tmp_path / "work" / "proj"
     (project / ".depscan").mkdir(parents=True)
     _write(project / ".depscan" / "decisions.toml", FAIL_HIGH)
-    reports = tmp_path / "reports"
-    assert run_main(monkeypatch, _scan_argv(str(project), reports)) == 3
+    monkeypatch.chdir(tmp_path / "work")
+    assert run_main(monkeypatch, _scan_argv("proj", "scan1")) == 3
+    reports = tmp_path / "work" / "scan1"
     manifest = json.loads((reports / "depscan.manifest.json").read_text())
-    assert manifest["decisions"]["file"] == ".depscan/decisions.toml"
+    assert manifest["decisions"]["file"] == "../proj/.depscan/decisions.toml"
+    assert manifest["sourceRoot"] == "../proj"
     expectations = json.loads((reports / scan_directory.EXPECTATIONS_FILE).read_text())
-    assert expectations["decisions"]["file"] == ".depscan/decisions.toml"
-    # The report finds it from another working directory.
-    elsewhere = tmp_path / "elsewhere"
-    elsewhere.mkdir()
-    monkeypatch.chdir(elsewhere)
+    assert expectations["decisions"]["file"] == "../proj/.depscan/decisions.toml"
+    # Another working directory holds an unrelated proj/.depscan/decisions.toml
+    # that would pass the gate; the report never reads it.
+    other = tmp_path / "other"
+    (other / "proj" / ".depscan").mkdir(parents=True)
+    _write(other / "proj" / ".depscan" / "decisions.toml", TRIAGE_OK)
+    monkeypatch.chdir(other)
+    capsys.readouterr()
     assert run_main(monkeypatch, ["report", str(reports)]) == 3
+    out = " ".join(capsys.readouterr().out.split())
+    assert "changed since the scan" not in out
+    assert "../proj/.depscan/decisions.toml, relative to the scan directory" in out
 
 
 def test_report_on_a_moved_project_finds_the_file_beside_the_scan(
@@ -597,6 +607,101 @@ def test_report_on_a_moved_project_finds_the_file_beside_the_scan(
     moved = tmp_path / "moved"
     project.rename(moved)
     assert run_main(monkeypatch, ["report", str(moved / "reports")]) == 3
+
+
+def test_report_on_a_project_moved_with_its_sibling_scan_directory(
+    scan_stubs, tmp_path, monkeypatch, capsys
+):
+    first = tmp_path / "first"
+    (first / "proj" / ".depscan").mkdir(parents=True)
+    _write(first / "proj" / ".depscan" / "decisions.toml", FAIL_HIGH)
+    assert run_main(monkeypatch, _scan_argv(str(first / "proj"), first / "scan")) == 3
+    first.rename(tmp_path / "second")
+    capsys.readouterr()
+    assert run_main(monkeypatch, ["report", str(tmp_path / "second" / "scan")]) == 3
+    assert "Warning" not in capsys.readouterr().out
+
+
+def test_an_environment_file_that_differs_from_the_recorded_one_is_named(
+    scan_stubs, tmp_path, monkeypatch, capsys
+):
+    project = tmp_path / "project"
+    (project / ".depscan").mkdir(parents=True)
+    _write(project / ".depscan" / "decisions.toml", FAIL_HIGH)
+    reports = tmp_path / "reports"
+    assert run_main(monkeypatch, _scan_argv(str(project), reports)) == 3
+    other = _write(tmp_path / "other.toml", TRIAGE_OK)
+    monkeypatch.setenv("DEPSCAN_DECISIONS", other)
+    capsys.readouterr()
+    assert run_main(monkeypatch, ["report", str(reports)]) == 0
+    out = "".join(capsys.readouterr().out.split())
+    assert "thisrunevaluatesthedecisionsfile" in out
+    assert "other.toml(selectedbyenvironment);thescanused" in out
+    assert out.count("project/.depscan/decisions.toml") >= 1
+
+
+def test_report_exits_1_when_the_recorded_gate_cannot_be_evaluated(
+    scan_stubs, tmp_path, monkeypatch, capsys
+):
+    project = tmp_path / "project"
+    (project / ".depscan").mkdir(parents=True)
+    _write(project / ".depscan" / "decisions.toml", FAIL_HIGH)
+    reports = tmp_path / "reports"
+    assert run_main(monkeypatch, _scan_argv(str(project), reports)) == 3
+    project.rename(tmp_path / "gone")
+    (reports / scan_directory.EXPECTATIONS_FILE).unlink()
+    capsys.readouterr()
+    assert run_main(monkeypatch, ["report", str(reports)]) == 1
+    assert "cannot be evaluated" in " ".join(capsys.readouterr().err.split())
+    assert run_main(monkeypatch, ["report", str(reports), "--format", "json"]) == 1
+    document = json.loads(capsys.readouterr().out)
+    assert "cannot be evaluated" in json.dumps(document["error"])
+
+
+def test_report_applies_the_fail_on_the_scan_recorded(scan_stubs, tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    (project / ".depscan").mkdir(parents=True)
+    # A triage-only file whose decision does not suppress the finding.
+    _write(
+        project / ".depscan" / "decisions.toml",
+        TRIAGE_OK.replace('state = "not_affected"', 'state = "exploitable"').replace(
+            'justification = "code_not_reachable"\n', ""
+        ),
+    )
+    reports = tmp_path / "reports"
+    argv = _scan_argv(str(project), reports, "--fail-on", "severity=high")
+    assert run_main(monkeypatch, argv) == 3
+    manifest = json.loads((reports / "depscan.manifest.json").read_text())
+    assert manifest["decisions"]["failOn"] == ["severity=high"]
+    assert run_main(monkeypatch, ["report", str(reports)]) == 3
+    # Without the saved gate result the recorded expression still applies.
+    (reports / scan_directory.EXPECTATIONS_FILE).unlink()
+    assert run_main(monkeypatch, ["report", str(reports)]) == 3
+    # A --fail-on on the report replaces the recorded one.
+    assert run_main(monkeypatch, ["report", str(reports), "--fail-on", "severity=critical"]) == 0
+
+
+def test_a_fail_on_scan_keeps_its_gate_beside_a_marking_baseline(
+    scan_stubs, tmp_path, monkeypatch
+):
+    bom = _write_bom(tmp_path / "app.cdx.json")
+    assert run_main(monkeypatch, _scan_argv(bom, tmp_path / "base")) == 0
+    reports = tmp_path / "reports"
+    assert run_main(monkeypatch, _scan_argv(bom, reports, "--fail-on", "severity=high")) == 3
+    argv = ["report", str(reports), "--baseline", str(tmp_path / "base")]
+    assert run_main(monkeypatch, argv) == 3
+
+
+def test_report_reapplies_the_vex_documents_the_scan_recorded(scan_stubs, tmp_path, monkeypatch):
+    bom = _write_bom(tmp_path / "app.cdx.json")
+    reports = tmp_path / "reports"
+    vex = _write(tmp_path / "vex.json", json.dumps(CYCLONEDX_VEX))
+    decisions = _write(tmp_path / "decisions.toml", FAIL_HIGH)
+    argv = _scan_argv(bom, reports, "--vex", vex, "--decisions", decisions)
+    assert run_main(monkeypatch, argv) == 0
+    manifest = json.loads((reports / "depscan.manifest.json").read_text())
+    assert manifest["decisions"]["vex"][0]["file"] == "../vex.json"
+    assert run_main(monkeypatch, ["report", str(reports), "--decisions", decisions]) == 0
 
 
 def test_report_keeps_the_saved_gate_when_the_recorded_file_is_gone(
@@ -616,6 +721,31 @@ def test_report_keeps_the_saved_gate_when_the_recorded_file_is_gone(
     document = json.loads(capsys.readouterr().out)
     assert "cannot be found" in document["expectations"]["warnings"][0]
     assert document["expectations"]["summary"]["fail"] == 1
+
+
+def test_a_kept_gate_gives_the_block_the_document_and_the_exit_code(
+    scan_stubs, tmp_path, monkeypatch, capsys
+):
+    project = tmp_path / "project"
+    (project / ".depscan").mkdir(parents=True)
+    _write(project / ".depscan" / "decisions.toml", FAIL_HIGH)
+    bom = _write_bom(tmp_path / "app.cdx.json")
+    assert run_main(monkeypatch, _scan_argv(bom, tmp_path / "base")) == 0
+    reports = tmp_path / "reports"
+    assert run_main(monkeypatch, _scan_argv(str(project), reports)) == 3
+    project.rename(tmp_path / "gone")
+    argv = ["report", str(reports), "--baseline", str(tmp_path / "base")]
+    capsys.readouterr()
+    assert run_main(monkeypatch, argv) == 3
+    out = " ".join(capsys.readouterr().out.split())
+    assert "Gate FAIL: no-high" in out
+    assert "Gate exit code: 3" in out
+    assert run_main(monkeypatch, [*argv, "--format", "json"]) == 3
+    from analysis_lib.findings.decisions import gate_exit_from_document
+
+    expectations = json.loads(capsys.readouterr().out)["expectations"]
+    assert gate_exit_from_document(expectations) == 3
+    assert any("were not evaluated" in warning for warning in expectations["warnings"])
 
 
 def test_report_says_when_the_file_changed_since_the_scan(

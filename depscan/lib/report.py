@@ -74,8 +74,8 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         help="Path to the decisions file to apply to the saved findings. "
         "Default: DEPSCAN_DECISIONS, then the decisions key of the "
         "configuration files, then the file the scan's manifest records, "
-        "found relative to the scanned source root, the scan directory or "
-        "its parent.",
+        "resolved against the scan directory. A file other than the "
+        "recorded one is named in a warning.",
     )
     parser.add_argument(
         "--config",
@@ -96,8 +96,9 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         dest="fail_on",
         metavar="SELECTORS",
         help="Gate for this evaluation, as key=value selector pairs joined by "
-        'commas, for example "grade=high,reach=reached". Same grammar as the '
-        "decisions file's [[expect]] entries.",
+        'commas, for example "grade=high,reach=reached". Same grammar '
+        "as the decisions file's [[expect]] entries. Replaces the --fail-on "
+        "expressions the scan recorded, which apply again otherwise.",
     )
     parser.add_argument(
         "--vex",
@@ -105,7 +106,8 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         metavar="FILE",
         help="Load a CycloneDX VEX or OpenVEX document as triage decisions "
         "that apply at once, with the document named as their author. "
-        "Repeatable.",
+        "Repeatable. Replaces the VEX documents the scan recorded, which "
+        "apply again otherwise.",
     )
     parser.add_argument(
         "--out",
@@ -330,14 +332,17 @@ def _reevaluate(args: argparse.Namespace, result) -> Tuple[Optional[dict], int]:
     and apply through :func:`depscan.lib.decisions.apply_run_decisions`, the
     function the scan's decisions stage calls. The findings are changed in
     place, so the renderings and the JSON document show the decisions as
-    they stand now; the saved files keep the scan's own application. When
-    the decisions file the scan recorded cannot be found, the gate result
-    the scan saved is kept, with the warning, and its exit code stands
-    beside whatever the command-line options evaluate to.
+    they stand now; the saved files keep the scan's own application. When a
+    file the scan recorded cannot be found, the gate result the scan saved
+    is the result: the findings keep the scan's application, and the
+    console block, the JSON document and the exit code all come from that
+    saved document, with the warnings added.
 
     :returns: The expectations document, None when there is nothing to
         evaluate and the scan saved no gate result, and the gate's exit code.
     :raises DecisionsUsageError: When a decisions option cannot be used.
+    :raises GateUnavailableError: When the scan recorded a gate that can no
+        longer be evaluated.
     :raises analysis_lib.findings.decisions.BaselineError: When the baseline
         cannot be read.
     """
@@ -352,34 +357,24 @@ def _reevaluate(args: argparse.Namespace, result) -> Tuple[Optional[dict], int]:
     saved = _saved_expectations(result.reports_dir)
     run = decisions_lib.load_for_saved_scan(options, result.manifest, result.reports_dir, saved)
     document = None
-    if run.active:
+    if run.saved is not None:
+        document = dict(run.saved)
+        document["warnings"] = list(document.get("warnings") or []) + list(run.warnings)
+    elif run.active:
         document = decisions_lib.apply_run_decisions(
             run,
             result.findings,
             stages=(result.manifest or {}).get("stages") or [],
             vulns=(vuln for tscan in result.types for vuln in tscan.vulnerabilities),
             source="report",
+            scan_dir=result.reports_dir,
         )
-    exit_code = decisions_lib.gate_exit(document)
-    if run.saved is not None:
-        kept = dict(run.saved)
-        kept["warnings"] = list(kept.get("warnings") or []) + list(run.warnings)
-        saved_exit = decisions_lib.gate_exit(kept)
-        if document is None:
-            document, exit_code = kept, saved_exit
-        else:
-            # 4 over 3 over 0, so the higher code is the one that stands.
-            exit_code = max(exit_code, saved_exit)
-            document["warnings"] = kept["warnings"] + [
-                f"the gate result the scan saved exits {saved_exit}; this run exits with "
-                "the higher of that code and this evaluation's"
-            ]
     out = getattr(args, "out", None)
     if out and document is not None:
         from depscan.lib.scan_directory import atomic_write_json
 
         atomic_write_json(str(out), document)
-    return document, exit_code
+    return document, decisions_lib.gate_exit(document)
 
 
 def _saved_expectations(reports_dir: str) -> Optional[dict]:
@@ -411,8 +406,10 @@ def run_report_args(args: argparse.Namespace) -> int:
     block prints ahead of the full tables, and the exit code carries the
     gate, 4 over 3, beside the codes the exit table always had. A baseline
     that cannot be read, or whose digest does not match, stops the run with
-    exit 1 and the reason, exactly as a scan stops. A decisions option that
-    cannot be used is a usage error and exits 2.
+    exit 1 and the reason, exactly as a scan stops, and so does a scan whose
+    recorded gate can no longer be evaluated (the files it recorded and the
+    gate result it saved are all gone). A decisions option that cannot be
+    used is a usage error and exits 2.
     """
     json_output = args.format == "json"
     try:
@@ -435,7 +432,7 @@ def run_report_args(args: argparse.Namespace) -> int:
         else:
             print(message, file=sys.stderr)
         return EXIT_USAGE
-    except decision_lib.BaselineError as exc:
+    except (decision_lib.BaselineError, decisions_lib.GateUnavailableError) as exc:
         message = str(exc)
         if json_output:
             print_error_document(EXIT_FAILURE, "report", message)

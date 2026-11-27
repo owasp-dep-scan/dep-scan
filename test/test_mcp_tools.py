@@ -2150,7 +2150,7 @@ def test_get_decisions_returns_the_entries_and_the_gate(open_session, tmp_path, 
     # scan verb does, and records it relative to the source root.
     scan_dir = make_scan_dir("with-decisions")
     manifest = json.loads((scan_dir / "depscan.manifest.json").read_text(encoding="utf-8"))
-    assert manifest["decisions"]["file"] == ".depscan/decisions.toml"
+    assert manifest["decisions"]["file"] == "../../src/.depscan/decisions.toml"
 
     async def scenario(session):
         return await call_document(
@@ -2186,6 +2186,88 @@ def test_get_decisions_warns_when_the_recorded_file_is_gone(open_session, tmp_pa
     document = drive(open_session, scenario, (tmp_path,))
     assert document["entries"] == []
     assert "cannot be found" in document["warnings"][0]
+
+
+def _relative_scan(tmp_path, monkeypatch, scan_stubs):
+    """Scan the project as ``src``, relative to the working directory, the
+    way a person types it, and return the scan directory and the project's
+    decisions file."""
+    work = tmp_path / "work"
+    src = work / "src"
+    (src / ".depscan").mkdir(parents=True)
+    (src / "app.py").write_text("import requests\n", encoding="utf-8")
+    decisions_file = src / ".depscan" / "decisions.toml"
+    decisions_file.write_text(LIVE_ENTRY, encoding="utf-8")
+    monkeypatch.chdir(work)
+    result = api.scan(
+        api.scan_options(
+            src_dir_image="src",
+            project_type=["python"],
+            bom_engine="CdxgenGenerator",
+            reports_dir="scan1",
+            no_banner=True,
+        )
+    )
+    # Another project in another working directory holds its own policy
+    # under the same relative path.
+    other = tmp_path / "other"
+    (other / "src" / ".depscan").mkdir(parents=True)
+    other_file = other / "src" / ".depscan" / "decisions.toml"
+    other_file.write_text(LIVE_ENTRY.replace("alice", "mallory"), encoding="utf-8")
+    monkeypatch.chdir(other)
+    return Path(result.reports_dir).resolve(), decisions_file, other_file
+
+
+def test_the_decisions_tools_never_resolve_against_the_working_directory(
+    open_session, tmp_path, monkeypatch, scan_stubs
+):
+    scan_dir, decisions_file, other_file = _relative_scan(tmp_path, monkeypatch, scan_stubs)
+    other_before = other_file.read_text(encoding="utf-8")
+
+    async def listing(session):
+        return await call_document(
+            session,
+            "get_decisions",
+            {"scan_dir": str(scan_dir)},
+            "depscan-mcp-get_decisions-output",
+        )
+
+    document = drive(open_session, listing, (tmp_path,))
+    assert [entry["author"] for entry in document["entries"]] == ["alice"]
+    assert "warnings" not in document
+
+    async def propose(session):
+        return await call_document(
+            session, "propose_triage", _proposal(scan_dir), "depscan-mcp-propose_triage-output"
+        )
+
+    document = drive(open_session, propose, (tmp_path,), allow_propose=True)
+    assert Path(document["decisionsFile"]).resolve() == decisions_file.resolve()
+    assert "triage-agent session 8123" in decisions_file.read_text(encoding="utf-8")
+    assert other_file.read_text(encoding="utf-8") == other_before
+
+
+def test_propose_triage_creates_the_default_file_under_the_recorded_source_root(
+    open_session, tmp_path, monkeypatch, scan_stubs
+):
+    scan_dir, decisions_file, other_file = _relative_scan(tmp_path, monkeypatch, scan_stubs)
+    # A scan that read no decisions file: the record is gone with the file.
+    decisions_file.unlink()
+    manifest_path = scan_dir / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["decisions"] = None
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    other_before = other_file.read_text(encoding="utf-8")
+
+    async def propose(session):
+        return await call_document(
+            session, "propose_triage", _proposal(scan_dir), "depscan-mcp-propose_triage-output"
+        )
+
+    document = drive(open_session, propose, (tmp_path,), allow_propose=True)
+    assert Path(document["decisionsFile"]).resolve() == decisions_file.resolve()
+    assert decisions_file.is_file()
+    assert other_file.read_text(encoding="utf-8") == other_before
 
 
 def test_propose_triage_without_the_grant_is_refused(open_session, tmp_path, make_scan_dir):

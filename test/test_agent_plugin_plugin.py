@@ -72,3 +72,12 @@ def test_the_plugin_carries_every_published_skill():
             assert f"not-invoked-{skill}" in eval_names, skill
         else:
             assert f"select-{skill}" in eval_names, skill
+
+
+def test_the_safety_reference_carries_the_exit_code_table():
+    """The plugin's safety reference repeats the exit code table the CLI
+    defines, so an agent branches on the codes the CLI exits with."""
+    from depscan.commands.output import exit_code_table_markdown
+
+    text = (REPO_ROOT / "agent-plugin" / "reference" / "safety.md").read_text(encoding="utf-8")
+    assert exit_code_table_markdown() in text

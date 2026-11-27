@@ -41,9 +41,11 @@ directory reads a file only when one is named. `depscan report` and
 `depscan triage` take `--config` and read the key the same way; after it,
 `report` falls back to the file the scan recorded and `triage` to
 `.depscan/decisions.toml` in the working directory. The manifest records
-which file the scan read, relative to the scanned source root when it lies
-inside it, with its SHA-256 digest, and records `null` when the scan read
-none.
+which file the scan read, relative to the scan directory (absolute only when
+no relative path exists), with its SHA-256 digest, beside the `--vex`
+documents and `--fail-on` expressions the scan applied, and records `null`
+when the scan had none of them. `report` resolves the recorded file against
+the scan directory only.
 
 ## The vulnerability database
 

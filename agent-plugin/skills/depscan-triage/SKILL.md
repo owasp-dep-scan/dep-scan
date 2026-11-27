@@ -28,10 +28,14 @@ depscan report /absolute/path/to/scan-dir --format json
 ```
 
 The document carries `scanDir`, `manifest` and `findings`, and
-`expectations` when decisions apply: the report re-evaluates the project's
-decisions file as it is now, and its `warnings` say when the file the scan
-recorded cannot be found or changed since the scan. Exit codes: 0 read, 1
-could not run, 2 usage error, 3 a fail-action expectation matched, 4 a
+`expectations` when decisions apply: the report re-evaluates the decisions
+file, the VEX documents and the `--fail-on` expressions the scan recorded,
+with the files resolved against the scan directory, and its `warnings` say
+when a recorded file cannot be found, changed since the scan, or was
+replaced by a file the environment or configuration names. When a recorded
+file is gone, `expectations` and the exit code are the gate result the scan
+saved; when that is gone too, the report exits 1 because the recorded gate
+cannot be evaluated. Exit codes: 0 read, 1 could not run, 2 usage error, 3 a fail-action expectation matched, 4 a
 `[[require]]` entry found its capability not assessed; 3 and 4 are the
 user's gate, not a failure of the report. Every path in a findings summary
 you give the user comes from the document, never from memory of a previous
@@ -94,9 +98,9 @@ When the user asks you to record a decision about a finding:
    scan, `proposed_by` naming you and your session, the state the evidence
    supports, and the detail carrying the reasoning and the evidence ids. A
    `not_affected` proposal names its justification. The tool takes no file
-   path: it writes into the decisions file the scan's project resolves to,
-   and never changes a decision a person made; it adds the proposal beside
-   it. The server refuses the call without the `--allow-propose` grant,
+   path: it writes into the decisions file `depscan report` would read for
+   that scan, found relative to the scan directory, and never changes a
+   decision a person made; it adds the proposal beside it. The server refuses the call without the `--allow-propose` grant,
    and you never ask the user to add the grant for a single proposal
    without saying what it widens.
 3. Tell the user the proposal waits for them, with the `handle` the result
