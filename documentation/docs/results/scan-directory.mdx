@@ -143,67 +143,9 @@ The manifest is written last, through a temporary file and a rename, so a direct
 | `sha256` | The SHA-256 digest of the file's bytes. |
 <!-- manifest fields end -->
 
-### input fields
-
-| Field | What it holds |
-| --- | --- |
-| `type` | dir is a directory the scan read, file a single BOM or template file, purl a package URL search. |
-| `path` | The path or package URL as the user gave it. |
-| `sha256` | The SHA-256 digest of a file input. |
-| `git` |  |
-
-### database fields
-
-| Field | What it holds |
-| --- | --- |
-| `vulnerabilityDatabase` | The doctor report's read-only database inspection. |
-| `flavorUsed` | The database flavor the matching stage actually used for this scan. |
-| `shardsUsed` | The shard names the matching stage actually connected, empty when shard mode was off. |
-
-### stage fields
-
-| Field | What it holds |
-| --- | --- |
-| `name` | The stage name, for example setup, database, inventory, enrichment, matching, analysis or render. |
-| `projectType` | The project type the stage ran for, for stages that run once per type. |
-| `status` | completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason. |
-| `reason` | Why the status is failed, skipped or not-assessed. Absent for completed. |
-| `capabilities` | The capability names the stage needed, named the way depscan doctor names them. |
-| `notAssessed` | Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran. |
-| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the analyzer's evidence adapter read a report. |
-| `outputs` | The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently. |
-
-### analyzer fields
-
-| Field | What it holds |
-| --- | --- |
-| `name` | The analyzer name, for example atom, golem, rusi or dosai. |
-| `capability` | The capability the analyzer satisfies, named the way depscan doctor names it. |
-| `status` | completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the reason the adapter gave: what was wrong with the report it found, or, when it found none, the doctor's reason when the capability is unavailable on this machine and otherwise the report names it looked for. The doctor's reason stands in only when no adapter ran. |
-| `reason` | For not-assessed, the adapter's reason (a report it could not read, or the report names it looked for), or the doctor's reason the capability cannot run here when the adapter gave none or no adapter ran. |
-| `caveats` | The producer-level caveats the analyzer's adapter reported for this scan, the same kinds an evidence record carries. Absent when the analyzer completed with nothing to flag. |
-
-### stageOutput fields
-
-| Field | What it holds |
-| --- | --- |
-| `file` | The output file's name in the scan directory layout. |
-| `status` | completed when this version writes the file. not-assessed when it does not, with the reason. |
-| `reason` | For not-assessed, why this version does not produce the file. |
-
-### file fields
-
-| Field | What it holds |
-| --- | --- |
-| `path` | The path relative to the scan directory, always with forward slashes. |
-| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index; expectations is the gate result the decisions file evaluated to. |
-| `producer` | The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here. |
-| `projectType` | The project type the file belongs to, when the name carries one. |
-| `sha256` | The SHA-256 digest of the file's bytes. |
-
 One naming detail prevents a common misreading: options are recorded under their internal names, and both `--bom-profile` and `--profile` land on the same key, `profile`. A manifest from a scan run with `--bom-profile research` alone shows `profile: research` although no scan profile was set. Which checks ran is not an options key at all: the stage list is the record, with a `licenses`, `risk` or `explain` stage skipped when a check or explanation was not requested, and a `check-<name>` stage per check `--checks all` had to leave off.
 
-No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
+No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it, and the `decisions` record, which holds the decisions file relative to the scanned source root and is absolute only when the file lies outside it. Tool paths come from the doctor report with the user's home replaced by `~`. Paths are relative; options that can hold a secret are `"<redacted>"`.
 
 ## Loading a directory back
 
@@ -219,3 +161,5 @@ depscan report reports --explain --explanation-mode EndpointsAndReachables
 ```
 
 `depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database, so it is fast and safe to run anywhere. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
+
+When the scan applied a decisions file, or `--decisions`, `DEPSCAN_DECISIONS` or the configuration files name one, `report` re-evaluates the saved findings against the file as it is now and prints the decisions and gate block first, with the exit codes the gate adds. A recorded file that cannot be found is warned about and the scan's saved gate result is kept; [triage, baselines and gating](triage-and-gating#re-evaluating-a-saved-scan) has the order in which the file is looked for.

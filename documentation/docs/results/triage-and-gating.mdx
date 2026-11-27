@@ -34,53 +34,102 @@ author = "alice"
 created = "2026-11-27T09:00:00Z"
 expires = "2027-03-01T00:00:00Z"
 
-[baseline]
-scan = "../baseline-scan"
-digest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-
 [[expect]]
-id = "no-reached-high"
-description = "No reached finding of exploitability grade high or above"
-grade = "high"
+id = "no-reached-vulnerability"
+description = "No vulnerability the project's code reaches"
+category = "vulnerability"
 reach = "reached"
 action = "fail"
 
 [[require]]
 capability = "reachability"
-project_type = "npm"
 ```
+
+The file is UTF-8, and a leading byte order mark is accepted. Dates are RFC
+3339 date-times with an offset, written as quoted strings or as TOML offset
+date-times (`expires = 2027-03-01T00:00:00Z`); a TOML local date such as
+`2027-03-01` is refused with a message that shows the quoted form to write.
 
 A triage entry selects findings by `finding` (a `dsf1:` fingerprint from the
 findings document) or by `advisory` with `purl`, compared the way the
 findings compare: case and qualifiers fold, a version in the purl pins it,
-and `version_range` narrows with a vers range. The `state`,
-`justification` and `responses` values are the CycloneDX 1.7 vocabulary the
-finding schema publishes. `not_affected`, `false_positive` and `resolved`
-suppress the finding from the gate; `in_triage` and `exploitable` never do;
+and `version_range` narrows with a vers range whose scheme matches the purl
+type. A `dsf1` id leaves the component version out, and findings whose
+declaring manifest is unknown share it, so a `finding` selector selects
+every finding that carries the id. The `state`, `justification` and
+`responses` values are the CycloneDX 1.7 vocabulary the finding schema
+publishes. `not_affected`, `false_positive` and `resolved` suppress the
+finding from the gate; `in_triage` and `exploitable` never do;
 `not_affected` needs a justification. A suppressed finding stays in
 `depscan.findings.json` with its triage state, and the VDR the scan wrote
-carries the decision in its `analysis` object.
+carries the decision in its `analysis` object, which the CSAF export turns
+into the product status (see [VEX and CSAF](../integrate/vex-csaf)).
 
 An entry carries the people in the decision. `author` names the person who
-entered it; `approver` names the person who approved a proposal; and
+made it; `approver` names the person who approved a proposal; and
 `proposed_by` names who or what proposed it, a person or an agent with its
-session. An entry with `proposed_by` and neither `approver` nor `author` is
-a proposal: it is listed as pending, changes no finding, and applies only
-after `depscan triage review --approve <entry> --approver <name>`. `expires`
-ends the decision's life: an expired entry suppresses nothing, and the scan
-warns with the entry, its expiry date and the findings it would have
-matched. An entry that matches no finding in the scan is reported as stale
-with its selector, in `depscan.expectations.json` and in the reports.
+session. An entry with `proposed_by` and no `approver` is a proposal,
+whatever its `author` says: it is listed as pending, changes no finding and
+no gate, and applies only after `depscan triage review --approve <handle>
+--approver <name>`. Every other entry is a live decision and must name its
+`author`. `expires` ends the decision's life: an expired entry suppresses
+nothing, and the scan warns with the entry, its expiry date and the findings
+it would have matched. An entry that matches no finding in the scan is
+reported as stale with its selector, in `depscan.expectations.json` and in
+the reports.
+
+One decision wins per finding. When several live entries select the same
+finding, an entry with a `finding` selector beats one with an `advisory`
+selector, and among entries of the same kind the first in file order wins.
+The finding, the suppressed count, the VDR and CSAF analysis and the console
+all use the winner; every other matching entry is listed as shadowed, in the
+`shadowed` array of the expectations document's `triage` block and on the
+console, so a decision that no longer decides anything is visible.
+
+## The baseline
+
+`[baseline]` names the reference scan that marks every finding `new` or
+`existing` by fingerprint: a scan directory (its `depscan.findings.json` is
+read) or a findings file, relative to the decisions file's directory.
+`digest` is optional; when given, it is the SHA-256 of that findings file
+(`sha256sum reports/depscan.findings.json`), and a file that does not match
+stops the run.
+
+```toml
+[baseline]
+scan = "../reports-main"
+```
+
+A committed `[baseline]` makes every scan on a checkout that lacks that
+directory stop with exit 1, by the rule that an unreadable baseline never
+turns every finding into a new one. In CI, pass the reference scan for the
+run with `--baseline` instead (see the pull request policy below), which
+replaces the file's `[baseline]` and resolves against the working
+directory.
 
 ## The gate
 
 `[[expect]]` entries select findings with selectors that combine with AND:
-`category`, `severity` (a floor), `grade` (a floor on the exploitability
-grade), `reach` (`reached`, `not_reached` or `not_assessed`), `malware`,
-`rule` (advisory and rule ids, aliases included), `purl`, `confidence` and
-`new` (only findings the baseline does not contain). `action` is `fail` or
-`warn`. `[[require]]` entries name a capability from the `--checks` list
-that must have been assessed, optionally for one project type.
+`category`, `severity` (a floor, so `"unknown"`, the lowest, matches every
+finding that has a severity), `grade` (a floor on the exploitability grade), `reach`, `malware`, `rule` (an array of advisory and rule ids,
+aliases included), `purl` with an optional `version_range`, `confidence` (a
+floor) and `new` (true selects only findings the baseline does not contain,
+false only those it does). `reach = "reached"` matches the findings whose
+reachability axis is proven or likely, `"not_reached"` the ones it marks
+unlikely or refuted, and `"not_assessed"` the ones no analyzer assessed; a
+reach recorded as `unknown` matches none of the three. `action` is `fail` or
+`warn`. An `id` uses letters, digits, `.`, `_` and `-`, starts with a letter
+or digit, and is unique across the expect and require entries.
+
+`[[require]]` entries name a capability that must have been assessed:
+`vulnerabilities`, `reachability`, `license`, `supply-chain` (the risk stage
+records it when the cdx-audit supply-chain audit ran) or `binary` (the
+`binary-review` stage records it when blint's review ran). `memory-safety`,
+`mobile`, `code` and `crypto` are refused, because dep-scan does not assess
+them yet. `project_type` restricts a requirement to the project type the
+manifest's stages record: `js` for a scan run with `-t js`, `java` for one
+with `-t java`, and `universal` for a scan without `-t`. A type no stage ran
+for leaves the requirement `not_evaluated`.
 
 The exit codes the gate adds:
 
@@ -91,41 +140,60 @@ The exit codes the gate adds:
 | 4 | A `[[require]]` entry found the capability it names was not assessed. A gate over missing coverage cannot be trusted, so 4 wins over 3. |
 
 Codes 1 (the scan could not run) and 2 (a usage error) keep their meanings
-and win over both. With no decisions file, no `--vex` and no `--fail-on`,
-the gate does not run and findings never change the exit code. A baseline
+and win over both. Findings change the exit code only when the run has
+expectations: `[[expect]]` or `[[require]]` entries in the decisions file,
+or `--fail-on`. A file with only triage entries, a baseline, or a `--vex`
+document marks and annotates findings but never exits 3 or 4. A baseline
 that cannot be read, or whose `digest` does not match the file it names,
 stops the run with exit 1; it never turns every finding into a new one.
 
-The command line speaks the same grammar: `--fail-on "grade=high,
-reach=reached"` adds one fail-action expectation for the run, with the
-selectors as `key=value` pairs and list values joined by `|`. The scan's
-decisions file is resolved from `--decisions`, then `DEPSCAN_DECISIONS`,
-then `[scan] decisions` in the project or user `depscan.toml`, then the
-scanned directory's own `.depscan/decisions.toml`. A scan of a target that
-is not a directory, an image or a purl, reads a file only when one is
-named. `--baseline` replaces the file's `[baseline]` for one run, and
-`--vex <file>` loads CycloneDX VEX and OpenVEX documents as triage
-decisions proposed by the document.
+The command line speaks the same grammar: `--fail-on
+"category=vulnerability,reach=reached"` adds one fail-action expectation for
+the run, with the selectors as `key=value` pairs and list values joined by
+`|`, checked by the same schema as the file. Its expectations take the ids
+`fail-on:1`, `fail-on:2` and so on, which a file id cannot collide with.
+The scan's decisions file is resolved from `--decisions`, then
+`DEPSCAN_DECISIONS`, then `[scan] decisions` in the configuration file
+(`--config`, `DEPSCAN_CONFIG` or `.config/depscan.toml`) or the user's
+`~/.config/depscan/depscan.toml`, then the scanned directory's own
+`.depscan/decisions.toml`. A scan of a target that is not a directory reads
+a file only when one is named. `--baseline <scan>` replaces the file's
+`[baseline]` for one run and resolves against the working directory; on its
+own it marks findings new or existing and gates nothing. `--vex <file>`
+loads a CycloneDX VEX or OpenVEX document whose statements apply at once as
+live decisions, with `VEX document <file name>` as their author and no
+`proposed_by`.
 
 ## Four common policies
 
-Fail on any reached finding of exploitability grade high or above:
+Fail on any vulnerability the project's code reaches, and fail when
+reachability was not assessed, so a skipped analyzer cannot pass as a clean
+gate:
 
 ```toml
 [[expect]]
-id = "no-reached-high"
-description = "No reached finding of grade high or above"
-grade = "high"
+id = "no-reached-vulnerability"
+description = "No vulnerability the project's code reaches"
+category = "vulnerability"
 reach = "reached"
 action = "fail"
+
+[[require]]
+capability = "reachability"
 ```
 
-Fail only on what a change added, against the target branch's scan:
+A scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby
+project answers reachability only with the research profile (`--profile
+research`); without it the requirement exits 4. Add `severity = "high"` for a
+quieter gate. A `grade = "high"` floor is stricter still, but it matches only
+where the exposure axis is assessed, which today means .NET projects through
+dosai, because any axis that is not assessed caps the grade at moderate.
+
+Fail only on what a change added, against the target branch's scan. The file
+holds the expectation, and the CI job passes the target branch's scan
+directory with `--baseline`:
 
 ```toml
-[baseline]
-scan = "target-branch-scan"
-
 [[expect]]
 id = "no-new-findings"
 description = "Nothing new against the target branch"
@@ -133,16 +201,25 @@ new = true
 action = "fail"
 ```
 
-Require reachability to have been assessed for npm projects, so a skipped
-analyzer fails the build instead of passing silently:
+```bash
+depscan scan . --profile research --baseline ../target-branch-scan
+```
+
+Without a baseline the expectation is reported as `not_evaluated`, never as
+a pass.
+
+Require reachability for one project type of a typed scan (`depscan scan .
+-t js -t java`), so a skipped analyzer for that language fails the build:
 
 ```toml
 [[require]]
 capability = "reachability"
-project_type = "npm"
+project_type = "js"
 ```
 
-Warn on supply-chain findings and fail on malware:
+Warn on supply-chain findings and fail on malware. Findings from a `MAL-`
+advisory, or from one the vulnerability database flags as malicious, have
+the category `malware`:
 
 ```toml
 [[expect]]
@@ -158,18 +235,65 @@ category = "malware"
 action = "fail"
 ```
 
+## Re-evaluating a saved scan
+
+`depscan report <scan-dir>` applies the decisions as they are now. It
+resolves the file from `--decisions`, then `DEPSCAN_DECISIONS`, then the
+`[scan] decisions` key of the configuration files (`--config` names one),
+then the file the scan's manifest records. The manifest records that file
+relative to the scanned source root when it lies inside it, so the report
+looks for it under the source root, then the scan directory, then the scan
+directory's parent. When the recorded file cannot be found, the report warns
+and keeps the gate result the scan saved, with its exit code; a missing
+file is never a silent pass. When the file's digest differs from the one the
+scan recorded, the report evaluates the file as it is now and warns that it
+changed since the scan. A scan gated only with `--fail-on`, followed by a
+report that names no decisions, shows the saved result with a warning. The
+warnings are in the expectations document's `warnings` array as well as on
+the console.
+
+The console block, headed "Decisions and gate", names the file, the
+warnings, the suppressed count, the new and existing counts against a
+baseline, the expired, stale, shadowed and pending entries by their handles,
+and every gate result. `depscan scan` prints it at the end of its output,
+where a CI log is read; `depscan report` prints it first, and the HTML report
+places it before the vulnerability table.
+
 ## The command line
 
-`depscan triage` records and reviews the decisions. `triage set` adds or
-updates an entry, keeping the file's comments and order; `triage list
-<scan-dir>` prints the entries with what each matches and flags the stale,
-expired and pending ones; `triage review --approve <entry> --approver
-<name>` approves a proposal and `--reject` removes it; `triage check`
-validates the file the way a gate would, exiting 3 when the file carries
-errors a gate would hit. The author and the approver are required options,
-never guessed from git or the environment. Every subcommand takes
-`--format json`. An agent proposes with the `propose_triage` MCP tool; a
-person approves with `triage review`.
+`depscan triage` records and reviews the decisions. Every entry has a
+handle, `tr-` and ten hex digits of the digest of its selector (and of its
+`proposed_by`, for a proposal), which `triage list` prints and which does
+not move when other entries are added or removed.
+
+- `triage set` writes an entry, keeping the file's comments and order. A
+  decision needs `--author` and replaces the live entry with the same
+  selector as a whole, so the old justification, expiry and approver do not
+  carry over. With `--proposed-by` it writes a proposal instead, needs no
+  `--author`, never replaces a person's decision, and replaces only the
+  same proposer's earlier proposal for that selector.
+- `triage list <scan-dir>` prints the entries with their handles and what
+  each matches, and flags the stale, expired and pending ones.
+- `triage review` with no option lists the proposals awaiting review.
+  `--approve <handle> --approver <name>` approves one and sets its author
+  to the approver when it has none; `--reject <handle> --approver <name>`
+  removes a proposal and refuses a live decision. An approved proposal is
+  a live decision, so its handle drops the `proposed_by` part; when a live
+  decision with the same selector already exists, the two share a handle,
+  the first in file order wins, and a command naming that handle exits 2
+  until the file is edited to keep one of them.
+- `triage remove <handle>` removes any entry.
+- `triage check` validates the file the way a gate would.
+
+The file is the one a scan of the working directory reads, and every
+subcommand takes `--decisions`, `--config` and `--format json`. The author
+and the approver are required options, never guessed from git or the
+environment. A missing name, a handle that matches no entry or more than one,
+or a file that does not parse exits 2; `triage check` exits 3 when the file
+does not parse or carries errors a gate would hit. Every edit is written
+through a temporary file and refused when the file changed since it was
+read. An agent proposes with the `propose_triage` MCP tool; a person
+approves with `triage review`.
 
 ## What the gate proves and what it does not
 
