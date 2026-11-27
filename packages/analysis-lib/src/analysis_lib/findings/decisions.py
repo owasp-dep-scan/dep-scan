@@ -498,9 +498,7 @@ def _entry_from_document(index: int, entry: Dict[str, Any]) -> TriageEntry:
     )
 
 
-def decisions_from_document(
-    document: Dict[str, Any], *, path: Optional[str] = None
-) -> Decisions:
+def decisions_from_document(document: Dict[str, Any], *, path: Optional[str] = None) -> Decisions:
     """Build the loaded decisions from a validated document.
 
     The caller is responsible for validation, through
@@ -1090,14 +1088,10 @@ class GateEvaluation:
             "expect": sum(1 for result in self.results if result.kind == "expect"),
             "require": sum(1 for result in self.results if result.kind == "require"),
             "fail": sum(
-                1
-                for result in self.results
-                if result.kind == "expect" and result.status == "fail"
+                1 for result in self.results if result.kind == "expect" and result.status == "fail"
             ),
             "warn": sum(
-                1
-                for result in self.results
-                if result.kind == "expect" and result.status == "warn"
+                1 for result in self.results if result.kind == "expect" and result.status == "warn"
             ),
             "notEvaluated": self.not_evaluated,
             "requireNotAssessed": self.require_not_assessed,
@@ -1187,8 +1181,8 @@ def _require_result(entry: RequireEntry, stages: Sequence[Dict[str, Any]]) -> Ex
             unassessed.append(listed + ")")
     if unassessed:
         result.status = "fail"
-        result.reason = (
-            f"the {entry.capability} capability was not assessed: " + "; ".join(unassessed)
+        result.reason = f"the {entry.capability} capability was not assessed: " + "; ".join(
+            unassessed
         )
     return result
 
@@ -1205,9 +1199,7 @@ def _matches_with_aliases(
     rule_key = alias_map_key(str(finding.get("rule") or ""))
     if alias_map and rule_key in alias_map:
         ids = alias_map[rule_key]
-    return finding_matches_selectors(
-        finding, selectors, alias_ids=ids, has_baseline=has_baseline
-    )
+    return finding_matches_selectors(finding, selectors, alias_ids=ids, has_baseline=has_baseline)
 
 
 def evaluate_gate(
