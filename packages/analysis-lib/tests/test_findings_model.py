@@ -75,6 +75,17 @@ def test_to_dict_omits_unset_optional_fields():
     assert finding2.to_dict()["components"] == []
 
 
+def test_triage_carries_proposer_and_approver():
+    document = _example("vulnerability.json")
+    finding = Finding.from_dict(document)
+    triage = finding.triage
+    assert triage is not None
+    assert triage.author == "security-team"
+    assert triage.approver is None
+    assert triage.proposed_by == "triage-agent session 8123"
+    assert finding.baseline == "existing"
+
+
 def test_from_dict_rejects_unknown_and_missing():
     document = _example("vulnerability.json")
     with pytest.raises(ValueError, match="unknown properties for Finding: oops"):

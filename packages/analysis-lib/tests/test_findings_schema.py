@@ -98,7 +98,7 @@ def test_schema_names():
 def test_load_schema_metadata():
     schema = load_schema("finding")
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["$id"] == "urn:owasp:depscan:schema:finding:2"
+    assert schema["$id"] == "urn:owasp:depscan:schema:finding:3"
     assert schema["additionalProperties"] is False
 
 

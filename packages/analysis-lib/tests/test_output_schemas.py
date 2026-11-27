@@ -76,10 +76,11 @@ def test_every_schema_is_valid_2020_12(name):
 def test_every_schema_carries_the_published_id_and_a_title(name):
     schema = load_schema(name)
     # The finding schema moved to version 2 when its exploitability axes
-    # dropped Pressure and gained sources, and the manifest schema moved to
-    # version 2 when analyzer entries gained their caveats array; every
-    # other schema is at 1.
-    versions = {"depscan-finding": 2, "depscan-manifest": 2}
+    # dropped Pressure and gained sources, and to version 3 when its triage
+    # object gained approver and proposed_by beside a per-finding baseline
+    # state; the manifest schema moved to version 2 when analyzer entries
+    # gained their caveats array; every other schema is at 1.
+    versions = {"depscan-finding": 3, "depscan-manifest": 2}
     version = versions.get(name, 1)
     assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]
@@ -97,7 +98,7 @@ def test_the_listing_order_is_the_registration_order():
     assert [entry["name"] for entry in summaries] == SCHEMA_NAMES
     assert summaries[0] == {
         "name": "depscan-finding",
-        "$id": "urn:owasp:depscan:schema:finding:2",
+        "$id": "urn:owasp:depscan:schema:finding:3",
         "title": "dep-scan finding",
     }
     assert summaries[-1]["name"] == "depscan-error"

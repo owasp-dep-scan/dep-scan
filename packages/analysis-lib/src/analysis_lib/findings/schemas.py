@@ -9,9 +9,12 @@ A schema's name is its file name without ``.schema.json``:
 ``depscan-scan-output`` for ``depscan-scan-output.schema.json``. Each schema's
 ``$id`` is ``urn:owasp:depscan:schema:<name without depscan->:1``; the finding,
 doctor and manifest identifiers predate the output schemas and are unchanged,
-except the finding schema, which is at ``:2`` since its exploitability axes
-dropped Pressure and gained sources, and the manifest schema, which is at
-``:2`` since its analyzer entries gained their caveats array. The evidence
+except the finding schema, which is at ``:3`` since its exploitability axes
+dropped Pressure and gained sources (``:2``) and its triage object gained
+``approver`` and ``proposed_by`` beside a per-finding ``baseline`` state
+(``:3``), and the manifest schema, which is at ``:3`` since its analyzer
+entries gained their caveats array (``:2``) and it gained the decisions record
+and the expectations file role (``:3``). The evidence
 schema is the one file that lives outside this package: it ships with the
 ``analysis_lib.evidence`` package, whose ``schemas/`` directory it
 documents, and the loader serves it from there without moving the others.
