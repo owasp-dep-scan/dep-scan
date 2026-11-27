@@ -737,30 +737,47 @@ def _packages_where(records: list, wanted) -> set:
     return found
 
 
-def is_development(component: dict) -> bool:
-    """Whether the BOM marks a component as a development-only dependency:
+def development_marker(component: dict):
+    """What marks a component as a development-only dependency in the BOM:
     cdxgen's ``cdx:npm:package:development`` property, or an optional or
-    excluded scope."""
-    if component.get("scope") in ("optional", "excluded"):
-        return True
-    return any(
+    excluded scope; None when nothing does."""
+    if any(
         isinstance(p, dict)
         and p.get("name") == "cdx:npm:package:development"
         and str(p.get("value")).lower() == "true"
         for p in component.get("properties") or []
-    )
+    ):
+        return "cdx:npm:package:development"
+    if component.get("scope") in ("optional", "excluded"):
+        return f"scope {component['scope']}"
+    return None
+
+
+def is_development(component: dict) -> bool:
+    """Whether the BOM marks a component as a development-only dependency."""
+    return development_marker(component) is not None
+
+
+#: The lifecycle labels, in report order.
+LIFECYCLE_PHASES = ("shipped", "build-only", "dev-only")
 
 
 def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
     """Packages labelled shipped, build-only or dev-only against what the
-    scan says ships.
+    scan says ships, reported per label.
 
     A post-build BOM that holds components is the shipped state: a shipped
     package must be in it, a build-only or dev-only one must not. A source
     scan's post-build BOM is empty, since nothing was built, so the build
     BOM (or the type BOM of a scan without lifecycles) answers instead: a
     shipped package must be in it without a development marker, a
-    build-only or dev-only one must carry the marker (``is_development``).
+    build-only or dev-only one must carry the marker
+    (:func:`development_marker`). cdxgen marks a package a build script runs
+    and one only a linter runs with the same property, and no property names
+    the packages a build script runs, so the score says per label which
+    marker it saw, and ``buildOnlyDistinct`` stays false: a build-only
+    package that holds is one that does not ship, not one the BOM told
+    apart from a dev-only one.
     """
     entries = ((labels.get("joins") or {}).get("lifecycle-phase") or {}).get("packages") or []
     if not entries:
@@ -771,25 +788,32 @@ def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
         return {"outcome": "partial", "reason": "the scan directory holds no component BOM"}
     matched = 0
     missed = []
+    by_phase: dict = {}
     for entry in entries:
         key = label_key(entry["purl"])
+        marker = None
         if shipped:
             observed = any(key in keys_of([c.get("purl") or ""]) for c in shipped)
             state = "shipped" if observed else "not shipped"
         else:
             found = [c for c in build if key in keys_of([c.get("purl") or ""])]
-            state = (
-                "absent"
-                if not found
-                else "development"
-                if all(is_development(c) for c in found)
-                else "shipped"
-            )
+            markers = [development_marker(c) for c in found]
+            state = "absent" if not found else "development" if all(markers) else "shipped"
+            marker = markers[0] if found and all(markers) else None
         expected = (
             {"shipped"} if entry.get("phase") == "shipped" else {"not shipped", "development"}
         )
+        phase = by_phase.setdefault(
+            entry.get("phase") or "shipped", {"packages": 0, "matched": 0, "observed": []}
+        )
+        phase["packages"] += 1
+        observation = {"purl": entry["purl"], "state": state}
+        if marker:
+            observation["marker"] = marker
+        phase["observed"].append(observation)
         if state in expected:
             matched += 1
+            phase["matched"] += 1
         else:
             missed.append({**entry, "observed": state})
     return {
@@ -797,6 +821,8 @@ def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
         "measuredFrom": "post-build" if shipped else "build-scope",
         "packages": len(entries),
         "matched": matched,
+        "byPhase": {p: by_phase[p] for p in LIFECYCLE_PHASES if p in by_phase},
+        "buildOnlyDistinct": False,
         "missed": missed,
     }
 

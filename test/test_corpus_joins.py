@@ -284,6 +284,17 @@ def test_lifecycle_join_reads_the_development_scope_of_the_build_bom(tmp_path):
     # uglify-js carries no development marker, so the scan says it ships.
     assert [m["purl"] for m in scored["missed"]] == ["pkg:npm/uglify-js"]
     assert scored["outcome"] == "partial"
+    # Each label is reported on its own, with the marker the BOM carried.
+    phases = scored["byPhase"]
+    assert list(phases) == ["shipped", "build-only", "dev-only"]
+    assert (phases["shipped"]["packages"], phases["shipped"]["matched"]) == (2, 2)
+    assert (phases["build-only"]["packages"], phases["build-only"]["matched"]) == (1, 0)
+    assert phases["build-only"]["observed"] == [{"purl": "pkg:npm/uglify-js", "state": "shipped"}]
+    assert (phases["dev-only"]["packages"], phases["dev-only"]["matched"]) == (2, 2)
+    assert {o.get("marker") for o in phases["dev-only"]["observed"]} == {
+        "cdx:npm:package:development"
+    }
+    assert scored["buildOnlyDistinct"] is False
 
 
 def test_lifecycle_join_prefers_a_post_build_bom_that_holds_components(tmp_path):
