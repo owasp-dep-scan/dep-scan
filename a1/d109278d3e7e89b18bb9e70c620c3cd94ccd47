@@ -1,0 +1,57 @@
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_62a28a1c3d6dbf::t_0b4cb0133655c2 3,11-16,53-57,82-102,134-135
+depscan/commands/mcp.py
+  s_62a28a1c3d6dbf::t_a2ac1c35ef0a88 56-66,88-92,94,96,99-106
+depscan/mcp_server/server.py
+  s_62a28a1c3d6dbf::t_b0f1fa9240bf0c 174-179,182-186,196-200
+  s_62a28a1c3d6dbf::t_1c087a643e0698 248-253,265
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-scan_summary-output.schema.json
+  s_62a28a1c3d6dbf::t_871aba51cc0928 3,5,16-17,65-72,79-97,105-108,175-180
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_decisions-input.schema.json
+  s_62a28a1c3d6dbf::t_420d79113c0d7d 1-16
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_62a28a1c3d6dbf::t_aae0c6708bd39f 74-80,112-115,122
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_decisions-output.schema.json
+  s_62a28a1c3d6dbf::t_fff333afb1a4c3 1-107
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_62a28a1c3d6dbf::t_d662d79ce21f3d 101-104
+packages/analysis-lib/tests/test_findings_schema.py
+  s_62a28a1c3d6dbf::t_d662d79ce21f3d 97-100
+documentation/docs/integrate/agents.mdx
+  s_62a28a1c3d6dbf::t_7ed2cbadab5426 22-23,36,50-51,53,55
+test/test_mcp_tools.py
+  s_62a28a1c3d6dbf::t_68f0f32f2d69d3 54,66-67,347
+  s_62a28a1c3d6dbf::t_4f1ad6d0bb4ba1 2182,2207,2216
+  s_62a28a1c3d6dbf::t_a288bc89d66917 269,271-273,2108-2181,2183-2206,2208-2215,2217-2258
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-propose_triage-output.schema.json
+  s_62a28a1c3d6dbf::t_312e7a3181635f 1-50
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-propose_triage-input.schema.json
+  s_62a28a1c3d6dbf::t_3112d3e8981da4 1-86
+depscan/mcp_server/tools.py
+  s_62a28a1c3d6dbf::t_35a44292ea1c32 244,732
+  s_62a28a1c3d6dbf::t_bbc1d2b63b7696 232-234,357,359,374,376,383,390,403,405,534,536,549,551,575,582,730
+  s_62a28a1c3d6dbf::t_d904dc4b281c6f 795-932,1008-1022,1063,1065-1067
+depscan/lib/decisions_edit.py
+  s_62a28a1c3d6dbf::t_6f3ba61b3e6e5e 26-31,33-36
+packages/analysis-lib/tests/test_mcp_schemas.py
+  s_62a28a1c3d6dbf::t_7fea60abe4467a 3-7,19,32-33,84,160
+  s_62a28a1c3d6dbf::t_93222599fd3aac 101-105
+packages/analysis-lib/tests/test_output_schemas.py
+  s_62a28a1c3d6dbf::t_7fea60abe4467a 85-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1d109278d3e7e89b18bb9e70c620c3cd94ccd47",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
