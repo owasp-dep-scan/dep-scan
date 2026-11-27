@@ -476,7 +476,12 @@ def derive(
         direct = {npm_purl(name) for name in declared}
     else:
         direct = {version_less(purl) for purl in bom_direct_purls(bom)}
+    # A direct dependency is unused only when the truth holds no use of it.
+    # An import the mapping could not place (or placed in the project) still
+    # names its package when the names fold equal, as vulpy's passlib does.
     used_keys = {label_key(purl) for purl in used}
+    if ecosystem == "pypi":
+        used_keys |= {label_key(f"pkg:pypi/{fold_name(name)}") for name in packages}
     unused = sorted(purl for purl in direct if label_key(purl) not in used_keys)
     return {
         "item": item_id,

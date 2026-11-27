@@ -416,3 +416,18 @@ def test_import_table_maps_names_that_differ_from_their_distribution():
         "pkg:pypi/django-split-settings",
         "pkg:pypi/django-watson",
     ]
+
+
+def test_an_imported_but_undeclared_package_is_never_unused(tmp_path):
+    # vulpy imports passlib without declaring it; the BOM lists passlib as a
+    # direct dependency, and the truth's use must keep it out of unused even
+    # though the name stays unmapped.
+    truth = {"usages": [_row("passlib")]}
+    bom = {
+        "metadata": {"component": {"bom-ref": "root"}},
+        "components": [{"purl": "pkg:pypi/passlib@1.7.4", "bom-ref": "c1"}],
+        "dependencies": [{"ref": "root", "dependsOn": ["c1"]}],
+    }
+    reach = derive_labels.derive("py-fixture", truth, bom, project=str(tmp_path))["reachability"]
+    assert reach["unmapped"] == {"passlib": 1}
+    assert reach["unused"] == []
