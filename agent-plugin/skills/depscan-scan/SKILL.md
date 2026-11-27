@@ -91,10 +91,17 @@ Exit codes to branch on:
 - 0: the scan ran. Read the manifest before calling the result clean.
 - 1: the scan could not run (unusable database, missing target). The stderr
   names the cause.
-- 2: a usage error; the error document on stdout names the problem.
-- 4: a requested capability cannot run on this machine. Do not retry with
-  different flags to make it disappear; report what the machine lacks, and
-  suggest `/depscan:depscan-coverage-loop` to the user.
+- 2: a usage error; the error document on stdout names the problem, a
+  decisions file the schema refuses included.
+- 3: an expectation with `action = "fail"` in the project's decisions file
+  (or a `--fail-on` you passed) matched a finding. The scan ran; report the
+  expectations that failed from `depscan.expectations.json` and never edit
+  the decisions file to make the gate pass.
+- 4: a requested capability cannot run on this machine, or a `[[require]]`
+  entry of the decisions file found its capability not assessed. Do not
+  retry with different flags to make it disappear; report what the machine
+  lacks or what was not assessed, and suggest
+  `/depscan:depscan-coverage-loop` to the user.
 
 In CI, add `--fail-on-error`: without it a failed inventory degrades to
 exit 0 with an empty result. `--debug` adds the debug log (for cdxgen too)

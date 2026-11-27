@@ -44,14 +44,23 @@ that directory aside first and say so.
 
 With `--format json`, every verb writes exactly one JSON document to stdout
 and keeps logs and tables on stderr. Parse the whole of stdout as one
-document. The exit codes are:
+document. The exit codes, as `depscan/commands/output.py` defines them:
 
 | Code | Meaning |
 | --- | --- |
-| 0 | Success. Findings never change it; a clean scan also exits 0. |
-| 1 | A scan or command that could not run (unusable database, missing target). |
-| 2 | A usage error, including any dep-scan 6 command line. |
-| 4 | A requested capability that cannot run here (a check whose analyzer is missing, a refused kind). |
+| 0 | Success. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database, a source target that does not exist, or a baseline that cannot be read or does not match its digest. |
+| 2 | A usage error, including any dep-scan 6 command line and a decisions file the schema refuses. |
+| 3 | A decisions file expectation with action = "fail" matched a finding, so the gate the file (or --fail-on) describes is not met. |
+| 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
+
+Findings change the exit code only when the run has expectations:
+`[[expect]]` or `[[require]]` entries in the decisions file, or
+`--fail-on`. Without them a scan with findings and a clean scan both exit 0,
+and triage entries, a baseline or a `--vex` document alone never exit 3 or
+4. Exit 3 is the gate the user set, not a failure of the scan: report which
+expectations matched from `depscan.expectations.json` and never edit the
+decisions file to make it pass.
 
 Exit 4 with a capability the machine lacks is a fact to report, not a
 failure to retry with different flags until it disappears.
@@ -84,9 +93,11 @@ reports the same state machine-wide, and the user can run
   function and the deployed entry points. Reachability output names the
   analyzer and its limits; quote them.
 - dep-scan's own `--csaf` export marks a package `known_affected` when it
-  is in the scan's reached set and `under_investigation` otherwise; it
-  never writes `known_not_affected`. Do not upgrade an
-  `under_investigation` to `not_affected` by hand.
+  is in the scan's reached set and `under_investigation` otherwise. It
+  writes `known_not_affected` only from a triage decision a person
+  recorded or approved in the decisions file, or a VEX document the scan
+  applied. Do not upgrade an `under_investigation` to `not_affected` by
+  hand.
 - Findings carry a `coverage.state`; findings whose state is `assessed`
   were matched, and everything else was not. Say which when summarising.
 

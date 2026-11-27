@@ -1,5 +1,5 @@
 ---
-description: 'An agent parsing dep-scan output gets one JSON document on stdout and branches on exit codes 0, 1, 2 and 4.'
+description: 'An agent parsing dep-scan output gets one JSON document on stdout and branches on exit codes 0 to 4.'
 tags: [safety]
 max_turns: 12
 allowed_tools: [Read, Glob, Grep, Skill]

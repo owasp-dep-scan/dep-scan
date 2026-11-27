@@ -17,8 +17,8 @@ The six dep-scan-front skills cover what dep-scan's code delivers today. The eig
 | --- | --- | --- |
 | `depscan-scan` | Scan a source project and report what to fix first, branching on the exit codes and the manifest stages | yes |
 | `depscan-container-image` | Scan an image reference, rootfs or tar, with the cdxgen 13.8.0 minimum, the empty-findings trap an old cdxgen produces, and the rootfs link closure, trust material and installed-file provenance steps | yes |
-| `depscan-triage` | Read a scan directory back, explain and rank findings; records no decisions, because the MCP server has no `record_triage` tool | yes |
-| `depscan-vex-compliance` | Produce the CSAF VEX document a scan exports with `--csaf`, explain the `known_affected` and `under_investigation` statements dep-scan derives from reachability, and validate CSAF or VDR documents | yes |
+| `depscan-triage` | Read a scan directory back, explain and rank findings, and, when asked, write a triage proposal through the MCP `propose_triage` tool for a person to approve with `depscan triage review`; it never approves its own proposal | yes |
+| `depscan-vex-compliance` | Produce the CSAF VEX document a scan exports with `--csaf`, explain the statements dep-scan derives from triage decisions and from reachability, and validate CSAF or VDR documents | yes |
 | `depscan-vdb` | Check and refresh the vulnerability database, and answer advisory questions from the store with the v7 vdb CLI | no, on request |
 | `depscan-coverage-loop` | Scan, read `depscan doctor` and the manifest's stages that did not complete, fix the missing tool, data or option each names, and re-scan | no, on request |
 | `depscan-reachability-proof` | Prove or disprove reach for a finding with witness paths and root sets (golem, rusi, kosi, dosai, atom) | yes |

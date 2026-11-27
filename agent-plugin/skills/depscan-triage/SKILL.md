@@ -27,9 +27,14 @@ evidence says, and reporting "not assessed" as unknown rather than clean.
 depscan report /absolute/path/to/scan-dir --format json
 ```
 
-The document carries `scanDir`, `manifest` and `findings`. Exit codes: 0
-read, 1 could not run, 2 usage error. Every path in a findings summary you
-give the user comes from the document, never from memory of a previous
+The document carries `scanDir`, `manifest` and `findings`, and
+`expectations` when decisions apply: the report re-evaluates the project's
+decisions file as it is now, and its `warnings` say when the file the scan
+recorded cannot be found or changed since the scan. Exit codes: 0 read, 1
+could not run, 2 usage error, 3 a fail-action expectation matched, 4 a
+`[[require]]` entry found its capability not assessed; 3 and 4 are the
+user's gate, not a failure of the report. Every path in a findings summary
+you give the user comes from the document, never from memory of a previous
 scan.
 
 With the explanation of the analysis:
@@ -52,9 +57,9 @@ over `depscan mcp`: `scan_summary`, `list_findings` (filters: category,
 severity, purl, cwe, rule, reachable), `get_finding`, `explain_finding`,
 `coverage`, `list_components`, `diff_scans`, `doctor`, `vdb_status`,
 `run_scan` (a dry run by default), `get_decisions` (the triage entries of a
-scan with their status, and the last gate result) and `propose_triage`
-(writes a proposal; the server must have been started with
-`--allow-propose`). List results are paged: when a result
+scan with their handles and status, the last gate result, and warnings
+when the recorded file is missing or changed) and `propose_triage` (writes
+a proposal; the server must have been started with `--allow-propose`). List results are paged: when a result
 carries `nextCursor`, pass it back as `cursor` until it is absent before
 counting or ranking, and a result too large for the reply is written to a
 spill file in the scan directory whose path the result names. The server exits 4 when the `mcp` extra
@@ -85,17 +90,21 @@ When the user asks you to record a decision about a finding:
 
 1. Name the finding by its `dsf1:` id from `list_findings` or `get_finding`,
    and say in one sentence what the evidence shows.
-2. Write the proposal with `propose_triage`, with `proposedBy` naming you
-   and your session, the state the evidence supports, and the detail
-   carrying the reasoning and the evidence ids. A `not_affected` proposal
-   names its justification. The tool writes the proposal into the
-   decisions file the scan recorded; the server refuses the call without
-   the `--allow-propose` grant, and you never ask the user to add the grant
-   for a single proposal without saying what it widens.
-3. Tell the user the proposal waits for them: `depscan triage review
-   --approve <entry> --approver <their name>` approves it, `--reject`
-   removes it. Until then the proposal changes no gate, no report and no
-   exit code.
+2. Write the proposal with `propose_triage`, with `scan_dir` naming the
+   scan, `proposed_by` naming you and your session, the state the evidence
+   supports, and the detail carrying the reasoning and the evidence ids. A
+   `not_affected` proposal names its justification. The tool takes no file
+   path: it writes into the decisions file the scan's project resolves to,
+   and never changes a decision a person made; it adds the proposal beside
+   it. The server refuses the call without the `--allow-propose` grant,
+   and you never ask the user to add the grant for a single proposal
+   without saying what it widens.
+3. Tell the user the proposal waits for them, with the `handle` the result
+   carries: `depscan triage review --approve <handle> --approver <their
+   name>` approves it, and `depscan triage review --reject <handle>
+   --approver <their name>` removes it; `depscan triage review` alone lists
+   the pending proposals. Until a person approves it the proposal changes
+   no gate, no report and no exit code.
 4. Never write an author or an approver name other than through the
    review step, and never claim a decision is recorded when the tool was
    refused or the write failed.
