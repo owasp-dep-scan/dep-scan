@@ -803,9 +803,9 @@
     },
     {
       "name": "lifecycle-fixture",
-      "description": "A small JavaScript project with a used shipped dependency, an unused shipped dependency and a dev-only dependency, with its package-lock committed so the scan needs no install.",
+      "description": "A small JavaScript project with a used shipped dependency, an unused shipped dependency, a build-only dependency its build script runs and a dev-only dependency, with its package-lock committed so the scan needs no install.",
       "source": "fixture:lifecycle-fixture",
-      "sha256": "d9d668db986225fe85875b99ae9c179dc81e0777fbd26db073256c36b2803699",
+      "sha256": "da4c73cfbccc08aa52b8a4f79d3850b925efe36d45033edee89b79be8820e405",
       "license": "Apache-2.0",
       "storage": {
         "kind": "fixture",
@@ -826,7 +826,8 @@
         ]
       },
       "labels": "labels/lifecycle-fixture.json",
-      "subset": "ci"
+      "subset": "ci",
+      "notes": "The scan asks for the pre-build and build BOMs only: a post-build BOM of a source scan reads an installed environment the scan never creates, so it would be empty. The lifecycle join reads the build BOM's development markers instead."
     },
     {
       "name": "monorepo-fixture",

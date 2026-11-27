@@ -214,42 +214,75 @@ def test_route_join_reports_a_missed_route(tmp_path):
     assert missed_paths == ["/weather", "/health"]
 
 
-def test_lifecycle_join_marks_shipped_labels_not_assessed_without_postbuild(tmp_path):
-    _write_bom(
-        tmp_path,
-        "sbom-prebuild-js.cdx.json",
-        ["pkg:npm/express@4.19.2", "pkg:npm/eslint@9.0.0", "pkg:npm/chalk@5.3.0"],
-    )
-    _write_bom(
-        tmp_path,
-        "sbom-build-js.cdx.json",
+def _dev(purl):
+    return {
+        "purl": purl,
+        "scope": "optional",
+        "properties": [{"name": "cdx:npm:package:development", "value": "true"}],
+    }
+
+
+LIFECYCLE_LABELS = {
+    "joins": {
+        "lifecycle-phase": {
+            "source": "hand",
+            "packages": [
+                {"purl": "pkg:npm/express", "phase": "shipped"},
+                {"purl": "pkg:npm/chalk@5.6.2", "phase": "shipped"},
+                {"purl": "pkg:npm/chalk@4.1.2", "phase": "dev-only"},
+                {"purl": "pkg:npm/eslint", "phase": "dev-only"},
+                {"purl": "pkg:npm/uglify-js", "phase": "build-only"},
+            ],
+        }
+    }
+}
+
+
+def test_lifecycle_join_reads_the_development_scope_of_the_build_bom(tmp_path):
+    # A source scan's post-build BOM is empty, so the build BOM's
+    # development markers decide what must not ship; the two chalk versions
+    # are told apart by their versioned labels.
+    _write_props_bom(
+        tmp_path / "sbom-build-js.cdx.json",
         [
-            "pkg:npm/express@4.19.2",
-            "pkg:npm/eslint@9.0.0",
-            "pkg:npm/chalk@5.3.0",
-            "pkg:npm/body-parser@1.20.2",
+            {"purl": "pkg:npm/express@4.22.3", "scope": "required"},
+            {"purl": "pkg:npm/chalk@5.6.2"},
+            _dev("pkg:npm/chalk@4.1.2"),
+            _dev("pkg:npm/eslint@9.39.5"),
+            {"purl": "pkg:npm/uglify-js@3.19.3"},
         ],
+    )
+    _write_props_bom(tmp_path / "sbom-postbuild-js.cdx.json", [])
+    scored = corpus_score.score_join_lifecycle_phase(_scan({}, tmp_path), LIFECYCLE_LABELS)
+    assert scored["measuredFrom"] == "build-scope"
+    assert scored["matched"] == 4
+    # uglify-js carries no development marker, so the scan says it ships.
+    assert [m["purl"] for m in scored["missed"]] == ["pkg:npm/uglify-js"]
+    assert scored["outcome"] == "partial"
+
+
+def test_lifecycle_join_prefers_a_post_build_bom_that_holds_components(tmp_path):
+    _write_props_bom(
+        tmp_path / "sbom-build-js.cdx.json",
+        [_dev("pkg:npm/eslint@9.39.5"), {"purl": "pkg:npm/express@4.22.3"}],
+    )
+    _write_props_bom(
+        tmp_path / "sbom-postbuild-js.cdx.json",
+        [{"purl": "pkg:npm/express@4.22.3"}, {"purl": "pkg:npm/chalk@5.6.2"}],
     )
     labels = {
         "joins": {
             "lifecycle-phase": {
                 "source": "hand",
-                "packages": [
-                    {"purl": "pkg:npm/express", "phase": "shipped"},
-                    {"purl": "pkg:npm/eslint", "phase": "dev-only"},
-                ],
+                "packages": LIFECYCLE_LABELS["joins"]["lifecycle-phase"]["packages"][:2]
+                + [{"purl": "pkg:npm/eslint", "phase": "dev-only"}],
             }
         }
     }
-    item = {"scan": {"types": ["js"], "args": []}}
-    scored = corpus_score.score_join_lifecycle_phase(
-        corpus_score.ItemScan(item, _result(tmp_path)), labels
-    )
-    assert scored["outcome"] == "partial"
-    assert scored["matched"] == 0
-    reasons = {entry["purl"]: entry["reason"] for entry in scored["notAssessed"]}
-    assert "pkg:npm/express" in reasons
-    assert "post-build" in reasons["pkg:npm/express"]
+    scored = corpus_score.score_join_lifecycle_phase(_scan({}, tmp_path), labels)
+    assert scored["measuredFrom"] == "post-build"
+    assert scored["outcome"] == "measured"
+    assert scored["matched"] == 3
 
 
 def test_component_layer_gap_when_no_component_carries_a_layer(tmp_path):

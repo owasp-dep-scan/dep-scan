@@ -956,45 +956,67 @@ def _packages_where(records: list, wanted) -> set:
     return found
 
 
-def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
-    """Packages labelled per lifecycle phase against the phase BOMs.
+def is_development(component: dict) -> bool:
+    """Whether the BOM marks a component as a development-only dependency:
+    cdxgen's ``cdx:npm:package:development`` property, or an optional or
+    excluded scope."""
+    if component.get("scope") in ("optional", "excluded"):
+        return True
+    return any(
+        isinstance(p, dict)
+        and p.get("name") == "cdx:npm:package:development"
+        and str(p.get("value")).lower() == "true"
+        for p in component.get("properties") or []
+    )
 
-    A shipped package must be in the post-build BOM; a build-only or
-    dev-only package must not ship, so it must stay out of the post-build
-    BOM. When the post-build BOM holds no components (a source scan with no
-    built environment), the shipped state was not observed: those labels are
-    not-assessed with that reason, never passes and never misses.
+
+def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
+    """Packages labelled shipped, build-only or dev-only against what the
+    scan says ships.
+
+    A post-build BOM that holds components is the shipped state: a shipped
+    package must be in it, a build-only or dev-only one must not. A source
+    scan's post-build BOM is empty, since nothing was built, so the build
+    BOM (or the type BOM of a scan without lifecycles) answers instead: a
+    shipped package must be in it without a development marker, a
+    build-only or dev-only one must carry the marker (``is_development``).
     """
     entries = ((labels.get("joins") or {}).get("lifecycle-phase") or {}).get("packages") or []
     if not entries:
         return {"outcome": "partial", "reason": "the item labels no lifecycle packages"}
-    phases = {
-        phase: keys_of(
-            c.get("purl") for c in scan.components((phase,)) if isinstance(c.get("purl"), str)
-        )
-        for phase in ("pre-build", "build", "post-build")
-    }
-    if not any(phases.values()):
-        return {"outcome": "partial", "reason": "the scan directory holds no lifecycle BOMs"}
-    shipped = phases["post-build"]
+    shipped = scan.components(("post-build",))
+    build = scan.components(("build",)) or scan.components((None,))
+    if not shipped and not build:
+        return {"outcome": "partial", "reason": "the scan directory holds no component BOM"}
     matched = 0
     missed = []
-    not_assessed = []
     for entry in entries:
         key = label_key(entry["purl"])
-        present = sorted(name for name, components in phases.items() if key in components)
-        if not shipped:
-            not_assessed.append({**entry, "reason": "the post-build BOM holds no components"})
-        elif (entry.get("phase") == "shipped") == (key in shipped):
+        if shipped:
+            observed = any(key in keys_of([c.get("purl") or ""]) for c in shipped)
+            state = "shipped" if observed else "not shipped"
+        else:
+            found = [c for c in build if key in keys_of([c.get("purl") or ""])]
+            state = (
+                "absent"
+                if not found
+                else "development"
+                if all(is_development(c) for c in found)
+                else "shipped"
+            )
+        expected = (
+            {"shipped"} if entry.get("phase") == "shipped" else {"not shipped", "development"}
+        )
+        if state in expected:
             matched += 1
         else:
-            missed.append({**entry, "observed": present})
+            missed.append({**entry, "observed": state})
     return {
-        "outcome": "partial" if (missed or not_assessed) else "measured",
+        "outcome": "partial" if missed else "measured",
+        "measuredFrom": "post-build" if shipped else "build-scope",
         "packages": len(entries),
         "matched": matched,
         "missed": missed,
-        "notAssessed": not_assessed,
     }
 
 
