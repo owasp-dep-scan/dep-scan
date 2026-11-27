@@ -25,7 +25,7 @@ from depscan.lib import pipeline
 def test_github_actions_scans_request_the_ci_permission_pack():
     ctx = SimpleNamespace(project_types=["github"])
     scan = SimpleNamespace(project_type="github")
-    bom = SimpleNamespace(container=False, purl_types={"github"})
+    bom = pipeline._AuditBom(path="sbom-github.cdx.json", purl_types={"github"})
     assert "ci-permission" in pipeline._audit_categories(ctx, scan, bom)
 
 

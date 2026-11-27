@@ -724,7 +724,7 @@ def test_fixture_copies_never_land_inside_the_checkout():
         ),
     }
     payload, reason = corpus_inputs.resolve_fixture(item, os.path.join(REPO_ROOT, "corpus-scans"))
-    assert payload is None
+    assert payload is None and reason is not None
     assert "inside the dep-scan checkout" in reason
 
 
@@ -788,7 +788,7 @@ def test_a_failed_fixture_build_is_not_assessed_with_its_reason(tmp_path, monkey
     monkeypatch.setenv("CC", "no-such-compiler-on-path")
     item = _fixture_item("binary-hardening-fixture", build="build.sh")
     payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
-    assert payload is None
+    assert payload is None and reason is not None
     assert "build.sh" in reason
     assert ("no C compiler" in reason) or ("Linux C compiler" in reason)
 
@@ -800,7 +800,7 @@ def test_a_failed_fixture_build_is_not_assessed_with_its_reason(tmp_path, monkey
 def test_the_binary_fixture_builds_in_the_copy_only(tmp_path):
     item = _fixture_item("binary-hardening-fixture", build="build.sh")
     payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
-    assert reason is None
+    assert reason is None and payload is not None
     for name in ("binary-protected", "binary-unprotected"):
         with open(os.path.join(payload, name), "rb") as fp:
             assert fp.read(4) == b"\x7fELF"
