@@ -41,7 +41,7 @@
     },
     "reachability": {
       "type": "object",
-      "required": ["source", "used", "unused"],
+      "required": ["source", "used"],
       "additionalProperties": false,
       "properties": {
         "source": {
@@ -59,6 +59,7 @@
         },
         "unused": {
           "type": "array",
+          "description": "Declared packages the labels say are never used. Required for an oracle label; a hand label may omit it when the item names no unused package.",
           "items": {
             "$ref": "#/$defs/unusedPackage"
           }

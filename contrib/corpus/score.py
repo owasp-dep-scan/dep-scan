@@ -318,7 +318,10 @@ def resolve_fixture(item: dict, scans_root: str, timeout: float):
         return None, "run mode needs --scans-root to copy the fixture into"
     import shutil
 
-    copy_dir = os.path.abspath(os.path.join(scans_root, item["name"], "payload"))
+    # The copy lands beside the scan directory, never inside it: a BOM
+    # directory scan reads its BOMs from the target, and a target inside the
+    # reports directory would have its BOMs skipped as scan outputs.
+    copy_dir = os.path.abspath(os.path.join(scans_root, "payloads", item["name"]))
     if os.path.isdir(copy_dir):
         shutil.rmtree(copy_dir)
     os.makedirs(os.path.dirname(copy_dir), exist_ok=True)
@@ -1024,7 +1027,14 @@ def score_join_component_runtime(item: dict, result, labels: dict, payload) -> d
     if not ran:
         return {
             "outcome": "partial",
-            "reason": "the evidence store holds no tracebom records; the trace was not read",
+            "reason": (
+                "no tracebom record reached the evidence store: the trace "
+                "carries no components the adapter can attribute (a macOS "
+                "tracebom capture names none, so dep-scan's detector refuses "
+                "the trace as a trace BOM)"
+                if not observed
+                else "the tracebom producer did not run over this scan"
+            ),
         }
     wanted = {purl_key(e["purl"]) for e in entries}
     matched = wanted & observed

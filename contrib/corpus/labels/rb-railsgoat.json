@@ -1,0 +1,337 @@
+{
+  "item": "rb-railsgoat",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:gem/actionmailer",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/actionpack",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/activemodel",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/activerecord",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:gem/activesupport",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/base64",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/date",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:gem/i18n",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:gem/logger",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/rack",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:gem/railties",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:gem/rake",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:gem/uri",
+        "occurrences": 1
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:gem/addressable"
+      },
+      {
+        "purl": "pkg:gem/aruba"
+      },
+      {
+        "purl": "pkg:gem/ast"
+      },
+      {
+        "purl": "pkg:gem/bcrypt"
+      },
+      {
+        "purl": "pkg:gem/better_errors"
+      },
+      {
+        "purl": "pkg:gem/binding_of_caller"
+      },
+      {
+        "purl": "pkg:gem/builder"
+      },
+      {
+        "purl": "pkg:gem/bundler-audit"
+      },
+      {
+        "purl": "pkg:gem/capybara"
+      },
+      {
+        "purl": "pkg:gem/childprocess"
+      },
+      {
+        "purl": "pkg:gem/coderay"
+      },
+      {
+        "purl": "pkg:gem/concurrent-ruby"
+      },
+      {
+        "purl": "pkg:gem/contracts"
+      },
+      {
+        "purl": "pkg:gem/cucumber"
+      },
+      {
+        "purl": "pkg:gem/cucumber-ci-environment"
+      },
+      {
+        "purl": "pkg:gem/cucumber-core"
+      },
+      {
+        "purl": "pkg:gem/cucumber-cucumber-expressions"
+      },
+      {
+        "purl": "pkg:gem/cucumber-html-formatter"
+      },
+      {
+        "purl": "pkg:gem/cucumber-messages"
+      },
+      {
+        "purl": "pkg:gem/database_cleaner"
+      },
+      {
+        "purl": "pkg:gem/diff-lcs"
+      },
+      {
+        "purl": "pkg:gem/erb"
+      },
+      {
+        "purl": "pkg:gem/foreman"
+      },
+      {
+        "purl": "pkg:gem/formatador"
+      },
+      {
+        "purl": "pkg:gem/guard-livereload"
+      },
+      {
+        "purl": "pkg:gem/guard-rspec"
+      },
+      {
+        "purl": "pkg:gem/guard-shell"
+      },
+      {
+        "purl": "pkg:gem/importmap-rails"
+      },
+      {
+        "purl": "pkg:gem/irb"
+      },
+      {
+        "purl": "pkg:gem/jquery-fileupload-rails"
+      },
+      {
+        "purl": "pkg:gem/jquery-rails"
+      },
+      {
+        "purl": "pkg:gem/json"
+      },
+      {
+        "purl": "pkg:gem/language_server-protocol"
+      },
+      {
+        "purl": "pkg:gem/launchy"
+      },
+      {
+        "purl": "pkg:gem/lint_roller"
+      },
+      {
+        "purl": "pkg:gem/listen"
+      },
+      {
+        "purl": "pkg:gem/lumberjack"
+      },
+      {
+        "purl": "pkg:gem/method_source"
+      },
+      {
+        "purl": "pkg:gem/mini_mime"
+      },
+      {
+        "purl": "pkg:gem/minitest"
+      },
+      {
+        "purl": "pkg:gem/multi_test"
+      },
+      {
+        "purl": "pkg:gem/mysql2"
+      },
+      {
+        "purl": "pkg:gem/nenv"
+      },
+      {
+        "purl": "pkg:gem/nio4r"
+      },
+      {
+        "purl": "pkg:gem/notiffany"
+      },
+      {
+        "purl": "pkg:gem/parallel"
+      },
+      {
+        "purl": "pkg:gem/parser"
+      },
+      {
+        "purl": "pkg:gem/pg"
+      },
+      {
+        "purl": "pkg:gem/power_assert"
+      },
+      {
+        "purl": "pkg:gem/pp"
+      },
+      {
+        "purl": "pkg:gem/prism"
+      },
+      {
+        "purl": "pkg:gem/pry"
+      },
+      {
+        "purl": "pkg:gem/pry-rails"
+      },
+      {
+        "purl": "pkg:gem/psych"
+      },
+      {
+        "purl": "pkg:gem/puma"
+      },
+      {
+        "purl": "pkg:gem/racc"
+      },
+      {
+        "purl": "pkg:gem/rack-livereload"
+      },
+      {
+        "purl": "pkg:gem/rackup"
+      },
+      {
+        "purl": "pkg:gem/rails"
+      },
+      {
+        "purl": "pkg:gem/rainbow"
+      },
+      {
+        "purl": "pkg:gem/rb-fsevent"
+      },
+      {
+        "purl": "pkg:gem/rb-inotify"
+      },
+      {
+        "purl": "pkg:gem/rdoc"
+      },
+      {
+        "purl": "pkg:gem/regexp_parser"
+      },
+      {
+        "purl": "pkg:gem/reline"
+      },
+      {
+        "purl": "pkg:gem/responders"
+      },
+      {
+        "purl": "pkg:gem/rspec-expectations"
+      },
+      {
+        "purl": "pkg:gem/rspec-rails"
+      },
+      {
+        "purl": "pkg:gem/rspec-support"
+      },
+      {
+        "purl": "pkg:gem/rubocop"
+      },
+      {
+        "purl": "pkg:gem/rubocop-ast"
+      },
+      {
+        "purl": "pkg:gem/ruby-prof"
+      },
+      {
+        "purl": "pkg:gem/ruby-progressbar"
+      },
+      {
+        "purl": "pkg:gem/sassc-rails"
+      },
+      {
+        "purl": "pkg:gem/selenium-webdriver"
+      },
+      {
+        "purl": "pkg:gem/shellany"
+      },
+      {
+        "purl": "pkg:gem/simplecov"
+      },
+      {
+        "purl": "pkg:gem/sprockets-rails"
+      },
+      {
+        "purl": "pkg:gem/sqlite3"
+      },
+      {
+        "purl": "pkg:gem/stimulus-rails"
+      },
+      {
+        "purl": "pkg:gem/sys-uname"
+      },
+      {
+        "purl": "pkg:gem/test-unit"
+      },
+      {
+        "purl": "pkg:gem/thor"
+      },
+      {
+        "purl": "pkg:gem/tsort"
+      },
+      {
+        "purl": "pkg:gem/turbo-rails"
+      },
+      {
+        "purl": "pkg:gem/turbolinks"
+      },
+      {
+        "purl": "pkg:gem/unicode-display_width"
+      },
+      {
+        "purl": "pkg:gem/zeitwerk"
+      },
+      {
+        "purl": "pkg:generic/ruby"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 13,
+      "unused": 89,
+      "unmapped": 0,
+      "certainUses": 80
+    }
+  }
+}

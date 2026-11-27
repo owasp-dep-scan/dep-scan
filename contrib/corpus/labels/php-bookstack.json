@@ -1,0 +1,195 @@
+{
+  "item": "php-bookstack",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:composer/bacon/bacon-qr-code",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:composer/dompdf/dompdf",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:composer/dompdf/php-font-lib",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/ezyang/htmlpurifier",
+        "occurrences": 67
+      },
+      {
+        "purl": "pkg:composer/guzzlehttp/guzzle",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:composer/guzzlehttp/psr7",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:composer/intervention/image",
+        "occurrences": 25
+      },
+      {
+        "purl": "pkg:composer/knplabs/knp-snappy",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:composer/laravel/framework",
+        "occurrences": 5294
+      },
+      {
+        "purl": "pkg:composer/laravel/socialite",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:composer/league/commonmark",
+        "occurrences": 55
+      },
+      {
+        "purl": "pkg:composer/league/flysystem",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:composer/league/html-to-markdown",
+        "occurrences": 80
+      },
+      {
+        "purl": "pkg:composer/league/oauth2-client",
+        "occurrences": 20
+      },
+      {
+        "purl": "pkg:composer/monolog/monolog",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:composer/nesbot/carbon",
+        "occurrences": 81
+      },
+      {
+        "purl": "pkg:composer/onelogin/php-saml",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:composer/phpseclib/phpseclib",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:composer/pragmarx/google2fa",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:composer/psr/http-client",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:composer/psr/http-message",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/discord",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/gitlab",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/manager",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/microsoft-azure",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/okta",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/socialiteproviders/twitch",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/ssddanbrown/htmldiff",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/symfony/console",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/symfony/error-handler",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:composer/symfony/http-foundation",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:composer/symfony/http-kernel",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:composer/symfony/process",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:composer/symfony/var-dumper",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:composer/voku/portable-ascii",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:composer/xemlock/htmlpurifier-html5",
+        "occurrences": 2
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:composer/fakerphp/faker"
+      },
+      {
+        "purl": "pkg:composer/itsgoingd/clockwork"
+      },
+      {
+        "purl": "pkg:composer/larastan/larastan"
+      },
+      {
+        "purl": "pkg:composer/laravel/tinker"
+      },
+      {
+        "purl": "pkg:composer/league/flysystem-aws-s3-v3"
+      },
+      {
+        "purl": "pkg:composer/mockery/mockery"
+      },
+      {
+        "purl": "pkg:composer/nunomaduro/collision"
+      },
+      {
+        "purl": "pkg:composer/phpunit/phpunit"
+      },
+      {
+        "purl": "pkg:composer/predis/predis"
+      },
+      {
+        "purl": "pkg:composer/squizlabs/php_codesniffer"
+      },
+      {
+        "purl": "pkg:composer/ssddanbrown/asserthtml"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 36,
+      "unused": 11,
+      "unmapped": 0,
+      "certainUses": 5867
+    }
+  }
+}
