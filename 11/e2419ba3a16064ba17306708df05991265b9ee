@@ -1,0 +1,37 @@
+agent-plugin/agents/vuln-triager.md
+  s_7318da1b9edd46::t_fde2c3743d3187 17-21
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_7318da1b9edd46::t_c200ca62639efe 32-45,52-60,90-92
+agent-plugin/reference/safety.md
+  s_7318da1b9edd46::t_09c0f216dbde56 47,51-63,96-100
+documentation/docs/integrate/agent-plugin.mdx
+  s_7318da1b9edd46::t_fde2c3743d3187 20-21
+agent-plugin/README.md
+  s_7318da1b9edd46::t_9d4ef0f93f6425 10
+agent-plugin/evals/safety-json-and-exit-codes/prompt.md
+  s_7318da1b9edd46::t_fde2c3743d3187 2
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_7318da1b9edd46::t_c200ca62639efe 30-37,60-62,93-107
+agent-plugin/evals/safety-json-and-exit-codes/graders/document-and-codes.md
+  s_7318da1b9edd46::t_fde2c3743d3187 6-7
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_7318da1b9edd46::t_09c0f216dbde56 94-104
+agent-plugin/reference/commands.md
+  s_7318da1b9edd46::t_09c0f216dbde56 72-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11e2419ba3a16064ba17306708df05991265b9ee",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
