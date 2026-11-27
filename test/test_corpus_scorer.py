@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from contrib.corpus import inputs as corpus_inputs
 from contrib.corpus import score as corpus_score
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -721,7 +722,7 @@ def test_fixture_copies_never_land_inside_the_checkout():
             os.path.join(REPO_ROOT, "contrib", "corpus", "fixtures", "malware-fixture")
         ),
     }
-    payload, reason = corpus_score.resolve_fixture(item, os.path.join(REPO_ROOT, "corpus-scans"))
+    payload, reason = corpus_inputs.resolve_fixture(item, os.path.join(REPO_ROOT, "corpus-scans"))
     assert payload is None
     assert "inside the dep-scan checkout" in reason
 
@@ -785,7 +786,7 @@ def _fixture_item(name, **extra):
 def test_a_failed_fixture_build_is_not_assessed_with_its_reason(tmp_path, monkeypatch):
     monkeypatch.setenv("CC", "no-such-compiler-on-path")
     item = _fixture_item("binary-hardening-fixture", build="build.sh")
-    payload, reason = corpus_score.resolve_fixture(item, str(tmp_path))
+    payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
     assert payload is None
     assert "build.sh" in reason
     assert ("no C compiler" in reason) or ("Linux C compiler" in reason)
@@ -797,7 +798,7 @@ def test_a_failed_fixture_build_is_not_assessed_with_its_reason(tmp_path, monkey
 )
 def test_the_binary_fixture_builds_in_the_copy_only(tmp_path):
     item = _fixture_item("binary-hardening-fixture", build="build.sh")
-    payload, reason = corpus_score.resolve_fixture(item, str(tmp_path))
+    payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
     assert reason is None
     for name in ("binary-protected", "binary-unprotected"):
         with open(os.path.join(payload, name), "rb") as fp:

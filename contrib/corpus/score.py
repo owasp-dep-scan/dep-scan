@@ -25,21 +25,21 @@ repository items are cloned at the pinned commit of the corpus root and
 checked by the digest of ``git archive``; BOM items read the repo-test data
 pulled by digest under ``--testdata-root``; fixture items are the committed
 directories beside this manifest, checked by a digest over their contents.
-The scorer never runs a scanned project's build tooling, never parses console
-output (it reads the scan directory through :func:`depscan.api.load_scan`),
-and compares every purl through ``comparable_purl``.
+contrib/corpus/inputs.py resolves them. The scorer never runs a scanned
+repository's build tooling (a fixture's own build script runs in the
+fixture's copy), never parses console output (it reads the scan directory
+through :func:`depscan.api.load_scan`), and compares every purl through
+``comparable_purl``.
 """
 
 from __future__ import annotations
 
 import argparse
 import functools
-import hashlib
+import glob
 import json
 import os
 import re
-import shutil
-import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -56,6 +56,11 @@ from analysis_lib.evidence.store import stream as stream_evidence  # noqa: E402
 from analysis_lib.findings.vdr_convert import comparable_purl  # noqa: E402
 from analysis_lib.reachability import get_reachability_impl  # noqa: E402
 from analysis_lib.reachability import ReachabilityAnalysisKV  # noqa: E402
+
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from contrib.corpus.inputs import cache_dir, fixture_digest, git, resolve_payload  # noqa: E402
 
 #: The analysers the reachability scores are reported for, in report order.
 ANALYZERS = ("FrameworkReachability", "SemanticReachability")
@@ -146,21 +151,13 @@ def keys_of(purls) -> set:
     return keys
 
 
-def cache_dir(name: str) -> str:
-    """A directory under the user cache for the corpus's clones, scans and
-    pulled data: ``$XDG_CACHE_HOME/depscan/corpus/<name>``, with
-    ``~/.cache`` standing in for an unset XDG_CACHE_HOME."""
-    root = os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache")
-    return os.path.join(root, "depscan", "corpus", name)
-
-
 def rate(hit_count: int, total: int):
     """A recall or precision rate, or None when nothing is labelled."""
     return round(hit_count / total, 4) if total else None
 
 
 # ---------------------------------------------------------------------------
-# corpus, labels and inputs
+# corpus and labels
 
 
 def load_manifest(path: str) -> dict:
@@ -203,208 +200,14 @@ def select_items(manifest: dict, args) -> list:
     return items
 
 
-def _ignored_patterns() -> list:
-    """The patterns of contrib/corpus/fixtures/.gitignore: files a fixture's
-    own scripts or a local build write, which the digest and the copy skip."""
-    try:
-        with open(os.path.join(_HERE, "fixtures", ".gitignore"), encoding="utf-8") as fp:
-            return [line.strip().rstrip("/") for line in fp if line.strip() and line[0] != "#"]
-    except OSError:
-        return []
-
-
-def fixture_files(directory: str) -> list:
-    """The (relative path, path) pairs of a fixture's committed files, in
-    sorted order: everything under the directory except what the fixtures'
-    .gitignore names, by file or directory name, or by a path relative to
-    contrib/corpus/fixtures when the pattern holds a slash."""
-    patterns = _ignored_patterns()
-    prefix = os.path.basename(os.path.normpath(directory)) + "/"
-    entries = []
-    for base, _dirs, files in os.walk(directory):
-        for name in files:
-            path = os.path.join(base, name)
-            rel = os.path.relpath(path, directory).replace(os.sep, "/")
-            parts = rel.split("/")
-            if any(
-                (prefix + rel).startswith(p + "/") or prefix + rel == p if "/" in p else p in parts
-                for p in patterns
-            ):
-                continue
-            entries.append((rel, path))
-    return sorted(entries)
-
-
-def fixture_digest(directory: str) -> str:
-    """The digest of a fixture directory: SHA-256 over every committed
-    file's relative path with forward slashes and its bytes, in sorted path
-    order."""
-    digest = hashlib.sha256()
-    for rel, path in fixture_files(directory):
-        digest.update(rel.encode("utf-8") + b"\x00")
-        with open(path, "rb") as fp:
-            digest.update(fp.read())
-    return digest.hexdigest()
-
-
-def _git(clone: str, *args, text=True):
-    return subprocess.run(["git", "-C", clone, *args], capture_output=True, text=text)
-
-
-def resolve_repository(item: dict, corpus_root: str, fetch: bool = False):
-    """The clone of a repository item at its pinned commit, digest-checked.
-
-    With ``fetch`` a missing clone is fetched first: a blob-less clone, then
-    a checkout of the pinned commit. Returns (clone, None), or (None, reason)
-    when the clone is missing and fetching is off or the digest fails.
-    """
-    clone = os.path.join(corpus_root, item["name"])
-    source, commit = item["source"].rsplit("@", 1)
-    if not os.path.isdir(os.path.join(clone, ".git")):
-        if not fetch:
-            return None, (
-                f"no clone at {clone}; clone {item['source']} there first, or "
-                "run the scorer with --fetch"
-            )
-        os.makedirs(os.path.dirname(clone), exist_ok=True)
-        cloned = subprocess.run(
-            ["git", "clone", "-q", "--filter=blob:none", source, clone], capture_output=True
-        )
-        if cloned.returncode != 0:
-            return None, f"cloning {source} failed: {cloned.stderr.decode(errors='replace')}"
-    head = _git(clone, "rev-parse", "HEAD").stdout.strip()
-    if head != commit and fetch:
-        _git(clone, "fetch", "-q", "--filter=blob:none", "origin", commit)
-        _git(clone, "checkout", "-q", "--detach", commit)
-        head = _git(clone, "rev-parse", "HEAD").stdout.strip()
-    if head != commit:
-        return None, (
-            f"the clone at {clone} is at {head[:12] or 'an unknown commit'}, "
-            f"not the pinned {commit[:12]}"
-        )
-    tar = _git(clone, "archive", "--format=tar", commit, text=False)
-    if tar.returncode != 0:
-        return None, f"git archive failed for {item['name']}"
-    return _digest_checked(item, hashlib.sha256(tar.stdout).hexdigest(), clone)
-
-
-def _digest_checked(item: dict, digest: str, payload):
-    if digest == item["sha256"]:
-        return payload, None
-    note = item.get("digestNote", "")
-    return None, (
-        f"digest mismatch for {item['name']}: computed {digest}, the manifest pins "
-        f"{item['sha256']}" + (f" ({note})" if note else "")
-    )
-
-
-def resolve_testdata(item: dict, testdata_root: str):
-    """The pulled repo-test data of a BOM item, verified against its digest.
-
-    The data root holds one directory per artifact plus the OCI manifest copy
-    the pull keeps under ``.manifests``, the layout the repotests action
-    pulls into.
-    """
-    testdata = item.get("testdata") or {}
-    artifact = testdata.get("artifact")
-    data_dir = os.path.join(testdata_root, artifact or "")
-    if not artifact or not os.path.isdir(data_dir):
-        return None, (
-            f"the repo-test data for '{artifact or item['name']}' is not pulled "
-            f"under {testdata_root}; pull it by digest with oras first"
-        )
-    manifest_copy = os.path.join(testdata_root, ".manifests", f"{artifact}.json")
-    if not os.path.isfile(manifest_copy):
-        return None, (
-            f"the manifest copy of '{artifact}' is missing under {testdata_root}; "
-            "pull the artifact the way .github/actions/repotests-data does"
-        )
-    sys.path.insert(0, os.path.join(_REPO_ROOT, "contrib"))
-    from repotests import validate as repotests_validate
-
-    try:
-        repotests_validate.check_digests(
-            data_dir, manifest_copy, manifest_digest=testdata["digest"]
-        )
-    except repotests_validate.ValidationFailure as exc:
-        return None, f"the pulled data for '{artifact}' failed its digest check: {exc}"
-    return data_dir, None
-
-
-def resolve_fixture(item: dict, scans_root: str):
-    """The committed fixture of a fixture item, digest-checked and copied.
-
-    The fixture is scanned from a copy under ``scans_root``, after the
-    item's ``build`` script (when it names one) ran in that copy, never from the
-    repository tree: the corpus sits inside dep-scan's own uv workspace, and
-    a scan of the committed directory would pick the workspace's environment
-    up. The copy lands beside the scan directory, never inside it: a BOM
-    directory scan reads its BOMs from the target, and a target inside the
-    reports directory would have its BOMs skipped as scan outputs.
-    """
-    name = item["source"].split(":", 1)[1] if ":" in item["source"] else item["name"]
-    directory = os.path.join(_HERE, "fixtures", name)
-    if not os.path.isdir(directory):
-        return None, f"the fixture '{name}' is not committed under contrib/corpus/fixtures."
-    checked, reason = _digest_checked(item, fixture_digest(directory), directory)
-    if checked is None:
-        return None, reason
-    copy_dir = os.path.abspath(os.path.join(scans_root, "payloads", item["name"]))
-    if os.path.commonpath([copy_dir, _REPO_ROOT]) == _REPO_ROOT:
-        return None, (
-            f"the scans root {scans_root} is inside the dep-scan checkout, whose uv "
-            "workspace a fixture scan would pick up; pass a --scans-root outside it"
-        )
-    shutil.rmtree(copy_dir, ignore_errors=True)
-    for rel, path in fixture_files(directory):
-        os.makedirs(os.path.dirname(os.path.join(copy_dir, rel)), exist_ok=True)
-        shutil.copy2(path, os.path.join(copy_dir, rel))
-    if item.get("build"):
-        # The fixture's own build script runs in the copy, so a built
-        # artifact never reaches the committed tree or its digest.
-        built = subprocess.run(
-            ["bash", item["build"]], cwd=copy_dir, capture_output=True, text=True
-        )
-        if built.returncode != 0:
-            detail = (built.stderr or built.stdout).strip().splitlines()
-            return None, f"the fixture build ({item['build']}) failed: " + (
-                detail[-1] if detail else f"exit {built.returncode}"
-            )
-    return copy_dir, None
-
-
-def resolve_payload(item: dict, args):
-    """The input an item's scan reads, as (payload, None) or (None, reason)."""
-    kind = item.get("kind")
-    if kind == "repository":
-        return resolve_repository(item, args.corpus_root, args.fetch)
-    if kind == "bom":
-        return resolve_testdata(item, args.testdata_root)
-    if kind in ("fixture", "binary"):
-        return resolve_fixture(item, args.scans_root)
-    if kind == "image":
-        if f"sha256:{item['sha256']}" not in item["source"]:
-            return None, (
-                f"the image reference '{item['source']}' does not carry the digest "
-                f"the item pins (sha256:{item['sha256']})"
-            )
-        return item["source"], None
-    return None, f"unknown item kind '{kind}'"
-
-
 # ---------------------------------------------------------------------------
 # scanning
 
 
 def build_scan_options(item: dict, payload, reports_dir: str):
-    """The internal options of the item's scan command line.
-
-    The manifest's ``scan`` object is the command line: the payload as the
-    target, one ``-t`` flag with every type (a repeated ``-t`` replaces, it
-    does not extend), then the item's own arguments. The parsed command line
-    goes through the same conversion the scan verb runs, so the manifest and
-    the run stay in step with what the CLI itself would do.
-    """
+    """The internal options of the item's scan command line: the payload,
+    one ``-t`` with every type (a repeated ``-t`` replaces), then the item's
+    arguments, converted the way the scan verb converts them."""
     from depscan.commands import build_parser
     from depscan.commands import checks as checks_table
     from depscan.commands.scan import _apply_target_options, detect_kind, scan_namespace
@@ -448,13 +251,10 @@ def run_item_scan(item: dict, payload, reports_dir: str):
 
 
 class ItemScan:
-    """One item's scan, with the scan directory's BOMs, evidence records and
-    analyser results each read or computed once and shared by every score.
-
-    ``result`` is the :class:`depscan.api.ScanResult` (or any object with
-    ``reports_dir``, ``findings``, ``manifest`` and ``project_types``);
-    ``src_dir`` is the scanned source, when it exists on this machine.
-    """
+    """One item's scan: the :class:`depscan.api.ScanResult` (or an object
+    with its ``reports_dir``, ``findings``, ``manifest`` and
+    ``project_types``), with the BOMs, evidence records and analyser results
+    each read or computed once. ``src_dir`` is the scanned source, if any."""
 
     def __init__(self, item: dict, result, src_dir=None):
         self.item = item
@@ -495,24 +295,14 @@ class ItemScan:
                     boms[name[len("sbom-") : -len(".cdx.json")]] = bom
         return boms
 
-    def phase_boms(self) -> dict:
-        """The BOMs by lifecycle phase; a BOM without a phase prefix is a
-        type BOM, under None."""
-        phases: dict = {}
-        for stem, bom in self.boms.items():
-            phase = next(
-                (p for prefix, p in PHASE_PREFIXES.items() if stem.startswith(prefix)), None
-            )
-            phases.setdefault(phase, []).append(bom)
-        return phases
-
     def components(self, phases=(None, "build")) -> list:
-        """The component dicts of the BOMs of the given phases."""
+        """The component dicts of the BOMs of the given lifecycle phases,
+        where a BOM without a phase prefix (a type BOM) is phase None."""
         return [
             component
-            for phase, boms in self.phase_boms().items()
-            if phase in phases
-            for bom in boms
+            for stem, bom in self.boms.items()
+            if next((p for pre, p in PHASE_PREFIXES.items() if stem.startswith(pre)), None)
+            in phases
             for component in bom.get("components") or []
             if isinstance(component, dict)
         ]
@@ -555,6 +345,30 @@ class ItemScan:
 # finding categories and reachability
 
 
+def brief(finding: dict, **extra) -> dict:
+    """The id, rule and purls of a finding, for a score's lists."""
+    return {
+        "rule": finding.get("rule"),
+        "purls": finding.get("components") or [],
+        "id": finding.get("id"),
+        **extra,
+    }
+
+
+def finding_matches(finding: dict, entry: dict) -> bool:
+    """Whether a finding is of a label entry's category, carries one of its
+    rules (any rule when the entry names none) and sits on its purl (any
+    purl when it names none)."""
+    rules = {str(rule).lower() for rule in entry.get("rules") or []}
+    return (
+        finding.get("category") == entry["category"]
+        and (not rules or str(finding.get("rule") or "").lower() in rules)
+        and (
+            not entry.get("purl") or label_key(entry["purl"]) in keys_of(finding.get("components"))
+        )
+    )
+
+
 def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     """Score the findings of one result against expected and forbidden
     label entries of one category.
@@ -569,43 +383,18 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     matched_findings = set()
     missed = []
     for entry in expected:
-        rules = {str(rule).lower() for rule in entry.get("rules") or []}
-        key = label_key(entry["purl"])
-        index = next(
-            (
-                i
-                for i, finding in enumerate(findings)
-                if finding.get("category") == entry["category"]
-                and str(finding.get("rule") or "").lower() in rules
-                and key in keys_of(finding.get("components"))
-            ),
-            None,
-        )
+        index = next((i for i, f in enumerate(findings) if finding_matches(f, entry)), None)
         if index is None:
             missed.append(entry)
         else:
             matched_findings.add(index)
     hits = len(expected) - len(missed)
-    fired = []
-    for control in forbidden:
-        rules = {str(rule).lower() for rule in control.get("rules") or []}
-        for finding in findings:
-            if finding.get("category") != control["category"]:
-                continue
-            if rules and str(finding.get("rule") or "").lower() not in rules:
-                continue
-            if control.get("purl") and label_key(control["purl"]) not in keys_of(
-                finding.get("components")
-            ):
-                continue
-            fired.append(
-                {
-                    "rule": finding.get("rule"),
-                    "purls": finding.get("components") or [],
-                    "id": finding.get("id"),
-                    "reason": control.get("reason"),
-                }
-            )
+    fired = [
+        brief(finding, reason=control.get("reason"))
+        for control in forbidden
+        for finding in findings
+        if finding_matches(finding, control)
+    ]
     # A finding on a purl an expected entry names is a true positive of the
     # label even when its rule id differs: the rules list proves the
     # advisory, it does not bound it. Any other finding on a purl the same
@@ -616,19 +405,13 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     for control in forbidden:
         if control.get("purl"):
             controlled.setdefault(control["category"], set()).add(label_key(control["purl"]))
-    unexpected = []
-    for index, finding in enumerate(findings):
-        keys = keys_of(finding.get("components"))
-        if index in matched_findings or keys & expected_keys:
-            continue
-        if keys & controlled.get(finding.get("category"), set()):
-            unexpected.append(
-                {
-                    "rule": finding.get("rule"),
-                    "purls": finding.get("components") or [],
-                    "id": finding.get("id"),
-                }
-            )
+    unexpected = [
+        brief(finding)
+        for index, finding in enumerate(findings)
+        if index not in matched_findings
+        and not keys_of(finding.get("components")) & expected_keys
+        and keys_of(finding.get("components")) & controlled.get(finding.get("category"), set())
+    ]
     return {
         "expected": len(expected),
         "hits": hits,
@@ -804,14 +587,14 @@ def score_join_advisory_usage_reach(scan: ItemScan, labels: dict) -> dict:
     reached_on_unused = []
     for finding in advisories:
         keys = keys_of(finding.get("components"))
-        brief = {"id": finding.get("id"), "rule": finding.get("rule")}
+        short = {"id": finding.get("id"), "rule": finding.get("rule")}
         if not keys & reached:
             if keys & used:
-                not_reached_on_used.append(brief)
+                not_reached_on_used.append(short)
         elif keys & used:
             reached_on_used += 1
         elif keys & unused:
-            reached_on_unused.append(brief)
+            reached_on_unused.append(short)
         else:
             reached_unlabelled += 1
     return {
@@ -889,31 +672,23 @@ def score_join_route_package(scan: ItemScan, labels: dict) -> dict:
 
 def _openapi_usage_locations(reports_dir: str) -> dict:
     """(method, path) to the (file, line) set the OpenAPI operation's
-    handlers occupy."""
+    handlers occupy, from the ``x-atom-usages`` maps of every spec."""
+
+    def mapping(value):
+        return value.items() if isinstance(value, dict) else ()
+
     by_route: dict = {}
-    try:
-        names = sorted(
-            n for n in os.listdir(reports_dir) if "openapi" in n and n.endswith(".json")
-        )
-    except OSError:
-        names = []
-    for name in names:
-        spec = load_json(os.path.join(reports_dir, name)) or {}
-        for path, operations in (spec.get("paths") or {}).items():
-            for method, operation in (
-                (operations or {}).items() if isinstance(operations, dict) else ()
-            ):
+    for name in sorted(glob.glob(os.path.join(reports_dir, "*openapi*.json"))):
+        for path, operations in mapping((load_json(name) or {}).get("paths")):
+            for method, operation in mapping(operations):
                 usages = operation.get("x-atom-usages") if isinstance(operation, dict) else None
-                for kind in ("call", "target"):
-                    by_file = (usages or {}).get(kind) if isinstance(usages, dict) else None
-                    for file_name, lines in (
-                        (by_file or {}).items() if isinstance(by_file, dict) else ()
-                    ):
-                        for line in lines if isinstance(lines, list) else ():
-                            if isinstance(line, int):
-                                by_route.setdefault((method.upper(), path), set()).add(
-                                    (os.path.normpath(file_name), line)
-                                )
+                for kind, by_file in mapping(usages):
+                    for file_name, lines in mapping(by_file) if kind in ("call", "target") else ():
+                        by_route.setdefault((method.upper(), path), set()).update(
+                            (os.path.normpath(file_name), line)
+                            for line in (lines if isinstance(lines, list) else ())
+                            if isinstance(line, int)
+                        )
     return by_route
 
 
@@ -1268,7 +1043,11 @@ def score_one(item: dict, labels, args) -> dict:
             result = api.load_scan(reports_dir)
         except api.ScanError as exc:
             return not_assessed(str(exc))
-        payload = reports_dir
+        # The analysers spell OpenAPI usage targets against the scanned
+        # source, so a repository item reads its clone when one is present.
+        payload = os.path.join(args.corpus_root, item["name"])
+        if item.get("kind") != "repository" or not os.path.isdir(payload):
+            payload = reports_dir
     else:
         payload, reason = resolve_payload(item, args)
         if payload is None:
@@ -1285,11 +1064,9 @@ def score_one(item: dict, labels, args) -> dict:
 def check_floors(floors_doc: dict, score_doc: dict) -> list:
     """The recorded floors that dropped, each with its current value.
 
-    A floor names an item and a dotted path into that item's score entry,
-    for example ``reachability.SemanticReachability.reached.recall``. A
-    floor whose value is missing (an item not scored, a None rate) is a
-    violation too: a floor recorded for an item the run cannot score has
-    dropped in the only sense that matters.
+    A floor names an item and a dotted path into its score entry, such as
+    ``reachability.SemanticReachability.reached.recall``. A missing value
+    (an item not scored, a None rate) is a violation too.
     """
     violations = []
     by_item = {entry["item"]: entry for entry in score_doc.get("items", [])}
@@ -1323,23 +1100,21 @@ def render_markdown(score_doc: dict) -> str:
             reason = (entry.get("reason") or "").replace("|", "/")
             lines.append(f"| {entry['item']} | not assessed | | | {reason[:120]} |")
             continue
+        assessed = {
+            analyzer: scores
+            for analyzer, scores in (entry.get("reachability") or {}).items()
+            if scores.get("status") == "assessed"
+        }
         reach_cells = [
             f"{analyzer.replace('Reachability', '')} {bucket} "
             + "/".join(
-                "-" if cell.get(k) is None else str(cell.get(k)) for k in ("recall", "precision")
+                "-" if scores[bucket].get(k) is None else str(scores[bucket][k])
+                for k in ("recall", "precision")
             )
-            for analyzer, scores in (entry.get("reachability") or {}).items()
-            if scores.get("status") == "assessed"
-            for bucket, cell in ((b, scores.get(b) or {}) for b in ("direct", "reached"))
+            for analyzer, scores in assessed.items()
+            for bucket in ("direct", "reached")
         ]
-        unmapped = next(
-            (
-                s["reached"].get("unmappedUsed")
-                for s in (entry.get("reachability") or {}).values()
-                if s.get("status") == "assessed"
-            ),
-            0,
-        )
+        unmapped = max((s["reached"].get("unmappedUsed", 0) for s in assessed.values()), default=0)
         if unmapped:
             reach_cells.append(f"{unmapped} unmapped used names counted as misses")
         category_cells = [
@@ -1375,57 +1150,27 @@ def render_markdown(score_doc: dict) -> str:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--manifest",
-        default=os.path.join(_HERE, "depscan.corpus.json"),
-        help="The corpus manifest (default: beside this script).",
-    )
-    parser.add_argument("--items", default=None, help="Comma-separated item names.")
-    parser.add_argument(
-        "--subset",
-        default=None,
-        choices=("ci",),
-        help="Score only the items a pull-request job can run.",
-    )
-    parser.add_argument(
-        "--scan-dir",
-        default=None,
-        help="Score existing scan directories under this root instead of running.",
-    )
-    parser.add_argument(
+    add = parser.add_argument
+    add("--manifest", default=os.path.join(_HERE, "depscan.corpus.json"), help="The manifest.")
+    add("--items", help="Comma-separated item names.")
+    add("--subset", choices=("ci",), help="Score only the items a pull-request job can run.")
+    add("--scan-dir", help="Score the scan directories under this root instead of scanning.")
+    add(
         "--scans-root",
         default=cache_dir("scans"),
-        help="Directory the scans and the fixture copies are written to in run mode; keep "
-        "it outside the dep-scan checkout (default: %(default)s).",
+        help="Where run mode writes the scans and fixture copies, outside the dep-scan "
+        "checkout (default: %(default)s).",
     )
-    parser.add_argument(
-        "--corpus-root",
-        default=cache_dir("clones"),
-        help="Directory holding the repository items' clones (default: %(default)s).",
-    )
-    parser.add_argument(
+    add("--corpus-root", default=cache_dir("clones"), help="Clones (default: %(default)s).")
+    add(
         "--testdata-root",
         default=cache_dir("repotests-data"),
-        help="Directory holding the pulled repo-test data (default: %(default)s).",
+        help="Pulled repo-test data (default: %(default)s).",
     )
-    parser.add_argument(
-        "--floors",
-        default=None,
-        help="Floors file; the run exits 1 when a floor drops or a negative control fires.",
-    )
-    parser.add_argument(
-        "--output", default=".", help="Directory score.json and the Markdown table are written to."
-    )
-    parser.add_argument(
-        "--fetch",
-        action="store_true",
-        help="Clone missing repository items at their pinned commits first.",
-    )
-    parser.add_argument(
-        "--digest-fixture",
-        default=None,
-        help="Print the digest of one fixture directory and exit.",
-    )
+    add("--floors", help="Floors file; exit 1 when a floor drops or a negative control fires.")
+    add("--output", default=".", help="Directory for score.json and score.md.")
+    add("--fetch", action="store_true", help="Clone missing repository items first.")
+    add("--digest-fixture", help="Print the digest of one fixture directory and exit.")
     return parser.parse_args(argv)
 
 
@@ -1457,7 +1202,7 @@ def run(args) -> int:
     entries = [
         score_one(item, load_labels(os.path.dirname(manifest_path), item), args) for item in items
     ]
-    commit = _git(_REPO_ROOT, "rev-parse", "HEAD").stdout.strip() or "unknown"
+    commit = git(_REPO_ROOT, "rev-parse", "HEAD").stdout.strip() or "unknown"
     scored = [entry for entry in entries if entry["state"] == "scored"]
     fired = [
         {"item": entry["item"], **control}
@@ -1490,11 +1235,12 @@ def run(args) -> int:
     os.makedirs(args.output, exist_ok=True)
     score_path = os.path.join(args.output, "score.json")
     table_path = os.path.join(args.output, "score.md")
-    with open(score_path, "w", encoding="utf-8") as fp:
-        json.dump(score_doc, fp, indent=2, ensure_ascii=False)
-        fp.write("\n")
-    with open(table_path, "w", encoding="utf-8") as fp:
-        fp.write(render_markdown(score_doc))
+    for path, text in (
+        (score_path, json.dumps(score_doc, indent=2, ensure_ascii=False) + "\n"),
+        (table_path, render_markdown(score_doc)),
+    ):
+        with open(path, "w", encoding="utf-8") as fp:
+            fp.write(text)
     print(f"Wrote {score_path} and {table_path}")
     print(
         f"{len(scored)} of {len(entries)} items scored"
