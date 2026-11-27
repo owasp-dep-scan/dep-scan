@@ -49,11 +49,19 @@ for _src in (
         sys.path.insert(0, _src)
 
 from analysis_lib import ReachabilityAnalysisKV  # noqa: E402
-from analysis_lib.findings.vdr_convert import comparable_purl  # noqa: E402
 from analysis_lib.reachability import (  # noqa: E402
     _iter_json_list,
     get_reachability_impl,
 )
+
+_REPO_ROOT = os.path.abspath(os.path.join(_HERE, ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+# The comparable key the scorer defines: comparable_purl without the
+# version, so a version-less label and a reached purl that names one
+# compare equal. One definition, shared with contrib/corpus/score.py.
+from contrib.corpus.score import purl_key  # noqa: E402
 
 BASELINE_FILE = os.path.join(_HERE, "reachability_eval.baseline.json")
 
@@ -241,8 +249,8 @@ def evaluate_labelled(item: dict, reach_labels: dict, scan_dir: str, corpus_root
     if not os.path.isdir(scan_dir):
         result["error"] = "no scan directory"
         return result
-    used = {comparable_purl(e["purl"]) for e in reach_labels.get("used") or []}
-    unused = {comparable_purl(e["purl"]) for e in reach_labels.get("unused") or []}
+    used = {purl_key(e["purl"]) for e in reach_labels.get("used") or []}
+    unused = {purl_key(e["purl"]) for e in reach_labels.get("unused") or []}
     evidence_file = os.path.join(scan_dir, "evidence.jsonl")
     src_dir = (
         os.path.join(corpus_root, name) if item.get("kind") == "repository" else scan_dir
@@ -268,10 +276,10 @@ def evaluate_labelled(item: dict, reach_labels: dict, scan_dir: str, corpus_root
             "status": "assessed",
             "wall_clock_s": round(elapsed, 3),
             "direct": score_purl_set(
-                {comparable_purl(p) for p in (res.direct_purls or {})}, used, unused
+                {purl_key(p) for p in (res.direct_purls or {})}, used, unused
             ),
             "reached": score_purl_set(
-                {comparable_purl(p) for p in (res.reached_purls or {})}, used, unused
+                {purl_key(p) for p in (res.reached_purls or {})}, used, unused
             ),
         }
         per_analyzer[analyzer] = entry
