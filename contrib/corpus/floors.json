@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "description": "The floors the pull-request subset enforces, recorded from real runs. Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs (committed fixtures and the java-sec-code repo-test artifact) and only for numbers the labels can judge. The binary-hardening precision floor holds at 0.5 because CHECK_ABI_FLOOR fires on both builds' glibc baseline and no label accounts for it; the malware category carries no floor because the reserved malware category is a recorded gap (the advisory reports under vulnerability), tracked by an upstream issue.",
+  "commit": "7af8e277151f950d4f61e2acbcc6913687dddc9b",
+  "recordedAt": "2026-11-27T15:05:00Z",
+  "floors": [
+    {
+      "item": "supply-chain-fixture-ci",
+      "path": "categories.supply-chain.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "supply-chain-fixture-ci",
+      "path": "categories.supply-chain.precision",
+      "minimum": 1.0
+    },
+    {
+      "item": "binary-hardening-fixture",
+      "path": "categories.binary-hardening.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "binary-hardening-fixture",
+      "path": "categories.binary-hardening.precision",
+      "minimum": 0.5
+    },
+    {
+      "item": "lifecycle-fixture",
+      "path": "reachability.SemanticReachability.reached.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "lifecycle-fixture",
+      "path": "reachability.SemanticReachability.reached.precision",
+      "minimum": 1.0
+    },
+    {
+      "item": "monorepo-fixture",
+      "path": "reachability.SemanticReachability.reached.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "monorepo-fixture",
+      "path": "reachability.SemanticReachability.reached.precision",
+      "minimum": 1.0
+    },
+    {
+      "item": "java-sec-code-repotests",
+      "path": "categories.vulnerability.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "java-sec-code-repotests",
+      "path": "categories.vulnerability.precision",
+      "minimum": 1.0
+    }
+  ]
+}
