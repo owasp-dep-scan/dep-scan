@@ -1,0 +1,49 @@
+documentation/docs/integrate/ci.mdx
+  s_62a28a1c3d6dbf::t_3f9b5d6df70ca7 8,45,47,49,52,54-55,58-74,78-91,136,144-147,149-153
+documentation/docs/reference/schemas.mdx
+  s_62a28a1c3d6dbf::t_da4a22dd47ca5c 70-73
+documentation/sidebars.ts
+  s_62a28a1c3d6dbf::t_254a87a53b070e 33
+documentation/docs/reference/configuration.mdx
+  s_62a28a1c3d6dbf::t_091078c7c2cfb1 26-41,67
+documentation/docs/results/finding-model.mdx
+  s_62a28a1c3d6dbf::t_e21c21c94a2717 53
+documentation/docs/lessons/07-ci-gating.mdx
+  s_62a28a1c3d6dbf::t_f699472363fe4e 83,106
+documentation/docs/upgrade/migrate-v6-to-v7.mdx
+  s_62a28a1c3d6dbf::t_e21c21c94a2717 159-162
+  s_62a28a1c3d6dbf::t_fa06554951e789 177-178
+  s_62a28a1c3d6dbf::t_f699472363fe4e 46
+documentation/docs/reference/cli.mdx
+  s_62a28a1c3d6dbf::t_317275a93a0e34 18,206
+  s_62a28a1c3d6dbf::t_ddd75a4e4ce183 298-308,310-348
+  s_62a28a1c3d6dbf::t_c9a8fbcaea5990 309
+documentation/docs/results/triage-and-gating.mdx
+  s_62a28a1c3d6dbf::t_c577b37101c629 1-182
+documentation/docs/integrate/mcp.mdx
+  s_62a28a1c3d6dbf::t_22a8f1c769f07e 3,8,31,34,105,111,125-126
+documentation/docs/results/coverage.mdx
+  s_62a28a1c3d6dbf::t_e21c21c94a2717 17
+documentation/docs/integrate/agents.mdx
+  s_62a28a1c3d6dbf::t_f699472363fe4e 105
+test/test_mcp_core.py
+  s_62a28a1c3d6dbf::t_da4a22dd47ca5c 678
+documentation/docs/results/scan-directory.mdx
+  s_62a28a1c3d6dbf::t_0bf5127ff7f8e9 21,47,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "93cba65071e0d40ab32c497c3c1caabb6f111435",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
