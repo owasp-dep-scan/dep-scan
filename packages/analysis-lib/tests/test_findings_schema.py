@@ -62,6 +62,7 @@ def test_schema_names():
         "depscan-expectations",
         "depscan-scan-output",
         "depscan-report-output",
+        "depscan-triage-output",
         "depscan-vdb-download-output",
         "depscan-vdb-info-output",
         "depscan-vdb-path-output",

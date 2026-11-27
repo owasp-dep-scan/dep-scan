@@ -64,6 +64,7 @@ _SCHEMA_FILES = (
     # verb's subcommands in the order the verb registers them.
     "depscan-scan-output.schema.json",
     "depscan-report-output.schema.json",
+    "depscan-triage-output.schema.json",
     "depscan-vdb-download-output.schema.json",
     "depscan-vdb-info-output.schema.json",
     "depscan-vdb-path-output.schema.json",

@@ -45,7 +45,335 @@ __all__ = [
     "query",
     "scan",
     "scan_options",
+    "triage_check",
+    "triage_entries",
+    "triage_remove",
+    "triage_review",
+    "triage_set",
 ]
+
+
+class TriageApiError(ValueError):
+    """A triage request the API refuses: a missing required name, an entry
+    that does not exist, or a state the vocabulary does not carry. The CLI
+    turns it into exit 2; the server turns it into a refused tool call."""
+
+
+def _scan_findings_for_triage(reports_dir: str):
+    """The findings and the advisory aliases of a scan directory, for the
+    triage listings.
+
+    The VDR entries the manifest lists build the alias map the advisory
+    selectors match through; a directory that cannot load as a scan still
+    lists against its findings document, with exact rule ids only.
+    """
+    from analysis_lib.findings.decisions import alias_map_from_vulns
+    from depscan.lib.scan_directory import read_findings
+
+    findings = (read_findings(reports_dir) or {}).get("findings") or []
+    aliases: Dict[str, set] = {}
+    try:
+        result = load_scan(reports_dir)
+        aliases = alias_map_from_vulns(
+            vuln for tscan in result.types for vuln in tscan.vulnerabilities
+        )
+    except ScanError:
+        pass
+    return findings, aliases
+
+
+def triage_entries(
+    *,
+    file: str,
+    scan_dir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """The decisions file's triage entries, with what each matches.
+
+    Every entry carries its computed status: a proposal, expired, stale
+    against the given scan directory, or live. A live entry names the
+    findings it matched. This is the listing the ``depscan triage list``
+    verb renders and the ``get_decisions`` server tool returns.
+
+    :param file: The decisions file to read.
+    :param scan_dir: A scan directory to match the entries against, its
+        stale and expired entries included in the result.
+    :returns: The document with ``entries``, ``stale``, ``expired`` and
+        ``proposals`` index lists.
+    :raises TriageApiError: When the file cannot be read or breaks its
+        schema, or the scan directory cannot be read.
+    """
+    from analysis_lib.findings.decisions import (
+        DecisionsError,
+        entry_matches_finding,
+        is_expired,
+    )
+    from depscan.lib import decisions_edit
+
+    try:
+        decisions = load_decisions_public(str(file))
+    except DecisionsError as exc:
+        raise TriageApiError(str(exc)) from exc
+    findings: List[Dict[str, Any]] = []
+    aliases: Dict[str, set] = {}
+    if scan_dir:
+        if not os.path.isdir(str(scan_dir)):
+            raise TriageApiError(f"the scan directory '{scan_dir}' does not exist")
+        findings, aliases = _scan_findings_for_triage(str(scan_dir))
+    entries = []
+    stale: List[int] = []
+    expired: List[int] = []
+    proposals: List[int] = []
+    for entry in decisions.triage:
+        matches = [
+            str(finding.get("id"))
+            for finding in findings
+            if entry_matches_finding(entry, finding, alias_map=aliases or None)
+        ]
+        document = decisions_edit.entry_document(_entry_as_mapping(entry), index=entry.index)
+        if entry.is_proposal:
+            status = "proposal"
+            proposals.append(entry.index)
+        elif is_expired(entry.expires):
+            status = "expired"
+            expired.append(entry.index)
+        elif scan_dir and not matches:
+            status = "stale"
+            stale.append(entry.index)
+        else:
+            status = "live"
+        document["status"] = status
+        document["source"] = entry.source
+        if scan_dir:
+            document["matches"] = matches
+        entries.append(document)
+    return {
+        "decisionsFile": str(file),
+        "entries": entries,
+        "stale": stale,
+        "expired": expired,
+        "proposals": proposals,
+        "scanDir": scan_dir,
+    }
+
+
+def _entry_as_mapping(entry):
+    """The listing document an entry renders as, without touching tomlkit."""
+    return {
+        key: value
+        for key, value in {
+            "finding": entry.finding,
+            "advisory": entry.advisory,
+            "purl": entry.purl,
+            "version_range": entry.version_range,
+            "state": entry.state,
+            "justification": entry.justification,
+            "detail": entry.detail,
+            "author": entry.author,
+            "approver": entry.approver,
+            "created": entry.created,
+            "expires": entry.expires,
+            "responses": entry.responses,
+            "proposed_by": entry.proposed_by,
+        }.items()
+        if value is not None
+    }
+
+
+def load_decisions_public(path: str):
+    """The decisions file at ``path``, loaded and validated.
+
+    A public alias over the analysis library's loader, so the triage verb
+    and the server tools share one refusal message.
+    """
+    from analysis_lib.findings.decisions import load_decisions
+
+    return load_decisions(str(path))
+
+
+def triage_set(
+    *,
+    file: str,
+    state: str,
+    author: str,
+    finding: Optional[str] = None,
+    advisory: Optional[str] = None,
+    purl: Optional[str] = None,
+    version_range: Optional[str] = None,
+    justification: Optional[str] = None,
+    responses: Optional[List[str]] = None,
+    detail: Optional[str] = None,
+    approver: Optional[str] = None,
+    proposed_by: Optional[str] = None,
+    created: Optional[str] = None,
+    expires: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Add or update one triage entry in the decisions file.
+
+    The entry is selected by ``finding`` (a ``dsf1:`` id) or by ``advisory``
+    with ``purl``; an entry with the same selector is updated in place. The
+    author is never guessed: a call without one is refused. The saved file
+    is validated against the published schema before it is written, so a
+    call cannot leave a file a scan would refuse.
+
+    :returns: The document with the file, the result (added or updated) and
+        the entry as it now stands.
+    :raises TriageApiError: When a required value is missing, the selector
+        is empty or the entry would break the file.
+    """
+    from datetime import datetime, timezone
+
+    from analysis_lib.findings.decisions import TRIAGE_STATES
+    from depscan.lib import decisions_edit
+
+    if not author or not str(author).strip():
+        raise TriageApiError("the entry needs an author; pass --author or proposedBy")
+    if state not in TRIAGE_STATES:
+        raise TriageApiError(
+            f"the state {state!r} is not in the CycloneDX vocabulary; valid values: "
+            f"{', '.join(TRIAGE_STATES)}"
+        )
+    if state == "not_affected" and not justification:
+        raise TriageApiError(
+            "a not_affected state needs a justification from the CycloneDX list"
+        )
+    selector: Dict[str, Any] = {}
+    if finding:
+        selector["finding"] = str(finding)
+    elif advisory and purl:
+        selector["advisory"] = str(advisory)
+        selector["purl"] = str(purl)
+        if version_range:
+            selector["version_range"] = str(version_range)
+    else:
+        raise TriageApiError(
+            "the entry needs a selector: a finding id, or an advisory and a purl"
+        )
+    fields: Dict[str, Any] = {"state": state}
+    if justification:
+        fields["justification"] = str(justification)
+    if responses:
+        fields["responses"] = [str(value) for value in responses]
+    if detail:
+        fields["detail"] = str(detail)
+    if author:
+        fields["author"] = str(author)
+    if approver:
+        fields["approver"] = str(approver)
+    if proposed_by:
+        fields["proposed_by"] = str(proposed_by)
+    fields["created"] = str(created) if created else datetime.now(timezone.utc).isoformat(
+        timespec="seconds"
+    ).replace("+00:00", "Z")
+    if expires:
+        fields["expires"] = str(expires)
+    try:
+        result = decisions_edit.set_entry(str(file), selector=selector, fields=fields)
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+    except Exception as exc:
+        raise TriageApiError(f"the entry cannot be written: {exc}") from exc
+    entries = triage_entries(file=str(file))
+    written = next(
+        document
+        for document in entries["entries"]
+        if _entry_matches_selector(document, selector)
+    )
+    return {
+        "decisionsFile": str(file),
+        "result": result,
+        "entry": written,
+    }
+
+
+def _entry_matches_selector(document: Dict[str, Any], selector: Dict[str, Any]) -> bool:
+    keys = ("finding", "advisory", "purl", "version_range")
+    return all(document.get(key) == selector[key] for key in keys if key in selector) and all(
+        key in document for key in selector
+    )
+
+
+def triage_review(
+    *,
+    file: str,
+    approver: str,
+    approve: Optional[int] = None,
+    reject: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Approve or reject one proposal in the decisions file.
+
+    Approval writes the approver's name into the entry, and the entry
+    applies from then on. Rejection removes the entry and records nothing
+    else. The approver is never guessed: a call without one is refused.
+
+    :returns: The document with the file, the result and the entry as it
+        now stands.
+    :raises TriageApiError: When the approver is missing, the entry does
+        not exist, or the entry is not a proposal.
+    """
+    from depscan.lib import decisions_edit
+
+    if not approver or not str(approver).strip():
+        raise TriageApiError("the review needs an approver; pass --approver")
+    if (approve is None) == (reject is None):
+        raise TriageApiError("review approves or rejects exactly one entry")
+    try:
+        if approve is not None:
+            index = int(approve)
+            decisions_edit.approve_entry(str(file), index, str(approver))
+            document = decisions_edit.entry_document(
+                decisions_edit.entry_at(str(file), index)[1], index=index
+            )
+            return {"decisionsFile": str(file), "result": "approved", "entry": document}
+        removed = decisions_edit.remove_entry(str(file), int(reject or 0))
+        return {"decisionsFile": str(file), "result": "rejected", "entry": removed}
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+
+
+def triage_remove(*, file: str, entry: int) -> Dict[str, Any]:
+    """Remove the triage entry at the 1-based position.
+
+    :returns: The document with the file, the result and the removed entry.
+    :raises TriageApiError: When the entry does not exist.
+    """
+    from depscan.lib import decisions_edit
+
+    try:
+        removed = decisions_edit.remove_entry(str(file), int(entry))
+    except decisions_edit.TriageEditError as exc:
+        raise TriageApiError(str(exc)) from exc
+    return {"decisionsFile": str(file), "result": "removed", "entry": removed}
+
+
+def triage_check(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, Any]:
+    """Validate the decisions file the way a gate would.
+
+    The file is loaded and validated against the published schema; a file
+    that cannot be read, or that the schema refuses, is reported with the
+    loader's message naming the key and the line, and ``valid`` false: the
+    exit code the command's caller gives such a file is 3. With a scan
+    directory, the stale and expired entries are matched against its
+    findings and reported beside the verdict.
+
+    :returns: The listing document with ``valid`` and, on a broken file,
+        ``errors``.
+    """
+
+    try:
+        document = triage_entries(file=str(file), scan_dir=scan_dir)
+    except TriageApiError as exc:
+        return {
+            "decisionsFile": str(file),
+            "entries": [],
+            "stale": [],
+            "expired": [],
+            "proposals": [],
+            "scanDir": scan_dir,
+            "valid": False,
+            "errors": [str(exc)],
+        }
+    document["valid"] = True
+    return document
 
 
 class ScanError(RuntimeError):

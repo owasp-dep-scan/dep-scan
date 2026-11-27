@@ -34,6 +34,7 @@ from depscan.commands import (
     scan as scan_verb,
     schema as schema_verb,
     serve as serve_verb,
+    triage as triage_verb,
     validate as validate_verb,
     vdb as vdb_verb,
     version as version_verb,
@@ -44,6 +45,7 @@ from depscan.commands import help as help_verb
 VERBS = (
     "scan",
     "report",
+    "triage",
     "vdb",
     "doctor",
     "schema",
@@ -58,6 +60,7 @@ VERBS = (
 _VERB_MODULES = {
     "scan": scan_verb,
     "report": report_verb,
+    "triage": triage_verb,
     "vdb": vdb_verb,
     "doctor": doctor_verb,
     "schema": schema_verb,

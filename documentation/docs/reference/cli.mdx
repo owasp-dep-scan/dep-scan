@@ -28,14 +28,15 @@ The dep-scan 7 command line starts with a verb: `depscan scan`, `depscan vdb`, `
 The table rows are the verbs' own help descriptions. The two blocks below are the parsers' own help output, printed at a fixed terminal width (`COLUMNS=200 uv run depscan --help` and `COLUMNS=200 uv run depscan scan --help`); a test regenerates them from the built parsers, so they cannot drift:
 
 ```text
-usage: depscan [-h] {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help} ...
+usage: depscan [-h] {scan,report,triage,vdb,doctor,schema,config,serve,mcp,validate,version,help} ...
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 positional arguments:
-  {scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help}
+  {scan,report,triage,vdb,doctor,schema,config,serve,mcp,validate,version,help}
     scan                Scan a project, BOM, purl or container image for vulnerabilities.
     report              Render the console tables and explanations of a saved scan.
+    triage              Record, review and check triage decisions and the gate.
     vdb                 Download and inspect the vdb vulnerability database.
     doctor              Report the tools, data and capabilities a scan can use here.
     schema              Print the published finding schemas.
