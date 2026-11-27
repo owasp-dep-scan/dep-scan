@@ -1252,3 +1252,82 @@ def test_juice_shop_csaf_is_schema_valid_and_reachability_aware(version):
         for v in doc["vulnerabilities"]
         for f in v.get("flags", [])
     )
+
+
+def _two_component_entry():
+    """A VDR entry with two affected components and a decision about one."""
+    from analysis_lib.findings.decisions import (
+        annotate_vdr_analysis,
+        decisions_from_document,
+    )
+
+    vuln = {
+        "id": "CVE-2024-10001",
+        "bom-ref": "CVE-2024-10001/pkg:npm/express@4.22.2",
+        "affects": [{"ref": "pkg:npm/express@4.22.2"}, {"ref": "pkg:npm/left-pad@1.3.0"}],
+        "ratings": [{"severity": "high", "score": 8.1, "method": "CVSSv31"}],
+        "analysis": {"state": "in_triage"},
+    }
+    entries = decisions_from_document(
+        {
+            "triage": [
+                {
+                    "advisory": "CVE-2024-10001",
+                    "purl": "pkg:npm/express@4.22.2",
+                    "state": "not_affected",
+                    "justification": "code_not_reachable",
+                    "author": "alice",
+                }
+            ]
+        }
+    ).triage
+    assert annotate_vdr_analysis([vuln], entries) == 1
+    return vuln
+
+
+def test_a_decision_about_one_component_leaves_the_entry_analysis_alone():
+    vuln = _two_component_entry()
+    # The components differ, so the entry keeps the analysis the scan wrote,
+    # and the decision travels on the component it covers.
+    assert vuln["analysis"] == {"state": "in_triage"}
+    names = [prop["name"] for prop in vuln["properties"]]
+    assert names == ["depscan:triage:component:pkg:npm/express@4.22.2"]
+    decision = json.loads(vuln["properties"][0]["value"])
+    assert decision["state"] == "not_affected" and decision["author"] == "alice"
+
+
+def test_csaf_states_a_decision_only_for_the_component_it_covers():
+    vuln = _two_component_entry()
+    status, flags, _ = classify(vuln, _purl_map(), {})
+    assert status == {
+        KNOWN_NOT_AFFECTED: ["pkg:npm/express@4.22.2"],
+        UNDER_INVESTIGATION: ["pkg:npm/left-pad@1.3.0"],
+    }
+    assert flags == [
+        {"label": "vulnerable_code_not_in_execute_path", "product_ids": ["pkg:npm/express@4.22.2"]}
+    ]
+
+
+def test_one_decision_about_every_component_writes_the_entry_analysis():
+    from analysis_lib.findings.decisions import annotate_vdr_analysis, decisions_from_document
+
+    vuln = {
+        "id": "CVE-2024-10001",
+        "affects": [{"ref": "pkg:npm/express@4.22.2"}, {"ref": "pkg:npm/express@4.22.3"}],
+        "ratings": [{"severity": "high", "score": 8.1, "method": "CVSSv31"}],
+    }
+    entries = decisions_from_document(
+        {
+            "triage": [
+                {
+                    "advisory": "CVE-2024-10001",
+                    "purl": "pkg:npm/express",
+                    "state": "exploitable",
+                    "author": "alice",
+                }
+            ]
+        }
+    ).triage
+    assert annotate_vdr_analysis([vuln], entries) == 1
+    assert vuln["analysis"] == {"state": "exploitable"}
+    assert {"name": "depscan:triage:author", "value": "alice"} in vuln["properties"]

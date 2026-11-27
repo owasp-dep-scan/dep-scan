@@ -27,7 +27,7 @@ from analysis_lib.findings.decisions import (
     Decisions,
     DecisionsError,
     TriageEntry,
-    _parse_rfc3339,
+    parse_rfc3339,
 )
 
 #: The environment variable that names a decisions file.
@@ -554,10 +554,10 @@ def _openvex_statements(document: Dict[str, Any]) -> List[Dict[str, Any]]:
                     ),
                     "detail": str(detail) if detail else None,
                     "created": timestamp
-                    if isinstance(timestamp, str) and _parse_rfc3339(timestamp)
+                    if isinstance(timestamp, str) and parse_rfc3339(timestamp)
                     else None,
                     "expires": expires
-                    if isinstance(expires, str) and _parse_rfc3339(expires)
+                    if isinstance(expires, str) and parse_rfc3339(expires)
                     else None,
                 }
             )

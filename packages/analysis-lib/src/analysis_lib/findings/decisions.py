@@ -296,7 +296,7 @@ class Decisions:
         return bool(self.triage or self.baseline or self.has_gate)
 
 
-def _parse_rfc3339(value: str) -> Optional[datetime]:
+def parse_rfc3339(value: str) -> Optional[datetime]:
     """Parse an RFC 3339 date-time; a naive value is read as UTC."""
     text = value.strip()
     if text.endswith(("Z", "z")):
@@ -315,7 +315,7 @@ def is_expired(expires: Optional[str], now: Optional[datetime] = None) -> bool:
     parsed never counts as expired; the schema refuses it at load time."""
     if not expires:
         return False
-    parsed = _parse_rfc3339(expires)
+    parsed = parse_rfc3339(expires)
     if parsed is None:
         return False
     return parsed < (now or datetime.now(timezone.utc))
@@ -541,7 +541,7 @@ def _semantic_problems(document: Dict[str, Any]) -> List[Problem]:
                         (("triage", index, "justification"), message + ", ".join(JUSTIFICATIONS))
                     )
                 for key in ("created", "expires"):
-                    if isinstance(entry.get(key), str) and _parse_rfc3339(entry[key]) is None:
+                    if isinstance(entry.get(key), str) and parse_rfc3339(entry[key]) is None:
                         message = f"{entry[key]!r} is not an RFC 3339 date-time; {_DATE_HINT}"
                         problems.append((("triage", index, key), message))
                 continue
@@ -1424,6 +1424,55 @@ def _vdr_findings(vulns: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return findings
 
 
+#: The VDR property that carries the decision about one affected component,
+#: followed by the component's bom-ref.
+TRIAGE_COMPONENT_PROPERTY = f"{TRIAGE_PROPERTY_PREFIX}component:"
+
+
+def _analysis_object(entry: TriageEntry) -> Dict[str, Any]:
+    """The CycloneDX analysis object a decision writes."""
+    analysis: Dict[str, Any] = {"state": entry.state}
+    if entry.justification:
+        analysis["justification"] = entry.justification
+    if entry.responses:
+        analysis["response"] = list(entry.responses)
+    if entry.detail:
+        analysis["detail"] = entry.detail
+    return analysis
+
+
+def _component_decision(entry: TriageEntry) -> Dict[str, Any]:
+    """The decision about one component, as the per-component property
+    carries it: the analysis object with the people and the expiry."""
+    decision = _analysis_object(entry)
+    for key, value in (
+        ("author", entry.author),
+        ("approver", entry.approver),
+        ("proposedBy", entry.proposed_by),
+        ("expires", entry.expires),
+    ):
+        if value:
+            decision[key] = str(value)
+    return decision
+
+
+def component_decisions(vuln: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """The per-component decisions :func:`annotate_vdr_analysis` wrote on a
+    VDR entry, by bom-ref. An unreadable property is skipped."""
+    decisions: Dict[str, Dict[str, Any]] = {}
+    for prop in vuln.get("properties") or []:
+        name = str(prop.get("name") or "") if isinstance(prop, dict) else ""
+        if not name.startswith(TRIAGE_COMPONENT_PROPERTY):
+            continue
+        try:
+            value = json.loads(str(prop.get("value") or ""))
+        except ValueError:
+            continue
+        if isinstance(value, dict) and value.get("state"):
+            decisions[name[len(TRIAGE_COMPONENT_PROPERTY) :]] = value
+    return decisions
+
+
 def annotate_vdr_analysis(
     vulns: List[Dict[str, Any]],
     triage: Union[TriageApplication, Sequence[TriageEntry]],
@@ -1431,8 +1480,8 @@ def annotate_vdr_analysis(
     alias_map: Optional[Dict[str, Set[str]]] = None,
     now: Optional[datetime] = None,
 ) -> int:
-    """Write the winning triage decisions into the VDR entries' analysis
-    objects, in place, and return how many entries carry one.
+    """Write the winning triage decisions into the VDR entries, in place,
+    and return how many entries carry one.
 
     ``triage`` is the :class:`TriageApplication` :func:`apply_triage`
     returned for the scan's findings. Given the triage entries instead, they
@@ -1441,17 +1490,20 @@ def annotate_vdr_analysis(
     and the findings agree before the findings are built. ``alias_map`` and
     ``now`` are used in that case only.
 
-    CycloneDX puts the analysis on the vulnerability entry, so an entry with
-    two affected components carries the highest-precedence winner among its
-    pairs; the per-pair truth, one triage object per finding, lives in the
-    findings document. The author, approver, proposer and expiry travel as
-    ``depscan:triage:*`` properties on the entry, because the CycloneDX
-    analysis object has no fields for them. Proposals, expired and shadowed
-    decisions annotate nothing.
+    Each affected component with a winning decision gets a
+    ``depscan:triage:component:<bom-ref>`` property holding that decision as
+    JSON: the analysis values, the people and the expiry. CycloneDX has one
+    ``analysis`` object per vulnerability entry, so the entry's analysis is
+    written only when every affected component has the same winning
+    decision; the author, approver, proposer and expiry then also travel as
+    ``depscan:triage:*`` properties on the entry. When the components differ,
+    or some have no decision, the entry's analysis stays as the scan wrote
+    it, and a reader such as the CSAF export takes each component's decision
+    from its property. Proposals, expired and shadowed decisions annotate
+    nothing.
     """
     if not isinstance(triage, TriageApplication):
         triage = apply_triage(_vdr_findings(vulns), triage, alias_map=alias_map, now=now)
-    rank = {id(entry): position for position, entry in enumerate(triage.ranked)}
     by_pair: Dict[Tuple[str, str], TriageEntry] = {}
     for finding, entry in triage.winners:
         for component in finding.get("components") or []:
@@ -1461,38 +1513,42 @@ def annotate_vdr_analysis(
     annotated = 0
     for vuln in vulns:
         rule = alias_map_key(str(vuln.get("id") or ""))
-        candidates = [
-            by_pair[key]
+        refs = [
+            str(affect["ref"])
             for affect in vuln.get("affects") or []
-            if isinstance(affect, dict)
-            and affect.get("ref")
-            and (key := (rule, comparable_purl(str(affect["ref"])))) in by_pair
+            if isinstance(affect, dict) and affect.get("ref")
         ]
-        if not candidates:
-            continue
-        matched = min(candidates, key=lambda entry: rank.get(id(entry), len(rank)))
-        analysis: Dict[str, Any] = {"state": matched.state}
-        if matched.justification:
-            analysis["justification"] = matched.justification
-        if matched.responses:
-            analysis["response"] = list(matched.responses)
-        if matched.detail:
-            analysis["detail"] = matched.detail
-        vuln["analysis"] = analysis
+        winners = {ref: by_pair.get((rule, comparable_purl(ref))) for ref in refs}
         properties = [
             prop
             for prop in vuln.get("properties") or []
             if isinstance(prop, dict)
             and not str(prop.get("name") or "").startswith(TRIAGE_PROPERTY_PREFIX)
         ]
-        for key, value in (
-            ("author", matched.author),
-            ("approver", matched.approver),
-            ("proposed-by", matched.proposed_by),
-            ("expires", matched.expires),
-        ):
-            if value:
-                properties.append({"name": f"{TRIAGE_PROPERTY_PREFIX}{key}", "value": str(value)})
+        decided = {ref: entry for ref, entry in winners.items() if entry is not None}
+        if not decided:
+            continue
+        for ref, entry in decided.items():
+            properties.append(
+                {
+                    "name": f"{TRIAGE_COMPONENT_PROPERTY}{ref}",
+                    "value": json.dumps(_component_decision(entry), sort_keys=True),
+                }
+            )
+        unanimous = len(decided) == len(winners) and len({id(e) for e in decided.values()}) == 1
+        if unanimous:
+            matched = next(iter(decided.values()))
+            vuln["analysis"] = _analysis_object(matched)
+            for key, value in (
+                ("author", matched.author),
+                ("approver", matched.approver),
+                ("proposed-by", matched.proposed_by),
+                ("expires", matched.expires),
+            ):
+                if value:
+                    properties.append(
+                        {"name": f"{TRIAGE_PROPERTY_PREFIX}{key}", "value": str(value)}
+                    )
         vuln["properties"] = properties
         annotated += 1
     return annotated

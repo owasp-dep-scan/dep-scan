@@ -31,7 +31,8 @@ or `depscan-universal.csaf.json` for a BOM directory, like the VDR below
 (CSAF 2.1 by default; `--csaf-version 2.0` selects the older version).
 The document's vulnerabilities carry the findings the scan matched. A
 triage decision the scan applied, from the project's decisions file or a
-`--vex` document, sets the product status first:
+`--vex` document, sets the status of the product it decides first, and of
+no other product of the same vulnerability:
 
 | Triage decision | CSAF product status |
 | --- | --- |
@@ -56,8 +57,8 @@ an agent's proposal reaches the document only after a person approves it.
 Before the document goes anywhere, tell the user which packages are
 `known_affected` and `known_not_affected` and what each rests on: the
 analyzer named in the manifest, its root set and the stages that
-completed, or the decision and who made it (the VDR's `depscan:triage:*`
-properties).
+completed, or the decision and who made it (the VDR's
+`depscan:triage:component:<bom-ref>` property for that package).
 
 A target without a BOM cannot carry the export: a purl scan with `--csaf`
 exits 0 but skips the export with a stderr warning, because there is no BOM
@@ -86,10 +87,15 @@ properties belong to the vulnerability, not to an affected component, so
 an entry that lists several affected components carries the grade of its
 most severely graded one; quote a component's own grade from
 `depscan.findings.json`. A triage decision a person entered or approved
-carries the CycloneDX `analysis` state and justification on the entry, with
-the people and the expiry as `depscan:triage:*` properties; when several
-decisions select one finding, the one the findings file records wins, and
-the CSAF product status follows it as the table above shows.
+is written per affected component, as a `depscan:triage:component:<bom-ref>`
+property holding the decision as JSON. The entry's CycloneDX `analysis`
+state and justification, with the people and the expiry as
+`depscan:triage:*` properties, are written only when every affected
+component of the entry has the same decision; otherwise the entry's
+`analysis` is what the scan wrote, and a package's decision is the one in
+its own property. When several decisions select one finding, the one the
+findings file records wins, and the CSAF product status of that package
+follows it as the table above shows.
 The exploitability grade stays triage context only: it never overrides a
 decision and is never a `not_affected` justification.
 
