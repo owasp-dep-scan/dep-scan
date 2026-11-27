@@ -1,0 +1,25 @@
+depscan/lib/report.py
+  s_62a28a1c3d6dbf::t_56d9aa8fcad184 344-347,375-376
+packages/analysis-lib/src/analysis_lib/findings/decisions.py
+  s_62a28a1c3d6dbf::t_5f80b78f8ccf2d 1272-1273,1287-1293
+  s_62a28a1c3d6dbf::t_4aec6916ba455b 1231-1237
+  s_62a28a1c3d6dbf::t_91677b88ecce30 1294-1295
+packages/analysis-lib/tests/test_decisions.py
+  s_62a28a1c3d6dbf::t_2d023ad900c33d 750-764
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e580b786cbfef5adc07ead82463ca497ea6c7628",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
