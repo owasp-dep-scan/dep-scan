@@ -2,7 +2,7 @@
   "item": "java-webgoat",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:maven/com.auth0/java-jwt",
@@ -145,30 +145,6 @@
         "occurrences": 158
       },
       {
-        "purl": "pkg:maven/org.springframework/spring-beans",
-        "occurrences": 52
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-context",
-        "occurrences": 288
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-core",
-        "occurrences": 159
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-jdbc",
-        "occurrences": 31
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-web",
-        "occurrences": 1839
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-webmvc",
-        "occurrences": 171
-      },
-      {
         "purl": "pkg:maven/org.springframework.boot/spring-boot",
         "occurrences": 27
       },
@@ -213,16 +189,40 @@
         "occurrences": 11
       },
       {
+        "purl": "pkg:maven/org.springframework/spring-beans",
+        "occurrences": 52
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 288
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 159
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-jdbc",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 1839
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 171
+      },
+      {
+        "purl": "pkg:maven/org.thymeleaf.extras/thymeleaf-extras-springsecurity6",
+        "occurrences": 2
+      },
+      {
         "purl": "pkg:maven/org.thymeleaf/thymeleaf",
         "occurrences": 45
       },
       {
         "purl": "pkg:maven/org.thymeleaf/thymeleaf-spring6",
         "occurrences": 22
-      },
-      {
-        "purl": "pkg:maven/org.thymeleaf.extras/thymeleaf-extras-springsecurity6",
-        "occurrences": 2
       }
     ],
     "unused": [
@@ -303,10 +303,12 @@
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 55,
       "unused": 25,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 6857
     }
   }

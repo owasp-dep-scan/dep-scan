@@ -2,7 +2,7 @@
   "item": "java-sec-code",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:maven/cn.hutool/hutool-all",
@@ -165,30 +165,6 @@
         "occurrences": 291
       },
       {
-        "purl": "pkg:maven/org.springframework/spring-beans",
-        "occurrences": 24
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-context",
-        "occurrences": 59
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-core",
-        "occurrences": 24
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-expression",
-        "occurrences": 32
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-web",
-        "occurrences": 486
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-webmvc",
-        "occurrences": 38
-      },
-      {
         "purl": "pkg:maven/org.springframework.boot/spring-boot",
         "occurrences": 18
       },
@@ -211,6 +187,30 @@
       {
         "purl": "pkg:maven/org.springframework.security/spring-security-web",
         "occurrences": 47
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-beans",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 59
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-expression",
+        "occurrences": 32
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 486
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 38
       },
       {
         "purl": "pkg:maven/org.xmlbeam/xmlprojector",
@@ -274,9 +274,6 @@
         "purl": "pkg:maven/org.postgresql/postgresql"
       },
       {
-        "purl": "pkg:maven/org.springframework/spring-test"
-      },
-      {
         "purl": "pkg:maven/org.springframework.boot/spring-boot-starter-actuator"
       },
       {
@@ -290,13 +287,18 @@
       },
       {
         "purl": "pkg:maven/org.springframework.cloud/spring-cloud-starter-netflix-eureka-client"
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-test"
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 54,
       "unused": 23,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 2000
     }
   }

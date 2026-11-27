@@ -2,7 +2,7 @@
   "item": "java-mall",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:maven/cn.hutool/hutool-all",
@@ -57,6 +57,22 @@
         "occurrences": 1
       },
       {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
+        "occurrences": 114
+      },
+      {
+        "purl": "pkg:maven/org.springframework.data/spring-data-redis",
+        "occurrences": 103
+      },
+      {
         "purl": "pkg:maven/org.springframework/spring-beans",
         "occurrences": 428
       },
@@ -79,22 +95,6 @@
       {
         "purl": "pkg:maven/org.springframework/spring-webmvc",
         "occurrences": 24
-      },
-      {
-        "purl": "pkg:maven/org.springframework.boot/spring-boot",
-        "occurrences": 16
-      },
-      {
-        "purl": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure",
-        "occurrences": 13
-      },
-      {
-        "purl": "pkg:maven/org.springframework.data/spring-data-commons",
-        "occurrences": 114
-      },
-      {
-        "purl": "pkg:maven/org.springframework.data/spring-data-redis",
-        "occurrences": 103
       }
     ],
     "unused": [
@@ -112,10 +112,12 @@
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 23,
       "unused": 4,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 5446
     }
   }

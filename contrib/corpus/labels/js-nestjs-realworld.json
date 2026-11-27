@@ -2,8 +2,24 @@
   "item": "js-nestjs-realworld",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:npm/%40nestjs/common",
+        "occurrences": 167
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/core",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/swagger",
+        "occurrences": 49
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/typeorm",
+        "occurrences": 22
+      },
       {
         "purl": "pkg:npm/argon2",
         "occurrences": 4
@@ -39,25 +55,27 @@
       {
         "purl": "pkg:npm/typeorm",
         "occurrences": 87
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/common",
-        "occurrences": 167
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/core",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/swagger",
-        "occurrences": 49
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/typeorm",
-        "occurrences": 22
       }
     ],
     "unused": [
+      {
+        "purl": "pkg:npm/%40nestjs/microservices"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/platform-express"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/testing"
+      },
+      {
+        "purl": "pkg:npm/%40nestjs/websockets"
+      },
+      {
+        "purl": "pkg:npm/%40types/jest"
+      },
+      {
+        "purl": "pkg:npm/%40types/node"
+      },
       {
         "purl": "pkg:npm/atob"
       },
@@ -99,31 +117,15 @@
       },
       {
         "purl": "pkg:npm/typescript"
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/microservices"
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/platform-express"
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/testing"
-      },
-      {
-        "purl": "pkg:npm/%40nestjs/websockets"
-      },
-      {
-        "purl": "pkg:npm/%40types/jest"
-      },
-      {
-        "purl": "pkg:npm/%40types/node"
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 13,
       "unused": 20,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 368
     }
   }

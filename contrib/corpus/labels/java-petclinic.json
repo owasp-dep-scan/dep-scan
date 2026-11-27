@@ -2,7 +2,7 @@
   "item": "java-petclinic",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:maven/jakarta.persistence/jakarta.persistence-api",
@@ -19,26 +19,6 @@
       {
         "purl": "pkg:maven/javax.cache/cache-api",
         "occurrences": 6
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-context",
-        "occurrences": 83
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-core",
-        "occurrences": 55
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-tx",
-        "occurrences": 13
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-web",
-        "occurrences": 75
-      },
-      {
-        "purl": "pkg:maven/org.springframework/spring-webmvc",
-        "occurrences": 37
       },
       {
         "purl": "pkg:maven/org.springframework.boot/spring-boot",
@@ -59,6 +39,26 @@
       {
         "purl": "pkg:maven/org.springframework.data/spring-data-jpa",
         "occurrences": 8
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-context",
+        "occurrences": 83
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-core",
+        "occurrences": 55
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-tx",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-web",
+        "occurrences": 75
+      },
+      {
+        "purl": "pkg:maven/org.springframework/spring-webmvc",
+        "occurrences": 37
       }
     ],
     "unused": [
@@ -132,20 +132,22 @@
         "purl": "pkg:maven/org.testcontainers/testcontainers-mysql"
       },
       {
-        "purl": "pkg:maven/org.webjars/webjars-locator-lite"
-      },
-      {
         "purl": "pkg:maven/org.webjars.npm/bootstrap"
       },
       {
         "purl": "pkg:maven/org.webjars.npm/font-awesome"
+      },
+      {
+        "purl": "pkg:maven/org.webjars/webjars-locator-lite"
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 14,
       "unused": 26,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 441
     }
   }

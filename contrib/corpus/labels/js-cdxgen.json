@@ -2,8 +2,52 @@
   "item": "js-cdxgen",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:npm/%40babel/parser",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40babel/traverse",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:npm/%40cdxgen/cdx-hbom",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/%40cdxgen/cdx-proto",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:npm/%40cdxgen/cdx-purl",
+        "occurrences": 212
+      },
+      {
+        "purl": "pkg:npm/%40cdxgen/safer-exec",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/%40isaacs/string-locale-compare",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40npmcli/fs",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40npmcli/map-workspaces",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40npmcli/name-from-folder",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40npmcli/package-json",
+        "occurrences": 9
+      },
       {
         "purl": "pkg:npm/ajv",
         "occurrences": 230
@@ -87,53 +131,12 @@
       {
         "purl": "pkg:npm/yargs",
         "occurrences": 45
-      },
-      {
-        "purl": "pkg:npm/%40babel/parser",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40babel/traverse",
-        "occurrences": 7
-      },
-      {
-        "purl": "pkg:npm/%40cdxgen/cdx-hbom",
-        "occurrences": 1
-      },
-      {
-        "purl": "pkg:npm/%40cdxgen/cdx-proto",
-        "occurrences": 22
-      },
-      {
-        "purl": "pkg:npm/%40cdxgen/cdx-purl",
-        "occurrences": 212
-      },
-      {
-        "purl": "pkg:npm/%40cdxgen/safer-exec",
-        "occurrences": 1
-      },
-      {
-        "purl": "pkg:npm/%40isaacs/string-locale-compare",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40npmcli/fs",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40npmcli/map-workspaces",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40npmcli/name-from-folder",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40npmcli/package-json",
-        "occurrences": 9
       }
     ],
     "unused": [
+      {
+        "purl": "pkg:npm/%40biomejs/biome"
+      },
       {
         "purl": "pkg:npm/esmock"
       },
@@ -145,18 +148,17 @@
       },
       {
         "purl": "pkg:npm/typescript"
-      },
-      {
-        "purl": "pkg:npm/%40biomejs/biome"
       }
     ],
     "unmapped": {
       "jsr:@cdxgen": 2
     },
+    "local": {},
     "counts": {
       "used": 32,
       "unused": 5,
       "unmapped": 1,
+      "local": 0,
       "certainUses": 828
     }
   }

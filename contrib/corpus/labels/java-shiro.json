@@ -2,7 +2,7 @@
   "item": "java-shiro",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:maven/jakarta.servlet.jsp/jakarta.servlet.jsp-api",
@@ -35,10 +35,12 @@
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 3,
       "unused": 5,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 83
     }
   }

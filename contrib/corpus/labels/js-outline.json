@@ -2,8 +2,252 @@
   "item": "js-outline",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:npm/%40aws-sdk/client-s3",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40aws-sdk/cloudfront-signer",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40aws-sdk/lib-storage",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40aws-sdk/s3-presigned-post",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40aws-sdk/s3-request-presigner",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40aws-sdk/signature-v4-crt",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/%40benrbray/prosemirror-math",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:npm/%40bull-board/api",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:npm/%40bull-board/koa",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40css-inline/css-inline-wasm",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40dnd-kit/core",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:npm/%40dnd-kit/modifiers",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40dnd-kit/sortable",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/%40dnd-kit/utilities",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40dotenvx/dotenvx",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/%40emoji-mart/data",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40emotion/is-prop-valid",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40fast-csv/parse",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40firecrawl/pdf-inspector",
+        "occurrences": 1
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-brands-svg-icons",
+        "occurrences": 64
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-solid-svg-icons",
+        "occurrences": 197
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/react-fontawesome",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/%40getoutline/react-roving-tabindex",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40gitbeaker/rest",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40hocuspocus/extension-redis",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40hocuspocus/extension-throttle",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40hocuspocus/provider",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40hocuspocus/server",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40koa/router",
+        "occurrences": 127
+      },
+      {
+        "purl": "pkg:npm/%40koa/send",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40linear/sdk",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40modelcontextprotocol/server",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:npm/%40noble/hashes",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40node-oauth/oauth2-server",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:npm/%40notionhq/client",
+        "occurrences": 32
+      },
+      {
+        "purl": "pkg:npm/%40octokit/auth-app",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40outlinewiki/koa-passport",
+        "occurrences": 19
+      },
+      {
+        "purl": "pkg:npm/%40outlinewiki/passport-azure-ad-oauth2",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-collapsible",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-context-menu",
+        "occurrences": 28
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dialog",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-direction",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dropdown-menu",
+        "occurrences": 49
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-hover-card",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-one-time-password-field",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-popover",
+        "occurrences": 23
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-select",
+        "occurrences": 25
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-slot",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-switch",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-tabs",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-toolbar",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-tooltip",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-visually-hidden",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:npm/%40sentry/node",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40sentry/react",
+        "occurrences": 17
+      },
+      {
+        "purl": "pkg:npm/%40simplewebauthn/browser",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40simplewebauthn/server",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/%40socket.io/redis-adapter",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40swc/core",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-table",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-virtual",
+        "occurrences": 6
+      },
       {
         "purl": "pkg:npm/async-sema",
         "occurrences": 5
@@ -579,349 +823,9 @@
       {
         "purl": "pkg:npm/zod",
         "occurrences": 1475
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/client-s3",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/cloudfront-signer",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/lib-storage",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/s3-presigned-post",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/s3-request-presigner",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40aws-sdk/signature-v4-crt",
-        "occurrences": 1
-      },
-      {
-        "purl": "pkg:npm/%40benrbray/prosemirror-math",
-        "occurrences": 13
-      },
-      {
-        "purl": "pkg:npm/%40bull-board/api",
-        "occurrences": 7
-      },
-      {
-        "purl": "pkg:npm/%40bull-board/koa",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40css-inline/css-inline-wasm",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40dnd-kit/core",
-        "occurrences": 23
-      },
-      {
-        "purl": "pkg:npm/%40dnd-kit/modifiers",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40dnd-kit/sortable",
-        "occurrences": 10
-      },
-      {
-        "purl": "pkg:npm/%40dnd-kit/utilities",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40dotenvx/dotenvx",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:npm/%40emoji-mart/data",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40emotion/is-prop-valid",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40fast-csv/parse",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40firecrawl/pdf-inspector",
-        "occurrences": 1
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/free-brands-svg-icons",
-        "occurrences": 64
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/free-solid-svg-icons",
-        "occurrences": 197
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/react-fontawesome",
-        "occurrences": 8
-      },
-      {
-        "purl": "pkg:npm/%40getoutline/react-roving-tabindex",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40gitbeaker/rest",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40hocuspocus/extension-redis",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40hocuspocus/extension-throttle",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40hocuspocus/provider",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40hocuspocus/server",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40koa/router",
-        "occurrences": 127
-      },
-      {
-        "purl": "pkg:npm/%40koa/send",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40linear/sdk",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40modelcontextprotocol/server",
-        "occurrences": 11
-      },
-      {
-        "purl": "pkg:npm/%40noble/hashes",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40node-oauth/oauth2-server",
-        "occurrences": 12
-      },
-      {
-        "purl": "pkg:npm/%40notionhq/client",
-        "occurrences": 32
-      },
-      {
-        "purl": "pkg:npm/%40octokit/auth-app",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40outlinewiki/koa-passport",
-        "occurrences": 19
-      },
-      {
-        "purl": "pkg:npm/%40outlinewiki/passport-azure-ad-oauth2",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-collapsible",
-        "occurrences": 8
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-context-menu",
-        "occurrences": 28
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-dialog",
-        "occurrences": 21
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-direction",
-        "occurrences": 10
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-dropdown-menu",
-        "occurrences": 49
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-hover-card",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-one-time-password-field",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-popover",
-        "occurrences": 23
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-select",
-        "occurrences": 25
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-slot",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-switch",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-tabs",
-        "occurrences": 11
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-toolbar",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-tooltip",
-        "occurrences": 8
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-visually-hidden",
-        "occurrences": 16
-      },
-      {
-        "purl": "pkg:npm/%40sentry/node",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40sentry/react",
-        "occurrences": 17
-      },
-      {
-        "purl": "pkg:npm/%40simplewebauthn/browser",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40simplewebauthn/server",
-        "occurrences": 10
-      },
-      {
-        "purl": "pkg:npm/%40socket.io/redis-adapter",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40swc/core",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40tanstack/react-table",
-        "occurrences": 11
-      },
-      {
-        "purl": "pkg:npm/%40tanstack/react-virtual",
-        "occurrences": 6
       }
     ],
     "unused": [
-      {
-        "purl": "pkg:npm/concurrently"
-      },
-      {
-        "purl": "pkg:npm/core-js"
-      },
-      {
-        "purl": "pkg:npm/discord-api-types"
-      },
-      {
-        "purl": "pkg:npm/fake-indexeddb"
-      },
-      {
-        "purl": "pkg:npm/form-data"
-      },
-      {
-        "purl": "pkg:npm/helmet"
-      },
-      {
-        "purl": "pkg:npm/husky"
-      },
-      {
-        "purl": "pkg:npm/i18next-parser"
-      },
-      {
-        "purl": "pkg:npm/ioredis-mock"
-      },
-      {
-        "purl": "pkg:npm/lint-staged"
-      },
-      {
-        "purl": "pkg:npm/msw"
-      },
-      {
-        "purl": "pkg:npm/oxfmt"
-      },
-      {
-        "purl": "pkg:npm/oxlint"
-      },
-      {
-        "purl": "pkg:npm/oxlint-tsgolint"
-      },
-      {
-        "purl": "pkg:npm/passport"
-      },
-      {
-        "purl": "pkg:npm/patch-package"
-      },
-      {
-        "purl": "pkg:npm/pele"
-      },
-      {
-        "purl": "pkg:npm/pg"
-      },
-      {
-        "purl": "pkg:npm/react-is"
-      },
-      {
-        "purl": "pkg:npm/react-refresh"
-      },
-      {
-        "purl": "pkg:npm/reflect-metadata"
-      },
-      {
-        "purl": "pkg:npm/refractor"
-      },
-      {
-        "purl": "pkg:npm/rimraf"
-      },
-      {
-        "purl": "pkg:npm/sequelize-cli"
-      },
-      {
-        "purl": "pkg:npm/terser"
-      },
-      {
-        "purl": "pkg:npm/typescript"
-      },
-      {
-        "purl": "pkg:npm/utility-types"
-      },
-      {
-        "purl": "pkg:npm/vite"
-      },
-      {
-        "purl": "pkg:npm/vite-plugin-pwa"
-      },
-      {
-        "purl": "pkg:npm/vite-tsconfig-paths"
-      },
-      {
-        "purl": "pkg:npm/vitest"
-      },
-      {
-        "purl": "pkg:npm/y-protocols"
-      },
       {
         "purl": "pkg:npm/%40bull-board/ui"
       },
@@ -1080,13 +984,111 @@
       },
       {
         "purl": "pkg:npm/%40vitest/ui"
+      },
+      {
+        "purl": "pkg:npm/concurrently"
+      },
+      {
+        "purl": "pkg:npm/core-js"
+      },
+      {
+        "purl": "pkg:npm/discord-api-types"
+      },
+      {
+        "purl": "pkg:npm/fake-indexeddb"
+      },
+      {
+        "purl": "pkg:npm/form-data"
+      },
+      {
+        "purl": "pkg:npm/helmet"
+      },
+      {
+        "purl": "pkg:npm/husky"
+      },
+      {
+        "purl": "pkg:npm/i18next-parser"
+      },
+      {
+        "purl": "pkg:npm/ioredis-mock"
+      },
+      {
+        "purl": "pkg:npm/lint-staged"
+      },
+      {
+        "purl": "pkg:npm/msw"
+      },
+      {
+        "purl": "pkg:npm/oxfmt"
+      },
+      {
+        "purl": "pkg:npm/oxlint"
+      },
+      {
+        "purl": "pkg:npm/oxlint-tsgolint"
+      },
+      {
+        "purl": "pkg:npm/passport"
+      },
+      {
+        "purl": "pkg:npm/patch-package"
+      },
+      {
+        "purl": "pkg:npm/pele"
+      },
+      {
+        "purl": "pkg:npm/pg"
+      },
+      {
+        "purl": "pkg:npm/react-is"
+      },
+      {
+        "purl": "pkg:npm/react-refresh"
+      },
+      {
+        "purl": "pkg:npm/reflect-metadata"
+      },
+      {
+        "purl": "pkg:npm/refractor"
+      },
+      {
+        "purl": "pkg:npm/rimraf"
+      },
+      {
+        "purl": "pkg:npm/sequelize-cli"
+      },
+      {
+        "purl": "pkg:npm/terser"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      },
+      {
+        "purl": "pkg:npm/utility-types"
+      },
+      {
+        "purl": "pkg:npm/vite"
+      },
+      {
+        "purl": "pkg:npm/vite-plugin-pwa"
+      },
+      {
+        "purl": "pkg:npm/vite-tsconfig-paths"
+      },
+      {
+        "purl": "pkg:npm/vitest"
+      },
+      {
+        "purl": "pkg:npm/y-protocols"
       }
     ],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 205,
       "unused": 85,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 19334
     }
   }

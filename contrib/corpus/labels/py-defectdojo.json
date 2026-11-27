@@ -2,12 +2,8 @@
   "item": "py-defectdojo",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
-      {
-        "purl": "pkg:pypi/amqp",
-        "occurrences": 2
-      },
       {
         "purl": "pkg:pypi/bleach",
         "occurrences": 21
@@ -43,6 +39,10 @@
       {
         "purl": "pkg:pypi/django-debug-toolbar",
         "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/django-environ",
+        "occurrences": 8
       },
       {
         "purl": "pkg:pypi/django-extensions",
@@ -81,8 +81,16 @@
         "occurrences": 6
       },
       {
+        "purl": "pkg:pypi/django-split-settings",
+        "occurrences": 4
+      },
+      {
         "purl": "pkg:pypi/django-tagulous",
         "occurrences": 106
+      },
+      {
+        "purl": "pkg:pypi/django-watson",
+        "occurrences": 35
       },
       {
         "purl": "pkg:pypi/djangorestframework",
@@ -93,24 +101,12 @@
         "occurrences": 158
       },
       {
-        "purl": "pkg:pypi/environ",
-        "occurrences": 8
-      },
-      {
         "purl": "pkg:pypi/html2text",
         "occurrences": 76
       },
       {
         "purl": "pkg:pypi/hyperlink",
         "occurrences": 51
-      },
-      {
-        "purl": "pkg:pypi/idna",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:pypi/kombu",
-        "occurrences": 2
       },
       {
         "purl": "pkg:pypi/lxml",
@@ -149,14 +145,6 @@
         "occurrences": 57
       },
       {
-        "purl": "pkg:pypi/six",
-        "occurrences": 15
-      },
-      {
-        "purl": "pkg:pypi/split-settings",
-        "occurrences": 4
-      },
-      {
         "purl": "pkg:pypi/titlecase",
         "occurrences": 2
       },
@@ -165,7 +153,7 @@
         "occurrences": 6
       },
       {
-        "purl": "pkg:pypi/vcr-unittest",
+        "purl": "pkg:pypi/vcrpy-unittest",
         "occurrences": 3
       },
       {
@@ -175,10 +163,6 @@
       {
         "purl": "pkg:pypi/vulners",
         "occurrences": 2
-      },
-      {
-        "purl": "pkg:pypi/watson",
-        "occurrences": 35
       }
     ],
     "unused": [
@@ -204,9 +188,6 @@
         "purl": "pkg:pypi/django-debug-toolbar-request-history"
       },
       {
-        "purl": "pkg:pypi/django-environ"
-      },
-      {
         "purl": "pkg:pypi/django-htmx"
       },
       {
@@ -222,13 +203,7 @@
         "purl": "pkg:pypi/django-slack"
       },
       {
-        "purl": "pkg:pypi/django-split-settings"
-      },
-      {
         "purl": "pkg:pypi/django-test-migrations"
-      },
-      {
-        "purl": "pkg:pypi/django-watson"
       },
       {
         "purl": "pkg:pypi/drf-spectacular-sidecar"
@@ -294,9 +269,6 @@
         "purl": "pkg:pypi/vcrpy"
       },
       {
-        "purl": "pkg:pypi/vcrpy-unittest"
-      },
-      {
         "purl": "pkg:pypi/watchdog"
       },
       {
@@ -306,11 +278,18 @@
         "purl": "pkg:pypi/zapv2"
       }
     ],
-    "unmapped": {},
+    "unmapped": {
+      "amqp": 2,
+      "idna": 5,
+      "kombu": 2,
+      "six": 15
+    },
+    "local": {},
     "counts": {
-      "used": 44,
-      "unused": 41,
-      "unmapped": 0,
+      "used": 40,
+      "unused": 37,
+      "unmapped": 4,
+      "local": 0,
       "certainUses": 19691
     }
   }

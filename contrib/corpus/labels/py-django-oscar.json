@@ -2,7 +2,7 @@
   "item": "py-django-oscar",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/babel",
@@ -11,6 +11,10 @@
       {
         "purl": "pkg:pypi/django",
         "occurrences": 6794
+      },
+      {
+        "purl": "pkg:pypi/django-environ",
+        "occurrences": 8
       },
       {
         "purl": "pkg:pypi/django-extra-views",
@@ -33,6 +37,10 @@
         "occurrences": 13
       },
       {
+        "purl": "pkg:pypi/easy-thumbnails",
+        "occurrences": 4
+      },
+      {
         "purl": "pkg:pypi/phonenumbers",
         "occurrences": 3
       },
@@ -45,8 +53,16 @@
         "occurrences": 2
       },
       {
-        "purl": "pkg:pypi/setuptools",
+        "purl": "pkg:pypi/pycountry",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/sorl-thumbnail",
         "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/sphinx-rtd-theme",
+        "occurrences": 2
       }
     ],
     "unused": [
@@ -58,16 +74,14 @@
       }
     ],
     "unmapped": {
-      "easy_thumbnails": 4,
-      "environ": 8,
-      "pycountry": 2,
-      "sorl": 6,
-      "sphinx_rtd_theme": 2
+      "setuptools": 6
     },
+    "local": {},
     "counts": {
-      "used": 11,
+      "used": 15,
       "unused": 2,
-      "unmapped": 5,
+      "unmapped": 1,
+      "local": 0,
       "certainUses": 6932
     }
   }

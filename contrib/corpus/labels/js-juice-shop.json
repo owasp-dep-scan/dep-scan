@@ -2,8 +2,112 @@
   "item": "js-juice-shop",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:npm/%40ai-sdk/openai-compatible",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40angular/cdk",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:npm/%40angular/common",
+        "occurrences": 112
+      },
+      {
+        "purl": "pkg:npm/%40angular/core",
+        "occurrences": 1042
+      },
+      {
+        "purl": "pkg:npm/%40angular/forms",
+        "occurrences": 310
+      },
+      {
+        "purl": "pkg:npm/%40angular/material",
+        "occurrences": 1069
+      },
+      {
+        "purl": "pkg:npm/%40angular/platform-browser",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40angular/router",
+        "occurrences": 100
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/commands",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-javascript",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-json",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-yaml",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/language",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/merge",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/search",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/state",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/view",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/%40eslint/js",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/fontawesome-svg-core",
+        "occurrences": 62
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-brands-svg-icons",
+        "occurrences": 28
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-regular-svg-icons",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-solid-svg-icons",
+        "occurrences": 162
+      },
+      {
+        "purl": "pkg:npm/%40lezer/highlight",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:npm/%40ngx-translate/core",
+        "occurrences": 178
+      },
+      {
+        "purl": "pkg:npm/%40ngx-translate/http-loader",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40wagmi/core",
+        "occurrences": 31
+      },
       {
         "purl": "pkg:npm/ai",
         "occurrences": 9
@@ -299,167 +403,9 @@
       {
         "purl": "pkg:npm/zod",
         "occurrences": 146
-      },
-      {
-        "purl": "pkg:npm/%40ai-sdk/openai-compatible",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40angular/cdk",
-        "occurrences": 14
-      },
-      {
-        "purl": "pkg:npm/%40angular/common",
-        "occurrences": 112
-      },
-      {
-        "purl": "pkg:npm/%40angular/core",
-        "occurrences": 1042
-      },
-      {
-        "purl": "pkg:npm/%40angular/forms",
-        "occurrences": 310
-      },
-      {
-        "purl": "pkg:npm/%40angular/material",
-        "occurrences": 1069
-      },
-      {
-        "purl": "pkg:npm/%40angular/platform-browser",
-        "occurrences": 18
-      },
-      {
-        "purl": "pkg:npm/%40angular/router",
-        "occurrences": 100
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/commands",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/lang-javascript",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/lang-json",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/lang-yaml",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/language",
-        "occurrences": 10
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/merge",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/search",
-        "occurrences": 4
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/state",
-        "occurrences": 16
-      },
-      {
-        "purl": "pkg:npm/%40codemirror/view",
-        "occurrences": 21
-      },
-      {
-        "purl": "pkg:npm/%40eslint/js",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/fontawesome-svg-core",
-        "occurrences": 62
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/free-brands-svg-icons",
-        "occurrences": 28
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/free-regular-svg-icons",
-        "occurrences": 22
-      },
-      {
-        "purl": "pkg:npm/%40fortawesome/free-solid-svg-icons",
-        "occurrences": 162
-      },
-      {
-        "purl": "pkg:npm/%40lezer/highlight",
-        "occurrences": 48
-      },
-      {
-        "purl": "pkg:npm/%40ngx-translate/core",
-        "occurrences": 178
-      },
-      {
-        "purl": "pkg:npm/%40ngx-translate/http-loader",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:npm/%40wagmi/core",
-        "occurrences": 31
       }
     ],
     "unused": [
-      {
-        "purl": "pkg:npm/beercss"
-      },
-      {
-        "purl": "pkg:npm/concurrently"
-      },
-      {
-        "purl": "pkg:npm/cookieconsent"
-      },
-      {
-        "purl": "pkg:npm/eslint"
-      },
-      {
-        "purl": "pkg:npm/exif"
-      },
-      {
-        "purl": "pkg:npm/graceful-fs"
-      },
-      {
-        "purl": "pkg:npm/grunt"
-      },
-      {
-        "purl": "pkg:npm/grunt-cli"
-      },
-      {
-        "purl": "pkg:npm/grunt-contrib-compress"
-      },
-      {
-        "purl": "pkg:npm/grunt-replace-json"
-      },
-      {
-        "purl": "pkg:npm/hbs"
-      },
-      {
-        "purl": "pkg:npm/libxml2-wasm"
-      },
-      {
-        "purl": "pkg:npm/material-icons"
-      },
-      {
-        "purl": "pkg:npm/nyc"
-      },
-      {
-        "purl": "pkg:npm/sqlite3"
-      },
-      {
-        "purl": "pkg:npm/supertest"
-      },
-      {
-        "purl": "pkg:npm/tsx"
-      },
-      {
-        "purl": "pkg:npm/typescript"
-      },
       {
         "purl": "pkg:npm/%40cyclonedx/cyclonedx-npm"
       },
@@ -570,15 +516,71 @@
       },
       {
         "purl": "pkg:npm/%40types/unzipper"
+      },
+      {
+        "purl": "pkg:npm/beercss"
+      },
+      {
+        "purl": "pkg:npm/concurrently"
+      },
+      {
+        "purl": "pkg:npm/cookieconsent"
+      },
+      {
+        "purl": "pkg:npm/eslint"
+      },
+      {
+        "purl": "pkg:npm/exif"
+      },
+      {
+        "purl": "pkg:npm/graceful-fs"
+      },
+      {
+        "purl": "pkg:npm/grunt"
+      },
+      {
+        "purl": "pkg:npm/grunt-cli"
+      },
+      {
+        "purl": "pkg:npm/grunt-contrib-compress"
+      },
+      {
+        "purl": "pkg:npm/grunt-replace-json"
+      },
+      {
+        "purl": "pkg:npm/hbs"
+      },
+      {
+        "purl": "pkg:npm/libxml2-wasm"
+      },
+      {
+        "purl": "pkg:npm/material-icons"
+      },
+      {
+        "purl": "pkg:npm/nyc"
+      },
+      {
+        "purl": "pkg:npm/sqlite3"
+      },
+      {
+        "purl": "pkg:npm/supertest"
+      },
+      {
+        "purl": "pkg:npm/tsx"
+      },
+      {
+        "purl": "pkg:npm/typescript"
       }
     ],
-    "unmapped": {
+    "unmapped": {},
+    "local": {
       "src": 11
     },
     "counts": {
       "used": 100,
       "unused": 55,
-      "unmapped": 1,
+      "unmapped": 0,
+      "local": 1,
       "certainUses": 4676
     }
   },

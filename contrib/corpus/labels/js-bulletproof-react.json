@@ -2,8 +2,80 @@
   "item": "js-bulletproof-react",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:npm/%40hookform/resolvers",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40mswjs/data",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/%40mswjs/http-middleware",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40ngneat/falso",
+        "occurrences": 69
+      },
+      {
+        "purl": "pkg:npm/%40playwright/test",
+        "occurrences": 12
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dialog",
+        "occurrences": 138
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-dropdown-menu",
+        "occurrences": 126
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-icons",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-label",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-slot",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40radix-ui/react-switch",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40storybook/react",
+        "occurrences": 120
+      },
+      {
+        "purl": "pkg:npm/%40tailwindcss/typography",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-query",
+        "occurrences": 233
+      },
+      {
+        "purl": "pkg:npm/%40tanstack/react-query-devtools",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/react",
+        "occurrences": 24
+      },
+      {
+        "purl": "pkg:npm/%40testing-library/user-event",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40vitejs/plugin-react",
+        "occurrences": 6
+      },
       {
         "purl": "pkg:npm/axios",
         "occurrences": 8
@@ -127,86 +199,16 @@
       {
         "purl": "pkg:npm/zustand",
         "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40hookform/resolvers",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40mswjs/data",
-        "occurrences": 21
-      },
-      {
-        "purl": "pkg:npm/%40mswjs/http-middleware",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40ngneat/falso",
-        "occurrences": 69
-      },
-      {
-        "purl": "pkg:npm/%40playwright/test",
-        "occurrences": 12
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-dialog",
-        "occurrences": 138
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-dropdown-menu",
-        "occurrences": 126
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-icons",
-        "occurrences": 48
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-label",
-        "occurrences": 24
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-slot",
-        "occurrences": 18
-      },
-      {
-        "purl": "pkg:npm/%40radix-ui/react-switch",
-        "occurrences": 18
-      },
-      {
-        "purl": "pkg:npm/%40storybook/react",
-        "occurrences": 120
-      },
-      {
-        "purl": "pkg:npm/%40tailwindcss/typography",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40tanstack/react-query",
-        "occurrences": 233
-      },
-      {
-        "purl": "pkg:npm/%40tanstack/react-query-devtools",
-        "occurrences": 6
-      },
-      {
-        "purl": "pkg:npm/%40testing-library/react",
-        "occurrences": 24
-      },
-      {
-        "purl": "pkg:npm/%40testing-library/user-event",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:npm/%40vitejs/plugin-react",
-        "occurrences": 6
       }
     ],
     "unused": [],
     "unmapped": {},
+    "local": {},
     "counts": {
       "used": 49,
       "unused": 0,
       "unmapped": 0,
+      "local": 0,
       "certainUses": 2366
     }
   }

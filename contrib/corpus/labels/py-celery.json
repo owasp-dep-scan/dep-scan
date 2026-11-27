@@ -2,7 +2,7 @@
   "item": "py-celery",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/billiard",
@@ -11,14 +11,6 @@
       {
         "purl": "pkg:pypi/boto3",
         "occurrences": 2
-      },
-      {
-        "purl": "pkg:pypi/botocore",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:pypi/bpython",
-        "occurrences": 3
       },
       {
         "purl": "pkg:pypi/click",
@@ -37,24 +29,8 @@
         "occurrences": 2
       },
       {
-        "purl": "pkg:pypi/couchbase-core",
-        "occurrences": 1
-      },
-      {
-        "purl": "pkg:pypi/cpickle",
-        "occurrences": 1
-      },
-      {
         "purl": "pkg:pypi/cryptography",
         "occurrences": 39
-      },
-      {
-        "purl": "pkg:pypi/docutils",
-        "occurrences": 5
-      },
-      {
-        "purl": "pkg:pypi/dummy-thread",
-        "occurrences": 1
       },
       {
         "purl": "pkg:pypi/elastic-transport",
@@ -65,31 +41,11 @@
         "occurrences": 2
       },
       {
-        "purl": "pkg:pypi/greenlet",
-        "occurrences": 9
-      },
-      {
-        "purl": "pkg:pypi/ipython",
-        "occurrences": 12
-      },
-      {
         "purl": "pkg:pypi/kombu",
         "occurrences": 621
       },
       {
-        "purl": "pkg:pypi/objgraph",
-        "occurrences": 3
-      },
-      {
-        "purl": "pkg:pypi/psutil",
-        "occurrences": 1
-      },
-      {
         "purl": "pkg:pypi/pyarango",
-        "occurrences": 2
-      },
-      {
-        "purl": "pkg:pypi/pybloom-live",
         "occurrences": 2
       },
       {
@@ -101,16 +57,12 @@
         "occurrences": 7
       },
       {
-        "purl": "pkg:pypi/pygments",
-        "occurrences": 5
-      },
-      {
         "purl": "pkg:pypi/pylibmc",
         "occurrences": 1
       },
       {
         "purl": "pkg:pypi/pymongo",
-        "occurrences": 7
+        "occurrences": 1
       },
       {
         "purl": "pkg:pypi/pyperclip",
@@ -121,12 +73,12 @@
         "occurrences": 52
       },
       {
-        "purl": "pkg:pypi/pytest-docker-tools",
-        "occurrences": 26
-      },
-      {
         "purl": "pkg:pypi/python-dateutil",
         "occurrences": 11
+      },
+      {
+        "purl": "pkg:pypi/python-memcached",
+        "occurrences": 1
       },
       {
         "purl": "pkg:pypi/requests",
@@ -151,10 +103,6 @@
       {
         "purl": "pkg:pypi/tzlocal",
         "occurrences": 2
-      },
-      {
-        "purl": "pkg:pypi/urlparse",
-        "occurrences": 1
       },
       {
         "purl": "pkg:pypi/vine",
@@ -436,9 +384,6 @@
         "purl": "pkg:pypi/python-dotenv"
       },
       {
-        "purl": "pkg:pypi/python-memcached"
-      },
-      {
         "purl": "pkg:pypi/python-multipart"
       },
       {
@@ -533,21 +478,31 @@
       }
     ],
     "unmapped": {
-      "__pypy__": 1,
+      "IPython": 12,
       "_billiard": 1,
-      "_dummy_thread": 1,
       "azure": 8,
       "backports": 1,
-      "bson": 1,
+      "botocore": 2,
+      "bpython": 3,
       "colorama": 6,
+      "couchbase_core": 1,
       "djcelery": 5,
+      "docutils": 5,
       "google": 13,
-      "memcache": 1
+      "greenlet": 9,
+      "objgraph": 3,
+      "psutil": 1,
+      "pybloom_live": 2,
+      "pygments": 5,
+      "pymongo": 7,
+      "pytest_docker_tools": 26
     },
+    "local": {},
     "counts": {
-      "used": 39,
-      "unused": 123,
-      "unmapped": 10,
+      "used": 26,
+      "unused": 122,
+      "unmapped": 18,
+      "local": 0,
       "certainUses": 1376
     }
   }
