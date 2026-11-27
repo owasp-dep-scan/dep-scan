@@ -1,0 +1,22 @@
+test/test_corpus_joins.py
+  s_7318da1b9edd46::t_15ded7b9820e48 279-295,302,315-460,466-481
+  s_7318da1b9edd46::t_e37f0681cc24e6 296-301,303-314,461-465
+contrib/corpus/score.py
+  s_7318da1b9edd46::t_e37f0681cc24e6 73-87,725-732,740,742,745,747-750,752-756,759-760,763-764,782,788-790,792,795,831-833,843-845,854,857,942,944-948,954-964,966-972,974-982,984-988,1004-1006,1079,1098
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d78c7399a589c3c6e97ee593ac53eb2e461e509b",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
