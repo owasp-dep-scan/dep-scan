@@ -47,7 +47,9 @@ def test_reached_used_is_true_positive():
 def test_reached_unused_is_false_positive():
     reached = {corpus_score.purl_key(USED[0]), corpus_score.purl_key(UNUSED[0])}
     scores = corpus_score.score_purl_set(
-        reached, {corpus_score.purl_key(p) for p in USED}, {corpus_score.purl_key(p) for p in UNUSED}
+        reached,
+        {corpus_score.purl_key(p) for p in USED},
+        {corpus_score.purl_key(p) for p in UNUSED},
     )
     assert scores["recall"] == 0.5
     assert scores["precision"] == 0.5
@@ -65,9 +67,8 @@ def test_missed_used_is_false_negative():
 def test_comparable_purl_folds_spelling():
     # The same scoped package spelled with the encoded @ and a different
     # version, as a BOM and a slice spell it.
-    assert (
-        corpus_score.purl_key("pkg:npm/%40babel/core@7.0.0")
-        == corpus_score.purl_key("pkg:npm/@babel/core@6.5.0")
+    assert corpus_score.purl_key("pkg:npm/%40babel/core@7.0.0") == corpus_score.purl_key(
+        "pkg:npm/@babel/core@6.5.0"
     )
 
 
@@ -107,9 +108,7 @@ def test_missed_expected_finding_is_a_miss():
 def test_finding_on_labelled_purl_without_expected_entry_is_unexpected():
     # A rule-scoped control names left-pad for MAL rules only; an
     # unrelated supply-chain rule on the same benign package is unexpected.
-    expected = [
-        {"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}
-    ]
+    expected = [{"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}]
     forbidden = [
         {"category": "supply-chain", "purl": "pkg:npm/left-pad@1.3.0", "rules": ["INT-005"]}
     ]
@@ -125,9 +124,7 @@ def test_finding_on_labelled_purl_without_expected_entry_is_unexpected():
 def test_finding_on_a_labelled_purl_whose_category_no_label_names_is_not_unexpected():
     # The vulnerability labels name lodash; a vulnerability advisory on a
     # purl the supply-chain controls name is a true advisory, not noise.
-    expected = [
-        {"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}
-    ]
+    expected = [{"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}]
     forbidden = [
         {"category": "supply-chain", "purl": "pkg:npm/express@4.19.2", "rules": ["INT-005"]}
     ]
@@ -141,9 +138,7 @@ def test_finding_on_a_labelled_purl_whose_category_no_label_names_is_not_unexpec
 
 
 def test_finding_on_unlabelled_purl_counts_nowhere():
-    expected = [
-        {"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}
-    ]
+    expected = [{"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}]
     findings = [_finding("vulnerability", "CVE-7", [_purl("koa")])]
     scored = corpus_score.score_findings(findings, expected, [])
     assert scored["unexpected"] == 0
@@ -167,9 +162,7 @@ def test_negative_control_fires_with_finding_id():
 
 
 def test_negative_control_with_other_purl_does_not_fire():
-    forbidden = [
-        {"category": "malware", "purl": "pkg:npm/left-pad@1.3.0", "reason": "benign"}
-    ]
+    forbidden = [{"category": "malware", "purl": "pkg:npm/left-pad@1.3.0", "reason": "benign"}]
     findings = [_finding("malware", "MAL-1", [_purl("right-pad")])]
     scored = corpus_score.score_findings(findings, [], forbidden)
     assert scored["forbiddenFired"] == []
@@ -197,10 +190,10 @@ def test_not_assessed_stage_is_its_own_column(monkeypatch):
         findings=[],
     )
     entry = corpus_score.score_item(
-        {"name": "t", "kind": "fixture", "scan": {"types": ["js"], "args": []}},
+        corpus_score.ItemScan(
+            {"name": "t", "kind": "fixture", "scan": {"types": ["js"], "args": []}}, result
+        ),
         {"findings": {"source": "hand", "expected": [], "forbidden": []}},
-        result,
-        None,
     )
     supply = entry["categories"]["supply-chain"]
     assert supply["status"] == "not-assessed"
@@ -213,11 +206,11 @@ def test_not_assessed_stage_is_its_own_column(monkeypatch):
 
 def test_unlabelled_category_is_not_reported_as_clean(monkeypatch):
     monkeypatch.chdir(REPO_ROOT)
-    result = _result_with_stages(
-        [{"name": "matching", "status": "completed"}], findings=[]
-    )
+    result = _result_with_stages([{"name": "matching", "status": "completed"}], findings=[])
     entry = corpus_score.score_item(
-        {"name": "t", "kind": "fixture", "scan": {"types": ["js"], "args": []}},
+        corpus_score.ItemScan(
+            {"name": "t", "kind": "fixture", "scan": {"types": ["js"], "args": []}}, result
+        ),
         {
             "findings": {
                 "source": "hand",
@@ -226,8 +219,6 @@ def test_unlabelled_category_is_not_reported_as_clean(monkeypatch):
                 ],
             }
         },
-        result,
-        None,
     )
     # The labelled category is scored; the unlabelled licence category never
     # appears at all, because the run labelled nothing for it.
@@ -347,25 +338,13 @@ def test_floors_pass_when_values_hold():
             }
         ]
     }
-    floors = {
-        "floors": [
-            {"item": "t", "path": "categories.vulnerability.recall", "minimum": 0.8}
-        ]
-    }
+    floors = {"floors": [{"item": "t", "path": "categories.vulnerability.recall", "minimum": 0.8}]}
     assert corpus_score.check_floors(floors, score_doc) == []
 
 
 def test_not_assessed_item_violates_its_floor():
-    score_doc = {
-        "items": [
-            {"item": "t", "state": "not-assessed", "reason": "data missing"}
-        ]
-    }
-    floors = {
-        "floors": [
-            {"item": "t", "path": "categories.vulnerability.recall", "minimum": 0.8}
-        ]
-    }
+    score_doc = {"items": [{"item": "t", "state": "not-assessed", "reason": "data missing"}]}
+    floors = {"floors": [{"item": "t", "path": "categories.vulnerability.recall", "minimum": 0.8}]}
     violations = corpus_score.check_floors(floors, score_doc)
     assert len(violations) == 1
     assert violations[0]["value"] is None

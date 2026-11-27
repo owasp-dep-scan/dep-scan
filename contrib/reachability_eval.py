@@ -37,6 +37,7 @@ import os
 import resource
 import sys
 import time
+from types import SimpleNamespace
 from typing import Dict, List, Optional
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,14 +55,12 @@ from analysis_lib.reachability import (  # noqa: E402
     get_reachability_impl,
 )
 
-_REPO_ROOT = os.path.abspath(os.path.join(_HERE, ".."))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-# The comparable key the scorer defines: comparable_purl without the
-# version, so a version-less label and a reached purl that names one
-# compare equal. One definition, shared with contrib/corpus/score.py.
-from contrib.corpus.score import purl_key  # noqa: E402
+# The labelled score is the corpus scorer's own: the same comparable key,
+# the same analyser runs and the same recall and precision.
+from contrib.corpus import score as corpus_score  # noqa: E402
 
 BASELINE_FILE = os.path.join(_HERE, "reachability_eval.baseline.json")
 
@@ -130,9 +129,9 @@ def _sorted_set(d: Optional[Dict]) -> List[str]:
 
 def evaluate_repo(repo: str) -> Dict:
     """The snapshot-mode evaluation of one reports directory."""
-    reports_dir = os.path.join(repo, "reports") if os.path.isdir(
-        os.path.join(repo, "reports")
-    ) else repo
+    reports_dir = (
+        os.path.join(repo, "reports") if os.path.isdir(os.path.join(repo, "reports")) else repo
+    )
     result: Dict = {"repo": repo, "reports_dir": reports_dir}
     if not os.path.isdir(reports_dir):
         result["error"] = "no reports dir"
@@ -197,17 +196,9 @@ def evaluate_repo(repo: str) -> Dict:
 # the labelled score
 
 
-def _load_json(path: str):
-    try:
-        with open(path, encoding="utf-8") as fp:
-            return json.load(fp)
-    except (OSError, ValueError):
-        return None
-
-
 def corpus_items(manifest_path: str, wanted: List[str]):
     """The manifest items with reachability labels, optionally filtered."""
-    manifest = _load_json(manifest_path)
+    manifest = corpus_score.load_json(manifest_path)
     if not isinstance(manifest, dict):
         print(f"Cannot read the corpus manifest '{manifest_path}'.", file=sys.stderr)
         return []
@@ -215,29 +206,15 @@ def corpus_items(manifest_path: str, wanted: List[str]):
     for item in manifest.get("items") or []:
         if wanted and item.get("name") not in set(wanted):
             continue
-        labels = _load_json(os.path.join(os.path.dirname(manifest_path), item.get("labels", "")))
-        if not labels or not labels.get("reachability"):
-            continue
-        items.append((item, labels["reachability"]))
+        labels = corpus_score.load_json(
+            os.path.join(os.path.dirname(manifest_path), item.get("labels", ""))
+        )
+        if labels and labels.get("reachability"):
+            items.append((item, labels))
     return items
 
 
-def score_purl_set(keys: set, used: set, unused: set) -> Dict:
-    """Recall and precision of one purl set against the labels."""
-    def rate(hit: int, total: int):
-        return round(hit / total, 4) if total else None
-
-    labelled = keys & (used | unused)
-    true_positive = keys & used
-    return {
-        "recall": rate(len(true_positive), len(used)),
-        "precision": rate(len(true_positive), len(labelled)),
-        "missed": sorted(used - keys),
-        "wrong": sorted(keys & unused),
-    }
-
-
-def evaluate_labelled(item: dict, reach_labels: dict, scan_dir: str, corpus_root: str) -> Dict:
+def evaluate_labelled(item: dict, labels: dict, scan_dir: str, corpus_root: str) -> Dict:
     """The labelled score of one item's scan directory.
 
     The analysers read the scan directory's BOMs, slices and evidence the way
@@ -249,41 +226,10 @@ def evaluate_labelled(item: dict, reach_labels: dict, scan_dir: str, corpus_root
     if not os.path.isdir(scan_dir):
         result["error"] = "no scan directory"
         return result
-    used = {purl_key(e["purl"]) for e in reach_labels.get("used") or []}
-    unused = {purl_key(e["purl"]) for e in reach_labels.get("unused") or []}
-    evidence_file = os.path.join(scan_dir, "evidence.jsonl")
-    src_dir = (
-        os.path.join(corpus_root, name) if item.get("kind") == "repository" else scan_dir
-    )
-    per_analyzer: Dict = {}
-    for analyzer in ANALYZERS:
-        options = ReachabilityAnalysisKV(
-            project_types=item["scan"]["types"],
-            src_dir=src_dir if os.path.isdir(src_dir) else scan_dir,
-            bom_dir=scan_dir,
-            evidence_file=evidence_file if os.path.isfile(evidence_file) else None,
-        )
-        t0 = time.time()
-        res = get_reachability_impl(analyzer, options).process()
-        elapsed = time.time() - t0
-        if not res.success and not (res.direct_purls or res.reached_purls):
-            per_analyzer[analyzer] = {
-                "status": "not-assessed",
-                "reason": "the analyzer produced no result over this scan directory",
-            }
-            continue
-        entry = {
-            "status": "assessed",
-            "wall_clock_s": round(elapsed, 3),
-            "direct": score_purl_set(
-                {purl_key(p) for p in (res.direct_purls or {})}, used, unused
-            ),
-            "reached": score_purl_set(
-                {purl_key(p) for p in (res.reached_purls or {})}, used, unused
-            ),
-        }
-        per_analyzer[analyzer] = entry
-    result["analyzers"] = per_analyzer
+    src_dir = os.path.join(corpus_root, name) if item.get("kind") == "repository" else None
+    scan_result = SimpleNamespace(reports_dir=scan_dir, findings=[], manifest={}, project_types=[])
+    scan = corpus_score.ItemScan(item, scan_result, src_dir)
+    result["analyzers"] = corpus_score.score_reachability(scan, labels)
     return result
 
 
@@ -486,7 +432,9 @@ def main() -> int:
         )
         return 2
     report = [
-        evaluate_labelled(item, labels, os.path.join(args.scan_dir, item["name"]), args.corpus_root)
+        evaluate_labelled(
+            item, labels, os.path.join(args.scan_dir, item["name"]), args.corpus_root
+        )
         for item, labels in items
     ]
     if args.json:

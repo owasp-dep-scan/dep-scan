@@ -42,9 +42,7 @@ def _record(producer, kind, purls, locations=None, attributes=None):
         polarity="positive",
         subject=EvidenceSubject(purls=list(purls)),
         source="fixture",
-        locations=[
-            EvidenceLocation(file=f, line=ln) for f, ln in (locations or [])
-        ],
+        locations=[EvidenceLocation(file=f, line=ln) for f, ln in (locations or [])],
         caveats=[EvidenceCaveat(kind="coverage-gap", detail="test fixture")],
         attributes=attributes,
     )
@@ -53,9 +51,7 @@ def _record(producer, kind, purls, locations=None, attributes=None):
 def _write_evidence(reports_dir, records):
     lines = []
     for record in records:
-        document = json.loads(
-            json.dumps(record.to_dict(), default=lambda o: o.to_dict())
-        )
+        document = json.loads(json.dumps(record.to_dict(), default=lambda o: o.to_dict()))
         lines.append(json.dumps(document))
     (reports_dir / "evidence.jsonl").write_text("\n".join(lines), encoding="utf-8")
 
@@ -64,7 +60,7 @@ def _result(reports_dir):
     from types import SimpleNamespace
 
     return SimpleNamespace(
-        reports_dir=str(reports_dir), findings=[], manifest={"stages": []}, types=[]
+        reports_dir=str(reports_dir), findings=[], manifest={"stages": []}, project_types=[]
     )
 
 
@@ -85,7 +81,7 @@ def test_two_manifests_counts_two_versions_and_declaring_paths(tmp_path):
     }
     item = {"scan": {"types": ["js"], "args": []}}
     scored = corpus_score.score_join_two_manifests(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "measured"
     assert scored["distinctVersions"] == ["0.7.1", "2.1.3"]
@@ -122,7 +118,7 @@ def test_two_producers_measures_one_identity_across_types(tmp_path):
     }
     item = {"scan": {"types": ["go", "binary"], "args": []}}
     scored = corpus_score.score_join_two_producers(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "measured"
     assert scored["identical"] is True
@@ -178,7 +174,7 @@ def test_route_join_matches_dosai_handler_spans(tmp_path):
     }
     item = {"scan": {"types": ["dotnet"], "args": []}}
     scored = corpus_score.score_join_route_package(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "measured"
     assert scored["routesMatched"] == 2
@@ -210,7 +206,7 @@ def test_route_join_reports_a_missed_route(tmp_path):
     }
     item = {"scan": {"types": ["dotnet"], "args": []}}
     scored = corpus_score.score_join_route_package(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "partial"
     assert scored["routesMatched"] == 0
@@ -247,7 +243,7 @@ def test_lifecycle_join_marks_shipped_labels_not_assessed_without_postbuild(tmp_
     }
     item = {"scan": {"types": ["js"], "args": []}}
     scored = corpus_score.score_join_lifecycle_phase(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "partial"
     assert scored["matched"] == 0
@@ -275,7 +271,7 @@ def test_component_layer_gap_when_no_component_carries_a_layer(tmp_path):
     }
     item = {"scan": {"types": ["container"], "args": []}}
     scored = corpus_score.score_join_component_layer(
-        item, _result(tmp_path), labels, str(tmp_path)
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
     )
     assert scored["outcome"] == "gap"
     assert scored["labelledSeen"] == 2
