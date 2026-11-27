@@ -264,7 +264,7 @@
         ]
       },
       "labels": "labels/js-juice-shop.json",
-      "notes": "The vulnerable application of the advisory-to-usage join: the scan at this commit carries advisories on packages its own code uses, with reachability labels derived from the same oracle."
+      "notes": "The vulnerable application of the advisory-to-usage join. Juice Shop ships no lockfile (.npmrc sets package-lock=false), so the versions its ranges resolve to, and the advisory counts over them, depend on the day of the scan."
     },
     {
       "name": "js-nestjs-realworld",
@@ -739,7 +739,7 @@
       "license": "Apache-2.0",
       "storage": {
         "kind": "fixture",
-        "location": "contrib/corpus/fixtures/supply-chain-fixture-ci"
+        "location": "contrib/corpus/fixtures/supply-chain-fixture"
       },
       "kind": "fixture",
       "scan": {
@@ -856,7 +856,7 @@
       "name": "dotnet-fixture",
       "description": "A minimal ASP.NET API whose /weather handler serialises with Newtonsoft.Json, beside /health which uses nothing third-party; dosai records both routes.",
       "source": "fixture:dotnet-fixture",
-      "sha256": "950708c1c5b9f7b0ecf4ee471b5b025596637ef5376c7bc72dc2d79e9ed64aeb",
+      "sha256": "444ba94d1e0e59c26ad08acb57a7d335443368dcb0b6b960be9904ab930711be",
       "license": "Apache-2.0",
       "storage": {
         "kind": "fixture",
@@ -923,7 +923,11 @@
         ]
       },
       "labels": "labels/forgejo-two-producers.json",
-      "notes": "The commit is the one the forgejo repo-test artifact pins. The binary is built from the clone with go build (no tags); the binary BOM names the modules go version -m records."
+      "notes": "The commit is the one the forgejo repo-test artifact pins. The binary is built from the clone with go build (no tags); the binary BOM names the modules go version -m records.",
+      "testdata": {
+        "artifact": "forgejo",
+        "digest": "sha256:5a6163582012068a6ced5fce4b1b5bb821bb6d6ddd2f49c4ec1353c38cdf9cd6"
+      }
     },
     {
       "name": "java-sec-code-repotests",

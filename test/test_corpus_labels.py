@@ -350,3 +350,33 @@ def test_refresh_keeps_hand_findings_and_refuses_hand_reachability(tmp_path, cap
     assert "--force" in capsys.readouterr().err
     assert json.loads(out.read_text(encoding="utf-8"))["reachability"] == hand
     assert derive_labels.main(argv + ["--force"]) == 0
+
+
+def test_hand_label_citations_name_a_file_and_line():
+    import glob
+    import re
+
+    cites = re.compile(r"[\w./@-]+:\d+")
+    here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "contrib", "corpus")
+    missing = []
+    for path in sorted(glob.glob(os.path.join(here, "labels", "*.json"))):
+        with open(path, encoding="utf-8") as fp:
+            labels = json.load(fp)
+        cited = []
+        reach = labels.get("reachability") or {}
+        if reach.get("source") == "hand":
+            cited += reach.get("used") or []
+        findings = labels.get("findings") or {}
+        if findings.get("source") == "hand":
+            cited += findings.get("expected") or []
+        for section in (labels.get("joins") or {}).values():
+            if section.get("source") != "hand":
+                continue
+            entries = section.get("routes") or section.get("packages")
+            cited += (
+                entries if entries is not None else ([section] if "package" in section else [])
+            )
+        for entry in cited:
+            if not cites.search(entry.get("citation", "")):
+                missing.append((os.path.basename(path), entry.get("purl") or entry.get("path")))
+    assert missing == []

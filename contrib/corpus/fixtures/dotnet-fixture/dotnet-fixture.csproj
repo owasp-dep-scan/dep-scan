@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The handler at Program.cs:19 uses this package, so the /weather
-         route names it. -->
+    <!-- The /weather handler (Program.cs:8-12) calls this package at
+         Program.cs:11, so the route names it. -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- Declared but never used anywhere: the unreachability control. -->
     <PackageReference Include="Serilog" Version="4.2.0" />
