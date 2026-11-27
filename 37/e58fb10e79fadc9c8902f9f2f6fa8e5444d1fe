@@ -1,0 +1,83 @@
+contrib/corpus/labels/php-koel.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,258,263
+contrib/corpus/labels/java-mall.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,59-74,115,120
+contrib/corpus/labels/py-vulpy.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,45-49,51,53-54
+contrib/corpus/labels/js-angular-realworld.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,42-53,58,61,64,67,70,73,76,79,82,85,88,91,94,97,100,104,109
+contrib/corpus/labels/js-express-boilerplate.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,153,158
+contrib/corpus/labels/php-bookstack.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,188,193
+contrib/corpus/labels/py-celery.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,65,79-82,481,485-486,488,490,492-498,500,502-505
+contrib/corpus/results/score-full.md
+  s_7318da1b9edd46::t_75c2dffc27f160 1-67
+contrib/corpus/labels/js-bulletproof-react.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-78,206,211
+contrib/corpus/labels/php-symfony-demo.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,257,262
+contrib/corpus/labels/py-microblog.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,152,157
+contrib/corpus/results/score-full.json
+  s_7318da1b9edd46::t_75c2dffc27f160 1-6674
+contrib/corpus/labels/java-webgoat.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,192-193,196-213,218-225,306,311
+contrib/corpus/labels/py-httpie.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,373-378,380,382-383
+contrib/corpus/labels/java-petclinic.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,42-61,139-141,145,150
+contrib/corpus/labels/py-fastapi-template.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,64,69
+contrib/corpus/labels/py-dvpwa.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,60,65
+contrib/corpus/labels/js-juice-shop.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-110,519-572,575-576,582-583
+contrib/corpus/labels/js-svelte-realworld.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-14,33-35,50,55
+contrib/corpus/labels/java-shiro.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,38,43
+contrib/corpus/labels/py-django-oscar.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,15-18,39-42,56-60,62-65,77,79,81,83-84
+contrib/corpus/labels/js-outline.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-250,826-830,833,836,839,842,845,848,851,854,857,860,863,866,869,872,875,878,881,884,887,890,893,896,899,902,905,908,911,914,917,920,923,926,929,932,935,938,941,944,947,950,953,956,959,962,965,968,971,974,977,980,983,986,1086,1091
+contrib/corpus/labels/js-vue3-realworld.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-18,50-54,57,60,63-73,118,123
+contrib/corpus/labels/rb-mastodon.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,831,836
+contrib/corpus/labels/py-defectdojo.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,43-46,83-86,91-94,156,281-287,289-292
+contrib/corpus/labels/py-pygoat.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,8,361-362,365,367,369-370
+contrib/corpus/labels/rb-maybe.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,487,492
+contrib/corpus/labels/js-nestjs-realworld.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-22,58-62,65,68,71,74-78,123,128
+contrib/corpus/labels/js-cdxgen.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-50,137-139,156,161
+contrib/corpus/labels/java-sec-code.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,191-214,290-292,296,301
+contrib/corpus/labels/rb-railsgoat.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,330,335
+contrib/corpus/labels/php-dvwa.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,14,19
+contrib/corpus/labels/js-express-realworld.json
+  s_7318da1b9edd46::t_75c2dffc27f160 5,7-18,54,57,60,63,66,69,72,75,78,81,84,87,90,93,96,99,102,105,108,111,114,117,120,123,126,129,132,135,139,144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
