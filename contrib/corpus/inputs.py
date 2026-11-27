@@ -74,8 +74,27 @@ def fixture_digest(directory: str) -> str:
 
 
 def git(clone: str, *args, text=True):
-    """Run one git command in ``clone`` and return the completed process."""
-    return subprocess.run(["git", "-C", clone, *args], capture_output=True, text=text)
+    """Run one git command in ``clone`` and return the completed process. A
+    host without git gets a failed process with that message, never an
+    exception."""
+    try:
+        return subprocess.run(["git", "-C", clone, *args], capture_output=True, text=text)
+    except OSError as exc:
+        message = f"git could not run: {exc}"
+        return subprocess.CompletedProcess(
+            ["git"], 127, "" if text else b"", message if text else message.encode()
+        )
+
+
+def is_inside(path: str, root: str) -> bool:
+    """Whether ``path`` lies inside ``root``. Paths on different drives
+    (Windows) are never inside one another."""
+    try:
+        return os.path.commonpath([os.path.abspath(path), os.path.abspath(root)]) == (
+            os.path.abspath(root)
+        )
+    except ValueError:
+        return False
 
 
 def resolve_repository(item: dict, corpus_root: str, fetch: bool = False):
@@ -87,6 +106,8 @@ def resolve_repository(item: dict, corpus_root: str, fetch: bool = False):
     """
     clone = os.path.join(corpus_root, item["name"])
     source, commit = item["source"].rsplit("@", 1)
+    if shutil.which("git") is None:
+        return None, "git is not on PATH, and a repository item is read through git"
     if not os.path.isdir(os.path.join(clone, ".git")):
         if not fetch:
             return None, (
@@ -177,21 +198,24 @@ def resolve_fixture(item: dict, scans_root: str):
     if checked is None:
         return None, reason
     copy_dir = os.path.abspath(os.path.join(scans_root, "payloads", item["name"]))
-    if os.path.commonpath([copy_dir, _REPO_ROOT]) == _REPO_ROOT:
+    if is_inside(copy_dir, _REPO_ROOT):
         return None, (
             f"the scans root {scans_root} is inside the dep-scan checkout, whose uv "
             "workspace a fixture scan would pick up; pass a --scans-root outside it"
+        )
+    bash = shutil.which("bash") if item.get("build") else None
+    if item.get("build") and bash is None:
+        return None, (
+            f"the fixture build ({item['build']}) is a bash script and bash is not on PATH"
         )
     shutil.rmtree(copy_dir, ignore_errors=True)
     for rel, path in fixture_files(directory):
         os.makedirs(os.path.dirname(os.path.join(copy_dir, rel)), exist_ok=True)
         shutil.copy2(path, os.path.join(copy_dir, rel))
-    if item.get("build"):
+    if bash:
         # The fixture's own build script runs in the copy, so a built
         # artifact never reaches the committed tree or its digest.
-        built = subprocess.run(
-            ["bash", item["build"]], cwd=copy_dir, capture_output=True, text=True
-        )
+        built = subprocess.run([bash, item["build"]], cwd=copy_dir, capture_output=True, text=True)
         if built.returncode != 0:
             detail = (built.stderr or built.stdout).strip().splitlines()
             return None, f"the fixture build ({item['build']}) failed: " + (

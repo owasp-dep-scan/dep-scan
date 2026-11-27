@@ -60,6 +60,10 @@
         "notAssessed": {
           "type": "integer"
         },
+        "errors": {
+          "type": "integer",
+          "description": "Items whose scoring raised an error, each recorded with state error."
+        },
         "forbiddenFired": {
           "type": "array",
           "description": "Every negative control that fired, with the finding id.",
@@ -101,11 +105,11 @@
           "type": "string"
         },
         "state": {
-          "enum": ["scored", "not-assessed"]
+          "enum": ["scored", "not-assessed", "error"]
         },
         "reason": {
           "type": "string",
-          "description": "Why the item was not assessed."
+          "description": "Why the item was not assessed, or the error that stopped its scoring."
         },
         "components": {
           "type": "integer"

@@ -821,3 +821,59 @@ def test_a_join_no_producer_feeds_is_a_gap_without_a_scan(tmp_path):
     assert entry["state"] == "not-assessed"
     assert entry["joins"]["component-runtime"]["outcome"] == "gap"
     assert not os.listdir(tmp_path)
+
+
+def test_a_scans_root_on_another_drive_is_outside_the_checkout(tmp_path, monkeypatch):
+    # On Windows, commonpath raises when the scans root and the checkout sit
+    # on different drives; that is outside the checkout, not a crash.
+    def other_drive(paths):
+        raise ValueError("Paths don't have the same drive")
+
+    monkeypatch.setattr(corpus_inputs.os.path, "commonpath", other_drive)
+    payload, reason = corpus_inputs.resolve_fixture(
+        _fixture_item("malware-fixture"), str(tmp_path)
+    )
+    assert reason is None and payload is not None
+    assert os.path.isdir(payload)
+
+
+def test_a_fixture_build_without_bash_is_not_assessed(tmp_path, monkeypatch):
+    real_which = corpus_inputs.shutil.which
+    monkeypatch.setattr(
+        corpus_inputs.shutil, "which", lambda name: None if name == "bash" else real_which(name)
+    )
+    item = _fixture_item("binary-hardening-fixture", build="build.sh")
+    payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
+    assert payload is None and reason is not None
+    assert "bash is not on PATH" in reason
+
+
+def test_a_host_without_git_leaves_repository_items_not_assessed(tmp_path, monkeypatch):
+    def no_git(*args, **kwargs):
+        raise FileNotFoundError(2, "No such file or directory", "git")
+
+    monkeypatch.setattr(corpus_inputs.subprocess, "run", no_git)
+    assert corpus_inputs.git(str(tmp_path), "rev-parse", "HEAD").returncode != 0
+    monkeypatch.setattr(corpus_inputs.shutil, "which", lambda name: None)
+    item = {"name": "x", "source": "https://example.invalid/x.git@" + "0" * 40}
+    payload, reason = corpus_inputs.resolve_repository(item, str(tmp_path), fetch=True)
+    assert payload is None and reason is not None
+    assert "git is not on PATH" in reason
+
+
+def test_an_item_that_raises_is_an_error_entry_not_a_crash(tmp_path, monkeypatch):
+    argv = _scan_dir_corpus(tmp_path, {"findings": {"source": "hand", "expected": []}})
+
+    def broken(item, labels, args):
+        raise FileNotFoundError(2, "No such file or directory", "bash")
+
+    monkeypatch.setattr(corpus_score, "score_one", broken)
+    assert corpus_score.main(argv) == 0
+    _validate_score(tmp_path / "out" / "score.json")
+    score = json.loads((tmp_path / "out" / "score.json").read_text(encoding="utf-8"))
+    assert score["items"][0]["state"] == "error"
+    assert "FileNotFoundError" in score["items"][0]["reason"]
+    assert score["summary"]["errors"] == 1
+    assert "| scan-fixture | error |" in (tmp_path / "out" / "score.md").read_text(
+        encoding="utf-8"
+    )

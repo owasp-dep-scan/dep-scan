@@ -1061,6 +1061,22 @@ def score_one(item: dict, labels, args) -> dict:
     return not_assessed(reason) if reason else score_item(scan, labels)
 
 
+def score_guarded(item: dict, manifest_dir: str, args) -> dict:
+    """:func:`score_one`, with an unexpected exception (a broken label file,
+    a tool the host lacks) recorded as the item's error instead of ending
+    the run, so the other items are still scored and exit 1 keeps meaning a
+    dropped floor or a fired control."""
+    try:
+        return score_one(item, load_labels(manifest_dir, item), args)
+    except Exception as exc:  # noqa: BLE001 - one item's failure is its result
+        return {
+            "item": item["name"],
+            "kind": item.get("kind"),
+            "state": "error",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
+
+
 def check_floors(floors_doc: dict, score_doc: dict) -> list:
     """The recorded floors that dropped, each with its current value.
 
@@ -1098,7 +1114,8 @@ def render_markdown(score_doc: dict) -> str:
     for entry in score_doc["items"]:
         if entry["state"] != "scored":
             reason = (entry.get("reason") or "").replace("|", "/")
-            lines.append(f"| {entry['item']} | not assessed | | | {reason[:120]} |")
+            state = "error" if entry["state"] == "error" else "not assessed"
+            lines.append(f"| {entry['item']} | {state} | | | {reason[:120]} |")
             continue
         assessed = {
             analyzer: scores
@@ -1199,11 +1216,10 @@ def run(args) -> int:
 
     from depscan import get_version
 
-    entries = [
-        score_one(item, load_labels(os.path.dirname(manifest_path), item), args) for item in items
-    ]
+    entries = [score_guarded(item, os.path.dirname(manifest_path), args) for item in items]
     commit = git(_REPO_ROOT, "rev-parse", "HEAD").stdout.strip() or "unknown"
     scored = [entry for entry in entries if entry["state"] == "scored"]
+    errors = [entry for entry in entries if entry["state"] == "error"]
     fired = [
         {"item": entry["item"], **control}
         for entry in scored
@@ -1213,7 +1229,8 @@ def run(args) -> int:
     summary: dict = {
         "items": len(entries),
         "scored": len(scored),
-        "notAssessed": len(entries) - len(scored),
+        "notAssessed": len(entries) - len(scored) - len(errors),
+        "errors": len(errors),
         "forbiddenFired": fired,
     }
     score_doc = {
@@ -1244,8 +1261,11 @@ def run(args) -> int:
     print(f"Wrote {score_path} and {table_path}")
     print(
         f"{len(scored)} of {len(entries)} items scored"
+        + (f", {len(errors)} items errored" if errors else "")
         + (f", {len(fired)} negative controls fired" if fired else "")
     )
+    for entry in errors:
+        print(f"  {entry['item']}: {entry['reason']}", file=sys.stderr)
     if floors_doc is None:
         return 0
     floors = summary["floors"]
