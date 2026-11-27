@@ -1,28 +1,37 @@
 {
   "schemaVersion": 1,
-  "description": "The floors the pull-request subset enforces, recorded from real runs. Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs (committed fixtures and the java-sec-code repo-test artifact) and only for numbers the labels can judge. The binary-hardening precision floor holds at 0.5 because CHECK_ABI_FLOOR fires on both builds' glibc baseline and no label accounts for it; the malware category carries no floor because the reserved malware category is a recorded gap (the advisory reports under vulnerability), tracked by an upstream issue.",
-  "commit": "7af8e277151f950d4f61e2acbcc6913687dddc9b",
-  "recordedAt": "2026-11-27T15:05:00Z",
+  "description": "The floors the pull-request subset enforces, recorded from one real run of score.py --subset ci (contrib/corpus/results/score-ci.json). Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs and only for numbers the labels can judge. supply-chain-fixture-ci carries no floor: cdx-audit 13.8.0, the version the job installs, predates the options dep-scan's audit passes, so the category is not assessed until the job installs cdxgen 13.9.0 or later. The binary-hardening recall floor is 6 of 7 because blint does not report CHECK_RELRO on the unprotected build, which build.sh links with -z norelro.",
+  "commit": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
+  "recordedAt": "2026-11-27T19:16:07Z",
+  "tools": {
+    "platform": "linux/amd64, an ubuntu:24.04 container with the runner's gcc 13.3",
+    "cdxgen": "13.8.0",
+    "atom": "4.0.2",
+    "blint": "4.1.1",
+    "python": "3.14",
+    "node": "24.22.3",
+    "vdb": "the full flavour created 2026-11-26; the job pulls vdb7-app-2y, which keeps application advisories of every year"
+  },
   "floors": [
     {
-      "item": "supply-chain-fixture-ci",
-      "path": "categories.supply-chain.recall",
+      "item": "malware-fixture",
+      "path": "categories.malware.recall",
       "minimum": 1.0
     },
     {
-      "item": "supply-chain-fixture-ci",
-      "path": "categories.supply-chain.precision",
+      "item": "malware-fixture",
+      "path": "categories.malware.precision",
       "minimum": 1.0
     },
     {
       "item": "binary-hardening-fixture",
       "path": "categories.binary-hardening.recall",
-      "minimum": 1.0
+      "minimum": 0.8571
     },
     {
       "item": "binary-hardening-fixture",
       "path": "categories.binary-hardening.precision",
-      "minimum": 0.5
+      "minimum": 1.0
     },
     {
       "item": "lifecycle-fixture",
@@ -35,6 +44,11 @@
       "minimum": 1.0
     },
     {
+      "item": "lifecycle-fixture",
+      "path": "joins.lifecycle-phase.matched",
+      "minimum": 5
+    },
+    {
       "item": "monorepo-fixture",
       "path": "reachability.SemanticReachability.reached.recall",
       "minimum": 1.0
@@ -43,6 +57,16 @@
       "item": "monorepo-fixture",
       "path": "reachability.SemanticReachability.reached.precision",
       "minimum": 1.0
+    },
+    {
+      "item": "monorepo-fixture",
+      "path": "joins.two-manifests.distinctVersionCount",
+      "minimum": 2
+    },
+    {
+      "item": "monorepo-fixture",
+      "path": "joins.two-manifests.withDeclaringPath",
+      "minimum": 2
     },
     {
       "item": "java-sec-code-repotests",

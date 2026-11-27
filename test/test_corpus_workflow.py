@@ -54,3 +54,38 @@ def test_pull_requests_use_the_small_database_and_the_full_job_has_dotnet():
     # which pulls by digest.
     for job in jobs.values():
         assert any(s.get("uses") == "./.github/actions/repotests-data" for s in job["steps"])
+
+
+CORPUS = os.path.join(REPO_ROOT, "contrib", "corpus")
+
+
+def _json(*parts):
+    import json
+
+    with open(os.path.join(CORPUS, *parts), encoding="utf-8") as fp:
+        return json.load(fp)
+
+
+def test_the_job_installs_the_cdxgen_the_floors_were_recorded_with():
+    version = _json("floors.json")["tools"]["cdxgen"]
+    for job in _workflow()["jobs"].values():
+        assert f"@cdxgen/cdxgen@{version}" in _run_lines(job)
+
+
+def test_floors_hold_on_the_recorded_run_and_name_subset_items_only():
+    from contrib.corpus import score as corpus_score
+
+    floors = _json("floors.json")
+    recorded = _json("results", "score-ci.json")
+    assert recorded["commit"] == floors["commit"]
+    assert corpus_score.check_floors(floors, recorded) == []
+    subset = {i["name"] for i in _json("depscan.corpus.json")["items"] if i.get("subset") == "ci"}
+    assert {floor["item"] for floor in floors["floors"]} <= subset
+
+
+def test_recorded_scores_validate_against_the_score_schema():
+    import jsonschema
+
+    schema = _json("depscan-score.schema.json")
+    for name in ("score-ci.json", "score-full.json"):
+        jsonschema.validate(_json("results", name), schema)
