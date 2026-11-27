@@ -6,7 +6,6 @@ broken join shows as a failed assertion rather than as an empty result.
 
 import json
 
-import pytest
 
 from contrib.corpus import score as corpus_score
 from analysis_lib.evidence import (
