@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict
 
@@ -784,6 +785,28 @@ def test_a_suppressed_finding_is_out_of_the_gate():
 DSF_A = "dsf1:" + "a" * 64
 
 
+def test_an_author_never_turns_a_proposal_into_a_live_decision():
+    # The shape propose_triage wrote over a person's entry: the author was
+    # kept and proposed_by added. Without an approver it is a proposal.
+    entry = _document(
+        [
+            {
+                "finding": DSF_A,
+                "state": "not_affected",
+                "justification": "code_not_reachable",
+                "author": "alice",
+                "proposed_by": "agent session 1",
+            }
+        ]
+    ).triage[0]
+    assert entry.is_proposal
+    finding = _finding()
+    application = apply_triage([finding], [entry], now=NOW)
+    assert application.suppressed == 0
+    assert [report.entry for report in application.proposals] == [entry]
+    assert "triage" not in finding
+
+
 def test_a_proposal_may_omit_the_author_and_a_live_entry_may_not(tmp_path):
     proposal = (
         f'[[triage]]\nfinding = "{DSF_A}"\nstate = "in_triage"\nproposed_by = "agent session 1"\n'
@@ -800,6 +823,128 @@ def test_a_proposal_may_omit_the_author_and_a_live_entry_may_not(tmp_path):
     _write(tmp_path / "approved.toml", approved)
     entry = load_decisions(str(tmp_path / "approved.toml")).triage[0]
     assert not entry.is_proposal
+
+
+# --- applying again -------------------------------------------------------------------
+
+
+def test_applying_again_reflects_the_file_as_it_is_now():
+    finding = _graded_finding()
+    entry = {
+        "advisory": "CVE-2021-23337",
+        "purl": "pkg:npm/lodash",
+        "state": "not_affected",
+        "justification": "code_not_present",
+        "author": "alice",
+        "expires": "2026-12-01T00:00:00Z",
+    }
+    entries = _document([entry]).triage
+    gate = _decisions_with(expect=[{"id": "no-high", "severity": "high", "action": "fail"}])
+    scan_time = apply_triage([finding], entries, now=NOW)
+    assert scan_time.suppressed == 1
+    assert evaluate_gate([finding], [], gate).exit_code == 0
+    # The saved finding keeps the scan's triage object; a report run after
+    # the expiry, or with the entry removed, must not inherit it.
+    report_time = apply_triage([finding], entries, now=datetime(2026, 12, 5, tzinfo=timezone.utc))
+    assert len(report_time.expired) == 1 and report_time.suppressed == 0
+    assert "triage" not in finding
+    assert evaluate_gate([finding], [], gate, application=report_time).exit_code == 3
+    apply_triage([finding], entries, now=NOW)
+    removed = apply_triage([finding], [], now=NOW)
+    assert removed.suppressed == 0 and "triage" not in finding
+
+
+def test_applying_no_baseline_clears_the_saved_marks():
+    findings = [_finding(baseline="new"), _finding(id="dsf1:" + "b" * 64, baseline="existing")]
+    assert apply_baseline(findings, None) == (0, 0)
+    assert all("baseline" not in finding for finding in findings)
+    assert apply_baseline(findings, {"dsf1:" + "b" * 64}) == (1, 1)
+
+
+# --- one winner per finding -----------------------------------------------------------
+
+
+def _two_entries(advisory_state: str, finding_state: str, finding_first: bool):
+    advisory = {
+        "advisory": "CVE-2021-23337",
+        "purl": "pkg:npm/lodash",
+        "state": advisory_state,
+        "author": "a",
+    }
+    by_finding = {"finding": "", "state": finding_state, "author": "b"}
+    for entry in (advisory, by_finding):
+        if entry["state"] == "not_affected":
+            entry["justification"] = "code_not_reachable"
+    return (
+        advisory,
+        by_finding,
+        [by_finding, advisory] if finding_first else [advisory, by_finding],
+    )
+
+
+def _vdr_pair():
+    from analysis_lib.findings.vdr_convert import findings_from_vdr
+
+    vuln = {"id": "CVE-2021-23337", "affects": [{"ref": "pkg:npm/lodash@4.17.20"}]}
+    finding = findings_from_vdr([vuln], producer_version="7.0.0")[0].to_dict()
+    return vuln, finding
+
+
+@pytest.mark.parametrize("finding_first", [True, False])
+def test_a_finding_selector_beats_an_advisory_selector(finding_first):
+    from analysis_lib.findings.decisions import annotate_vdr_analysis
+
+    vuln, finding = _vdr_pair()
+    _, by_finding, entries = _two_entries("not_affected", "exploitable", finding_first)
+    by_finding["finding"] = finding["id"]
+    triage = _document(entries).triage
+    application = apply_triage([finding], triage, now=NOW)
+    assert finding["triage"]["state"] == "exploitable"
+    assert application.suppressed == 0 and application.applied == 1
+    shadowed = [report.to_document() for report in application.shadowed]
+    assert [report["selector"].get("advisory") for report in shadowed] == ["CVE-2021-23337"]
+    assert shadowed[0]["findings"] == [finding["id"]]
+    gate = _decisions_with(expect=[{"id": "no-high", "severity": "unknown", "action": "fail"}])
+    evaluation = evaluate_gate([finding], [], gate, application=application)
+    assert evaluation.exit_code == 3
+    assert evaluation.summary_document()["suppressed"] == 0
+    # The VDR takes the same winner, from the application or the entries.
+    assert annotate_vdr_analysis([vuln], application) == 1
+    assert vuln["analysis"] == {"state": "exploitable"}
+    fresh, _ = _vdr_pair()
+    annotate_vdr_analysis([fresh], triage, now=NOW)
+    assert fresh["analysis"] == {"state": "exploitable"}
+
+
+def test_the_first_entry_of_one_kind_wins():
+    finding = _finding()
+    first = {"finding": DSF_A, "state": "false_positive", "author": "a"}
+    second = {"finding": DSF_A, "state": "exploitable", "author": "b"}
+    application = apply_triage([finding], _document([first, second]).triage, now=NOW)
+    assert finding["triage"]["state"] == "false_positive"
+    assert application.suppressed == 1
+    assert [report.entry.index for report in application.shadowed] == [2]
+
+
+def test_a_finding_keyed_decision_reaches_the_vdr():
+    from analysis_lib.findings.decisions import annotate_vdr_analysis
+
+    vuln, finding = _vdr_pair()
+    entries = _document(
+        [{"finding": finding["id"], "state": "false_positive", "author": "alice"}]
+    ).triage
+    assert annotate_vdr_analysis([vuln], entries, now=NOW) == 1
+    assert vuln["analysis"] == {"state": "false_positive"}
+    assert {"name": "depscan:triage:author", "value": "alice"} in vuln["properties"]
+
+
+def test_suppressed_counts_findings_not_fingerprints():
+    # Two versions of one package share a fingerprint and stay two findings.
+    findings = [_finding(), _finding(components=["pkg:npm/lodash@4.17.19"])]
+    entry = {"finding": DSF_A, "state": "false_positive", "author": "alice"}
+    application = apply_triage(findings, _document([entry]).triage, now=NOW)
+    assert application.suppressed == 2
+    assert application.applied == 1
 
 
 # --- the selectors the file and --fail-on share ---------------------------------------
@@ -964,6 +1109,29 @@ def test_ids_are_unique_across_the_file():
         parse_decisions_document(
             '[[expect]]\nid = "fail-on:1"\naction = "fail"\nseverity = "high"\n'
         )
+
+
+# --- handles ----------------------------------------------------------------------------
+
+
+def test_the_handle_follows_the_selector_and_not_the_position():
+    from analysis_lib.findings.decisions import entry_handle
+
+    live = {"advisory": "CVE-2021-23337", "purl": "pkg:npm/lodash", "state": "in_triage"}
+    first = _document([dict(live, author="a")]).triage[0]
+    moved = _document(
+        [{"finding": DSF_A, "state": "in_triage", "author": "b"}, dict(live, author="c")]
+    )
+    assert first.handle == moved.triage[1].handle == entry_handle(first)
+    assert re.fullmatch(r"tr-[0-9a-f]{10}", first.handle)
+    folded = _document([dict(live, advisory="cve-2021-23337", purl="pkg:NPM/lodash", author="d")])
+    assert folded.triage[0].handle == first.handle
+    proposals = _document(
+        [dict(live, proposed_by="agent 1"), dict(live, proposed_by="agent 2")]
+    ).triage
+    assert len({first.handle, proposals[0].handle, proposals[1].handle}) == 3
+    report = apply_triage([_finding()], [first], now=NOW)
+    assert report.to_document()["stale"] == [] and report.applied == 1
 
 
 # --- refusals -----------------------------------------------------------------------------

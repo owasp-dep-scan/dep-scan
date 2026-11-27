@@ -30,11 +30,11 @@ import re
 import tomllib
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, Union
 
 from analysis_lib.findings.fingerprint import normalise_purl, normalise_rule
 from analysis_lib.findings.schemas import load_schema, validation_errors
-from analysis_lib.findings.vdr_convert import comparable_purl
+from analysis_lib.findings.vdr_convert import comparable_purl, finding_from_vdr
 from analysis_lib.helpers import vers_scheme_for_purl
 
 #: The published name of the decisions file schema.
@@ -156,9 +156,9 @@ class TriageEntry:
 
     @property
     def is_proposal(self) -> bool:
-        """Whether this entry is a proposal: proposed by someone, and neither
-        approved nor entered by a person."""
-        return bool(self.proposed_by) and not self.approver and not self.author
+        """Whether this entry is a proposal: it has ``proposed_by`` and no
+        ``approver``. An ``author`` alone never approves a proposal."""
+        return bool(self.proposed_by) and not self.approver
 
     @property
     def suppresses(self) -> bool:
@@ -166,38 +166,32 @@ class TriageEntry:
         gate."""
         return self.state in SUPPRESSING_STATES
 
+    @property
+    def handle(self) -> str:
+        """The entry's handle; see :func:`entry_handle`."""
+        return entry_handle(self)
+
+    def _present(self, keys: Sequence[str]) -> Dict[str, Any]:
+        return {key: getattr(self, key) for key in keys if getattr(self, key)}
+
     def selector_document(self) -> Dict[str, Any]:
         """The selector as the file carries it, for reports and listings."""
-        selector: Dict[str, Any] = {}
-        if self.finding:
-            selector["finding"] = self.finding
-        if self.advisory:
-            selector["advisory"] = self.advisory
-        if self.purl:
-            selector["purl"] = self.purl
-        if self.version_range:
-            selector["version_range"] = self.version_range
-        return selector
+        return self._present(("finding", "advisory", "purl", "version_range"))
 
     def to_triage_document(self) -> Dict[str, Any]:
         """The triage object this decision writes into a finding, the shape
         the finding schema's triage object publishes."""
-        document: Dict[str, Any] = {"state": self.state}
-        if self.justification:
-            document["justification"] = self.justification
-        if self.responses:
-            document["responses"] = list(self.responses)
-        if self.detail:
-            document["detail"] = self.detail
-        if self.author:
-            document["author"] = self.author
-        if self.approver:
-            document["approver"] = self.approver
-        if self.proposed_by:
-            document["proposed_by"] = self.proposed_by
-        if self.expires:
-            document["expires"] = self.expires
-        return document
+        return {"state": self.state} | self._present(
+            (
+                "justification",
+                "responses",
+                "detail",
+                "author",
+                "approver",
+                "proposed_by",
+                "expires",
+            )
+        )
 
     def describe(self) -> str:
         """A one-line description of the selector, for messages."""
@@ -239,6 +233,29 @@ def require_id(capability: str, project_type: Optional[str] = None) -> str:
     """The id a require entry without one takes: ``require-<capability>``,
     with ``-<project type>`` when it names one."""
     return f"require-{capability}-{project_type}" if project_type else f"require-{capability}"
+
+
+def entry_handle(entry: TriageEntry) -> str:
+    """The stable handle of a triage entry: ``tr-`` and the first ten hex
+    digits of the SHA-256 of its canonical selector, with ``proposed_by``
+    added for a proposal.
+
+    The handle does not move when other entries are added or removed, so a
+    command given a handle acts on the entry that was listed. Two live
+    entries with the same selector share a handle; a command that edits by
+    handle refuses one that names more than one entry.
+    """
+    canonical = {key: str(value).strip() for key, value in entry.selector_document().items()}
+    if entry.finding:
+        canonical["finding"] = canonical["finding"].lower()
+    if entry.advisory:
+        canonical["advisory"] = alias_map_key(canonical["advisory"])
+    if entry.purl:
+        canonical["purl"] = _identity_with_version(canonical["purl"])
+    if entry.is_proposal:
+        canonical["proposed_by"] = str(entry.proposed_by)
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return "tr-" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:10]
 
 
 @dataclass
@@ -703,6 +720,16 @@ def _split_purl(purl: str) -> Tuple[str, Optional[str]]:
     return comparable[:at], comparable[at + 1 :] or None
 
 
+def _identity_with_version(purl: str) -> str:
+    """A purl folded the way fingerprints fold it, with its version kept."""
+    head, version = _split_purl(purl)
+    try:
+        head = normalise_purl(purl)
+    except ValueError:
+        pass
+    return f"{head}@{version}" if version else head
+
+
 def purl_version(purl: str) -> Optional[str]:
     """The decoded version of a purl, None when it names none."""
     return _split_purl(purl)[1]
@@ -916,30 +943,30 @@ class EntryReport:
         """The ``entryReport`` shape the expectations schema publishes."""
         document: Dict[str, Any] = {
             "index": self.entry.index,
+            "handle": self.entry.handle,
             "selector": self.entry.selector_document(),
             "state": self.entry.state,
             "findings": list(self.findings),
         }
-        if self.entry.author:
-            document["author"] = self.entry.author
-        if self.entry.approver:
-            document["approver"] = self.entry.approver
-        if self.entry.proposed_by:
-            document["proposedBy"] = self.entry.proposed_by
-        if self.entry.expires:
-            document["expires"] = self.entry.expires
-        return document
+        people = self.entry._present(("author", "approver", "proposed_by", "expires"))
+        if "proposed_by" in people:
+            people["proposedBy"] = people.pop("proposed_by")
+        return document | people
 
 
 @dataclass
 class TriageApplication:
     """What applying the triage decisions did to one findings list.
 
-    ``applied`` counts the live decisions that set at least one finding,
-    ``suppressed_ids`` the findings a live decision suppresses from the gate.
-    Proposals set nothing and are listed as pending; expired decisions
-    suppress nothing and name what they would have matched; a decision that
-    matched nothing is stale.
+    Each finding takes one winning decision (see :func:`apply_triage`).
+    ``winners`` pairs every finding that has one with it, in findings order,
+    and ``ranked`` lists the live decisions in precedence order. ``applied``
+    counts the decisions that won at least one finding; ``suppressed_ids``
+    holds one id per finding whose winner suppresses it, so two findings that
+    share a fingerprint count twice. Proposals set nothing and are pending;
+    expired decisions suppress nothing and name what they would have
+    matched; a live decision that matched nothing is stale, and one that lost
+    a finding to a decision of higher precedence is shadowed there.
     """
 
     applied: int = 0
@@ -947,9 +974,13 @@ class TriageApplication:
     expired: List[EntryReport] = field(default_factory=list)
     stale: List[EntryReport] = field(default_factory=list)
     proposals: List[EntryReport] = field(default_factory=list)
+    shadowed: List[EntryReport] = field(default_factory=list)
+    winners: List[Tuple[Dict[str, Any], TriageEntry]] = field(default_factory=list)
+    ranked: List[TriageEntry] = field(default_factory=list)
 
     @property
     def suppressed(self) -> int:
+        """How many findings a decision suppresses from the gate."""
         return len(self.suppressed_ids)
 
     def to_document(self) -> Dict[str, Any]:
@@ -960,6 +991,7 @@ class TriageApplication:
             "expired": [report.to_document() for report in self.expired],
             "stale": [report.to_document() for report in self.stale],
             "proposals": [report.to_document() for report in self.proposals],
+            "shadowed": [report.to_document() for report in self.shadowed],
         }
 
 
@@ -972,40 +1004,59 @@ def apply_triage(
 ) -> TriageApplication:
     """Apply the triage decisions to a findings list, in place.
 
-    Every live decision, one that a person entered or approved and that has
-    not expired, sets the ``triage`` object of each finding it selects; a
-    state in :data:`SUPPRESSING_STATES` marks the finding suppressed from
-    the gate. Proposals set nothing. Expired decisions suppress nothing and
-    are reported with the findings they would have matched. Decisions that
-    select nothing are reported as stale with their selector. Nothing is
-    deleted: a suppressed finding stays in the list with its triage state.
+    The ``triage`` object of every finding is removed first, so applying the
+    decisions file again, to the saved findings of an earlier scan, reflects
+    the file as it is now. A live decision is one that is not a proposal and
+    has not expired. Each finding takes one winner among the live decisions
+    that select it: a ``finding`` selector beats an ``advisory`` selector,
+    and among selectors of the same kind the first in ``entries`` order
+    wins. The winner sets the finding's ``triage`` object; a state in
+    :data:`SUPPRESSING_STATES` suppresses the finding from the gate. Every
+    other live decision that selects the finding is reported as shadowed.
+    Nothing is deleted: a suppressed finding stays in the list.
     """
     application = TriageApplication()
+    for finding in findings:
+        finding.pop("triage", None)
+    live: List[Tuple[TriageEntry, List[Dict[str, Any]]]] = []
     for entry in entries:
         matched = [
             finding
             for finding in findings
             if entry_matches_finding(entry, finding, alias_map=alias_map)
         ]
+        ids = [str(finding.get("id")) for finding in matched]
         if entry.is_proposal:
-            application.proposals.append(
-                EntryReport(entry=entry, findings=[str(f.get("id")) for f in matched])
-            )
-            continue
-        if is_expired(entry.expires, now):
-            application.expired.append(
-                EntryReport(entry=entry, findings=[str(f.get("id")) for f in matched])
-            )
-            continue
-        if not matched:
+            application.proposals.append(EntryReport(entry=entry, findings=ids))
+        elif is_expired(entry.expires, now):
+            application.expired.append(EntryReport(entry=entry, findings=ids))
+        elif not matched:
             application.stale.append(EntryReport(entry=entry))
-            continue
-        document = entry.to_triage_document()
+        else:
+            live.append((entry, matched))
+    # sorted() is stable, so file order breaks ties within a selector kind.
+    live.sort(key=lambda pair: 0 if pair[0].finding else 1)
+    application.ranked = [entry for entry, _ in live]
+    won: Dict[int, TriageEntry] = {}
+    lost: Dict[int, List[str]] = {}
+    for entry, matched in live:
         for finding in matched:
-            finding["triage"] = document
-            if entry.suppresses and finding.get("id") not in application.suppressed_ids:
-                application.suppressed_ids.append(str(finding.get("id")))
-        application.applied += 1
+            if won.setdefault(id(finding), entry) is not entry:
+                lost.setdefault(id(entry), []).append(str(finding.get("id")))
+    application.applied = len({id(entry) for entry in won.values()})
+    for finding in findings:
+        entry = won.get(id(finding))
+        if entry is None:
+            continue
+        finding["triage"] = entry.to_triage_document()
+        application.winners.append((finding, entry))
+        if entry.suppresses:
+            application.suppressed_ids.append(str(finding.get("id")))
+    application.shadowed = [
+        EntryReport(entry=entry, findings=lost[id(entry)])
+        for entry in entries
+        if id(entry) in lost
+    ]
     return application
 
 
@@ -1070,13 +1121,20 @@ def read_baseline(spec: BaselineSpec, *, base_dir: Optional[str] = None) -> Set[
     }
 
 
-def apply_baseline(findings: List[Dict[str, Any]], baseline_ids: Set[str]) -> Tuple[int, int]:
+def apply_baseline(
+    findings: List[Dict[str, Any]], baseline_ids: Optional[Set[str]]
+) -> Tuple[int, int]:
     """Mark every finding new or existing against the baseline ids, in
     place, and return the new and existing counts. A finding the baseline
-    does not contain is new."""
+    does not contain is new. With no baseline (None) the ``baseline`` field
+    of every finding is removed, so the saved findings of an earlier scan
+    never keep marks the current run did not make."""
     new = 0
     existing = 0
     for finding in findings:
+        if baseline_ids is None:
+            finding.pop("baseline", None)
+            continue
         state = "existing" if finding.get("id") in baseline_ids else "new"
         finding["baseline"] = state
         if state == "new":
@@ -1352,52 +1410,67 @@ def _finding_is_suppressed(finding: Dict[str, Any]) -> bool:
 TRIAGE_PROPERTY_PREFIX = "depscan:triage:"
 
 
+def _vdr_findings(vulns: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The findings the VDR entries convert to, one per advisory and
+    component, skipping a pair the conversion refuses."""
+    findings = []
+    for vuln in vulns:
+        for affect in vuln.get("affects") or []:
+            try:
+                finding = finding_from_vdr(vuln, str(affect["ref"]), producer_version="")
+            except (KeyError, TypeError, ValueError):
+                continue
+            findings.append(finding.to_dict())
+    return findings
+
+
 def annotate_vdr_analysis(
     vulns: List[Dict[str, Any]],
-    entries: Sequence[TriageEntry],
+    triage: Union[TriageApplication, Sequence[TriageEntry]],
     *,
     alias_map: Optional[Dict[str, Set[str]]] = None,
     now: Optional[datetime] = None,
 ) -> int:
-    """Write the live triage decisions into the VDR entries' analysis
+    """Write the winning triage decisions into the VDR entries' analysis
     objects, in place, and return how many entries carry one.
 
+    ``triage`` is the :class:`TriageApplication` :func:`apply_triage`
+    returned for the scan's findings. Given the triage entries instead, they
+    are applied to the findings the VDR entries convert to, with the ids,
+    categories and components the findings document gives them, so the VDR
+    and the findings agree before the findings are built. ``alias_map`` and
+    ``now`` are used in that case only.
+
     CycloneDX puts the analysis on the vulnerability entry, so an entry with
-    two affected components carries the first live decision matched on any
-    of its pairs; the per-pair truth, one triage object per finding, lives
-    in the findings document, which every renderer of decisions reads. The
-    author, approver, proposer and expiry travel as ``depscan:triage:*``
-    properties on the entry, because the CycloneDX analysis object has no
-    fields for them. Proposals and expired decisions annotate nothing.
+    two affected components carries the highest-precedence winner among its
+    pairs; the per-pair truth, one triage object per finding, lives in the
+    findings document. The author, approver, proposer and expiry travel as
+    ``depscan:triage:*`` properties on the entry, because the CycloneDX
+    analysis object has no fields for them. Proposals, expired and shadowed
+    decisions annotate nothing.
     """
+    if not isinstance(triage, TriageApplication):
+        triage = apply_triage(_vdr_findings(vulns), triage, alias_map=alias_map, now=now)
+    rank = {id(entry): position for position, entry in enumerate(triage.ranked)}
+    by_pair: Dict[Tuple[str, str], TriageEntry] = {}
+    for finding, entry in triage.winners:
+        for component in finding.get("components") or []:
+            by_pair[
+                (alias_map_key(str(finding.get("rule") or "")), comparable_purl(str(component)))
+            ] = entry
     annotated = 0
     for vuln in vulns:
-        refs = [
-            affect.get("ref")
+        rule = alias_map_key(str(vuln.get("id") or ""))
+        candidates = [
+            by_pair[key]
             for affect in vuln.get("affects") or []
-            if isinstance(affect, dict) and affect.get("ref")
+            if isinstance(affect, dict)
+            and affect.get("ref")
+            and (key := (rule, comparable_purl(str(affect["ref"])))) in by_pair
         ]
-        if not refs:
+        if not candidates:
             continue
-        rule = str(vuln.get("id") or "")
-        matched: Optional[TriageEntry] = None
-        for ref in refs:
-            virtual = {
-                "id": "",
-                "category": "vulnerability",
-                "rule": rule,
-                "components": [str(ref)],
-            }
-            for entry in entries:
-                if entry.is_proposal or is_expired(entry.expires, now):
-                    continue
-                if entry_matches_finding(entry, virtual, alias_map=alias_map):
-                    matched = entry
-                    break
-            if matched is not None:
-                break
-        if matched is None:
-            continue
+        matched = min(candidates, key=lambda entry: rank.get(id(entry), len(rank)))
         analysis: Dict[str, Any] = {"state": matched.state}
         if matched.justification:
             analysis["justification"] = matched.justification

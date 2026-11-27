@@ -31,7 +31,7 @@
           "properties": {
             "file": {
               "type": "string",
-              "description": "The decisions file as its path was given."
+              "description": "The decisions file: relative to the scanned source root with / separators when it is inside that root, otherwise absolute."
             },
             "sha256": {
               "type": "string",
@@ -182,17 +182,17 @@
     "triage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["applied", "suppressed", "expired", "stale", "proposals"],
+      "required": ["applied", "suppressed", "expired", "stale", "proposals", "shadowed"],
       "properties": {
         "applied": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many live triage decisions set at least one finding."
+          "description": "How many live triage decisions won at least one finding."
         },
         "suppressed": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many findings a decision suppresses from the gate."
+          "description": "How many findings a decision suppresses from the gate. Findings are counted, so two findings that share a fingerprint count twice."
         },
         "expired": {
           "type": "array",
@@ -208,21 +208,31 @@
           "type": "array",
           "items": {"$ref": "#/$defs/entryReport"},
           "description": "The proposals waiting for a person to approve them."
+        },
+        "shadowed": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/entryReport"},
+          "description": "The live decisions that matched findings another decision decides: a finding selector beats an advisory selector, then the first entry in file order wins. Each names the findings it lost."
         }
       },
-      "description": "What the triage decisions did, including the entries that need attention."
+      "description": "What the triage decisions did, including the entries that need attention. Each finding takes one winning decision."
     }
   },
   "$defs": {
     "entryReport": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["index", "selector", "state", "findings"],
+      "required": ["index", "handle", "selector", "state", "findings"],
       "properties": {
         "index": {
           "type": "integer",
           "minimum": 1,
-          "description": "The entry's 1-based position among the triage decisions, the handle depscan triage uses."
+          "description": "The entry's 1-based position among the triage decisions."
+        },
+        "handle": {
+          "type": "string",
+          "pattern": "^tr-[0-9a-f]{10}$",
+          "description": "The entry's stable handle, which depscan triage review and remove take: tr- and the first ten hex digits of the SHA-256 of its canonical selector, with proposed_by for a proposal."
         },
         "selector": {
           "type": "object",
