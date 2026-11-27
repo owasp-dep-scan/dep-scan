@@ -1077,16 +1077,25 @@ def score_guarded(item: dict, manifest_dir: str, args) -> dict:
         }
 
 
+def selected_floors(floors_doc: dict, score_doc: dict) -> list:
+    """The floors of the items this run scored: a run over a few items
+    (``--items``) checks their floors and skips the others'."""
+    names = {entry["item"] for entry in score_doc.get("items", [])}
+    return [floor for floor in floors_doc.get("floors") or [] if floor.get("item") in names]
+
+
 def check_floors(floors_doc: dict, score_doc: dict) -> list:
-    """The recorded floors that dropped, each with its current value.
+    """The recorded floors of the run's items that dropped, each with its
+    current value.
 
     A floor names an item and a dotted path into its score entry, such as
     ``reachability.SemanticReachability.reached.recall``. A missing value
-    (an item not scored, a None rate) is a violation too.
+    (an item not scored, a None rate) is a violation too. Floors of items
+    the run did not select are not checked.
     """
     violations = []
     by_item = {entry["item"]: entry for entry in score_doc.get("items", [])}
-    for floor in floors_doc.get("floors") or []:
+    for floor in selected_floors(floors_doc, score_doc):
         node = by_item.get(floor["item"])
         if not node or node.get("state") != "scored":
             node = None
@@ -1244,9 +1253,11 @@ def run(args) -> int:
         "summary": summary,
     }
     if floors_doc is not None:
+        checked = len(selected_floors(floors_doc, score_doc))
         summary["floors"] = {
             "commit": floors_doc.get("commit"),
-            "checked": len(floors_doc.get("floors") or []),
+            "checked": checked,
+            "skipped": len(floors_doc.get("floors") or []) - checked,
             "violations": check_floors(floors_doc, score_doc),
         }
     os.makedirs(args.output, exist_ok=True)
@@ -1270,7 +1281,9 @@ def run(args) -> int:
         return 0
     floors = summary["floors"]
     print(
-        f"Floors: {floors['checked']} checked at commit {floors['commit']}, {len(floors['violations'])} violations"
+        f"Floors: {floors['checked']} checked at commit {floors['commit']}, "
+        f"{floors['skipped']} of unselected items skipped, "
+        f"{len(floors['violations'])} violations"
     )
     for violation in floors["violations"]:
         print(

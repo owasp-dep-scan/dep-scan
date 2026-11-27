@@ -81,6 +81,10 @@
             "checked": {
               "type": "integer"
             },
+            "skipped": {
+              "type": "integer",
+              "description": "Floors of items the run did not select, which were not checked."
+            },
             "violations": {
               "type": "array",
               "items": {

@@ -877,3 +877,21 @@ def test_an_item_that_raises_is_an_error_entry_not_a_crash(tmp_path, monkeypatch
     assert "| scan-fixture | error |" in (tmp_path / "out" / "score.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_items_with_floors_check_only_the_selected_items_floors(tmp_path):
+    floors = {
+        "commit": "0" * 40,
+        "floors": [
+            {"item": "scan-fixture", "path": "categories.vulnerability.recall", "minimum": 1.0},
+            {"item": "other-item", "path": "categories.malware.recall", "minimum": 1.0},
+        ],
+    }
+    labels = {"findings": {"source": "hand", "expected": [REQUESTS_EXPECTED]}}
+    argv = _scan_dir_corpus(tmp_path, labels, floors)
+    assert corpus_score.main(argv + ["--items", "scan-fixture"]) == 0
+    _validate_score(tmp_path / "out" / "score.json")
+    summary = json.loads((tmp_path / "out" / "score.json").read_text(encoding="utf-8"))["summary"]
+    assert summary["floors"]["checked"] == 1
+    assert summary["floors"]["skipped"] == 1
+    assert summary["floors"]["violations"] == []
