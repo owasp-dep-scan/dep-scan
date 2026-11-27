@@ -1,0 +1,24 @@
+test/test_mcp_tools.py
+  s_7318da1b9edd46::t_1171400c585e83 2113-2145,2147-2150,2152-2153,2157-2160,2167,2170-2188,2211,2214,2216-2237,2240,2242,2244-2245,2247-2248,2252-2253,2257,2262-2265,2268-2302,2308,2311-2328,2330
+depscan/mcp_server/tools.py
+  s_7318da1b9edd46::t_6d036cc73b7f31 800-807,809-810,813,816,823-835,839-843,853-899,901,903-907,919,921-922,924-926,928-941,945-946
+  s_7318da1b9edd46::t_4dd7d508ecb84d 1035-1041
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_decisions-output.schema.json
+  s_7318da1b9edd46::t_b9c58cdf54ce70 110-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c8f905bd19b8c7049a1d14cf8966b6caabc9ede",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
