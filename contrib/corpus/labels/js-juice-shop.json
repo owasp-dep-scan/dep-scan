@@ -603,14 +603,6 @@
           "CVE-2020-15084"
         ],
         "citation": "package.json:112 pins express-jwt 0.1.3, below the authorization bypass fixed in 6.7.1; used at lib/insecurity.ts:10"
-      },
-      {
-        "category": "vulnerability",
-        "purl": "pkg:npm/colors@1.4.0",
-        "rules": [
-          "CVE-2021-23567"
-        ],
-        "citation": "package.json:101 pins colors 1.4.0, one below the ReDoS fix in 1.4.1; the project's own code imports it at server.ts:16"
       }
     ],
     "forbidden": [

@@ -323,6 +323,8 @@
           "js"
         ],
         "args": [
+          "--profile",
+          "research",
           "--reachability-analyzer",
           "SemanticReachability"
         ]
@@ -1139,7 +1141,7 @@
       "name": "forgejo-two-producers",
       "description": "The forgejo monorepo scanned as Go source and as its built binary in one scan: the same dependency must hold one identity across both producers.",
       "source": "https://codeberg.org/forgejo/forgejo@10615cce5019acefd625c1300cba85d228b045cc",
-      "sha256": "5a6163582012068a6ced5fce4b1b5bb821bb6d6ddd2f49c4ec1353c38cdf9cd6",
+      "sha256": "41e70f7c13a58e38a937eb95a75a026435d89923256a4c2304de072af87a03c1",
       "license": "MIT",
       "storage": {
         "kind": "repository",
