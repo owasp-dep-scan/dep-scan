@@ -111,6 +111,15 @@ def certain_packages(truth: dict) -> dict:
     return counts
 
 
+def load_json(path: str):
+    """Read one JSON document, or None when it cannot be read."""
+    try:
+        with open(path, encoding="utf-8") as fp:
+            return json.load(fp)
+    except (OSError, ValueError):
+        return None
+
+
 def component_identities(bom: dict) -> set:
     """The version-less comparable identities of a BOM's components."""
     identities = set()
@@ -176,7 +185,30 @@ def map_python_package(package: str, by_fold: dict):
     return None
 
 
-def direct_dependency_identities(bom: dict) -> set:
+def npm_direct_from_manifest(path: str) -> set:
+    """The package names a package.json declares as dependencies and
+    devDependencies.
+
+    cdxgen's npm dependency graph lists the whole resolved tree under the
+    root component, which makes it useless as a directness answer for a
+    JavaScript BOM; the manifest the BOM was generated from is the source of
+    truth for what the project declared.
+    """
+    document = load_json(path)
+    if not isinstance(document, dict):
+        if path:
+            print(f"The package manifest '{path}' could not be read, so the "
+            "labels carry no unused packages.", file=sys.stderr)
+        return set()
+    names = set()
+    for section in ("dependencies", "devDependencies"):
+        values = document.get(section)
+        if isinstance(values, dict):
+            names |= set(values)
+    return names
+
+
+def direct_dependency_identities(bom: dict, ecosystem: str = "", manifest_path: str = "") -> set:
     """The identities a BOM declares as direct dependencies.
 
     Direct is the dependency graph's answer: everything the root component
@@ -186,35 +218,48 @@ def direct_dependency_identities(bom: dict) -> set:
     and the label file then holds no ``unused`` labels.
     """
     direct = set()
-    ref_to_purl = {}
-    application_refs = set()
-    for component in bom.get("components") or []:
-        if not isinstance(component, dict) or not component.get("bom-ref"):
-            continue
-        ref = component["bom-ref"]
-        purl = component.get("purl")
-        if isinstance(purl, str) and purl:
-            ref_to_purl[ref] = purl
-        if component.get("type") == "application":
-            application_refs.add(ref)
-    metadata_component = (bom.get("metadata") or {}).get("component") or {}
-    roots = application_refs
-    if metadata_component.get("bom-ref"):
-        roots = roots | {metadata_component["bom-ref"]}
-        metadata_purl = metadata_component.get("purl")
-        if isinstance(metadata_purl, str) and metadata_purl:
-            ref_to_purl[metadata_component["bom-ref"]] = metadata_purl
-    for entry in bom.get("dependencies") or []:
-        if not isinstance(entry, dict) or entry.get("ref") not in roots:
-            continue
-        for ref in entry.get("dependsOn") or []:
-            identity = purl_identity(ref_to_purl.get(ref, ""))
-            if identity:
+    if ecosystem == "npm" and manifest_path:
+        # The manifest overrides the graph: cdxgen's npm graph lists the
+        # whole resolved tree under the root, so it cannot answer directness.
+        # A declared name is direct, even when the BOM holds no component
+        # for it (a git or local dependency).
+        identities = component_identities(bom)
+        for name in npm_direct_from_manifest(manifest_path):
+            identity = purl_identity(npm_purl(name))
+            if identity and identity in identities:
                 direct.add(identity)
+            elif identity:
+                direct.add(identity)
+    else:
+        ref_to_purl = {}
+        application_refs = set()
+        for component in bom.get("components") or []:
+            if not isinstance(component, dict) or not component.get("bom-ref"):
+                continue
+            ref = component["bom-ref"]
+            purl = component.get("purl")
+            if isinstance(purl, str) and purl:
+                ref_to_purl[ref] = purl
+            if component.get("type") == "application":
+                application_refs.add(ref)
+        metadata_component = (bom.get("metadata") or {}).get("component") or {}
+        roots = application_refs
+        if metadata_component.get("bom-ref"):
+            roots = roots | {metadata_component["bom-ref"]}
+            metadata_purl = metadata_component.get("purl")
+            if isinstance(metadata_purl, str) and metadata_purl:
+                ref_to_purl[metadata_component["bom-ref"]] = metadata_purl
+        for entry in bom.get("dependencies") or []:
+            if not isinstance(entry, dict) or entry.get("ref") not in roots:
+                continue
+            for ref in entry.get("dependsOn") or []:
+                identity = purl_identity(ref_to_purl.get(ref, ""))
+                if identity:
+                    direct.add(identity)
     return direct
 
 
-def derive(item_id: str, truth: dict, bom: dict) -> dict:
+def derive(item_id: str, truth: dict, bom: dict, manifest_path: str = "") -> dict:
     """The label document for one item, or raise ValueError when the item's
     language is one the oracle does not cover."""
     ecosystem = language_of(item_id)
@@ -258,7 +303,7 @@ def derive(item_id: str, truth: dict, bom: dict) -> dict:
         {"purl": identity_purl(identity), "occurrences": count}
         for identity, count in sorted(used.items())
     ]
-    direct = direct_dependency_identities(bom)
+    direct = direct_dependency_identities(bom, ecosystem, manifest_path)
     unused_list = [
         {"purl": identity_purl(identity)}
         for identity in sorted(direct - set(used))
@@ -294,6 +339,13 @@ def main() -> int:
     parser.add_argument("--truth", required=True, help="The project's truth JSON.")
     parser.add_argument("--bom", required=True, help="The scan's sbom-<type>.cdx.json.")
     parser.add_argument("--item", required=True, help="The corpus item id.")
+    parser.add_argument(
+        "--package-manifest",
+        default="",
+        help="The project's package.json, required for a JavaScript item: "
+        "cdxgen's npm dependency graph cannot answer which dependencies are "
+        "direct.",
+    )
     parser.add_argument("--out", required=True, help="Label file to write.")
     args = parser.parse_args()
     try:
@@ -305,7 +357,9 @@ def main() -> int:
         print(f"Cannot read the inputs: {exc}", file=sys.stderr)
         return 2
     try:
-        document = derive(args.item, truth, bom)
+        document = derive(
+            args.item, truth, bom, os.path.expanduser(args.package_manifest)
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2

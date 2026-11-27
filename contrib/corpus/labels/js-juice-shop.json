@@ -1,65 +1,585 @@
 {
   "item": "js-juice-shop",
   "reachability": {
-    "source": "oracle"
-  },
-  "findings": {
-    "source": "hand",
-    "expected": [
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
       {
-        "category": "vulnerability",
-        "purl": "pkg:npm/jsonwebtoken@0.4.0",
-        "rules": ["CVE-2022-23529", "CVE-2022-23540", "CVE-2022-23541", "CVE-2022-23539"],
-        "citation": "package.json:132 pins jsonwebtoken 0.4.0, below every advisory fixed in 8.5.1 and 9.0.0; the project's own code uses it at lib/insecurity.ts:11"
+        "purl": "pkg:npm/ai",
+        "occurrences": 9
       },
       {
-        "category": "vulnerability",
-        "purl": "pkg:npm/express-jwt@0.1.3",
-        "rules": ["CVE-2020-15084"],
-        "citation": "package.json:112 pins express-jwt 0.1.3, below the authorization bypass fixed in 6.7.1; used at lib/insecurity.ts:10"
+        "purl": "pkg:npm/angular-eslint",
+        "occurrences": 5
       },
       {
-        "category": "vulnerability",
-        "purl": "pkg:npm/colors@1.4.0",
-        "rules": ["CVE-2021-23567"],
-        "citation": "package.json:101 pins colors 1.4.0, one below the ReDoS fix in 1.4.1; the project's own code imports it at server.ts:16"
+        "purl": "pkg:npm/body-parser",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/canvas-confetti",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/check-dependencies",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/clarinet",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/codemirror",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:npm/colors",
+        "occurrences": 171
+      },
+      {
+        "purl": "pkg:npm/compression",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/config",
+        "occurrences": 149
+      },
+      {
+        "purl": "pkg:npm/cookie-parser",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/cors",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/cypress",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/diff",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/download",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/errorhandler",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/ethers",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:npm/express",
+        "occurrences": 11
+      },
+      {
+        "purl": "pkg:npm/express-ipfilter",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express-jwt",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/express-rate-limit",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/express-robots-txt",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express-security.txt",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/feature-policy",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/file-stream-rotator",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/file-type",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/finale-rest",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/fs-extra",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/glob",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/globals",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/hashids",
+        "occurrences": 8
+      },
+      {
+        "purl": "pkg:npm/helmet",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/html-entities",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/i18n",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/js-yaml",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:npm/jsonwebtoken",
+        "occurrences": 9
+      },
+      {
+        "purl": "pkg:npm/jws",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/jwt-decode",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/lodash-es",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/marsdb",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/median",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/morgan",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/multer",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/neostandard",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/ng-qrcode",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/ng2-file-upload",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:npm/ngy-cookie",
+        "occurrences": 34
+      },
+      {
+        "purl": "pkg:npm/notevil",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/on-finished",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/otplib",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:npm/pdfkit",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/portscanner",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/prom-client",
+        "occurrences": 33
+      },
+      {
+        "purl": "pkg:npm/pug",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/replace",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/rxjs",
+        "occurrences": 316
+      },
+      {
+        "purl": "pkg:npm/sanitize-filename",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/sanitize-html",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/semver",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/sequelize",
+        "occurrences": 225
+      },
+      {
+        "purl": "pkg:npm/serve-index",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/snarkdown",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/socket.io",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/socket.io-client",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/solidity-browser-compiler",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/stylelint",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/svg-captcha",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/swagger-ui-express",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/typescript-eslint",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/unzipper",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/vitest",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/winston",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/z85",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/zod",
+        "occurrences": 146
+      },
+      {
+        "purl": "pkg:npm/%40ai-sdk/openai-compatible",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40angular/cdk",
+        "occurrences": 14
+      },
+      {
+        "purl": "pkg:npm/%40angular/common",
+        "occurrences": 112
+      },
+      {
+        "purl": "pkg:npm/%40angular/core",
+        "occurrences": 1042
+      },
+      {
+        "purl": "pkg:npm/%40angular/forms",
+        "occurrences": 310
+      },
+      {
+        "purl": "pkg:npm/%40angular/material",
+        "occurrences": 1069
+      },
+      {
+        "purl": "pkg:npm/%40angular/platform-browser",
+        "occurrences": 18
+      },
+      {
+        "purl": "pkg:npm/%40angular/router",
+        "occurrences": 100
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/commands",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-javascript",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-json",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/lang-yaml",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/language",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/merge",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/search",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/state",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:npm/%40codemirror/view",
+        "occurrences": 21
+      },
+      {
+        "purl": "pkg:npm/%40eslint/js",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/fontawesome-svg-core",
+        "occurrences": 62
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-brands-svg-icons",
+        "occurrences": 28
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-regular-svg-icons",
+        "occurrences": 22
+      },
+      {
+        "purl": "pkg:npm/%40fortawesome/free-solid-svg-icons",
+        "occurrences": 162
+      },
+      {
+        "purl": "pkg:npm/%40lezer/highlight",
+        "occurrences": 48
+      },
+      {
+        "purl": "pkg:npm/%40ngx-translate/core",
+        "occurrences": 178
+      },
+      {
+        "purl": "pkg:npm/%40ngx-translate/http-loader",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40wagmi/core",
+        "occurrences": 31
       }
     ],
-    "forbidden": [
+    "unused": [
       {
-        "category": "vulnerability",
-        "purl": "pkg:npm/express@4.22.1",
-        "reason": "express is pinned at 4.22.1, above every advisory in the database for the 4.x line, so a finding on it is a false positive"
+        "purl": "pkg:npm/beercss"
+      },
+      {
+        "purl": "pkg:npm/concurrently"
+      },
+      {
+        "purl": "pkg:npm/cookieconsent"
+      },
+      {
+        "purl": "pkg:npm/eslint"
+      },
+      {
+        "purl": "pkg:npm/exif"
+      },
+      {
+        "purl": "pkg:npm/graceful-fs"
+      },
+      {
+        "purl": "pkg:npm/grunt"
+      },
+      {
+        "purl": "pkg:npm/grunt-cli"
+      },
+      {
+        "purl": "pkg:npm/grunt-contrib-compress"
+      },
+      {
+        "purl": "pkg:npm/grunt-replace-json"
+      },
+      {
+        "purl": "pkg:npm/hbs"
+      },
+      {
+        "purl": "pkg:npm/libxml2-wasm"
+      },
+      {
+        "purl": "pkg:npm/material-icons"
+      },
+      {
+        "purl": "pkg:npm/nyc"
+      },
+      {
+        "purl": "pkg:npm/sqlite3"
+      },
+      {
+        "purl": "pkg:npm/supertest"
+      },
+      {
+        "purl": "pkg:npm/tsx"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      },
+      {
+        "purl": "pkg:npm/%40cyclonedx/cyclonedx-npm"
+      },
+      {
+        "purl": "pkg:npm/%40fontsource/roboto"
+      },
+      {
+        "purl": "pkg:npm/%40istanbuljs/nyc-config-typescript"
+      },
+      {
+        "purl": "pkg:npm/%40types/clarinet"
+      },
+      {
+        "purl": "pkg:npm/%40types/compression"
+      },
+      {
+        "purl": "pkg:npm/%40types/config"
+      },
+      {
+        "purl": "pkg:npm/%40types/cookie-parser"
+      },
+      {
+        "purl": "pkg:npm/%40types/cors"
+      },
+      {
+        "purl": "pkg:npm/%40types/cross-spawn"
+      },
+      {
+        "purl": "pkg:npm/%40types/diff"
+      },
+      {
+        "purl": "pkg:npm/%40types/download"
+      },
+      {
+        "purl": "pkg:npm/%40types/errorhandler"
+      },
+      {
+        "purl": "pkg:npm/%40types/exif"
+      },
+      {
+        "purl": "pkg:npm/%40types/express"
+      },
+      {
+        "purl": "pkg:npm/%40types/express-jwt"
+      },
+      {
+        "purl": "pkg:npm/%40types/fs-extra"
+      },
+      {
+        "purl": "pkg:npm/%40types/glob"
+      },
+      {
+        "purl": "pkg:npm/%40types/graceful-fs"
+      },
+      {
+        "purl": "pkg:npm/%40types/i18n"
+      },
+      {
+        "purl": "pkg:npm/%40types/js-yaml"
+      },
+      {
+        "purl": "pkg:npm/%40types/jsonwebtoken"
+      },
+      {
+        "purl": "pkg:npm/%40types/jws"
+      },
+      {
+        "purl": "pkg:npm/%40types/lodash"
+      },
+      {
+        "purl": "pkg:npm/%40types/morgan"
+      },
+      {
+        "purl": "pkg:npm/%40types/multer"
+      },
+      {
+        "purl": "pkg:npm/%40types/node"
+      },
+      {
+        "purl": "pkg:npm/%40types/on-finished"
+      },
+      {
+        "purl": "pkg:npm/%40types/pdfkit"
+      },
+      {
+        "purl": "pkg:npm/%40types/portscanner"
+      },
+      {
+        "purl": "pkg:npm/%40types/pug"
+      },
+      {
+        "purl": "pkg:npm/%40types/sanitize-html"
+      },
+      {
+        "purl": "pkg:npm/%40types/semver"
+      },
+      {
+        "purl": "pkg:npm/%40types/sequelize"
+      },
+      {
+        "purl": "pkg:npm/%40types/serve-index"
+      },
+      {
+        "purl": "pkg:npm/%40types/supertest"
+      },
+      {
+        "purl": "pkg:npm/%40types/swagger-ui-express"
+      },
+      {
+        "purl": "pkg:npm/%40types/unzipper"
       }
-    ]
-  },
-  "joins": {
-    "route-package": {
-      "source": "hand",
-      "routes": [
-        {
-          "path": "/api/Users",
-          "method": "GET",
-          "packages": ["pkg:npm/sequelize"],
-          "citation": "server.ts:363 registers the route over the user model, whose own code queries sequelize (models/user.ts:36 and :124)"
-        },
-        {
-          "path": "/rest/user/login",
-          "method": "POST",
-          "packages": ["pkg:npm/jsonwebtoken"],
-          "citation": "server.ts:596 registers routes/login.ts, whose login signs through lib/insecurity.ts:54 with the jsonwebtoken imported at lib/insecurity.ts:11"
-        },
-        {
-          "path": "/rest/admin/application-version",
-          "method": "GET",
-          "packages": ["pkg:npm/express"],
-          "citation": "routes/appVersion.ts returns an express handler (express is the framework, package.json:24) using config and utils; no third-party data layer"
-        }
-      ]
+    ],
+    "unmapped": {
+      "src": 11
     },
-    "advisory-usage-reach": {
-      "source": "hand",
-      "notes": "Scored from the reachability labels plus the findings labels of this file: a vulnerability finding on a used package that the analyser reaches is the join working, and a reached finding on an unused package is its false positive."
+    "counts": {
+      "used": 100,
+      "unused": 55,
+      "unmapped": 1,
+      "certainUses": 4676
     }
   }
 }

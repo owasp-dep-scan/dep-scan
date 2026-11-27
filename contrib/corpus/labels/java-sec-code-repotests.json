@@ -12,8 +12,8 @@
       {
         "category": "vulnerability",
         "purl": "pkg:maven/com.alibaba/fastjson@1.2.24",
-        "rules": ["CVE-2017-18336"],
-        "citation": "the artifact's pinned source declares fastjson 1.2.24 in pom.xml:50, below the 1.2.24 RCE fixes"
+        "rules": ["CVE-2017-18349"],
+        "citation": "the artifact's pinned source declares fastjson 1.2.24 in pom.xml:50, inside the range the vulnerability database carries under CVE-2017-18349 (vers:maven/>=1.1.15|<1.2.31)"
       }
     ],
     "forbidden": [

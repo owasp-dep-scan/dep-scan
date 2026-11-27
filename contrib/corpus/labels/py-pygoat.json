@@ -1,0 +1,378 @@
+{
+  "item": "py-pygoat",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/argon2",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/chatterbot",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/colorama",
+        "occurrences": 42
+      },
+      {
+        "purl": "pkg:pypi/django",
+        "occurrences": 952
+      },
+      {
+        "purl": "pkg:pypi/django-heroku",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/flask",
+        "occurrences": 68
+      },
+      {
+        "purl": "pkg:pypi/pillow",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/pyjwt",
+        "occurrences": 7
+      },
+      {
+        "purl": "pkg:pypi/pyyaml",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 17
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/aiofiles"
+      },
+      {
+        "purl": "pkg:pypi/aiohappyeyeballs"
+      },
+      {
+        "purl": "pkg:pypi/aiohttp"
+      },
+      {
+        "purl": "pkg:pypi/aiosignal"
+      },
+      {
+        "purl": "pkg:pypi/annotated-doc"
+      },
+      {
+        "purl": "pkg:pypi/annotated-types"
+      },
+      {
+        "purl": "pkg:pypi/anyio"
+      },
+      {
+        "purl": "pkg:pypi/apkinspector"
+      },
+      {
+        "purl": "pkg:pypi/appdirs"
+      },
+      {
+        "purl": "pkg:pypi/appthreat-vulnerability-db"
+      },
+      {
+        "purl": "pkg:pypi/apsw"
+      },
+      {
+        "purl": "pkg:pypi/ar"
+      },
+      {
+        "purl": "pkg:pypi/atom-tools"
+      },
+      {
+        "purl": "pkg:pypi/attrs"
+      },
+      {
+        "purl": "pkg:pypi/blinker"
+      },
+      {
+        "purl": "pkg:pypi/blint"
+      },
+      {
+        "purl": "pkg:pypi/certifi"
+      },
+      {
+        "purl": "pkg:pypi/cffi"
+      },
+      {
+        "purl": "pkg:pypi/charset-normalizer"
+      },
+      {
+        "purl": "pkg:pypi/cleo"
+      },
+      {
+        "purl": "pkg:pypi/click"
+      },
+      {
+        "purl": "pkg:pypi/coverage"
+      },
+      {
+        "purl": "pkg:pypi/crashtest"
+      },
+      {
+        "purl": "pkg:pypi/cryptography"
+      },
+      {
+        "purl": "pkg:pypi/custom-json-diff"
+      },
+      {
+        "purl": "pkg:pypi/cvss"
+      },
+      {
+        "purl": "pkg:pypi/defusedxml"
+      },
+      {
+        "purl": "pkg:pypi/dnspython"
+      },
+      {
+        "purl": "pkg:pypi/ds-analysis-lib"
+      },
+      {
+        "purl": "pkg:pypi/ds-reporting-lib"
+      },
+      {
+        "purl": "pkg:pypi/ds-server-lib"
+      },
+      {
+        "purl": "pkg:pypi/ds-xbom-lib"
+      },
+      {
+        "purl": "pkg:pypi/email-validator"
+      },
+      {
+        "purl": "pkg:pypi/frozenlist"
+      },
+      {
+        "purl": "pkg:pypi/geoip2"
+      },
+      {
+        "purl": "pkg:pypi/h11"
+      },
+      {
+        "purl": "pkg:pypi/h2"
+      },
+      {
+        "purl": "pkg:pypi/hpack"
+      },
+      {
+        "purl": "pkg:pypi/httpcore"
+      },
+      {
+        "purl": "pkg:pypi/httpcore2"
+      },
+      {
+        "purl": "pkg:pypi/httpx"
+      },
+      {
+        "purl": "pkg:pypi/httpx2"
+      },
+      {
+        "purl": "pkg:pypi/hypercorn"
+      },
+      {
+        "purl": "pkg:pypi/hyperframe"
+      },
+      {
+        "purl": "pkg:pypi/idna"
+      },
+      {
+        "purl": "pkg:pypi/iniconfig"
+      },
+      {
+        "purl": "pkg:pypi/itsdangerous"
+      },
+      {
+        "purl": "pkg:pypi/jinja2"
+      },
+      {
+        "purl": "pkg:pypi/jmespath"
+      },
+      {
+        "purl": "pkg:pypi/json-flatten"
+      },
+      {
+        "purl": "pkg:pypi/jsonschema"
+      },
+      {
+        "purl": "pkg:pypi/jsonschema-specifications"
+      },
+      {
+        "purl": "pkg:pypi/lief"
+      },
+      {
+        "purl": "pkg:pypi/markdown-it-py"
+      },
+      {
+        "purl": "pkg:pypi/markupsafe"
+      },
+      {
+        "purl": "pkg:pypi/maxminddb"
+      },
+      {
+        "purl": "pkg:pypi/mcp"
+      },
+      {
+        "purl": "pkg:pypi/mcp-types"
+      },
+      {
+        "purl": "pkg:pypi/mdurl"
+      },
+      {
+        "purl": "pkg:pypi/multi-demangle"
+      },
+      {
+        "purl": "pkg:pypi/multidict"
+      },
+      {
+        "purl": "pkg:pypi/opentelemetry-api"
+      },
+      {
+        "purl": "pkg:pypi/oras"
+      },
+      {
+        "purl": "pkg:pypi/orjson"
+      },
+      {
+        "purl": "pkg:pypi/owasp-depscan"
+      },
+      {
+        "purl": "pkg:pypi/packageurl-python"
+      },
+      {
+        "purl": "pkg:pypi/packaging"
+      },
+      {
+        "purl": "pkg:pypi/pluggy"
+      },
+      {
+        "purl": "pkg:pypi/priority"
+      },
+      {
+        "purl": "pkg:pypi/propcache"
+      },
+      {
+        "purl": "pkg:pypi/pycparser"
+      },
+      {
+        "purl": "pkg:pypi/pydantic"
+      },
+      {
+        "purl": "pkg:pypi/pydantic-core"
+      },
+      {
+        "purl": "pkg:pypi/pygithub"
+      },
+      {
+        "purl": "pkg:pypi/pygments"
+      },
+      {
+        "purl": "pkg:pypi/pynacl"
+      },
+      {
+        "purl": "pkg:pypi/pyotp"
+      },
+      {
+        "purl": "pkg:pypi/pyrefly"
+      },
+      {
+        "purl": "pkg:pypi/pytest"
+      },
+      {
+        "purl": "pkg:pypi/pytest-asyncio"
+      },
+      {
+        "purl": "pkg:pypi/pytest-cov"
+      },
+      {
+        "purl": "pkg:pypi/python-dotenv"
+      },
+      {
+        "purl": "pkg:pypi/python-multipart"
+      },
+      {
+        "purl": "pkg:pypi/qrcode"
+      },
+      {
+        "purl": "pkg:pypi/quart"
+      },
+      {
+        "purl": "pkg:pypi/rapidfuzz"
+      },
+      {
+        "purl": "pkg:pypi/referencing"
+      },
+      {
+        "purl": "pkg:pypi/rich"
+      },
+      {
+        "purl": "pkg:pypi/rpds-py"
+      },
+      {
+        "purl": "pkg:pypi/ruff"
+      },
+      {
+        "purl": "pkg:pypi/semver"
+      },
+      {
+        "purl": "pkg:pypi/shellingham"
+      },
+      {
+        "purl": "pkg:pypi/sse-starlette"
+      },
+      {
+        "purl": "pkg:pypi/starlette"
+      },
+      {
+        "purl": "pkg:pypi/thefuzz"
+      },
+      {
+        "purl": "pkg:pypi/toml"
+      },
+      {
+        "purl": "pkg:pypi/truststore"
+      },
+      {
+        "purl": "pkg:pypi/typer"
+      },
+      {
+        "purl": "pkg:pypi/typing-extensions"
+      },
+      {
+        "purl": "pkg:pypi/typing-inspection"
+      },
+      {
+        "purl": "pkg:pypi/urllib3"
+      },
+      {
+        "purl": "pkg:pypi/uvicorn"
+      },
+      {
+        "purl": "pkg:pypi/wasm-tools"
+      },
+      {
+        "purl": "pkg:pypi/werkzeug"
+      },
+      {
+        "purl": "pkg:pypi/wsproto"
+      },
+      {
+        "purl": "pkg:pypi/yarl"
+      }
+    ],
+    "unmapped": {
+      "setuptools": 4
+    },
+    "counts": {
+      "used": 10,
+      "unused": 106,
+      "unmapped": 1,
+      "certainUses": 1112
+    }
+  }
+}

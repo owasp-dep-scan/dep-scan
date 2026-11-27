@@ -1,0 +1,57 @@
+{
+  "item": "js-svelte-realworld",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/marked",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/sanitize-html",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/svelte",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/vite",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40sveltejs/adapter-vercel",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40sveltejs/kit",
+        "occurrences": 48
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/prettier"
+      },
+      {
+        "purl": "pkg:npm/prettier-plugin-svelte"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      },
+      {
+        "purl": "pkg:npm/%40sveltejs/vite-plugin-svelte"
+      }
+    ],
+    "unmapped": {
+      "$app": 27,
+      "$lib": 59
+    },
+    "counts": {
+      "used": 6,
+      "unused": 4,
+      "unmapped": 2,
+      "certainUses": 146
+    }
+  }
+}

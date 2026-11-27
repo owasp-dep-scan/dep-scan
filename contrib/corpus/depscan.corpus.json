@@ -1061,8 +1061,7 @@
         ],
         "lifecycles": [
           "pre-build",
-          "build",
-          "post-build"
+          "build"
         ]
       },
       "labels": "labels/lifecycle-fixture.json",

@@ -1,0 +1,61 @@
+{
+  "item": "py-vulpy",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/click",
+        "occurrences": 61
+      },
+      {
+        "purl": "pkg:pypi/cryptography",
+        "occurrences": 226
+      },
+      {
+        "purl": "pkg:pypi/flask",
+        "occurrences": 349
+      },
+      {
+        "purl": "pkg:pypi/geoip2",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/jsonschema",
+        "occurrences": 10
+      },
+      {
+        "purl": "pkg:pypi/lib",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/passlib",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:pypi/pyjwt",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:pypi/pyotp",
+        "occurrences": 16
+      },
+      {
+        "purl": "pkg:pypi/qrcode",
+        "occurrences": 6
+      },
+      {
+        "purl": "pkg:pypi/requests",
+        "occurrences": 18
+      }
+    ],
+    "unused": [],
+    "unmapped": {},
+    "counts": {
+      "used": 11,
+      "unused": 0,
+      "unmapped": 0,
+      "certainUses": 700
+    }
+  }
+}

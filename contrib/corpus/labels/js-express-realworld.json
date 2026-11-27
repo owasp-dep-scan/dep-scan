@@ -1,0 +1,146 @@
+{
+  "item": "js-express-realworld",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:npm/axios",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/bcryptjs",
+        "occurrences": 4
+      },
+      {
+        "purl": "pkg:npm/body-parser",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/cors",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/express",
+        "occurrences": 90
+      },
+      {
+        "purl": "pkg:npm/express-jwt",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/jsonwebtoken",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/slugify",
+        "occurrences": 3
+      },
+      {
+        "purl": "pkg:npm/%40ngneat/falso",
+        "occurrences": 15
+      },
+      {
+        "purl": "pkg:npm/%40nx/jest",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:npm/%40prisma/client",
+        "occurrences": 5
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:npm/esbuild"
+      },
+      {
+        "purl": "pkg:npm/eslint"
+      },
+      {
+        "purl": "pkg:npm/eslint-config-prettier"
+      },
+      {
+        "purl": "pkg:npm/jest"
+      },
+      {
+        "purl": "pkg:npm/jest-environment-node"
+      },
+      {
+        "purl": "pkg:npm/jest-mock-extended"
+      },
+      {
+        "purl": "pkg:npm/nx"
+      },
+      {
+        "purl": "pkg:npm/prettier"
+      },
+      {
+        "purl": "pkg:npm/prisma"
+      },
+      {
+        "purl": "pkg:npm/ts-jest"
+      },
+      {
+        "purl": "pkg:npm/ts-node"
+      },
+      {
+        "purl": "pkg:npm/tslib"
+      },
+      {
+        "purl": "pkg:npm/typescript"
+      },
+      {
+        "purl": "pkg:npm/%40nx/esbuild"
+      },
+      {
+        "purl": "pkg:npm/%40nx/eslint"
+      },
+      {
+        "purl": "pkg:npm/%40nx/eslint-plugin"
+      },
+      {
+        "purl": "pkg:npm/%40nx/js"
+      },
+      {
+        "purl": "pkg:npm/%40nx/node"
+      },
+      {
+        "purl": "pkg:npm/%40nx/workspace"
+      },
+      {
+        "purl": "pkg:npm/%40swc/core"
+      },
+      {
+        "purl": "pkg:npm/%40swc-node/register"
+      },
+      {
+        "purl": "pkg:npm/%40types/bcryptjs"
+      },
+      {
+        "purl": "pkg:npm/%40types/cors"
+      },
+      {
+        "purl": "pkg:npm/%40types/express"
+      },
+      {
+        "purl": "pkg:npm/%40types/jest"
+      },
+      {
+        "purl": "pkg:npm/%40types/node"
+      },
+      {
+        "purl": "pkg:npm/%40typescript-eslint/eslint-plugin"
+      },
+      {
+        "purl": "pkg:npm/%40typescript-eslint/parser"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 11,
+      "unused": 28,
+      "unmapped": 0,
+      "certainUses": 131
+    }
+  }
+}

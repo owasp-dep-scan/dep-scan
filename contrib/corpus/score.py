@@ -360,13 +360,20 @@ def resolve_payload(item: dict, args, timeout: float):
 
 
 def build_scan_options(item: dict, payload, reports_dir: str):
-    """The parsed options of the item's scan command line.
+    """The internal options of the item's scan command line.
 
     The manifest's ``scan`` object is the command line: the payload as the
-    target, one ``-t`` per type, then the item's own arguments. Parsing it
-    with dep-scan's own parser keeps the manifest and the run in step.
+    target, one ``-t`` flag with every type, then the item's own arguments.
+    The parsed command line goes through the same conversion the scan verb
+    runs (checks and profile resolution onto the internal namespace, the
+    target onto the inventory paths), so the manifest and the run stay in
+    step with what the CLI itself would do.
     """
-    from depscan.cli_options import build_parser
+    import argparse
+
+    from depscan.commands import checks as checks_table
+    from depscan.commands import build_parser
+    from depscan.commands.scan import _apply_target_options, detect_kind, scan_namespace
 
     tokens = ["scan", str(payload)]
     # One -t flag with every type: -t repeats replace, not extend. A BOM
@@ -378,9 +385,14 @@ def build_scan_options(item: dict, payload, reports_dir: str):
     lifecycles = item["scan"].get("lifecycles")
     if lifecycles:
         tokens += ["--lifecycle", *lifecycles]
-    options = build_parser().parse_args(tokens)
+    args = build_parser().parse_args(tokens)
+    resolution = checks_table.resolve(args)
+    options = argparse.Namespace(**vars(scan_namespace(args, resolution=resolution)))
+    kind, _ = detect_kind(str(payload))
+    _apply_target_options(options, str(payload), kind, args, resolution)
+    options.reports_dir = reports_dir
     options.no_banner = True
-    return options
+    return options, resolution
 
 
 def run_item_scan(item: dict, payload, reports_dir: str, timeout: float):
@@ -391,10 +403,14 @@ def run_item_scan(item: dict, payload, reports_dir: str, timeout: float):
     """
     from depscan import api
 
-    options = build_scan_options(item, payload, reports_dir)
+    options, resolution = build_scan_options(item, payload, reports_dir)
     started = time.time()
     try:
-        result = api.scan(options, render=False)
+        result = api.scan(
+            options,
+            render=False,
+            checks_not_assessed=resolution.not_assessed or None,
+        )
     except api.ScanError as exc:
         return None, f"the scan stopped early: {exc}"
     except Exception as exc:  # noqa: BLE001 - a failed scan is the item's result
@@ -466,10 +482,30 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
                 }
             )
     unexpected = []
+    expected_purls = {purl_key(e["purl"]) for e in expected if e.get("purl")}
+    # Labels pass judgement per category: a forbidden purl is controlled for
+    # its own category only, so an advisory of another category on it is a
+    # true finding, not noise.
+    forbidden_purls = {
+        control["category"]: {
+            purl_key(c["purl"])
+            for c in forbidden
+            if c.get("purl") and c.get("category") == control["category"]
+        }
+        for control in forbidden
+        if control.get("purl")
+    }
     for index, finding in enumerate(findings):
         if index in matched_findings:
             continue
-        if any(purl_key(p) in {purl_key(e["purl"]) for e in expected} for p in finding.get("components") or []):
+        keys = {purl_key(p) for p in finding.get("components") or []}
+        # A finding on a purl an expected entry names is a true positive of
+        # the label even when its rule id differs: the rules list proves the
+        # advisory, it does not bound it. Any other finding on a purl the
+        # same category's labels control is unexpected.
+        if keys & expected_purls:
+            continue
+        if keys & forbidden_purls.get(finding.get("category"), set()):
             unexpected.append(
                 {"rule": finding.get("rule"), "purls": finding.get("components") or []}
             )
@@ -1172,6 +1208,16 @@ def check_floors(floors_doc: dict, score_doc: dict) -> list:
 # the score document and its table
 
 
+def inventory_failed(result):
+    """The reason the inventory stage failed, when it did. A scan whose BOM
+    generation failed assessed nothing, so the item reads as not assessed
+    rather than as one with no findings."""
+    for stage in (result.manifest or {}).get("stages") or []:
+        if stage.get("name") == "inventory" and stage.get("status") == "failed":
+            return stage.get("reason") or "the inventory stage failed"
+    return None
+
+
 def score_item(item: dict, labels: dict, result, payload) -> dict:
     """One item's score entry from its result."""
     from depscan import get_version
@@ -1399,6 +1445,11 @@ def main() -> int:
                 entry.update(state="not-assessed", reason=str(exc))
                 entries.append(entry)
                 continue
+            inventory_reason = inventory_failed(result)
+            if inventory_reason:
+                entry.update(state="not-assessed", reason=inventory_reason)
+                entries.append(entry)
+                continue
             entries.append(score_item(item, labels, result, reports_dir))
             continue
         payload, reason = resolve_payload(item, args, args.timeout)
@@ -1418,6 +1469,11 @@ def main() -> int:
         result, error = run_item_scan(item, payload, reports_dir, args.timeout)
         if result is None:
             entry.update(state="not-assessed", reason=error)
+            entries.append(entry)
+            continue
+        inventory_reason = inventory_failed(result)
+        if inventory_reason:
+            entry.update(state="not-assessed", reason=inventory_reason)
             entries.append(entry)
             continue
         entries.append(score_item(item, labels, result, payload))

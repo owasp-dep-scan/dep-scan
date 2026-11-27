@@ -105,16 +105,39 @@ def test_missed_expected_finding_is_a_miss():
 
 
 def test_finding_on_labelled_purl_without_expected_entry_is_unexpected():
+    # A rule-scoped control names left-pad for MAL rules only; an
+    # unrelated supply-chain rule on the same benign package is unexpected.
     expected = [
         {"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}
     ]
+    forbidden = [
+        {"category": "supply-chain", "purl": "pkg:npm/left-pad@1.3.0", "rules": ["INT-005"]}
+    ]
     findings = [
         _finding("vulnerability", "CVE-1", [_purl("lodash")]),
-        _finding("vulnerability", "CVE-9", [_purl("lodash", "4.17.20")]),
+        _finding("supply-chain", "INT-026", [_purl("left-pad", "1.3.0")]),
     ]
-    scored = corpus_score.score_findings(findings, expected, [])
+    scored = corpus_score.score_findings(findings, expected, forbidden)
     assert scored["unexpected"] == 1
-    assert scored["precision"] == 0.5
+    assert scored["forbiddenFired"] == []
+
+
+def test_finding_on_a_labelled_purl_whose_category_no_label_names_is_not_unexpected():
+    # The vulnerability labels name lodash; a vulnerability advisory on a
+    # purl the supply-chain controls name is a true advisory, not noise.
+    expected = [
+        {"category": "vulnerability", "purl": "pkg:npm/lodash", "rules": ["CVE-1"]}
+    ]
+    forbidden = [
+        {"category": "supply-chain", "purl": "pkg:npm/express@4.19.2", "rules": ["INT-005"]}
+    ]
+    findings = [
+        _finding("vulnerability", "CVE-1", [_purl("lodash")]),
+        _finding("vulnerability", "CVE-9", [_purl("express", "4.19.2")]),
+    ]
+    scored = corpus_score.score_findings(findings, expected, forbidden)
+    assert scored["unexpected"] == 0
+    assert scored["precision"] == 1.0
 
 
 def test_finding_on_unlabelled_purl_counts_nowhere():

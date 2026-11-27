@@ -1,0 +1,67 @@
+{
+  "item": "py-dvpwa",
+  "reachability": {
+    "source": "oracle",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, and unused when the BOM declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "used": [
+      {
+        "purl": "pkg:pypi/aiohttp",
+        "occurrences": 90
+      },
+      {
+        "purl": "pkg:pypi/aiohttp-jinja2",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:pypi/aiohttp-session",
+        "occurrences": 13
+      },
+      {
+        "purl": "pkg:pypi/aiopg",
+        "occurrences": 31
+      },
+      {
+        "purl": "pkg:pypi/aioredis",
+        "occurrences": 2
+      },
+      {
+        "purl": "pkg:pypi/trafaret",
+        "occurrences": 35
+      },
+      {
+        "purl": "pkg:pypi/trafaret-config",
+        "occurrences": 3
+      }
+    ],
+    "unused": [
+      {
+        "purl": "pkg:pypi/attrs"
+      },
+      {
+        "purl": "pkg:pypi/idna"
+      },
+      {
+        "purl": "pkg:pypi/jinja2"
+      },
+      {
+        "purl": "pkg:pypi/markupsafe"
+      },
+      {
+        "purl": "pkg:pypi/multidict"
+      },
+      {
+        "purl": "pkg:pypi/pyyaml"
+      },
+      {
+        "purl": "pkg:pypi/yarl"
+      }
+    ],
+    "unmapped": {},
+    "counts": {
+      "used": 7,
+      "unused": 7,
+      "unmapped": 0,
+      "certainUses": 187
+    }
+  }
+}
