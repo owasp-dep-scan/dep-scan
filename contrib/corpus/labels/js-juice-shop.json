@@ -642,7 +642,7 @@
             "pkg:npm/config",
             "pkg:npm/express"
           ],
-          "citation": "routes/appVersion.ts:6 imports config (package.json:103) and the handler at :13 calls config.get; :7 imports express's Request and Response types for the handler that server.ts registers with express (package.json:110)"
+          "citation": "routes/appVersion.ts:6 imports config (package.json:103) and the handler calls config.get at :14; :7 imports express's Request and Response types for the handler that server.ts registers with express (package.json:110)"
         }
       ]
     },
