@@ -1,0 +1,54 @@
+depscan/commands/triage.py
+  s_62a28a1c3d6dbf::t_ea37a3029cf951 257,262,272,277,282,287-288
+  s_62a28a1c3d6dbf::t_4e23c4a0e18790 1-24,26-256,258-261,263-271,273-276,278-281,283-286,289-308,310-311
+  s_62a28a1c3d6dbf::t_f0e79bf02ec891 309,312
+  s_62a28a1c3d6dbf::t_7d6b3d3ba6b8be 25
+README.md
+  s_62a28a1c3d6dbf::t_cb74d121dee84b 123,128,131
+test/test_triage_verb.py
+  s_62a28a1c3d6dbf::t_127c8246124e15 1-356
+test/test_v7_verbs.py
+  s_62a28a1c3d6dbf::t_cb74d121dee84b 73
+depscan/api.py
+  s_62a28a1c3d6dbf::t_e6fe16ff2353b4 159,161-179
+  s_62a28a1c3d6dbf::t_b80871f73c1400 321-322,324
+  s_62a28a1c3d6dbf::t_a6389a5c24afe1 327
+  s_62a28a1c3d6dbf::t_3d8d5be21604ed 351-356,358-359,361,365-374
+  s_62a28a1c3d6dbf::t_bf35de438ccad0 48-52,56-126,133-158,160,180-320,323,325-326,328-350,357,360,362-364,375-376
+  s_62a28a1c3d6dbf::t_632c081a39e4fa 127-132
+  s_62a28a1c3d6dbf::t_d768e8a036e125 377-378
+documentation/docs/reference/schemas.mdx
+  s_62a28a1c3d6dbf::t_cb74d121dee84b 38
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-triage-output.schema.json
+  s_62a28a1c3d6dbf::t_1a6f6be12c2813 1-7,12-18,26-29,37-45,47-51,56-59,64-67,72-74,79-86,90-96,101-141,145-169,192-196
+  s_62a28a1c3d6dbf::t_842c0b2bfb0b7e 8-11,19-25,30-36,46,52-55,60-63,68-71,75-78,87-89,97-100,142-144,170-191
+packages/analysis-lib/tests/test_findings_schema.py
+  s_62a28a1c3d6dbf::t_c3461c6fc2d8c0 65
+documentation/docs/reference/cli.mdx
+  s_62a28a1c3d6dbf::t_cb74d121dee84b 31,36,39
+depscan/commands/__init__.py
+  s_62a28a1c3d6dbf::t_3208e94a40ad13 37,48,63
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_62a28a1c3d6dbf::t_c3461c6fc2d8c0 67
+depscan/lib/decisions_edit.py
+  s_62a28a1c3d6dbf::t_273475e3d790e2 124
+  s_62a28a1c3d6dbf::t_224f7372eb3424 1-10,13-44,53,57,78-99,103-105,107-109,112-123,132,134-135,139-143,146-147,149,151-152,154-157,160,162-167,170-171,177-178,180-181,185-186,188-194
+  s_62a28a1c3d6dbf::t_a4687053f0af54 182-184
+  s_62a28a1c3d6dbf::t_4b381517a0fb08 11-12,45-52,54-56,58-77,100-102,106,110-111,125-131,133,136-138,144-145,148,150,153,158-159,161,168-169,172-176,179,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97f0605f4e30df06ec4ef56a4339d0254520d7d9",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
