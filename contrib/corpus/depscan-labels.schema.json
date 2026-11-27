@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:corpus-labels:1",
+  "$id": "urn:owasp:depscan:schema:labels:1",
   "title": "dep-scan corpus labels",
   "description": "One item's labels: what a scan must find and what it must not. Every section names its source. A source of hand requires a citation for each expectation: a file:line reference for a used package or an expected finding, a sentence for an unused package or a forbidden one. oracle labels are derived from the callsites ground truth at package level; fixture labels are built into the fixture they describe.",
   "type": "object",

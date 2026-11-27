@@ -645,10 +645,11 @@ def test_usage_errors_exit_2(tmp_path, capsys):
 
 def test_schema_ids_follow_the_repository_convention():
     here = os.path.join(REPO_ROOT, "contrib", "corpus")
-    expected = {"corpus": "corpus", "labels": "corpus-labels", "score": "corpus-score"}
-    for name, urn in expected.items():
+    # The repository's form: the file name without "depscan-", then the
+    # major version, as analysis_lib.findings.schemas documents.
+    for name in ("corpus", "labels", "score"):
         with open(os.path.join(here, f"depscan-{name}.schema.json"), encoding="utf-8") as fp:
-            assert json.load(fp)["$id"] == f"urn:owasp:depscan:schema:{urn}:1"
+            assert json.load(fp)["$id"] == f"urn:owasp:depscan:schema:{name}:1"
 
 
 def _labels_schema():
