@@ -1,0 +1,32 @@
+packages/analysis-lib/src/analysis_lib/findings/decisions.py
+  s_7318da1b9edd46::t_379c287350f4a5 1427-1475,1483-1484,1493-1503,1516-1517,1519,1521,1528-1551
+  s_7318da1b9edd46::t_a0e205172633a9 299,318,544
+documentation/docs/integrate/vex-csaf.mdx
+  s_7318da1b9edd46::t_b17ac12f9e2ea8 54,164
+depscan/lib/decisions.py
+  s_7318da1b9edd46::t_a0e205172633a9 30
+  s_7318da1b9edd46::t_9c422578b3443f 557,560
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_7318da1b9edd46::t_b17ac12f9e2ea8 34-35,60-61,90-98
+packages/analysis-lib/src/analysis_lib/vex/reachability.py
+  s_7318da1b9edd46::t_6ca203397bd2a3 3-6,15-16
+  s_7318da1b9edd46::t_1c05d04ac8ba76 40,76-78,90-116,138-140,151-152,162,165-166,173-176
+packages/analysis-lib/tests/test_vex.py
+  s_7318da1b9edd46::t_9a0b398203d119 1255-1333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d31197ef00aef8aa2ea983b052f6ac6ef42d696",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
