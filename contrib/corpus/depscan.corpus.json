@@ -154,50 +154,6 @@
       "labels": "labels/js-angular-realworld.json"
     },
     {
-      "name": "js-angular-spotify",
-      "description": "js, frontend app, angular client for spotify's web api",
-      "source": "https://github.com/trungvose/angular-spotify@bb21f83b12ae2ce866977efb5bf8da17e5572aee",
-      "sha256": "1d25c01f753bca0ade4d32e97f0bc10d65b088841abe3065f835a70b06d2bc0c",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/trungvose/angular-spotify"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-angular-spotify.json"
-    },
-    {
-      "name": "js-astro-examples",
-      "description": "js, frontend app, the examples/ workspace of withastro/astro; `examples` leaves the ignore list; scan with ASTGEN_IGNORE_DIRS=node_modules,venv,docs,e2e,e2e-beta,cypress,jest-cache,eslint-rules,codemods,flow-typed,i18n",
-      "source": "https://github.com/withastro/astro@9050e3819c51b0383cced278c278bc6f45c63468",
-      "sha256": "f43ffaa3e2ff0368bf20399e2b176e6fe6cefdb47456ac2cd15e2b0a07a5de6d",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/withastro/astro"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-astro-examples.json"
-    },
-    {
       "name": "js-bulletproof-react",
       "description": "ts, size M, react",
       "source": "https://github.com/alan2207/bulletproof-react@9506629ed003a561c6627735480cce4994244bb4",
@@ -240,28 +196,6 @@
         ]
       },
       "labels": "labels/js-cdxgen.json"
-    },
-    {
-      "name": "js-ember-super-rentals",
-      "description": "js, frontend app, ember octane tutorial app",
-      "source": "https://github.com/ember-learn/super-rentals@cd19a7fc40192cb4aa9e752db8cab04939751e2b",
-      "sha256": "80eeca9b1d2d1f1a8b315680b5b1438d4021e0f18cf845b911b31993f2acd40a",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/ember-learn/super-rentals"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-ember-super-rentals.json"
     },
     {
       "name": "js-express-boilerplate",
@@ -333,28 +267,6 @@
       "notes": "The vulnerable application of the advisory-to-usage join: the scan at this commit carries advisories on packages its own code uses, with reachability labels derived from the same oracle."
     },
     {
-      "name": "js-lit-starter",
-      "description": "js, frontend app, lit element starter (typescript)",
-      "source": "https://github.com/lit/lit-element-starter-ts@da3958188d8632419de74467a526ea9042ba98c4",
-      "sha256": "a0d2baa9a6469fd30b0744abb49d7b57885b73915d3054e30d42f46ed1d3f494",
-      "license": "BSD-3-Clause",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/lit/lit-element-starter-ts"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-lit-starter.json"
-    },
-    {
       "name": "js-nestjs-realworld",
       "description": "ts, size S, nestjs",
       "source": "https://github.com/lujakob/nestjs-realworld-example-app@c1c2cc4e448b279ff083272df1ac50d20c3304fa",
@@ -375,72 +287,6 @@
         ]
       },
       "labels": "labels/js-nestjs-realworld.json"
-    },
-    {
-      "name": "js-ngx-admin",
-      "description": "js, frontend app, angular + nebular, the app of cdxgen/cdxgen#4693",
-      "source": "https://github.com/akveo/ngx-admin@dc6a442704bfef34b776b5eb15faf852d9e2f75c",
-      "sha256": "a4cc7296b119723a27f87fa4b0addd1c832ba983c29193fb27e311ffd0c36760",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/akveo/ngx-admin"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-ngx-admin.json"
-    },
-    {
-      "name": "js-nuxt-atidone",
-      "description": "js, frontend app, nuxt 4 todo app",
-      "source": "https://github.com/atinux/atidone@c4f5f43838f97b618a07eac610fb04b326c06a02",
-      "sha256": "a40f84ee15a224ff5346dddb06e6de68716494d7b3aff8fa038ca9efa2980505",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/atinux/atidone"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-nuxt-atidone.json"
-    },
-    {
-      "name": "js-nuxt-movies",
-      "description": "js, frontend app, nuxt 3 movie app (tmdb)",
-      "source": "https://github.com/nuxt/movies@215904c17d3f56e024afd4aa099f62727d99959a",
-      "sha256": "2131ab66d228f1338ae552fedc44d8e5ec856cdfde7e934be5b9408041b58e20",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/nuxt/movies"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-nuxt-movies.json"
     },
     {
       "name": "js-outline",
@@ -465,50 +311,6 @@
       "labels": "labels/js-outline.json"
     },
     {
-      "name": "js-react-router-examples",
-      "description": "js, frontend app, remix-run/react-router examples, copied to the root of the sandbox app",
-      "source": "https://github.com/remix-run/react-router-examples@60e61f64cc96566f02361ccd0109d6c894f32324",
-      "sha256": "f1fdffa6c2fc2bbc2a1738a96f59d2c62d7bf0ab7f061f41fa06ca84ed422c9b",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/remix-run/react-router-examples"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-react-router-examples.json"
-    },
-    {
-      "name": "js-solid-realworld",
-      "description": "js, frontend app, solidjs realworld example",
-      "source": "https://github.com/solidjs/solid-realworld@f6e77ecd652bf32f0dc9238f291313fd1af7e98b",
-      "sha256": "a0edc6a9a7fc1597b76f723e12b79c271923de27ce581a36fdceddd74d14034d",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/solidjs/solid-realworld"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-solid-realworld.json"
-    },
-    {
       "name": "js-svelte-realworld",
       "description": "js, size S, svelte",
       "source": "https://github.com/sveltejs/realworld@df796708040f5200ec572b28ab7f88ecee5794dd",
@@ -529,50 +331,6 @@
         ]
       },
       "labels": "labels/js-svelte-realworld.json"
-    },
-    {
-      "name": "js-vite-workspace",
-      "description": "js, frontend app, vitejs/vite, the pnpm workspace monorepo of this tranche (packages/*, playground/**); docs/ stays ignored",
-      "source": "https://github.com/vitejs/vite@1f60d62b83e2ba3d2ca600eac5cf790e84080843",
-      "sha256": "d379860a1c4cb3cdacb693a11fe930e99b5dd747a349aa090fc00abf6561caaa",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/vitejs/vite"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-vite-workspace.json"
-    },
-    {
-      "name": "js-vue-router-playground",
-      "description": "js, frontend app, vuejs/router playground, a pnpm workspace (packages/*)",
-      "source": "https://github.com/vuejs/router@0729ce7298ad11b011378f439a506fc78bbce491",
-      "sha256": "f3a27c41a0cd17462180331ae14d0e4dbbd58bf8e721579eca7673384a0be78c",
-      "license": "MIT",
-      "storage": {
-        "kind": "repository",
-        "location": "https://github.com/vuejs/router"
-      },
-      "kind": "repository",
-      "scan": {
-        "types": [
-          "js"
-        ],
-        "args": [
-          "--reachability-analyzer",
-          "SemanticReachability"
-        ]
-      },
-      "labels": "labels/js-vue-router-playground.json"
     },
     {
       "name": "js-vue3-realworld",
