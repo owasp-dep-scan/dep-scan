@@ -1,0 +1,41 @@
+contrib/corpus/labels/node-22-alpine.json
+  s_7318da1b9edd46::t_0f574c64f11f91 10,15,20
+test/test_corpus_labels.py
+  s_7318da1b9edd46::t_eb7b596336b2f6 353-380
+  s_7318da1b9edd46::t_dac13c8463a232 381-382
+contrib/corpus/labels/lifecycle-fixture.json
+  s_7318da1b9edd46::t_d1b5c0c2bae7b1 46
+contrib/corpus/labels/js-juice-shop.json
+  s_7318da1b9edd46::t_0f574c64f11f91 597,605,611-612,640,643
+contrib/corpus/depscan.corpus.json
+  s_7318da1b9edd46::t_4fe13982bbf595 742,926-930
+  s_7318da1b9edd46::t_628533b176e1c0 267,859
+contrib/corpus/labels/forgejo-two-producers.json
+  s_7318da1b9edd46::t_0f574c64f11f91 7
+contrib/corpus/labels/malware-fixture.json
+  s_7318da1b9edd46::t_d1b5c0c2bae7b1 9-12
+contrib/corpus/labels/supply-chain-fixture.json
+  s_7318da1b9edd46::t_0f574c64f11f91 9-11,17-20,27-29,35-37
+contrib/corpus/labels/dotnet-fixture.json
+  s_7318da1b9edd46::t_0f574c64f11f91 10-13,18-22
+contrib/corpus/fixtures/dotnet-fixture/dotnet-fixture.csproj
+  s_7318da1b9edd46::t_628533b176e1c0 15-16
+contrib/corpus/labels/monorepo-fixture.json
+  s_7318da1b9edd46::t_d1b5c0c2bae7b1 16-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e3683cc0f9e3dc3d17627b8a94c8db9e949185f",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
