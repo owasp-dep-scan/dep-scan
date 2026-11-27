@@ -98,6 +98,10 @@ _SCHEMA_FILES = (
     "depscan-mcp-vdb_status-output.schema.json",
     "depscan-mcp-run_scan-input.schema.json",
     "depscan-mcp-run_scan-output.schema.json",
+    "depscan-mcp-get_decisions-input.schema.json",
+    "depscan-mcp-get_decisions-output.schema.json",
+    "depscan-mcp-propose_triage-input.schema.json",
+    "depscan-mcp-propose_triage-output.schema.json",
     # The shared error document.
     "depscan-error.schema.json",
 )

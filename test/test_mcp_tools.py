@@ -51,7 +51,7 @@ TOOL_BUDGET_BYTES = 32 * 1024
 #: The tools the four later tasks own. None of them may be registered.
 FORBIDDEN_TOOLS = ("get_evidence", "policy_status", "remediation_plan", "record_triage")
 
-#: The ten tools of this prompt, in registration order.
+#: The twelve tools, in registration order.
 TOOL_NAMES = (
     "scan_summary",
     "list_findings",
@@ -63,6 +63,8 @@ TOOL_NAMES = (
     "doctor",
     "vdb_status",
     "run_scan",
+    "get_decisions",
+    "propose_triage",
 )
 
 BOM_DOCUMENT = {
@@ -264,9 +266,11 @@ def open_session():
     """
 
     @contextlib.asynccontextmanager
-    async def open_(startup_roots, allow_scans=False, client_roots=None):
+    async def open_(startup_roots, allow_scans=False, allow_propose=False, client_roots=None):
         sdk = server_mod.load_mcp_sdk()
-        server = server_mod.build_server(sdk, tuple(startup_roots), allow_scans=allow_scans)
+        server = server_mod.build_server(
+            sdk, tuple(startup_roots), allow_scans=allow_scans, allow_propose=allow_propose
+        )
 
         async def announce_roots(context):
             return mcp_types.ListRootsResult(
@@ -340,7 +344,7 @@ async def _list_tools(session):
     return listing
 
 
-def test_the_server_lists_exactly_the_ten_tools(open_session, tmp_path):
+def test_the_server_lists_exactly_the_twelve_tools(open_session, tmp_path):
     listing = drive(open_session, _list_tools, (tmp_path,))
     assert [tool.name for tool in listing.tools] == list(TOOL_NAMES)
     assert not [tool.name for tool in listing.tools if tool.name in FORBIDDEN_TOOLS]
@@ -2101,3 +2105,154 @@ def test_the_dry_run_refuses_a_reports_dir_outside_the_roots(open_session, tmp_p
 
     message = drive(open_session, scenario, (tmp_path,))
     assert "an absolute path outside every allowed root" in message
+
+
+# --- the decisions tools -------------------------------------------------------------
+
+
+def test_get_decisions_returns_the_entries_and_the_gate(
+    open_session, tmp_path, make_scan_dir
+):
+    from analysis_lib.findings.decisions import load_decisions
+
+    scan_dir = make_scan_dir("with-decisions")
+    decisions_file = tmp_path / "decisions.toml"
+    decisions_file.write_text(
+        "\n".join(
+            [
+                "[[triage]]",
+                'advisory = "CVE-2024-1111"',
+                'purl = "pkg:pypi/requests"',
+                'state = "in_triage"',
+                'author = "alice"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    # A scan with the decisions file records it in the manifest.
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(tmp_path / "src"),
+            project_type=["python"],
+            bom_engine="CdxgenGenerator",
+            reports_dir=str(scan_dir),
+            no_banner=True,
+        ),
+        render=False,
+        decisions=load_decisions(str(decisions_file)),
+    )
+    assert result.expectations is not None
+
+    async def scenario(session):
+        return await call_document(
+            session, "get_decisions", {"scan_dir": str(scan_dir)}, "depscan-mcp-get_decisions-output"
+        )
+
+    document = drive(open_session, scenario, (tmp_path,))
+    assert document["decisions"]["selectedBy"] == "default"
+    assert len(document["entries"]) == 1
+    assert document["entries"][0]["status"] == "live"
+    assert document["entries"][0]["matches"], "the entry matched the finding"
+    assert document["gate"] is not None
+
+
+def test_propose_triage_without_the_grant_is_refused(open_session, tmp_path, make_scan_dir):
+    scan_dir = make_scan_dir("no-grant")
+
+    async def scenario(session):
+        return await call_error(
+            session,
+            "propose_triage",
+            {
+                "scan_dir": str(scan_dir),
+                "advisory": "CVE-2024-1111",
+                "purl": "pkg:pypi/requests",
+                "state": "in_triage",
+                "proposed_by": "triage-agent session 1",
+            },
+        )
+
+    message = drive(open_session, scenario, (tmp_path,), allow_propose=False)
+    assert "--allow-propose" in message
+
+
+def test_propose_triage_writes_a_proposal_under_an_allowed_root(
+    open_session, tmp_path, make_scan_dir
+):
+    from analysis_lib.findings.decisions import load_decisions
+
+    scan_dir = make_scan_dir("propose-here")
+    decisions_file = tmp_path / "decisions.toml"
+    decisions_file.write_text(
+        "\n".join(
+            [
+                "[[triage]]",
+                'advisory = "CVE-2024-1111"',
+                'purl = "pkg:pypi/requests"',
+                'state = "in_triage"',
+                'author = "alice"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    api.scan(
+        api.scan_options(
+            src_dir_image=str(tmp_path / "src"),
+            project_type=["python"],
+            bom_engine="CdxgenGenerator",
+            reports_dir=str(scan_dir),
+            no_banner=True,
+        ),
+        render=False,
+        decisions=load_decisions(str(decisions_file)),
+    )
+
+    async def scenario(session):
+        return await call_document(
+            session,
+            "propose_triage",
+            {
+                "decisions_file": str(decisions_file),
+                "advisory": "CVE-2024-2222",
+                "purl": "pkg:pypi/requests",
+                "state": "not_affected",
+                "justification": "code_not_reachable",
+                "detail": "The client never calls the affected route",
+                "proposed_by": "triage-agent session 8123",
+            },
+            "depscan-mcp-propose_triage-output",
+        )
+
+    document = drive(open_session, scenario, (tmp_path,), allow_propose=True)
+    assert document["result"] == "proposed"
+    assert document["entry"]["status"] == "proposal"
+    text = decisions_file.read_text(encoding="utf-8")
+    assert 'proposed_by = "triage-agent session 8123"' in text
+    assert 'author = "alice"' not in text.split("[[triage]]")[2], (
+        "the proposal never sets an author"
+    )
+
+
+def test_propose_triage_is_confined_to_the_allowed_roots(open_session, tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    decisions_file = outside / "decisions.toml"
+    decisions_file.write_text("[[triage]]\n", encoding="utf-8")
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+
+    async def scenario(session):
+        return await call_error(
+            session,
+            "propose_triage",
+            {
+                "decisions_file": str(decisions_file),
+                "advisory": "CVE-2024-1111",
+                "purl": "pkg:pypi/requests",
+                "state": "in_triage",
+                "proposed_by": "triage-agent session 1",
+            },
+        )
+
+    message = drive(open_session, scenario, (allowed,), allow_propose=True)
+    assert "outside" in message or "roots" in message

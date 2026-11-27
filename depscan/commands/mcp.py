@@ -53,6 +53,17 @@ def register(subparsers) -> None:
             "server can."
         ),
     )
+    parser.add_argument(
+        "--allow-propose",
+        action="store_true",
+        default=False,
+        help=(
+            "Let the propose_triage tool write triage proposals into the "
+            "decisions file of a scan inside the allowed roots, never an "
+            "approved decision. The tool's own arguments cannot turn this "
+            "on; only the person who starts the server can."
+        ),
+    )
 
 
 def run(args: argparse.Namespace) -> int:
@@ -74,13 +85,25 @@ def run(args: argparse.Namespace) -> int:
     except confinement.PathOutsideRootsError as exc:
         print(str(exc), file=sys.stderr)
         return EXIT_USAGE
+    grants = ["scans are dry runs"]
+    if args.allow_scans:
+        grants = ["real scans allowed"]
+    if args.allow_propose:
+        grants.append("triage proposals allowed")
     LOG.info(
-        "Starting the MCP server over stdio; allowed roots: %s%s",
+        "Starting the MCP server over stdio; allowed roots: %s; %s",
         ", ".join(startup_roots),
-        "; real scans allowed" if args.allow_scans else "; scans are dry runs",
+        ", ".join(grants),
     )
     try:
-        return asyncio.run(serve(sdk, tuple(startup_roots), allow_scans=args.allow_scans))
+        return asyncio.run(
+            serve(
+                sdk,
+                tuple(startup_roots),
+                allow_scans=args.allow_scans,
+                allow_propose=args.allow_propose,
+            )
+        )
     except Exception as exc:  # noqa: BLE001 - a stopped server reports and exits 1
         message = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
         LOG.error("The MCP server stopped with an error: %s", message)

@@ -1,10 +1,10 @@
 """Tests for the published `depscan mcp` tool schemas.
 
-The twenty files pin the ten tools of the `depscan mcp` server: each tool's
-arguments and its result document. The sample documents here are built from
-the tool table and the committed scan-directory fixture, and validate against
-the output schemas through the published validation entry point, which
-resolves a schema's references to its sibling files.
+The twenty-eight files pin the twelve tools of the `depscan mcp` server:
+each tool's arguments and its result document. The sample documents here are
+built from the tool table and the committed scan-directory fixture, and
+validate against the output schemas through the published validation entry
+point, which resolves a schema's references to its sibling files.
 """
 
 import json
@@ -16,7 +16,7 @@ from jsonschema import Draft202012Validator
 
 from analysis_lib.findings.schemas import load_schema, schema_names, validate
 
-#: The ten tools, in the order the server registers them and the listing
+#: The twelve tools, in the order the server registers them and the listing
 #: carries their schemas: each tool's input schema, then its output schema.
 MCP_TOOL_NAMES = (
     "scan_summary",
@@ -29,6 +29,8 @@ MCP_TOOL_NAMES = (
     "doctor",
     "vdb_status",
     "run_scan",
+    "get_decisions",
+    "propose_triage",
 )
 
 MCP_SCHEMA_NAMES = tuple(
@@ -79,7 +81,7 @@ def _invalid(name: str, document: Any) -> None:
 # --- the listing places the twenty names in the tool table order -----------------
 
 
-def test_the_listing_carries_the_twenty_names_in_the_tool_table_order():
+def test_the_listing_carries_the_tool_names_in_the_tool_table_order():
     names = schema_names()
     mcp_names = [name for name in names if name.startswith("depscan-mcp-")]
     assert mcp_names == list(MCP_SCHEMA_NAMES)
@@ -96,7 +98,11 @@ def test_every_mcp_schema_is_valid_2020_12(name):
 @pytest.mark.parametrize("name", MCP_SCHEMA_NAMES)
 def test_every_mcp_schema_carries_the_urn_id(name):
     schema = load_schema(name)
-    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-') :]}:1"
+    # scan_summary moved to version 2 when its output gained the grants
+    # object; every other MCP schema is at 1.
+    versions = {"depscan-mcp-scan_summary-output": 2}
+    version = versions.get(name, 1)
+    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-') :]}:{version}"
 
 
 @pytest.mark.parametrize("name", MCP_SCHEMA_NAMES)
@@ -151,6 +157,7 @@ def _scan_summary_document() -> Dict[str, Any]:
             "inputCount": len(MANIFEST["inputs"]),
             "fileCount": len(MANIFEST["files"]),
         },
+        "grants": {"allowScans": False, "allowPropose": True},
         "findingCount": 1,
         "countsByCategory": {"vulnerability": 1},
         "countsBySeverity": {"high": 1},

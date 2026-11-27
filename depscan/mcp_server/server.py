@@ -171,13 +171,19 @@ async def effective_roots_for(ctx: Any, startup_roots: Tuple[str, ...]) -> Tuple
     return confinement.effective_roots(startup_roots, await client_roots(ctx))
 
 
-def build_server(sdk: Dict[str, Any], startup_roots: Tuple[str, ...], allow_scans: bool = False):
+def build_server(
+    sdk: Dict[str, Any],
+    startup_roots: Tuple[str, ...],
+    allow_scans: bool = False,
+    allow_propose: bool = False,
+):
     """Construct the MCP server with its handlers.
 
-    ``startup_roots`` and ``allow_scans`` reach the handlers through the
-    lifespan state, so the server object itself carries no mutable global.
-    The tool and resource modules are imported here, in the construction
-    path: importing :mod:`depscan.mcp_server.server` never needs them.
+    ``startup_roots``, ``allow_scans`` and ``allow_propose`` reach the
+    handlers through the lifespan state, so the server object itself
+    carries no mutable global. The tool and resource modules are imported
+    here, in the construction path: importing
+    :mod:`depscan.mcp_server.server` never needs them.
     """
     from depscan.mcp_server import resources  # pyrefly: ignore missing-import
     from depscan.mcp_server import tools  # pyrefly: ignore missing-import
@@ -187,7 +193,11 @@ def build_server(sdk: Dict[str, Any], startup_roots: Tuple[str, ...], allow_scan
 
     @asynccontextmanager
     async def server_lifespan(server) -> AsyncIterator[Dict[str, Any]]:
-        yield {"startup_roots": tuple(startup_roots), "allow_scans": bool(allow_scans)}
+        yield {
+            "startup_roots": tuple(startup_roots),
+            "allow_scans": bool(allow_scans),
+            "allow_propose": bool(allow_propose),
+        }
 
     async def handle_list_tools(ctx, params):
         return await tools.handle_list_tools(ctx, params)
@@ -235,7 +245,12 @@ def build_server(sdk: Dict[str, Any], startup_roots: Tuple[str, ...], allow_scan
     )
 
 
-async def serve(sdk: Dict[str, Any], startup_roots: Tuple[str, ...], allow_scans: bool = False) -> int:
+async def serve(
+    sdk: Dict[str, Any],
+    startup_roots: Tuple[str, ...],
+    allow_scans: bool = False,
+    allow_propose: bool = False,
+) -> int:
     """Run the server over stdio until the session ends; the exit code.
 
     The order is the stdout discipline the module docstring fixes: build
@@ -247,7 +262,7 @@ async def serve(sdk: Dict[str, Any], startup_roots: Tuple[str, ...], allow_scans
     """
     from depscan.commands.output import stdout_on_stderr
 
-    server = build_server(sdk, startup_roots, allow_scans)
+    server = build_server(sdk, startup_roots, allow_scans, allow_propose)
     async with sdk["stdio"].stdio_server() as (read_stream, write_stream):
         with stdout_on_stderr():
             await server.run(

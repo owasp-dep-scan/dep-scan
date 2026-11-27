@@ -82,7 +82,12 @@ def test_every_schema_carries_the_published_id_and_a_title(name):
     # gained their caveats array and to version 3 when it gained the
     # decisions record and the expectations file role; every other schema
     # is at 1.
-    versions = {"depscan-finding": 3, "depscan-manifest": 3, "depscan-scan-output": 2}
+    versions = {
+        "depscan-finding": 3,
+        "depscan-manifest": 3,
+        "depscan-scan-output": 2,
+        "depscan-mcp-scan_summary-output": 2,
+    }
     version = versions.get(name, 1)
     assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]

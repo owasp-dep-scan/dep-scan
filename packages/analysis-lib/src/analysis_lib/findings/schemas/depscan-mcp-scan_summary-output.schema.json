@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:mcp-scan_summary-output:1",
+  "$id": "urn:owasp:depscan:schema:mcp-scan_summary-output:2",
   "title": "dep-scan mcp scan_summary output",
-  "description": "The document the scan_summary tool of `depscan mcp` returns: the scan directory's manifest in summary form and the counts of its findings by category and severity, or, when the summary exceeds the server's response budget, the spill envelope with the file it was written to and the number of findings it counts. A directory that cannot be read as a scan is a tool error, never an empty summary; a missing tool or a skipped stage shows up in the stage counts instead of being hidden. The two shapes are never mixed.",
+  "description": "The document the scan_summary tool of `depscan mcp` returns: the scan directory's manifest in summary form and the counts of its findings by category and severity, or, when the summary exceeds the server's response budget, the spill envelope with the file it was written to and the number of findings it counts. A directory that cannot be read as a scan is a tool error, never an empty summary; a missing tool or a skipped stage shows up in the stage counts instead of being hidden. The two shapes are never mixed. The grants object names what the server was started with, so an agent knows its own permissions.",
   "oneOf": [
     {
       "title": "the summary of the scan",
@@ -13,7 +13,8 @@
         "manifestSummary",
         "findingCount",
         "countsByCategory",
-        "countsBySeverity"
+        "countsBySeverity",
+        "grants"
       ],
       "properties": {
         "scanDir": {
@@ -61,13 +62,39 @@
         "countsBySeverity": {
           "type": "object",
           "propertyNames": {
-            "enum": ["critical", "high", "medium", "low", "info", "unknown"]
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info",
+              "unknown"
+            ]
           },
           "additionalProperties": {
             "type": "integer",
             "minimum": 0
           },
           "description": "The findings counted by severity, using the finding schema's severity values. Every severity with at least one finding is present; a severity with no findings is absent."
+        },
+        "grants": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allowScans",
+            "allowPropose"
+          ],
+          "properties": {
+            "allowScans": {
+              "type": "boolean",
+              "description": "Whether the server was started with --allow-scans, so run_scan can execute real scans."
+            },
+            "allowPropose": {
+              "type": "boolean",
+              "description": "Whether the server was started with --allow-propose, so propose_triage can write proposals."
+            }
+          },
+          "description": "The grants the server was started with. The tools' arguments cannot turn a grant on."
         }
       }
     },
@@ -75,7 +102,10 @@
       "title": "the result spilled to a file",
       "type": "object",
       "additionalProperties": false,
-      "required": ["file", "count"],
+      "required": [
+        "file",
+        "count"
+      ],
       "properties": {
         "file": {
           "type": "string",
@@ -142,7 +172,12 @@
         "stagesByStatus": {
           "type": "object",
           "propertyNames": {
-            "enum": ["completed", "failed", "skipped", "not-assessed"]
+            "enum": [
+              "completed",
+              "failed",
+              "skipped",
+              "not-assessed"
+            ]
           },
           "additionalProperties": {
             "type": "integer",

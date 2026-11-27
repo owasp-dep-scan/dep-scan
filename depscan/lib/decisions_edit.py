@@ -23,9 +23,17 @@ class TriageEditError(ValueError):
 
 
 def load_document(path: str) -> Any:
-    """Load the decisions file as a tomlkit document, preserving comments."""
+    """Load the decisions file as a tomlkit document, preserving comments.
+
+    A file that does not end with a newline is loaded with one added, so
+    the last entry's serialization carries the line break an appended entry
+    needs; the file on disk is otherwise untouched until the save.
+    """
     with open(path, encoding="utf-8") as handle:
-        return tomlkit.load(handle)
+        text = handle.read()
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return tomlkit.loads(text)
 
 
 def triage_tables(document: Any) -> List[Table]:

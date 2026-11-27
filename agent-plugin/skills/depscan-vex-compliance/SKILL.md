@@ -71,8 +71,13 @@ and one `depscan:exploitability:axis:<name>` per axis. CycloneDX
 properties belong to the vulnerability, not to an affected component, so
 an entry that lists several affected components carries the grade of its
 most severely graded one; quote a component's own grade from
-`depscan.findings.json`. The grade is triage context only: it never
-changes a CSAF product status and is never a `not_affected` justification.
+`depscan.findings.json`. A triage decision a person entered or approved
+carries the CycloneDX `analysis` state and justification on the entry, with
+the people and the expiry as `depscan:triage:*` properties, and the CSAF
+product status follows it: `not_affected` to `known_not_affected`,
+`in_triage` to `under_investigation`, `exploitable` to `known_affected`.
+The exploitability grade stays triage context only: it never overrides a
+decision and is never a `not_affected` justification.
 
 ## Validate a document
 
@@ -104,12 +109,15 @@ A valid document proves its structure matches the CSAF or CycloneDX schema.
 It does not prove the statements inside are true beyond the scan: each
 status reflects what the scan assessed as of the database date, and a
 `known_affected` is as strong as the analyzer and root set behind it.
-`under_investigation` means "not established either way". Never edit a statement to
+`under_investigation` means "not established either way". A triage decision
+recorded in the decisions file flows into the product status through the
+VDR's `analysis` object, and an agent's proposal reaches it only after a
+person approves it with `depscan triage review`. Never edit a statement to
 `not_affected` by hand; a `not_affected` claim needs evidence that covers
 the vulnerable function and the deployed entry points, and saying plainly
 what the evidence covers is the correct disclosure.
 
 ## After the document
 
-- Explain the findings behind it: `depscan-triage`
+- Explain the findings behind it, or propose a decision for the user to approve: `depscan-triage`
 - Check the database the statements rest on: suggest `/depscan:depscan-vdb`

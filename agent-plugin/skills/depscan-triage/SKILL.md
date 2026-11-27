@@ -1,6 +1,6 @@
 ---
 name: depscan-triage
-description: Explains the findings of an existing dep-scan scan directory, ranks what to fix first, and answers questions about severity, reachability state and coverage, without changing any file or recording any triage decision. Use when asked to explain, triage, summarise or prioritise dep-scan findings, to answer "which of these CVEs matter", or to read a dep-scan manifest. Load it before discussing scan results with the user.
+description: Explains the findings of an existing dep-scan scan directory, ranks what to fix first, and answers questions about severity, reachability state and coverage. When asked to record a triage decision, it proposes one into the decisions file for a person to approve; it never approves its own proposal. Use when asked to explain, triage, summarise or prioritise dep-scan findings, to answer "which of these CVEs matter", to read a dep-scan manifest, or to record a triage decision. Load it before discussing scan results with the user.
 ---
 
 # Explain and rank dep-scan findings
@@ -8,12 +8,12 @@ description: Explains the findings of an existing dep-scan scan directory, ranks
 Use this skill to make sense of a scan that already exists. To produce a
 scan use `depscan-scan` or `depscan-container-image`.
 
-You read a scan directory and report what to fix first. You record no
-triage decisions: dep-scan has no way to store them in this version, so a
-"decided" or "dismissed" claim would be fiction. The rules in
-[reference/safety.md](../../reference/safety.md) apply, in particular
-never claiming `not_affected` or "not reachable" beyond what the evidence
-says, and reporting "not assessed" as unknown rather than clean.
+You read a scan directory and report what to fix first. You can propose a
+triage decision, and a person approves it; you never approve your own
+proposal, and a decision you made up without the review step is fiction.
+The rules in [reference/safety.md](../../reference/safety.md) apply, in
+particular never claiming `not_affected` or "not reachable" beyond what the
+evidence says, and reporting "not assessed" as unknown rather than clean.
 
 ## Plugin settings
 
@@ -50,8 +50,11 @@ report the explanation as not assessed, not as an all-clear.
 When Claude Code offers the plugin's MCP tools, the same data is available
 over `depscan mcp`: `scan_summary`, `list_findings` (filters: category,
 severity, purl, cwe, rule, reachable), `get_finding`, `explain_finding`,
-`coverage`, `list_components`, `diff_scans`, `doctor`, `vdb_status` and
-`run_scan` (a dry run by default). List results are paged: when a result
+`coverage`, `list_components`, `diff_scans`, `doctor`, `vdb_status`,
+`run_scan` (a dry run by default), `get_decisions` (the triage entries of a
+scan with their status, and the last gate result) and `propose_triage`
+(writes a proposal; the server must have been started with
+`--allow-propose`). List results are paged: when a result
 carries `nextCursor`, pass it back as `cursor` until it is absent before
 counting or ranking, and a result too large for the reply is written to a
 spill file in the scan directory whose path the result names. The server exits 4 when the `mcp` extra
@@ -75,6 +78,27 @@ worst-graded findings (the bundled table grades no higher than `high`, a
 replacement table can); a grade is never inferred from severity. dep-scan writes no `unlikely` or `refuted` value,
 so `reachable=false` returns nothing, and an empty page from either value
 is never "nothing is reachable".
+
+## How to propose a triage decision
+
+When the user asks you to record a decision about a finding:
+
+1. Name the finding by its `dsf1:` id from `list_findings` or `get_finding`,
+   and say in one sentence what the evidence shows.
+2. Write the proposal with `propose_triage`, with `proposedBy` naming you
+   and your session, the state the evidence supports, and the detail
+   carrying the reasoning and the evidence ids. A `not_affected` proposal
+   names its justification. The tool writes the proposal into the
+   decisions file the scan recorded; the server refuses the call without
+   the `--allow-propose` grant, and you never ask the user to add the grant
+   for a single proposal without saying what it widens.
+3. Tell the user the proposal waits for them: `depscan triage review
+   --approve <entry> --approver <their name>` approves it, `--reject`
+   removes it. Until then the proposal changes no gate, no report and no
+   exit code.
+4. Never write an author or an approver name other than through the
+   review step, and never claim a decision is recorded when the tool was
+   refused or the write failed.
 
 ## How to triage
 
@@ -107,7 +131,8 @@ is never "nothing is reachable".
    it. Count the noise bucket from the findings themselves, not from a
    category name, and re-check every count and total you state against a
    query you can show.
-6. Never mark a finding `not_affected`, never record a decision, and never
+6. Never mark a finding `not_affected` on your own authority: the state
+   reaches the user only through a proposal the review step approves. Never
    quote a secret the findings or BOM carry. Name the component instead.
 
 ## What this proves and what it does not

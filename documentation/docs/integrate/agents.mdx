@@ -19,7 +19,8 @@ Each row names the document a verb writes in json format and the published schem
 | Verb | Document in json format | Schema |
 | --- | --- | --- |
 | `scan` | `{"scans": [entry, ...]}`, one entry per given target | `depscan-scan-output` |
-| `report` | `{"scanDir", "manifest", "findings"}` for the saved scan directory | `depscan-report-output` |
+| `report` | `{"scanDir", "manifest", "findings", "expectations"}` for the saved scan directory; `expectations` carries the re-evaluated gate result when the run applied decisions | `depscan-report-output` |
+| `triage` | the decisions file document the subcommand wrote or listed | `depscan-triage-output` |
 | `vdb download` | `{"image", "marker"}` after a flavor download, `{"shards", "marker"}` after a shard refresh | `depscan-vdb-download-output` |
 | `vdb info` | the local database and shard store state | `depscan-vdb-info-output` |
 | `vdb path` | `{"path": "..."}`, the `VDB_HOME` directory | `depscan-vdb-path-output` |
@@ -32,7 +33,7 @@ Each row names the document a verb writes in json format and the published schem
 | `version` | `{"version", "tools"}`, the dep-scan version and every tool's version | `depscan-version-output` |
 | `help` | `{"help": "..."}`, the top-level help or one verb's help as one string | `depscan-help-output` |
 
-The `mcp` verb is not in this table: it has no `--format` option and writes no json document, because its stdout is the protocol channel of the Model Context Protocol server. Agents that speak MCP can drive the same data through its ten tools; see [the MCP server](mcp). Each tool returns one document over that protocol, with a published output schema of its own:
+The `mcp` verb is not in this table: it has no `--format` option and writes no json document, because its stdout is the protocol channel of the Model Context Protocol server. Agents that speak MCP can drive the same data through its twelve tools; see [the MCP server](mcp). Each tool returns one document over that protocol, with a published output schema of its own:
 
 | Tool | Document | Schema |
 | --- | --- | --- |
@@ -46,10 +47,12 @@ The `mcp` verb is not in this table: it has no `--format` option and writes no j
 | `doctor` | the doctor report, exactly as the `depscan-doctor` schema defines it | `depscan-mcp-doctor-output` |
 | `vdb_status` | the local database and shard store state, as the vdb info document carries it | `depscan-mcp-vdb_status-output` |
 | `run_scan` | the dry run's argv and effective options, the real run's scan entry, or the spill envelope | `depscan-mcp-run_scan-output` |
+| `get_decisions` | the decisions record, every triage entry with its status and matches, and the last gate result | `depscan-mcp-get_decisions-output` |
+| `propose_triage` | the proposal as the decisions file now holds it | `depscan-mcp-propose_triage-output` |
 
-Every published schema is a draft 2020-12 schema whose `$id` is `urn:owasp:depscan:schema:<name>:<version>`, where `<name>` is the schema name without the `depscan-` prefix and `<version>` is the schema's major version (`urn:owasp:depscan:schema:scan-output:1`, `urn:owasp:depscan:schema:finding:2`). A schema that embeds an existing document refers to it instead of copying: the scan output references the manifest and finding schemas, and the doctor output references the doctor report schema. `depscan schema` prints every published name, `depscan schema --format json` adds each one's `$id` and title, and `depscan schema <name>` prints the schema document, which a caller can validate against directly. The short name `finding` stays accepted as an alias for `depscan-finding`.
+Every published schema is a draft 2020-12 schema whose `$id` is `urn:owasp:depscan:schema:<name>:<version>`, where `<name>` is the schema name without the `depscan-` prefix and `<version>` is the schema's major version (`urn:owasp:depscan:schema:scan-output:2`, `urn:owasp:depscan:schema:finding:3`). A schema that embeds an existing document refers to it instead of copying: the scan output references the manifest and finding schemas, and the doctor output references the doctor report schema. `depscan schema` prints every published name, `depscan schema --format json` adds each one's `$id` and title, and `depscan schema <name>` prints the schema document, which a caller can validate against directly. The short name `finding` stays accepted as an alias for `depscan-finding`.
 
-The `scan` entry for a scanned target is `{"target", "kind", "scanDir", "manifest", "findings"}`; the kind is the detected or forced kind (`purl`, `git`, `container`, `bom`, `bom-dir`, `binary`, `android` or `source`). The wrapper is always the `{"scans": [...]}` object, one entry per given target in the order given, also for a single target and for zero targets: zero targets means the source the options name, the current directory by default, and produces the one entry. A target the detection refuses, or whose scan stops with an unexpected error, is never dropped: its entry is `{"target", "kind": null, "error": "<reason>"}` and the remaining targets still run. The exit code is the highest of the scans. A kind this version cannot scan (`ios` or `firmware`) stops the whole run with the error document instead.
+The `scan` entry for a scanned target is `{"target", "kind", "scanDir", "manifest", "findings", "expectations"}`; the kind is the detected or forced kind (`purl`, `git`, `container`, `bom`, `bom-dir`, `binary`, `android` or `source`), and `expectations` is the gate result the scan's decisions evaluated to, or null when the run had none. The wrapper is always the `{"scans": [...]}` object, one entry per given target in the order given, also for a single target and for zero targets: zero targets means the source the options name, the current directory by default, and produces the one entry. A target the detection refuses, whose decisions file cannot be used, or whose scan stops with an unexpected error, is never dropped: its entry is `{"target", "kind": null, "error": "<reason>"}` and the remaining targets still run. The exit code carries the gate: 4 when a `[[require]]` entry found the capability it names was not assessed, 3 when an expectation with action fail matched, with 1 and 2 of the scans themselves winning over both, and the highest of the scans otherwise. A kind this version cannot scan (`ios` or `firmware`) stops the whole run with the error document instead.
 
 The `validate` result entry is `{"file", "format", "valid", "errors"}`. An invalid document is a result, not an error of the verb: `validate` writes its results document and exits 1 when any document is invalid, and reserves the error document for a failure that stops the verb as a whole.
 

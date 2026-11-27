@@ -229,9 +229,9 @@ def _manifest_summary(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[str, 
     }
 
 
-def scan_summary_tool(args, roots, allow_scans=False):
-    """The manifest summary and the finding counts of one scan directory."""
-    del allow_scans
+def scan_summary_tool(args, roots, allow_scans=False, allow_propose=False):
+    """The manifest summary, the finding counts and the server's grants of
+    one scan directory."""
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     findings = [finding for finding in result.findings if isinstance(finding, dict)]
@@ -241,6 +241,7 @@ def scan_summary_tool(args, roots, allow_scans=False):
         "findingCount": len(findings),
         "countsByCategory": _counts(findings, "category"),
         "countsBySeverity": _counts(findings, "severity"),
+        "grants": {"allowScans": bool(allow_scans), "allowPropose": bool(allow_propose)},
     }
     return document, findings, scan_dir
 
@@ -353,9 +354,9 @@ def _page_limit(args: Dict[str, Any]) -> int:
     return limit
 
 
-def list_findings_tool(args, roots, allow_scans=False):
+def list_findings_tool(args, roots, allow_scans=False, allow_propose=False):
     """One page of the scan's findings, filtered by the finding fields."""
-    del allow_scans
+    del allow_scans, allow_propose
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     matched = _filtered_findings(
@@ -370,23 +371,23 @@ def list_findings_tool(args, roots, allow_scans=False):
     return document, page, scan_dir
 
 
-def get_finding_tool(args, roots, allow_scans=False):
+def get_finding_tool(args, roots, allow_scans=False, allow_propose=False):
     """One finding of the scan, exactly as the finding schema defines it."""
-    del allow_scans
+    del allow_scans, allow_propose
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     finding = _finding_by_id(result, str(args["finding_id"]))
     return finding, [finding], scan_dir
 
 
-def explain_finding_tool(args, roots, allow_scans=False):
+def explain_finding_tool(args, roots, allow_scans=False, allow_propose=False):
     """One finding plus the text api.explain renders for the scan.
 
     The explanation covers the whole scan in this version, whatever the
     finding named; the tool description says so, and so does the output
     schema.
     """
-    del allow_scans
+    del allow_scans, allow_propose
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     finding = _finding_by_id(result, str(args["finding_id"]))
@@ -399,9 +400,9 @@ def explain_finding_tool(args, roots, allow_scans=False):
     return document, [finding], scan_dir
 
 
-def coverage_tool(args, roots, allow_scans=False):
+def coverage_tool(args, roots, allow_scans=False, allow_propose=False):
     """A scan directory's stages, not-assessed reasons and checks not run."""
-    del allow_scans
+    del allow_scans, allow_propose
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     manifest = result.manifest
@@ -530,9 +531,9 @@ def _bom_components(scan_dir: str, result: api.ScanResult) -> List[Dict[str, Any
     return components
 
 
-def list_components_tool(args, roots, allow_scans=False):
+def list_components_tool(args, roots, allow_scans=False, allow_propose=False):
     """One page of the scan's BOM components."""
-    del allow_scans
+    del allow_scans, allow_propose
     scan_dir = _confined(args, roots, "scan_dir")
     result = _loaded_scan(scan_dir, roots)
     components = _bom_components(scan_dir, result)
@@ -545,9 +546,9 @@ def list_components_tool(args, roots, allow_scans=False):
     return document, page, scan_dir
 
 
-def diff_scans_tool(args, roots, allow_scans=False):
+def diff_scans_tool(args, roots, allow_scans=False, allow_propose=False):
     """The new, fixed and changed vulnerability pairs between two scans."""
-    del allow_scans
+    del allow_scans, allow_propose
     old_scan_dir = _confined(args, roots, "old_scan_dir")
     new_scan_dir = _confined(args, roots, "new_scan_dir")
     old_result = _loaded_scan(old_scan_dir, roots)
@@ -571,14 +572,14 @@ def diff_scans_tool(args, roots, allow_scans=False):
     return document, items, new_scan_dir
 
 
-def doctor_tool(args, roots, allow_scans=False):
+def doctor_tool(args, roots, allow_scans=False, allow_propose=False):
     """The doctor report document for this machine."""
     del args, roots, allow_scans
     document = api.doctor().to_dict()
     return document, [document], None
 
 
-def vdb_status_tool(args, roots, allow_scans=False):
+def vdb_status_tool(args, roots, allow_scans=False, allow_propose=False):
     """The vdb info document for this machine."""
     del args, roots, allow_scans
     from depscan import vdb_cli
@@ -726,8 +727,9 @@ def _scan_entry(
     }
 
 
-def run_scan_tool(args, roots, allow_scans=False):
+def run_scan_tool(args, roots, allow_scans=False, allow_propose=False):
     """The dry run of a scan, or, with --allow-scans and execute, the scan."""
+    del allow_propose
     target = str(args["target"])
     if args.get("execute"):
         if not allow_scans:
@@ -787,6 +789,144 @@ def run_scan_tool(args, roots, allow_scans=False):
         confinement.confine(str(args["reports_dir"]), roots)
     argv = _scan_argv(args)
     document = {"argv": argv, "options": _options_document(_parsed_scan_args(argv))}
+    return document, [document], None
+
+
+# --- decisions ----------------------------------------------------------------------
+
+
+def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
+    """The decisions of one scan directory: the entries with their status,
+    the stale and expired ones, and the last gate result."""
+    del allow_scans, allow_propose
+    scan_dir = _confined(args, roots, "scan_dir")
+    result = _loaded_scan(scan_dir, roots)
+    recorded = (result.manifest or {}).get("decisions") or {}
+    document = {
+        "scanDir": json_path(scan_dir),
+        "decisions": recorded or None,
+        "entries": [],
+        "stale": [],
+        "expired": [],
+        "proposals": [],
+        "gate": _read_gate(scan_dir),
+    }
+    path = recorded.get("file")
+    if isinstance(path, str) and path:
+        # The recorded path resolves inside the roots like any path the tool
+        # reads; a file elsewhere is refused with the rule that names the
+        # roots, so the operator can allow its directory.
+        decisions_file = confinement.confine(path, roots)
+        listing = api.triage_entries(file=decisions_file, scan_dir=scan_dir)
+        document.update(
+            entries=listing["entries"],
+            stale=listing["stale"],
+            expired=listing["expired"],
+            proposals=listing["proposals"],
+        )
+    return document, [document], scan_dir
+
+
+def _read_gate(scan_dir: str):
+    """The scan directory's last gate result, None when it holds none."""
+    gate_path = os.path.join(scan_dir, scan_directory.EXPECTATIONS_FILE)
+    if not os.path.isfile(gate_path):
+        return None
+    with open(gate_path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def propose_triage_tool(args, roots, allow_scans=False, allow_propose=False):
+    """Write one triage proposal into the decisions file of a scan.
+
+    The tool writes proposals only: the entry carries proposedBy and never
+    an author or an approver, so it changes nothing until a person runs
+    ``depscan triage review``. The server must have been started with
+    --allow-propose, and the file must resolve inside the allowed roots.
+    """
+    del allow_scans
+    if not allow_propose:
+        raise ToolError(
+            "propose_triage cannot write: the server was not started with "
+            "--allow-propose, and the tool's arguments cannot turn proposals "
+            "on. Only the person who starts the server can widen this "
+            "default."
+        )
+    from datetime import datetime, timezone
+
+    from analysis_lib.findings.decisions import DecisionsError, TRIAGE_STATES
+    from depscan.lib import decisions_edit
+
+    state = str(args["state"])
+    if state not in TRIAGE_STATES:
+        raise ToolError(
+            f"the state {state!r} is not in the CycloneDX vocabulary; valid "
+            f"values: {', '.join(TRIAGE_STATES)}"
+        )
+    finding = args.get("finding")
+    advisory = args.get("advisory")
+    purl = args.get("purl")
+    if finding:
+        selector = {"finding": str(finding)}
+    elif advisory and purl:
+        selector = {"advisory": str(advisory), "purl": str(purl)}
+        if args.get("version_range"):
+            selector["version_range"] = str(args["version_range"])
+    else:
+        raise ToolError(
+            "the proposal needs a selector: finding, or advisory with purl"
+        )
+    decisions_file = args.get("decisions_file")
+    scan_dir = args.get("scan_dir")
+    if decisions_file:
+        file = confinement.confine(str(decisions_file), roots)
+    elif scan_dir:
+        scan_root = confinement.confine(str(scan_dir), roots)
+        confinement.confine_contents(scan_root, roots)
+        recorded = (scan_directory.read_manifest(scan_root) or {}).get("decisions") or {}
+        recorded_path = recorded.get("file")
+        if not isinstance(recorded_path, str) or not recorded_path:
+            raise ToolError(
+                f"the scan at {json_path(scan_root)} recorded no decisions file, "
+                "so there is nothing to propose into; name the file with "
+                "decisions_file, or ask the person running the server to scan "
+                "with a decisions file"
+            )
+        file = confinement.confine(recorded_path, roots)
+    else:
+        raise ToolError(
+            "the proposal needs a decisions file: pass decisions_file, or "
+            "scan_dir so the tool reads the file the scan recorded"
+        )
+    fields: Dict[str, Any] = {
+        "state": state,
+        "created": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    if args.get("justification"):
+        fields["justification"] = str(args["justification"])
+    if args.get("detail"):
+        fields["detail"] = str(args["detail"])
+    if args.get("expires"):
+        fields["expires"] = str(args["expires"])
+    fields["proposed_by"] = str(args["proposed_by"])
+    try:
+        result = decisions_edit.set_entry(file, selector=selector, fields=fields)
+    except DecisionsError as exc:
+        raise ToolError(f"the proposal cannot be written: {exc}") from exc
+    except decisions_edit.TriageEditError as exc:
+        raise ToolError(str(exc)) from exc
+    listing = api.triage_entries(file=file)
+    entry = next(
+        document
+        for document in listing["entries"]
+        if all(document.get(key) == value for key, value in selector.items())
+        and all(key in document for key in selector)
+    )
+    document = {
+        "decisionsFile": json_path(file),
+        "result": "proposed" if result == "added" else "updated",
+        "entry": entry,
+    }
     return document, [document], None
 
 
@@ -865,6 +1005,21 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
         "cdxgen in secure mode.",
         run_scan_tool,
     ),
+    _spec(
+        "get_decisions",
+        "Read the triage decisions of a dep-scan scan directory: every "
+        "entry with its status (live, proposal, expired, stale), what it "
+        "matches, and the last gate result the scan recorded.",
+        get_decisions_tool,
+    ),
+    _spec(
+        "propose_triage",
+        "Propose one triage decision into the decisions file of a scan, as "
+        "a proposal a person approves with depscan triage review. The "
+        "server must be started with --allow-propose; the tool never writes "
+        "an approved decision and never sets an author or an approver.",
+        propose_triage_tool,
+    ),
 )
 
 _SPEC_BY_NAME = {spec.name: spec for spec in TOOL_SPECS}
@@ -905,8 +1060,11 @@ async def handle_call_tool(ctx, params) -> types.CallToolResult:
     state = ctx.lifespan_context
     startup_roots = tuple(state.get("startup_roots") or ())
     allow_scans = bool(state.get("allow_scans"))
+    allow_propose = bool(state.get("allow_propose"))
     roots = await server_mod.effective_roots_for(ctx, startup_roots)
-    document, items, spill_dir = spec.run(args, roots, allow_scans=allow_scans)
+    document, items, spill_dir = spec.run(
+        args, roots, allow_scans=allow_scans, allow_propose=allow_propose
+    )
     try:
         validate(f"depscan-mcp-{spec.name}-output", document)
     except SchemaValidationError as exc:

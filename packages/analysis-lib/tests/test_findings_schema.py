@@ -94,6 +94,10 @@ def test_schema_names():
         "depscan-mcp-vdb_status-output",
         "depscan-mcp-run_scan-input",
         "depscan-mcp-run_scan-output",
+        "depscan-mcp-get_decisions-input",
+        "depscan-mcp-get_decisions-output",
+        "depscan-mcp-propose_triage-input",
+        "depscan-mcp-propose_triage-output",
         "depscan-error",
     ]
 
