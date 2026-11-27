@@ -1,0 +1,21 @@
+test/test_corpus_scorer.py
+  s_7318da1b9edd46::t_9fa6cab4020c0b 945-993
+contrib/corpus/inputs.py
+  s_7318da1b9edd46::t_62d6b0396dfad6 64-74,77-78,82,86-111,242,245-246,250-254,258,260-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edde77f8a6df2fc15189e2aa938dfdd3be674046",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
