@@ -1,0 +1,49 @@
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_7318da1b9edd46::t_27b1bce77ecb8f 64-66,112-115
+documentation/docs/results/triage-and-gating.mdx
+  s_7318da1b9edd46::t_11480dcbe02d02 287-289,291-304,313-320
+test/test_triage_verb.py
+  s_7318da1b9edd46::t_ef31615c21634a 608-612,619,765-767
+  s_7318da1b9edd46::t_65efa09e3d6cb3 11-12,209,506,586-607,613-618,620-710,712,716-764,768-776
+  s_7318da1b9edd46::t_94114c2254a4c5 713-715
+  s_7318da1b9edd46::t_399ed4bfff19e1 711
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-triage-output.schema.json
+  s_7318da1b9edd46::t_4319dad441bfc3 43-46,52,57-66,68,73-74,76,81-82,84,138,195-196,198
+documentation/docs/integrate/mcp.mdx
+  s_7318da1b9edd46::t_b17ac12f9e2ea8 127
+  s_7318da1b9edd46::t_0c5f5440545b33 107
+depscan/api.py
+  s_7318da1b9edd46::t_141810e83bb51f 99-104,108-110,114-116,122,127-130,135,153-154,162,166-168,172-173,290,300-303,308-310
+  s_7318da1b9edd46::t_a2fbd8100df067 169-171,174-177,273-277
+  s_7318da1b9edd46::t_8fc3a5b150adb7 369
+depscan/commands/triage.py
+  s_7318da1b9edd46::t_50203706c309c4 238-243,245-246
+  s_7318da1b9edd46::t_8fc3a5b150adb7 222,250,268,274-280
+depscan/lib/decisions_edit.py
+  s_7318da1b9edd46::t_034fa578e1f664 15,27,42-44,50-51,88,94-100,114-115,119-133,137-141,144-145,148-150,152-154,157-165,167-171,174-175,178-179
+  s_7318da1b9edd46::t_aba2db104336d7 30
+  s_7318da1b9edd46::t_12d7395f2760e6 211-227,233-240,246,250,252-253,261,271-273,277-283,293-297,302-305,309-315,325-326,328-329
+  s_7318da1b9edd46::t_ef31615c21634a 247-249,298-301
+  s_7318da1b9edd46::t_eb407d060b6f75 176
+depscan/mcp_server/tools.py
+  s_7318da1b9edd46::t_77342ed504312a 800,821,830
+  s_7318da1b9edd46::t_425950221f625d 1022-1023
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_decisions-output.schema.json
+  s_7318da1b9edd46::t_177f7250a25f06 8,101-102,129-135,139-140,144-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d62099c63882fd8c793036d137a55d07d223a97d",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
