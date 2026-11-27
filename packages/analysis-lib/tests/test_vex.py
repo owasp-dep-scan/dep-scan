@@ -624,6 +624,63 @@ def test_build_csaf_schema_valid_and_semantically_correct(version):
             assert n.get("text")
 
 
+@pytest.mark.parametrize("version", VERSIONS)
+def test_build_csaf_takes_the_triage_decision_of_each_entry(version):
+    """A VDR entry's analysis object is the triage decision that won the
+    finding; the CSAF status follows it ahead of reachability, and a
+    not_affected decision carries the justification as its flag."""
+    bom = _load_demo()
+    vulns = [dict(vuln) for vuln in bom["vulnerabilities"]]
+    by_id = {vuln["id"]: vuln for vuln in vulns}
+    decided = [{"name": "depscan:triage:author", "value": "alice"}]
+    by_id["CVE-2024-10001"].update(
+        analysis={"state": "not_affected", "justification": "code_not_reachable"},
+        properties=decided,
+    )
+    by_id["CVE-2024-20002"].update(analysis={"state": "exploitable"}, properties=decided)
+    by_id["CVE-2024-30003"].update(analysis={"state": "resolved"}, properties=decided)
+    # express is reached, so without the decision it would be known_affected.
+    doc = build_csaf(
+        bom, vulns, reached_purls={"pkg:npm/express@4.22.2": 10}, csaf_version=version
+    )
+    assert validate(doc, version) == []
+    assert validate_semantic(doc, version) == []
+    by_cve = {v.get("cve"): v for v in doc["vulnerabilities"]}
+    express = by_cve["CVE-2024-10001"]
+    assert express["product_status"] == {"known_not_affected": ["pkg:npm/express@4.22.2"]}
+    assert express["flags"] == [
+        {
+            "label": "vulnerable_code_not_in_execute_path",
+            "product_ids": ["pkg:npm/express@4.22.2"],
+        }
+    ]
+    left_pad = by_cve["CVE-2024-20002"]
+    assert left_pad["product_status"] == {"known_affected": ["pkg:npm/left-pad@1.3.0"]}
+    assert left_pad["remediations"], "a known_affected product needs an action statement"
+    assert list(by_cve["CVE-2024-30003"]["product_status"]) == ["fixed"]
+
+
+def test_classify_falls_back_to_reachability_without_a_decision_csaf_can_state():
+    pmap = _purl_map()
+    vuln = {
+        "affects": [{"ref": "pkg:npm/express@4.22.2"}],
+        "analysis": {"state": "not_affected"},
+        "properties": [{"name": "depscan:triage:author", "value": "alice"}],
+    }
+    status, flags, _ = classify(vuln, pmap, {"pkg:npm/express@4.22.2": 1})
+    assert status == {KNOWN_AFFECTED: ["pkg:npm/express@4.22.2"]}
+    assert flags == []
+    # The analysis the matching stage writes on its own is a hint, not a
+    # decision: an unreached package stays under investigation.
+    hint = {"affects": vuln["affects"], "analysis": {"state": "exploitable"}}
+    status, _, _ = classify(hint, pmap, {})
+    assert status == {UNDER_INVESTIGATION: ["pkg:npm/express@4.22.2"]}
+    vuln["analysis"] = {"state": "false_positive"}
+    status, flags, _ = classify(vuln, pmap, {})
+    assert status == {KNOWN_NOT_AFFECTED: ["pkg:npm/express@4.22.2"]}
+    assert flags[0]["label"] == "vulnerable_code_not_present"
+
+
 def test_build_csaf_asserts_no_dangling_refs():
     bom = _load_demo()
     doc = build_csaf(bom, bom["vulnerabilities"], reached_purls={}, csaf_version="2.1")
@@ -838,8 +895,13 @@ def test_go_advisory_without_cve_carries_its_id_and_validates(version):
     bom = _load_demo()
     purl = "pkg:golang/golang.org/x/crypto@v0.9.0"
     bom["components"].append(
-        {"type": "library", "name": "golang.org/x/crypto", "version": "v0.9.0",
-         "purl": purl, "bom-ref": purl}
+        {
+            "type": "library",
+            "name": "golang.org/x/crypto",
+            "version": "v0.9.0",
+            "purl": purl,
+            "bom-ref": purl,
+        }
     )
     go_vuln = {
         "id": "GO-2026-5932",
