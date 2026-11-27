@@ -131,8 +131,8 @@ def _add_decisions_options(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         metavar="SELECTORS",
         help="Gate for one run, as key=value selector pairs joined by "
-        'commas, for example "grade=high,reach=reached". Each occurrence is '
-        "an expectation with action fail; list selectors take ids joined "
+        'commas, for example "category=vulnerability,reach=reached". Each '
+        "occurrence is an expectation with action fail; list selectors take ids joined "
         'by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions '
         "file's [[expect]] entries.",
     )

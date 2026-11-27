@@ -112,8 +112,8 @@ options:
                         key of the configuration file (--config) or the user's, then the scanned directory's own .depscan/decisions.toml when the target is a directory.
   --baseline BASELINE   Reference scan (a scan directory or a depscan.findings.json path, relative to the working directory) that marks every finding new or existing for this run, instead of the
                         [baseline] the decisions file names.
-  --fail-on SELECTORS   Gate for one run, as key=value selector pairs joined by commas, for example "grade=high,reach=reached". Each occurrence is an expectation with action fail; list selectors
-                        take ids joined by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions file's [[expect]] entries.
+  --fail-on SELECTORS   Gate for one run, as key=value selector pairs joined by commas, for example "category=vulnerability,reach=reached". Each occurrence is an expectation with action fail; list
+                        selectors take ids joined by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions file's [[expect]] entries.
   --vex FILE            Load a CycloneDX VEX or OpenVEX document as triage decisions that apply at once, with the document named as their author. Repeatable.
   --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
                         Product lifecycle for the generated BOM. Multiple values allowed.

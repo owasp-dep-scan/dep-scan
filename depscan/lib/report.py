@@ -96,7 +96,7 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
         dest="fail_on",
         metavar="SELECTORS",
         help="Gate for this evaluation, as key=value selector pairs joined by "
-        'commas, for example "grade=high,reach=reached". Same grammar '
+        'commas, for example "category=vulnerability,reach=reached". Same grammar '
         "as the decisions file's [[expect]] entries. Replaces the --fail-on "
         "expressions the scan recorded, which apply again otherwise.",
     )

@@ -374,7 +374,7 @@
         },
         "author": {
           "type": "string",
-          "description": "Who made the triage decision. A person, never a tool: an agent-proposed decision carries proposed_by, and applies once a person approves it."
+          "description": "Who made the triage decision: a person, or a VEX document the scan applied, named as VEX document followed by its file name. Never an agent: an agent-proposed decision carries proposed_by, and applies once a person approves it."
         },
         "approver": {
           "type": "string",
