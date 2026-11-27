@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.readthedocs.io/schemas/depscan-corpus.schema.json",
+  "$id": "urn:owasp:depscan:schema:corpus:1",
   "title": "dep-scan corpus manifest",
   "description": "The labelled corpus the scorer (contrib/corpus/score.py) and the CI join-eval jobs read. Every item is fetchable or committed, carries a digest, and names a label file whose sections each carry their own source.",
   "type": "object",

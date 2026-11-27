@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.readthedocs.io/schemas/depscan-score.schema.json",
+  "$id": "urn:owasp:depscan:schema:corpus-score:1",
   "title": "dep-scan corpus score",
   "description": "What the scorer (contrib/corpus/score.py) measured in one run: per item, per finding category and per join, with the not-assessed entries and their reasons kept beside the numbers.",
   "type": "object",

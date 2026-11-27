@@ -571,7 +571,11 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
             continue
         if keys & controlled.get(finding.get("category"), set()):
             unexpected.append(
-                {"rule": finding.get("rule"), "purls": finding.get("components") or []}
+                {
+                    "rule": finding.get("rule"),
+                    "purls": finding.get("components") or [],
+                    "id": finding.get("id"),
+                }
             )
     return {
         "expected": len(expected),
@@ -1091,16 +1095,18 @@ def score_join_two_manifests(scan: ItemScan, labels: dict) -> dict:
         }
     distinct = {c["version"] for c in components if c["version"]}
     two = len(distinct) >= 2 if expected_versions else len(components) >= 2
-    return {
+    scored = {
         "outcome": "measured" if (expected_versions <= distinct and two) else "partial",
         "components": components,
         "distinctVersions": sorted(distinct),
         "distinctVersionCount": len(distinct),
         "withDeclaringPath": sum(1 for c in components if c["declaringPath"]),
-        "reason": None
-        if two
-        else f"the scan holds {len(distinct)} version(s), not the two the labels name",
     }
+    if not two:
+        scored["reason"] = (
+            f"the scan holds {len(distinct)} version(s), not the two the labels name"
+        )
+    return scored
 
 
 #: The join evaluators, in the report order of the vision's table.
@@ -1132,23 +1138,25 @@ def inventory_failed(scan: ItemScan):
 
 
 def score_item(scan: ItemScan, labels: dict) -> dict:
-    """One item's score entry from its scan."""
-    joins = labels.get("joins") or {}
-    return {
+    """One item's score entry from its scan; a section the labels do not
+    carry is left out, never written as null."""
+    entry = {
         "item": scan.item["name"],
         "kind": scan.item.get("kind"),
         "state": "scored",
         "components": sum(len(bom.get("components") or []) for bom in scan.boms.values()),
         "findings": len(scan.findings),
         "categories": score_categories(scan, labels),
-        "reachability": score_reachability(scan, labels) if labels.get("reachability") else None,
         "reachabilityNotAssessed": analyzer_not_assessed(scan),
         "joins": {
             join: evaluate(scan, labels)
             for join, evaluate in JOIN_EVALUATORS.items()
-            if join in joins
+            if join in (labels.get("joins") or {})
         },
     }
+    if labels.get("reachability"):
+        entry["reachability"] = score_reachability(scan, labels)
+    return entry
 
 
 def score_one(item: dict, labels, args) -> dict:
@@ -1332,15 +1340,26 @@ def parse_args(argv=None):
 
 
 def main(argv=None) -> int:
+    """Score the selected items. Exit 0 when the run held, 1 when a floor
+    dropped or a negative control fired, and 2 on a usage error (an unknown
+    item, an unreadable manifest, labels or floors file)."""
     args = parse_args(argv)
     if args.digest_fixture:
         print(fixture_digest(args.digest_fixture))
         return 0
+    try:
+        return run(args)
+    except ScoreError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+
+def run(args) -> int:
     manifest_path = os.path.abspath(args.manifest)
     manifest = load_manifest(manifest_path)
     items = select_items(manifest, args)
     floors_doc = load_json(args.floors) if args.floors else None
-    if args.floors and floors_doc is None:
+    if args.floors and not isinstance(floors_doc, dict):
         raise ScoreError(f"Cannot read the floors file '{args.floors}'.")
 
     from depscan import get_version

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.readthedocs.io/schemas/depscan-labels.schema.json",
+  "$id": "urn:owasp:depscan:schema:corpus-labels:1",
   "title": "dep-scan corpus labels",
   "description": "One item's labels: what a scan must find and what it must not. Every section names its source. A source of hand requires a citation for each expectation: a file:line reference for a used package or an expected finding, a sentence for an unused package or a forbidden one. oracle labels are derived from the callsites ground truth at package level; fixture labels are built into the fixture they describe.",
   "type": "object",
@@ -19,25 +19,37 @@
     },
     "joins": {
       "type": "object",
-      "description": "Expected join records, one section per join of the vision's table this item carries. Each section requires its own source; the remaining shape is join-specific and described in contrib/corpus/README.md.",
+      "description": "Expected join records, one section per join of the vision's table this item carries. Each section names its source and has the shape its $defs entry describes; a hand section cites the source for every expectation.",
       "minProperties": 1,
-      "additionalProperties": {
-        "$ref": "#/$defs/joinSection"
+      "additionalProperties": false,
+      "properties": {
+        "advisory-usage-reach": {
+          "$ref": "#/$defs/join-advisory-usage-reach"
+        },
+        "route-package": {
+          "$ref": "#/$defs/join-route-package"
+        },
+        "lifecycle-phase": {
+          "$ref": "#/$defs/join-lifecycle-phase"
+        },
+        "component-layer": {
+          "$ref": "#/$defs/join-component-layer"
+        },
+        "component-runtime": {
+          "$ref": "#/$defs/join-component-runtime"
+        },
+        "two-producers": {
+          "$ref": "#/$defs/join-two-producers"
+        },
+        "two-manifests": {
+          "$ref": "#/$defs/join-two-manifests"
+        }
       }
     }
   },
   "$defs": {
     "source": {
       "enum": ["oracle", "hand", "fixture"]
-    },
-    "joinSection": {
-      "type": "object",
-      "required": ["source"],
-      "properties": {
-        "source": {
-          "$ref": "#/$defs/source"
-        }
-      }
     },
     "reachability": {
       "type": "object",
@@ -223,7 +235,27 @@
             }
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expected": {
+                "items": {
+                  "required": ["category", "purl", "rules", "citation"]
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "purl": {
       "type": "string",
@@ -242,6 +274,324 @@
         "license",
         "crypto",
         "health"
+      ]
+    },
+    "join-advisory-usage-reach": {
+      "type": "object",
+      "required": ["source"],
+      "additionalProperties": false,
+      "description": "Scored from the item's reachability and findings labels; the section only switches the join on.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "join-route-package": {
+      "type": "object",
+      "required": ["source", "routes"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["path", "method"],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "method": {
+                "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+              },
+              "packages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/purl"
+                },
+                "description": "Packages the route's handlers must use."
+              },
+              "controls": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/purl"
+                },
+                "description": "Packages the route's handlers must not be bound to."
+              },
+              "citation": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "routes": {
+                "items": {
+                  "required": ["citation"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "join-lifecycle-phase": {
+      "type": "object",
+      "required": ["source", "packages"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["purl", "phase"],
+            "additionalProperties": false,
+            "properties": {
+              "purl": {
+                "$ref": "#/$defs/purl"
+              },
+              "phase": {
+                "enum": ["shipped", "build-only", "dev-only"]
+              },
+              "citation": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "packages": {
+                "items": {
+                  "required": ["citation"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "join-component-layer": {
+      "type": "object",
+      "required": ["source", "packages"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["purl", "layer"],
+            "additionalProperties": false,
+            "properties": {
+              "purl": {
+                "$ref": "#/$defs/purl"
+              },
+              "layer": {
+                "enum": ["os", "application"]
+              },
+              "citation": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "packages": {
+                "items": {
+                  "required": ["citation"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "join-component-runtime": {
+      "type": "object",
+      "required": ["source", "packages"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "packages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["purl"],
+            "additionalProperties": false,
+            "properties": {
+              "purl": {
+                "$ref": "#/$defs/purl"
+              },
+              "citation": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "packages": {
+                "items": {
+                  "required": ["citation"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "join-two-producers": {
+      "type": "object",
+      "required": ["source", "package"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "package": {
+          "$ref": "#/$defs/purl"
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "required": ["citation"]
+          }
+        }
+      ]
+    },
+    "join-two-manifests": {
+      "type": "object",
+      "required": ["source", "package", "versions"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "package": {
+          "$ref": "#/$defs/purl"
+        },
+        "versions": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "hand"
+              }
+            }
+          },
+          "then": {
+            "required": ["citation"]
+          }
+        }
       ]
     }
   }

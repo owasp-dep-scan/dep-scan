@@ -504,3 +504,185 @@ def test_malware_fixture_control_fires_on_a_malware_finding():
     scored = corpus_score.score_findings(findings, section["expected"], section["forbidden"])
     assert scored["recall"] == 1.0
     assert [f["rule"] for f in scored["forbiddenFired"]] == ["MAL-2099-1"]
+
+
+def _scan_dir_corpus(tmp_path, labels, floors=None):
+    """A one-item corpus over a copy of test/data/scan-directory, scored in
+    scan-dir mode: the manifest, the label file, the scans root and the
+    floors file, all built here."""
+    import shutil
+
+    item = {
+        "name": "scan-fixture",
+        "description": "The committed scan directory of the API tests.",
+        "source": "fixture:scan-fixture",
+        "sha256": "0" * 64,
+        "license": "Apache-2.0",
+        "storage": {"kind": "fixture"},
+        "kind": "fixture",
+        "scan": {"types": ["bom"], "args": []},
+        "labels": "labels/scan-fixture.json",
+        "subset": "ci",
+    }
+    (tmp_path / "labels").mkdir()
+    (tmp_path / "labels" / "scan-fixture.json").write_text(
+        json.dumps({"item": "scan-fixture", **labels}), encoding="utf-8"
+    )
+    manifest = tmp_path / "depscan.corpus.json"
+    manifest.write_text(json.dumps({"schemaVersion": 1, "items": [item]}), encoding="utf-8")
+    shutil.copytree(
+        os.path.join(REPO_ROOT, "test", "data", "scan-directory"),
+        tmp_path / "scans" / "scan-fixture",
+    )
+    argv = ["--manifest", str(manifest), "--scan-dir", str(tmp_path / "scans")]
+    argv += ["--output", str(tmp_path / "out")]
+    if floors is not None:
+        (tmp_path / "floors.json").write_text(json.dumps(floors), encoding="utf-8")
+        argv += ["--floors", str(tmp_path / "floors.json")]
+    return argv
+
+
+REQUESTS_EXPECTED = {
+    "category": "vulnerability",
+    "purl": "pkg:pypi/requests",
+    "rules": ["CVE-2024-1111"],
+    "citation": "the fixture BOM declares requests 2.32.1",
+}
+
+
+def _validate_score(path):
+    import jsonschema
+
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "depscan-score.schema.json"),
+        encoding="utf-8",
+    ) as fp:
+        schema = json.load(fp)
+    with open(path, encoding="utf-8") as fp:
+        jsonschema.validate(json.load(fp), schema)
+
+
+def test_written_score_validates_against_its_schema(tmp_path):
+    # The item labels findings only, so it has no reachability section, and
+    # the two-manifests join over a scan without the package is partial.
+    labels = {
+        "findings": {"source": "hand", "expected": [REQUESTS_EXPECTED]},
+        "joins": {
+            "two-manifests": {
+                "source": "hand",
+                "package": "pkg:npm/ms",
+                "versions": ["1.0.0", "2.0.0"],
+                "citation": "a:1",
+            }
+        },
+    }
+    argv = _scan_dir_corpus(tmp_path, labels)
+    assert corpus_score.main(argv) == 0
+    _validate_score(tmp_path / "out" / "score.json")
+    entry = json.loads((tmp_path / "out" / "score.json").read_text(encoding="utf-8"))["items"][0]
+    assert entry["state"] == "scored"
+    assert entry["categories"]["vulnerability"]["recall"] == 1.0
+    assert "reachability" not in entry
+
+
+def test_a_numeric_drop_below_a_floor_exits_1(tmp_path):
+    labels = {
+        "findings": {
+            "source": "hand",
+            "expected": [
+                REQUESTS_EXPECTED,
+                {**REQUESTS_EXPECTED, "purl": "pkg:pypi/urllib3", "rules": ["CVE-1"]},
+            ],
+        }
+    }
+    floors = {
+        "commit": "0" * 40,
+        "floors": [
+            {"item": "scan-fixture", "path": "categories.vulnerability.recall", "minimum": 1.0}
+        ],
+    }
+    assert corpus_score.main(_scan_dir_corpus(tmp_path, labels, floors)) == 1
+    _validate_score(tmp_path / "out" / "score.json")
+    score = json.loads((tmp_path / "out" / "score.json").read_text(encoding="utf-8"))
+    assert score["summary"]["floors"]["violations"][0]["value"] == 0.5
+
+
+def test_a_fired_negative_control_exits_1(tmp_path):
+    labels = {
+        "findings": {
+            "source": "hand",
+            "forbidden": [
+                {
+                    "category": "vulnerability",
+                    "purl": "pkg:pypi/requests@2.32.1",
+                    "reason": "the control",
+                }
+            ],
+        }
+    }
+    floors = {"commit": "0" * 40, "floors": []}
+    assert corpus_score.main(_scan_dir_corpus(tmp_path, labels, floors)) == 1
+    score = json.loads((tmp_path / "out" / "score.json").read_text(encoding="utf-8"))
+    fired = score["summary"]["forbiddenFired"]
+    assert fired[0]["id"].startswith("dsf1:")
+
+
+def test_unexpected_findings_carry_their_id():
+    forbidden = [{"category": "supply-chain", "purl": "pkg:npm/left-pad@1.3.0", "rules": ["X"]}]
+    findings = [_finding("supply-chain", "INT-026", [_purl("left-pad", "1.3.0")])]
+    scored = corpus_score.score_findings(findings, [], forbidden)
+    assert scored["unexpectedFindings"][0]["id"] == "dsf1:x"
+
+
+def test_usage_errors_exit_2(tmp_path, capsys):
+    argv = _scan_dir_corpus(tmp_path, {"findings": {"source": "hand"}})
+    assert corpus_score.main(argv + ["--items", "nope"]) == 2
+    assert "nope" in capsys.readouterr().err
+    assert corpus_score.main(argv + ["--floors", str(tmp_path / "missing.json")]) == 2
+    assert "floors" in capsys.readouterr().err
+
+
+def test_schema_ids_follow_the_repository_convention():
+    here = os.path.join(REPO_ROOT, "contrib", "corpus")
+    expected = {"corpus": "corpus", "labels": "corpus-labels", "score": "corpus-score"}
+    for name, urn in expected.items():
+        with open(os.path.join(here, f"depscan-{name}.schema.json"), encoding="utf-8") as fp:
+            assert json.load(fp)["$id"] == f"urn:owasp:depscan:schema:{urn}:1"
+
+
+def _labels_schema():
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "depscan-labels.schema.json"),
+        encoding="utf-8",
+    ) as fp:
+        return json.load(fp)
+
+
+def test_misspelt_join_keys_are_refused_by_schema():
+    import jsonschema
+
+    document = {
+        "item": "t",
+        "joins": {"route-package": {"source": "hand", "rotues": []}},
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(document, _labels_schema())
+    document = {"item": "t", "joins": {"route-packages": {"source": "hand"}}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(document, _labels_schema())
+
+
+def test_hand_labels_need_citations():
+    import jsonschema
+
+    expected = {"category": "vulnerability", "purl": "pkg:npm/x", "rules": ["C"]}
+    document = {"item": "t", "findings": {"source": "hand", "expected": [expected]}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(document, _labels_schema())
+    route = {"path": "/a", "method": "GET", "packages": []}
+    document = {"item": "t", "joins": {"route-package": {"source": "hand", "routes": [route]}}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(document, _labels_schema())
+    document = {"item": "t", "joins": {"two-producers": {"source": "hand", "package": "pkg:a/b"}}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(document, _labels_schema())

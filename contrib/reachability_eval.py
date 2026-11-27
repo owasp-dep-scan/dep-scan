@@ -378,7 +378,10 @@ def _run_snapshot(args) -> int:
     return 0
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    """Exit 0 when every labelled item was scored, 1 when every one of them
+    errored, and 2 on a usage error; the snapshot mode exits 1 on a changed
+    reached set."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "repos",
@@ -405,7 +408,8 @@ def main() -> int:
     ap.add_argument(
         "--check-snapshot",
         action="store_true",
-        help="run the snapshot mode instead of the labelled score",
+        help="run the snapshot mode instead of the labelled score; --snapshot, "
+        "--check or a repository argument select it too",
     )
     ap.add_argument(
         "--snapshot",
@@ -418,9 +422,9 @@ def main() -> int:
         help="snapshot mode: diff reached sets vs baseline; exit 1 on change",
     )
     ap.add_argument("--json", action="store_true", help="print the full JSON report")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
-    if args.check_snapshot:
+    if args.check_snapshot or args.snapshot or args.check or args.repos:
         return _run_snapshot(args)
     wanted = [n.strip() for n in (args.items or "").split(",") if n.strip()]
     items = corpus_items(args.manifest, wanted)
@@ -441,6 +445,9 @@ def main() -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
         _print_labelled(report)
+    if all(entry.get("error") for entry in report):
+        print("\nEvery labelled item errored; nothing was scored.", file=sys.stderr)
+        return 1
     return 0
 
 
