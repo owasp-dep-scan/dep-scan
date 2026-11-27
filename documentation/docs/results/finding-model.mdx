@@ -50,7 +50,7 @@ The fields, and what each is for:
 | `locations` | Where the finding applies: file, line, function, or a binary and an offset. Findings without source (a vulnerable package, a hardening gap) point at the manifest or lockfile that declares the component. |
 | `coverage` | Whether the analysis that owns this finding ran, with reasons when a producer records them. Advisory findings always read `assessed`; a reach analysis that did not run shows up in `exploitability.unassessed` and in the manifest instead; see [coverage](coverage). |
 | `exploitability` | The four axes, the grade, the rule id that produced the grade and the producers that filled each axis; see [exploitability](exploitability). |
-| `triage` | Reserved for the human decision about the finding; not written in this version. |
+| `triage` | The human decision about the finding, written when a decisions file the scan applied selects it: the CycloneDX state, justification and responses, who entered and who approved it, who proposed it and when it expires. [Triage, baselines and gating](triage-and-gating) documents the decisions file. |
 | `fix` | The versions that fix the finding, when the producer knows them. |
 | `producer` | The tool and version that produced the finding. A binary-hardening finding names blint and the version the BOM records. |
 | `evidence` | Ids into the scan's [evidence store](evidence) that back the finding. |

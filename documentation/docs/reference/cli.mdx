@@ -15,6 +15,7 @@ The dep-scan 7 command line starts with a verb: `depscan scan`, `depscan vdb`, `
 | --- | --- |
 | `scan` | Scan a project, BOM, purl or container image for vulnerabilities. |
 | `report` | Render the console tables and explanations of a saved scan. |
+| `triage` | Record, review and check triage decisions and the gate. |
 | `vdb` | Download and inspect the vdb vulnerability database. |
 | `doctor` | Report the tools, data and capabilities a scan can use here. |
 | `schema` | Print the published finding schemas. |
@@ -202,7 +203,7 @@ The table is generated from the exit-code constant in `depscan/commands/output.p
 | 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
-Findings never change the exit code in this version: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
+Findings change the exit code only when a run has a gate, which a decisions file, `--fail-on` or `--baseline` gives it: then 3 means a fail-action expectation matched and 4 means a required capability was not assessed, with 4 winning over 3 and 1 and 2 winning over both. Without a gate a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
 
 ## Target detection
 
@@ -293,6 +294,57 @@ The scan verb prints `{"scans": [...]}`, one entry per given target, also for a 
 ```bash
 depscan scan . --format json
 ```
+
+## The decisions options
+
+A scan or a report can apply a decisions file: triage decisions, the
+baseline that marks findings new or existing, and the gate expectations.
+[The triage and gating page](../results/triage-and-gating) documents the
+file and its grammar; the options are:
+
+| Option | On | What it does |
+| --- | --- | --- |
+| `--decisions FILE` | `scan`, `report` | Apply this decisions file. Default: the scanned directory's own `.depscan/decisions.toml` for a directory target; a target that is not a directory reads a file only when one is named. |
+| `--baseline SCAN` | `scan`, `report` | Mark every finding new or existing against this scan directory or findings file, replacing the file's `[baseline]` for the run. |
+| `--fail-on SELECTORS` | `scan`, `report` | Add one fail-action expectation for the run, as `key=value` pairs joined by commas (`grade=high,reach=reached`); list selectors take ids joined by a pipe (`rule=CVE-1|CVE-2`). Repeatable. |
+| `--vex FILE` | `scan`, `report` | Load a CycloneDX VEX or OpenVEX document as triage decisions, proposed by the document. Repeatable. |
+| `--out FILE` | `report` | Write the re-evaluated gate result there; without it the evaluation writes nothing into the scan directory. |
+
+A decisions file that breaks its schema is a usage error (exit 2), naming
+the key, the line and the valid values. The exit codes the gate adds are in
+the table above.
+
+## The triage verb
+
+`depscan triage` records, reviews and checks the decisions file. The entry
+handle is the 1-based position `triage list` prints, because the file gives
+triage entries no id of their own. The author and the approver are required
+options, never guessed from git or the environment; a command missing one
+exits 2.
+
+```bash
+# Record a decision by fingerprint, updating the entry with the same selector
+depscan triage set dsf1:9485b7ed... --state not_affected \
+  --justification code_not_reachable --detail "Not reachable from any route" \
+  --author alice
+
+# Record one by advisory and package
+depscan triage set --advisory CVE-2021-23337 --purl pkg:npm/lodash \
+  --state in_triage --author alice --expires 2027-03-01T00:00:00Z
+
+# List the entries, with what each matches in a scan directory
+depscan triage list reports/scan-dir --decisions .depscan/decisions.toml
+
+# Approve or reject a proposal
+depscan triage review --approve 2 --approver alice
+
+# Remove an entry, and validate the file the way a gate would
+depscan triage remove 3
+depscan triage check reports/scan-dir
+```
+
+`check` exits 3 when the file carries errors a gate would hit, naming the
+key, the line and the valid values. Every subcommand takes `--format json`.
 
 ## Several targets
 

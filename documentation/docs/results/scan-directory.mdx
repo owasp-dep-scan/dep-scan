@@ -18,6 +18,7 @@ The VDR is named `depscan-universal.vdr.json` whether the scan read the universa
 reports/
 ├── depscan.manifest.json          the manifest, written last of every file
 ├── depscan.findings.json          one finding per advisory and component
+├── depscan.expectations.json      the gate result, when the scan ran a gate
 ├── evidence.jsonl                 the evidence store, one record per line
 ├── evidence.index.json            record ids by component purl and by finding
 ├── sbom-python.cdx.json           the BOM documents, named as before
@@ -43,6 +44,7 @@ A scan writes only the files that apply to it: a package URL target has no BOM, 
 | `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | cdxgen, or blint for any BOM blint wrote; `user` for a BOM the user placed here |
 | `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
 | `findings` | `depscan.findings.json` | dep-scan |
+| `expectations` | `depscan.expectations.json` | dep-scan |
 | `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |
 | `slices` | `*.slices.json` | cdxgen |
 | `raw-report` | everything under `analysis/<producer>/` | the tool named by the directory |
@@ -52,7 +54,7 @@ A scan writes only the files that apply to it: a package URL target has no BOM, 
 
 ## The findings file
 
-`depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that requested the supply-chain check also writes the cdx-audit findings, one per cdx-audit rule and component, with cdxgen's rule id as the rule and `cdx-audit` with the cdxgen version that ran as the producer. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
+`depscan.expectations.json` is the gate result the decisions file evaluated to, written when the scan had one; [triage, baselines and gating](triage-and-gating) documents it. `depscan.findings.json` holds `schemaVersion` and a `findings` array, one finding per advisory and component of [the finding model](finding-model). The same file carries the binary-hardening findings of the blint review, with blint as their producer, and each carries the review's coverage gaps among its coverage reasons, so a partial review never reads as a complete one. A scan that requested the supply-chain check also writes the cdx-audit findings, one per cdx-audit rule and component, with cdxgen's rule id as the rule and `cdx-audit` with the cdxgen version that ran as the producer. A scan that assessed everything and found nothing writes the file with an empty array; a scan in which nothing at all was assessed writes no findings file at all, and its manifest shows why ([coverage](coverage)).
 
 ## The supply-chain audit report
 

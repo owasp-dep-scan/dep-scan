@@ -1,0 +1,182 @@
+---
+title: Triage, baselines and gating
+---
+
+# Triage, baselines and gating
+
+A scan reports what it found; the decisions file records what people decided
+about it and what they expect of the next one. One file, `.depscan/
+decisions.toml` in the scanned repository, holds three sections: the triage
+decisions, the baseline that marks findings new or existing, and the
+expectations the gate evaluates. It is data about findings, reviewed in pull
+requests beside the code, which is why it is not part of `depscan.toml`,
+which configures the tool and only names the file's path.
+
+One evaluator reads the file against a scan directory and writes
+`depscan.expectations.json` into it, with a status and the matched finding
+ids for every entry, and sets the exit code. `depscan report <scan-dir>`
+re-evaluates the current file against a saved scan, so a decision made after
+the scan takes effect without rescanning and a CI job can gate a scan made
+earlier.
+
+## The file
+
+```toml
+# .depscan/decisions.toml
+[[triage]]
+advisory = "CVE-2021-23337"
+purl = "pkg:npm/lodash"
+version_range = "vers:npm/>=4.17.0|<4.17.21"
+state = "not_affected"
+justification = "code_not_reachable"
+detail = "The template option is not reachable from any route"
+author = "alice"
+created = "2026-11-27T09:00:00Z"
+expires = "2027-03-01T00:00:00Z"
+
+[baseline]
+scan = "../baseline-scan"
+digest = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+
+[[expect]]
+id = "no-reached-high"
+description = "No reached finding of exploitability grade high or above"
+grade = "high"
+reach = "reached"
+action = "fail"
+
+[[require]]
+capability = "reachability"
+project_type = "npm"
+```
+
+A triage entry selects findings by `finding` (a `dsf1:` fingerprint from the
+findings document) or by `advisory` with `purl`, compared the way the
+findings compare: case and qualifiers fold, a version in the purl pins it,
+and `version_range` narrows with a vers range. The `state`,
+`justification` and `responses` values are the CycloneDX 1.7 vocabulary the
+finding schema publishes. `not_affected`, `false_positive` and `resolved`
+suppress the finding from the gate; `in_triage` and `exploitable` never do;
+`not_affected` needs a justification. A suppressed finding stays in
+`depscan.findings.json` with its triage state, and the VDR the scan wrote
+carries the decision in its `analysis` object.
+
+An entry carries the people in the decision. `author` names the person who
+entered it; `approver` names the person who approved a proposal; and
+`proposed_by` names who or what proposed it, a person or an agent with its
+session. An entry with `proposed_by` and neither `approver` nor `author` is
+a proposal: it is listed as pending, changes no finding, and applies only
+after `depscan triage review --approve <entry> --approver <name>`. `expires`
+ends the decision's life: an expired entry suppresses nothing, and the scan
+warns with the entry, its expiry date and the findings it would have
+matched. An entry that matches no finding in the scan is reported as stale
+with its selector, in `depscan.expectations.json` and in the reports.
+
+## The gate
+
+`[[expect]]` entries select findings with selectors that combine with AND:
+`category`, `severity` (a floor), `grade` (a floor on the exploitability
+grade), `reach` (`reached`, `not_reached` or `not_assessed`), `malware`,
+`rule` (advisory and rule ids, aliases included), `purl`, `confidence` and
+`new` (only findings the baseline does not contain). `action` is `fail` or
+`warn`. `[[require]]` entries name a capability from the `--checks` list
+that must have been assessed, optionally for one project type.
+
+The exit codes the gate adds:
+
+| Code | When |
+| --- | --- |
+| 0 | No fail-action expectation matched and no requirement failed. |
+| 3 | An expectation with `action = "fail"` matched a finding. |
+| 4 | A `[[require]]` entry found the capability it names was not assessed. A gate over missing coverage cannot be trusted, so 4 wins over 3. |
+
+Codes 1 (the scan could not run) and 2 (a usage error) keep their meanings
+and win over both. With no decisions file, no `--vex` and no `--fail-on`,
+the gate does not run and findings never change the exit code. A baseline
+that cannot be read, or whose `digest` does not match the file it names,
+stops the run with exit 1; it never turns every finding into a new one.
+
+The command line speaks the same grammar: `--fail-on "grade=high,
+reach=reached"` adds one fail-action expectation for the run, with the
+selectors as `key=value` pairs and list values joined by `|`. The scan's
+decisions file is resolved from `--decisions`, then `DEPSCAN_DECISIONS`,
+then `[scan] decisions` in the project or user `depscan.toml`, then the
+scanned directory's own `.depscan/decisions.toml`. A scan of a target that
+is not a directory, an image or a purl, reads a file only when one is
+named. `--baseline` replaces the file's `[baseline]` for one run, and
+`--vex <file>` loads CycloneDX VEX and OpenVEX documents as triage
+decisions proposed by the document.
+
+## Four common policies
+
+Fail on any reached finding of exploitability grade high or above:
+
+```toml
+[[expect]]
+id = "no-reached-high"
+description = "No reached finding of grade high or above"
+grade = "high"
+reach = "reached"
+action = "fail"
+```
+
+Fail only on what a change added, against the target branch's scan:
+
+```toml
+[baseline]
+scan = "target-branch-scan"
+
+[[expect]]
+id = "no-new-findings"
+description = "Nothing new against the target branch"
+new = true
+action = "fail"
+```
+
+Require reachability to have been assessed for npm projects, so a skipped
+analyzer fails the build instead of passing silently:
+
+```toml
+[[require]]
+capability = "reachability"
+project_type = "npm"
+```
+
+Warn on supply-chain findings and fail on malware:
+
+```toml
+[[expect]]
+id = "supply-chain-context"
+description = "Supply-chain findings are context, not failures"
+category = "supply-chain"
+action = "warn"
+
+[[expect]]
+id = "no-malware"
+description = "Malware stops the build"
+category = "malware"
+action = "fail"
+```
+
+## The command line
+
+`depscan triage` records and reviews the decisions. `triage set` adds or
+updates an entry, keeping the file's comments and order; `triage list
+<scan-dir>` prints the entries with what each matches and flags the stale,
+expired and pending ones; `triage review --approve <entry> --approver
+<name>` approves a proposal and `--reject` removes it; `triage check`
+validates the file the way a gate would, exiting 3 when the file carries
+errors a gate would hit. The author and the approver are required options,
+never guessed from git or the environment. Every subcommand takes
+`--format json`. An agent proposes with the `propose_triage` MCP tool; a
+person approves with `triage review`.
+
+## What the gate proves and what it does not
+
+The gate proves that the decisions file, as it stands, holds against the
+scan directory it was evaluated against. It does not prove the scan saw
+everything: a `[[require]]` entry exists for exactly that reason, and the
+expectations document reports an entry it could not evaluate as
+`not_evaluated` with the reason, never as a pass. The suppressed findings
+stay in the findings document, so nothing a decision silenced is hidden
+from the reader who looks.

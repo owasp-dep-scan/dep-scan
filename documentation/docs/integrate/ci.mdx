@@ -5,7 +5,7 @@ title: CI
 
 # dep-scan in CI
 
-A CI job asks a scan three questions: did the scan actually run, what is new against last time, and does this pull request cross the line. dep-scan answers all three from files, which is what makes it scriptable: the JSON output is one document, the exit codes are documented, and the scan directory carries everything a later step or a human needs. What it deliberately does not do yet is fail the build because findings exist; this page shows the honest way to gate today, and says plainly what is not built.
+A CI job asks a scan three questions: did the scan actually run, what is new against last time, and does this pull request cross the line. dep-scan answers all three from files, which is what makes it scriptable: the JSON output is one document, the exit codes are documented, and the scan directory carries everything a later step or a human needs. The gate is the decisions file: it fails the build on the findings that matter and passes on the rest, with the decisions reviewed in the pull request itself. [The triage and gating page](../results/triage-and-gating) documents the file; this page shows the workflow shapes and says plainly what a gate does and does not prove.
 
 ## The image and the cache
 
@@ -42,26 +42,53 @@ The table is generated from the exit-code constant, and a test keeps this page i
 | 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
-A scan that reports vulnerabilities exits 0, and a clean scan exits 0: findings never change the exit code in this version, so exit code 0 means "the scan ran", never "everything is fine". A policy gate over findings, with its own exit code, is [planned work](https://github.com/owasp-dep-scan/dep-scan/issues/594).
+Without a gate a scan that reports vulnerabilities exits 0, and a clean scan exits 0: findings never change the exit code when the run has no decisions file, no `--fail-on` and no `--baseline`, so exit code 0 means "the scan ran", never "everything is fine".
 
-## Gating on findings today
+## Gating on findings
 
-Gate in the workflow, on the findings file, and read the coverage block while doing it so a skipped analysis cannot pass the gate. The findings file is one JSON document, so the gate is a few lines of `jq`:
+The gate is one options line or one file. A decisions file committed beside the code carries the policy, and `depscan scan` applies it and exits 3 when a fail-action expectation matches, 4 when a required capability was not assessed:
 
 ```yaml
-- name: Fail on new critical findings
+- name: Scan and gate
   run: |
-    count=$(jq '[.findings[] | select(.category == "vulnerability" and .severity == "critical"
-      and .coverage.state == "assessed")] | length' reports/depscan.findings.json)
-    echo "assessed critical findings: $count"
-    test "$count" -eq 0
+    depscan scan /app --reports-dir /app/reports --profile ci \
+      --fail-on "severity=high,reach=reached"
 ```
 
-The `coverage.state` filter is the part that keeps the gate honest: a critical finding whose deciding analysis never ran is not a critical finding, and the files say which it is. The reach axis has a prerequisite worth restating: a scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby project answers reachability only when it runs cdxgen's research BOM profile (`--bom-profile research`, or `--profile research`), so a gate over `reach` on such a scan without it never fires. Go, Rust, Kotlin and .NET projects get reachability from a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) without the research profile, and Go, Rust and .NET also from `--profile deep` on a universal scan.
+The same policy lives in `.depscan/decisions.toml` when it needs review or a baseline beside it:
+
+```toml
+[[expect]]
+id = "no-reached-high"
+description = "No reached finding of grade high or above"
+grade = "high"
+reach = "reached"
+action = "fail"
+
+[[require]]
+capability = "reachability"
+```
+
+The `[[require]]` entry is the part that keeps the gate honest: a `reach=reached` expectation over a scan whose reachability never ran matches nothing, so the requirement turns a silently skipped analyzer into exit 4. An expectation the run cannot evaluate, a `new` selector without a baseline among them, is reported as `not_evaluated` with the reason in `depscan.expectations.json`, never as a pass. The reach axis has a prerequisite worth restating: a scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby project answers reachability only when it runs cdxgen's research BOM profile (`--bom-profile research`, or `--profile research`). Go, Rust, Kotlin and .NET projects get reachability from a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) without the research profile, and Go, Rust and .NET also from `--profile deep` on a universal scan.
+
+A gate over a saved scan needs no rescan: `depscan report <scan-dir>` re-evaluates the current decisions file against it, which is how a job gates a scan an earlier job made, and how a decision recorded after the scan takes effect. The result document lands in the scan directory as `depscan.expectations.json` at scan time; a report writes it only where `--out` names.
 
 ## What changed since last time
 
-A baseline answers "is this pull request worse". Two scans of the same project compare through the Python API (`api.diff`) or the MCP server's `diff_scans` tool, which key each vulnerability by the pair of its advisory id and the affected component ref; there is no `depscan diff` verb in this version. The API form, usable from a workflow step that already has Python:
+A baseline answers "is this pull request worse". The decisions file's `[baseline]` section names the reference scan, a scan directory or a findings file, and every finding the gate sees carries `new` or `existing` against it, so an expectation with `new = true` and `action = "fail"` fails exactly on what the pull request added:
+
+```toml
+[baseline]
+scan = "target-branch-scan"
+
+[[expect]]
+id = "no-new-findings"
+description = "Nothing new against the target branch"
+new = true
+action = "fail"
+```
+
+A wrong `digest` stops the run with exit 1 instead of marking everything new, so a stale baseline fails loudly. Two scans can also be compared without a gate, through the Python API (`api.diff`) or the MCP server's `diff_scans` tool, which key each vulnerability by the pair of its advisory id and the affected component ref; there is no `depscan diff` verb in this version. The API form, usable from a workflow step that already has Python:
 
 ```python
 from depscan import api
@@ -106,7 +133,7 @@ jobs:
         with:
           path: vdb-home
           key: ${{ steps.week.outputs.key }}
-      - name: Scan
+      - name: Scan and gate
         run: |
           mkdir -p vdb-home reports
           docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
@@ -114,13 +141,16 @@ jobs:
             -v "$PWD:/app" \
             ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a4 \
             depscan scan /app -t js --bom-profile research --profile ci \
-              --vdb-flavor app-only --reports-dir /app/reports --fail-on-error
-      - name: Gate on assessed critical findings
+              --vdb-flavor app-only --reports-dir /app/reports --fail-on-error \
+              --fail-on "severity=critical,reach=reached"
+      - name: Show what the gate matched
+        if: failure()
         run: |
-          count=$(jq '[.findings[] | select(.severity == "critical"
-            and .coverage.state == "assessed")] | length' reports/depscan.findings.json)
-          test "$count" -eq 0
-      - uses: actions/upload-artifact@v4
+          jq '.results[] | select(.status == "fail") |
+              {id, action, findings}' reports/depscan.expectations.json
+      - name: Upload the scan directory
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: depscan-results
           path: reports/

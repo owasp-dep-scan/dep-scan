@@ -102,7 +102,7 @@ A usage error that argparse finds before a verb runs (an unknown option, an unkn
 | 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
-Findings never change the exit code: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. Exit code 0 never produces the error document.
+Findings change the exit code only when the run has a gate, which a decisions file, `--fail-on` or `--baseline` gives it: then 3 means a fail-action expectation matched and 4 means a required capability was not assessed, with 4 winning over 3 and 1 and 2 winning over both. Without a gate, a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. Exit code 0 never produces the error document.
 
 ## No prompts
 
