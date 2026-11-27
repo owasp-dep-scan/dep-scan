@@ -1,0 +1,22 @@
+contrib/reachability_eval.py
+  s_9afc8e07c509cc::t_8dd7be93b2b3ce 480-483
+  s_9afc8e07c509cc::t_94d0d790ef6aac 232-238,247-249,254
+  s_9afc8e07c509cc::t_dc680d02da6c15 447-451
+  s_9afc8e07c509cc::t_f25f46a8ccbace 2-16,19,22-23,25-27,43-49,52,62-63,76,124-127,130,161,188-231,239-246,250-253,255-305,339,374-383,424-446,452-467,469-479,484-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8553136861d46300be2f324307f5dcbb1423a991",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

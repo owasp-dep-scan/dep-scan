@@ -1,0 +1,25 @@
+.github/workflows/join-eval.yml
+  s_9afc8e07c509cc::t_0d474a051a94bf 103-106
+  s_9afc8e07c509cc::t_4ab82f401c3273 108-110,119
+  s_9afc8e07c509cc::t_1019215a6b6866 1-102,120-133
+  s_9afc8e07c509cc::t_5fdf2dc6db6069 111-118
+  s_9afc8e07c509cc::t_b7d3e3d507a014 107
+contrib/repotests/README.md
+  s_9afc8e07c509cc::t_1dcc340ef7d7fd 125-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1c828ce6a6e89830af5c2bf2b9f3149f5293ab7",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

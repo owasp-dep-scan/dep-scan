@@ -1,0 +1,21 @@
+contrib/corpus/derive_labels.py
+  s_9afc8e07c509cc::t_56813225e3f7c8 390-397
+contrib/corpus/labels/js-juice-shop.json
+  s_9afc8e07c509cc::t_a2c25e616169c5 584-657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b2df1cc66e3e875377632491dff087abef95c40",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

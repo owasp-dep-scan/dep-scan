@@ -1,0 +1,83 @@
+contrib/corpus/labels/js-juice-shop.json
+  s_9afc8e07c509cc::t_7f2d38a97304ce 408-459,461-572,574,580
+  s_9afc8e07c509cc::t_913131eeff7edd 4-6,8-9,12-13,16-405,575-576,578-579,581-582
+contrib/corpus/labels/js-svelte-realworld.json
+  s_9afc8e07c509cc::t_7f2d38a97304ce 32-45,52
+  s_9afc8e07c509cc::t_913131eeff7edd 1-31,46-51,53-57
+contrib/corpus/labels/js-outline.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-827,1085-1087,1089-1093
+  s_9afc8e07c509cc::t_7f2d38a97304ce 828-1084,1088
+contrib/corpus/derive_labels.py
+  s_9afc8e07c509cc::t_d3a01e300e39b5 262
+  s_9afc8e07c509cc::t_70c6234cf944f0 199-201
+  s_9afc8e07c509cc::t_3af5fd52d4756b 221,226,228-231
+  s_9afc8e07c509cc::t_c487fd1c90c746 222-225,227,233-258
+  s_9afc8e07c509cc::t_fef625987af648 114-122
+  s_9afc8e07c509cc::t_7cb2b5d4b8ab5e 188-198,202-211
+  s_9afc8e07c509cc::t_ebe7409d38cd48 306
+  s_9afc8e07c509cc::t_5ea9ac4bdef89b 360-362
+  s_9afc8e07c509cc::t_246ef8f5dc9bb4 342-348
+contrib/corpus/labels/py-microblog.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-159
+contrib/corpus/labels/js-angular-realworld.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-55,103-105,107-111
+  s_9afc8e07c509cc::t_7f2d38a97304ce 56-102,106
+contrib/corpus/labels/js-bulletproof-react.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-213
+contrib/corpus/labels/js-cdxgen.json
+  s_9afc8e07c509cc::t_7f2d38a97304ce 136-152,158
+  s_9afc8e07c509cc::t_913131eeff7edd 1-135,153-157,159-163
+contrib/corpus/labels/py-httpie.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-393
+contrib/corpus/labels/js-vue3-realworld.json
+  s_9afc8e07c509cc::t_7f2d38a97304ce 52-116,120
+  s_9afc8e07c509cc::t_913131eeff7edd 1-51,117-119,121-125
+contrib/corpus/labels/py-pygoat.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-378
+contrib/corpus/score.py
+  s_9afc8e07c509cc::t_5ef4e03fef77a9 1474-1478
+  s_9afc8e07c509cc::t_5e8808bf973641 366,375
+  s_9afc8e07c509cc::t_5975fa54a068e8 486-497,504-505,508
+  s_9afc8e07c509cc::t_1cc9937e0cc196 501-503,506-507
+  s_9afc8e07c509cc::t_d911c3ec021a88 1448-1452
+  s_9afc8e07c509cc::t_d997325590999f 363,367-370,372-374,376,388-393,395,406,409-413
+  s_9afc8e07c509cc::t_55087d1da5a5ae 1211-1220
+  s_9afc8e07c509cc::t_ebb55810275938 485
+contrib/corpus/labels/py-celery.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-554
+test/test_corpus_scorer.py
+  s_9afc8e07c509cc::t_f9b26d938dd333 108-109,113-115,118,120,122-140
+contrib/corpus/depscan.corpus.json
+  s_9afc8e07c509cc::t_409f5b0113163e 1064
+contrib/corpus/labels/js-nestjs-realworld.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-59,122-124,126-130
+  s_9afc8e07c509cc::t_7f2d38a97304ce 60-121,125
+contrib/corpus/labels/java-sec-code-repotests.json
+  s_9afc8e07c509cc::t_6ddb6d2900b293 15-16
+contrib/corpus/labels/js-express-realworld.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-51,138-140,142-146
+  s_9afc8e07c509cc::t_7f2d38a97304ce 52-137,141
+contrib/corpus/labels/js-express-boilerplate.json
+  s_9afc8e07c509cc::t_7f2d38a97304ce 104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,155
+  s_9afc8e07c509cc::t_a2bd687789a276 1-103,105-106,108-109,111-112,114-115,117-118,120-121,123-124,126-127,129-130,132-133,135-136,138-139,141-142,144-145,147-148,150-154,156-160
+contrib/corpus/labels/py-vulpy.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-61
+contrib/corpus/labels/py-dvpwa.json
+  s_9afc8e07c509cc::t_913131eeff7edd 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6502fd767c35aebf4b6936f365280bb60ae0aaf",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

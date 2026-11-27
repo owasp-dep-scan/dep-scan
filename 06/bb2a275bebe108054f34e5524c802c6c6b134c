@@ -1,0 +1,36 @@
+contrib/corpus/labels/py-django-oscar.json
+  s_9afc8e07c509cc::t_2a181d7b833cf7 20-21,26-27,30-33,65
+  s_9afc8e07c509cc::t_ade8ec13bfc066 1-15,28-29,34-64,66-67,71-74
+  s_9afc8e07c509cc::t_9a8473123679df 16-19,22-25,68-70
+contrib/corpus/labels/py-fastapi-template.json
+  s_9afc8e07c509cc::t_ade8ec13bfc066 1-71
+contrib/corpus/labels/java-sec-code.json
+  s_9afc8e07c509cc::t_ade8ec13bfc066 1-303
+contrib/corpus/labels/java-petclinic.json
+  s_9afc8e07c509cc::t_ade8ec13bfc066 1-152
+contrib/corpus/labels/py-defectdojo.json
+  s_9afc8e07c509cc::t_5ed1102610b856 40-43,50-53,309,311-313
+  s_9afc8e07c509cc::t_ade8ec13bfc066 1-35,48-49,54-55,80-83,92-129,134-308,310,314-317
+  s_9afc8e07c509cc::t_9a8473123679df 36-39,44-47,56-59,86-89
+  s_9afc8e07c509cc::t_2a181d7b833cf7 60-79,84-85,90-91,130-133
+contrib/corpus/derive_labels.py
+  s_9afc8e07c509cc::t_5ed1102610b856 61-62
+  s_9afc8e07c509cc::t_55778d19b97a5a 201-205
+  s_9afc8e07c509cc::t_0055113c495fdd 60,65-66,68-70,72-73,75,77-78,80-83,85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06bb2a275bebe108054f34e5524c802c6c6b134c",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

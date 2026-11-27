@@ -1,0 +1,23 @@
+contrib/README.md
+  s_9afc8e07c509cc::t_ce13c6d50c3d9a 10,12
+documentation/sidebars.ts
+  s_9afc8e07c509cc::t_50b938e4fa07f9 100
+documentation/docs/Develop/measuring.mdx
+  s_9afc8e07c509cc::t_80e6571232d120 1-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "095a15a8c76918c4cfcdafd0fe45c6babe7169bf",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
