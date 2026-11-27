@@ -1,0 +1,26 @@
+contrib/corpus/depscan-score.schema.json
+  s_7318da1b9edd46::t_20b77bcab4b85b 63-66,108,112
+contrib/corpus/score.py
+  s_7318da1b9edd46::t_20b77bcab4b85b 1064-1079,1117-1118,1219,1222,1232-1233,1264,1267-1268
+contrib/corpus/inputs.py
+  s_7318da1b9edd46::t_51baebe1a471ac 77-97,109-110,201,206-210,215,218
+test/test_corpus_scorer.py
+  s_7318da1b9edd46::t_f868b053f2d8d5 824-875
+  s_7318da1b9edd46::t_d1c063732e1b5b 876-877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "508fc3d168ce76beaab81ef6adc948d8b8b20750",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
