@@ -15,6 +15,7 @@ so the id's file component stays empty, which the fingerprint documents as
 the shared-id case for repeated copies of one package.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote
@@ -31,6 +32,7 @@ from analysis_lib.findings.model import (
     Producer,
     Reference,
 )
+from analysis_lib.helpers import is_malware_vuln
 from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, counts_as_reached
 
 #: The capability a finding's coverage names when the usage evidence its
@@ -110,6 +112,24 @@ def _properties(vuln: Dict[str, Any]) -> Optional[List[FindingProperty]]:
         if isinstance(prop, dict) and prop.get("name")
     ]
     return props or None
+
+
+def finding_category(vuln: Dict[str, Any]) -> str:
+    """The finding category of a VDR entry: ``malware`` for a malware
+    advisory, ``vulnerability`` otherwise.
+
+    A malware advisory has a ``MAL-`` id, or carries the ``Malicious``
+    insight the analysis writes when the vulnerability database flags the
+    record as malware (the extended database does so for advisories with
+    other ids too).
+    """
+    if is_malware_vuln(vuln):
+        return "malware"
+    for prop in vuln.get("properties") or []:
+        if isinstance(prop, dict) and prop.get("name") == "depscan:insights":
+            if "Malicious" in re.split(r"\\n|\n", str(prop.get("value") or "")):
+                return "malware"
+    return "vulnerability"
 
 
 def _references(vuln: Dict[str, Any]) -> Optional[List[Reference]]:
@@ -323,7 +343,8 @@ def finding_from_vdr(
     """One finding for one advisory of a VDR entry hitting one component.
 
     ``component_ref`` is the ``affects`` ref, a package URL with a version.
-    The finding carries the advisory id as its rule, the entry's most severe
+    The finding's category is :func:`finding_category` of the entry. It
+    carries the advisory id as its rule, the entry's most severe
     rating, the versions named as fixes and the dep-scan extension
     properties; its id is the line-free fingerprint of the pair.
     ``usage_not_assessed`` is why usage evidence of the package in a BOM of
@@ -339,7 +360,8 @@ def finding_from_vdr(
     rule = str(vuln.get("id") or "").strip()
     if not rule:
         raise ValueError("the VDR entry has no advisory id")
-    finding_id = finding_fingerprint("vulnerability", rule, [component_ref])
+    category = finding_category(vuln)
+    finding_id = finding_fingerprint(category, rule, [component_ref])
     coverage = Coverage(state="assessed")
     if usage_not_assessed and exploitability is not None:
         coverage.reasons = [
@@ -351,7 +373,7 @@ def finding_from_vdr(
         ]
     return Finding(
         id=finding_id,
-        category="vulnerability",
+        category=category,
         rule=rule,
         title=f"{rule} affects {component_ref}",
         severity=highest_severity(vuln),

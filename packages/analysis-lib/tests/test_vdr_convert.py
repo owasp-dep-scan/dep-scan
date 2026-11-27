@@ -590,3 +590,35 @@ def test_reached_by_analyzer_atom_records_of_other_roles_add_no_types():
     ]
     grouped = reached_by_analyzer(records)
     assert grouped["atom"] == {"purls": {"pkg:npm/a@1"}, "types": {"npm"}}
+
+
+# A MAL- record as the analysis writes it into the VDR: the OSV malicious
+# packages id, its source and the Malicious insight.
+MALWARE_VULN = {
+    "id": "MAL-2025-47328",
+    "bom-ref": "MAL-2025-47328/pkg:npm/evil-pkg@1.0.3",
+    "source": {"name": "OSV", "url": "https://osv.dev/vulnerability/MAL-2025-47328"},
+    "affects": [{"ref": "pkg:npm/evil-pkg@1.0.3"}],
+    "ratings": [{"severity": "critical", "method": "other"}],
+    "description": "Malicious code in evil-pkg (npm)",
+    "properties": [{"name": "depscan:insights", "value": "Malicious\\nNot fixed"}],
+}
+
+
+def test_a_malware_advisory_is_a_malware_finding():
+    from analysis_lib.findings.vdr_convert import finding_category
+
+    finding = finding_from_vdr(MALWARE_VULN, "pkg:npm/evil-pkg@1.0.3", producer_version="7")
+    assert finding.category == "malware"
+    assert finding.id == finding_fingerprint(
+        "malware", "MAL-2025-47328", ["pkg:npm/evil-pkg@1.0.3"]
+    )
+    validate("finding", finding.to_dict())
+    # The extended database flags malware under other ids too; the analysis
+    # records that as the Malicious insight.
+    flagged = dict(MALWARE_VULN, id="GHSA-xxxx-yyyy-zzzz")
+    assert finding_category(flagged) == "malware"
+    assert finding_category(VULN) == "vulnerability"
+    assert finding_category(
+        dict(VULN, properties=[{"name": "depscan:insights", "value": "Has PoC"}])
+    ) == ("vulnerability")
