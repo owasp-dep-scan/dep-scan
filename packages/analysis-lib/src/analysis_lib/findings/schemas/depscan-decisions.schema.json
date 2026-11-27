@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:decisions:1",
   "title": "dep-scan decisions file",
-  "description": "The parsed shape of a dep-scan decisions file (.depscan/decisions.toml). The TOML file holds three kinds of statement people make about findings: triage decisions, the baseline that marks findings new or existing, and the expectations the gate evaluates. This schema validates the document after the TOML is parsed, so a TOML table becomes a JSON object and an array of tables becomes an array. A decision with proposed_by and neither approver nor author is a proposal that changes nothing until a person approves it.",
+  "description": "The parsed shape of a dep-scan decisions file (.depscan/decisions.toml). The TOML file holds three kinds of statement people make about findings: triage decisions, the baseline that marks findings new or existing, and the expectations the gate evaluates. This schema validates the document after the TOML is parsed, so a TOML table becomes a JSON object and an array of tables becomes an array. A decision with proposed_by and no approver is a proposal that changes nothing until a person approves it, whatever its author says; every other decision is live and names its author.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -16,6 +16,9 @@
           {"required": ["finding"]},
           {"required": ["advisory", "purl"]}
         ],
+        "dependentRequired": {"version_range": ["purl"]},
+        "if": {"not": {"required": ["proposed_by"]}},
+        "then": {"required": ["author"]},
         "properties": {
           "finding": {
             "type": "string",
@@ -35,7 +38,7 @@
           "version_range": {
             "type": "string",
             "minLength": 1,
-            "description": "Narrows the purl selection to versions inside this range, in vers syntax, for example vers:npm/>=4.17.0|<4.17.21."
+            "description": "Narrows the purl selection to versions inside this range, in vers syntax with the scheme of the purl type, for example vers:npm/>=4.17.0|<4.17.21. Requires purl."
           },
           "state": {
             "type": "string",
@@ -79,7 +82,7 @@
           },
           "author": {
             "type": "string",
-            "description": "The person who entered the decision. A decision with an author applies without a separate approval step."
+            "description": "The person who made the decision. Required on a decision without proposed_by. On a proposal it records who wrote it and approves nothing; depscan triage review sets it to the approver when it is missing."
           },
           "approver": {
             "type": "string",
@@ -87,7 +90,7 @@
           },
           "proposed_by": {
             "type": "string",
-            "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and neither approver nor author is a proposal."
+            "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and no approver is a proposal."
           },
           "created": {
             "type": "string",
@@ -138,11 +141,12 @@
           {"required": ["confidence"]},
           {"required": ["new"]}
         ],
+        "dependentRequired": {"version_range": ["purl"]},
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
-            "description": "The expectation's id, named by the gate result."
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+            "description": "The expectation's id, named by the gate result: letters, digits, dot, underscore and hyphen. Ids are unique across the expect and require entries; --fail-on entries take ids of the form fail-on:<n>, which this pattern cannot produce."
           },
           "description": {
             "type": "string",
@@ -202,7 +206,7 @@
           "version_range": {
             "type": "string",
             "minLength": 1,
-            "description": "Narrows the purl selection to versions inside this range, in vers syntax."
+            "description": "Narrows the purl selection to versions inside this range, in vers syntax with the scheme of the purl type. Requires purl."
           },
           "confidence": {
             "type": "string",
@@ -226,8 +230,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "minLength": 1,
-            "description": "The requirement's id; a default is derived from the capability when absent."
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+            "description": "The requirement's id; require-<capability>, with -<project_type> when one is named, when absent. Ids are unique across the expect and require entries."
           },
           "description": {
             "type": "string",
@@ -235,18 +239,8 @@
           },
           "capability": {
             "type": "string",
-            "enum": [
-              "vulnerabilities",
-              "reachability",
-              "license",
-              "supply-chain",
-              "binary",
-              "memory-safety",
-              "mobile",
-              "code",
-              "crypto"
-            ],
-            "description": "A check that must have been assessed by the scan the gate reads. The names are the depscan --checks names."
+            "enum": ["vulnerabilities", "reachability", "license", "supply-chain", "binary"],
+            "description": "A check that must have been assessed by the scan the gate reads: a --checks name that a scan stage records in the manifest when it assessed it. memory-safety, mobile, code and crypto are not assessed by dep-scan yet and are refused."
           },
           "project_type": {
             "type": "string",

@@ -19,6 +19,7 @@ from analysis_lib.findings.decisions import (
     evaluate_gate,
     finding_matches_selectors,
     load_decisions,
+    parse_decisions_document,
     parse_fail_on,
     read_baseline,
     vers_range_is_valid,
@@ -45,7 +46,12 @@ def _finding(**overrides) -> Dict[str, Any]:
 def _graded_finding(**overrides):
     finding = _finding(**overrides)
     finding["exploitability"] = {
-        "axes": {"presence": "proven", "reach": "likely", "exposure": "likely", "barrier": "unknown"},
+        "axes": {
+            "presence": "proven",
+            "reach": "likely",
+            "exposure": "likely",
+            "barrier": "unknown",
+        },
         "grade": "high",
         "rule": "reached",
     }
@@ -131,19 +137,15 @@ def test_load_valid_file(tmp_path):
     assert decisions.baseline.digest == digest
     # The digest is of the file's bytes as written, which carry the host's
     # line endings, so the expectation hashes the bytes on disk.
-    assert decisions.digest == hashlib.sha256(
-        (tmp_path / "decisions.toml").read_bytes()
-    ).hexdigest()
+    assert (
+        decisions.digest == hashlib.sha256((tmp_path / "decisions.toml").read_bytes()).hexdigest()
+    )
     assert decisions.selected_by == "default"
 
 
 def test_a_number_for_a_state_is_refused_with_its_line(tmp_path):
     text = (
-        "# a comment\n"
-        "[[triage]]\n"
-        "finding = \"dsf1:" + "a" * 64 + "\"\n"
-        "state = 3\n"
-        "author = \"alice\"\n"
+        '# a comment\n[[triage]]\nfinding = "dsf1:' + "a" * 64 + '"\nstate = 3\nauthor = "alice"\n'
     )
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
@@ -157,11 +159,11 @@ def test_a_number_for_a_state_is_refused_with_its_line(tmp_path):
 def test_a_missing_key_reports_the_entry_header_line(tmp_path):
     text = (
         "[[triage]]\n"
-        "finding = \"dsf1:" + "a" * 64 + "\"\n"
-        "author = \"alice\"\n"
+        'finding = "dsf1:' + "a" * 64 + '"\n'
+        'author = "alice"\n'
         "\n"
         "[[triage]]\n"
-        "advisory = \"CVE-2021-23337\"\n"
+        'advisory = "CVE-2021-23337"\n'
     )
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
@@ -174,12 +176,7 @@ def test_a_missing_key_reports_the_entry_header_line(tmp_path):
 
 
 def test_an_unknown_key_is_refused_with_its_line(tmp_path):
-    text = (
-        "[[triage]]\n"
-        "finding = \"dsf1:" + "a" * 64 + "\"\n"
-        "state = \"in_triage\"\n"
-        "who = \"alice\"\n"
-    )
+    text = '[[triage]]\nfinding = "dsf1:' + "a" * 64 + '"\nstate = "in_triage"\nwho = "alice"\n'
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
         load_decisions(str(tmp_path / "decisions.toml"))
@@ -189,10 +186,7 @@ def test_an_unknown_key_is_refused_with_its_line(tmp_path):
 
 def test_not_affected_without_a_justification_is_refused(tmp_path):
     text = (
-        "[[triage]]\n"
-        "finding = \"dsf1:" + "a" * 64 + "\"\n"
-        "state = \"not_affected\"\n"
-        "author = \"alice\"\n"
+        '[[triage]]\nfinding = "dsf1:' + "a" * 64 + '"\nstate = "not_affected"\nauthor = "alice"\n'
     )
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
@@ -205,11 +199,11 @@ def test_not_affected_without_a_justification_is_refused(tmp_path):
 def test_a_broken_vers_range_is_refused_with_its_line(tmp_path):
     text = (
         "[[triage]]\n"
-        "advisory = \"CVE-2021-23337\"\n"
-        "purl = \"pkg:npm/lodash\"\n"
-        "version_range = \"not a range\"\n"
-        "state = \"in_triage\"\n"
-        "author = \"alice\"\n"
+        'advisory = "CVE-2021-23337"\n'
+        'purl = "pkg:npm/lodash"\n'
+        'version_range = "not a range"\n'
+        'state = "in_triage"\n'
+        'author = "alice"\n'
     )
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
@@ -234,16 +228,16 @@ def test_a_missing_file_is_refused(tmp_path):
 def test_both_selectors_at_once_are_refused(tmp_path):
     text = (
         "[[triage]]\n"
-        "finding = \"dsf1:" + "a" * 64 + "\"\n"
-        "advisory = \"CVE-2021-23337\"\n"
-        "purl = \"pkg:npm/lodash\"\n"
-        "state = \"in_triage\"\n"
-        "author = \"alice\"\n"
+        'finding = "dsf1:' + "a" * 64 + '"\n'
+        'advisory = "CVE-2021-23337"\n'
+        'purl = "pkg:npm/lodash"\n'
+        'state = "in_triage"\n'
+        'author = "alice"\n'
     )
     _write(tmp_path / "decisions.toml", text)
     with pytest.raises(DecisionsError) as excinfo:
         load_decisions(str(tmp_path / "decisions.toml"))
-    assert "oneOf" in str(excinfo.value) or "valid" in str(excinfo.value)
+    assert "triage/0: takes finding, or advisory with purl, not both" in str(excinfo.value)
 
 
 # --- selectors ------------------------------------------------------------------------
@@ -340,7 +334,7 @@ def test_the_rule_selector_matches_an_alias():
     assert finding_matches_selectors(
         graded,
         {"rule": ["GHSA-p6mc-m468-83gw"]},
-        alias_ids={"cve-2021-23337", "ghsa-p6mc-m468-83gw"},
+        alias_map={"cve-2021-23337": {"cve-2021-23337", "ghsa-p6mc-m468-83gw"}},
     )
 
 
@@ -379,7 +373,7 @@ def test_an_advisory_alias_selector_matches_through_the_alias_map():
     alias_map = {"cve-2021-23337": {"cve-2021-23337", "ghsa-p6mc-m468-83gw"}}
     assert entry_matches_finding(entry, _finding(), alias_map=alias_map)
     assert not entry_matches_finding(entry, _finding())
-    assert not entry_matches_finding(entry, _finding(category="malware", rule="MAL-1"))
+    assert not entry_matches_finding(entry, _finding(category="supply-chain"))
 
 
 def test_an_advisory_selector_with_a_pinned_version_and_range():
@@ -396,9 +390,7 @@ def test_an_advisory_selector_with_a_pinned_version_and_range():
         }
     ).triage[0]
     assert entry_matches_finding(entry, _finding())
-    assert not entry_matches_finding(
-        entry, _finding(components=["pkg:npm/lodash@4.17.21"])
-    )
+    assert not entry_matches_finding(entry, _finding(components=["pkg:npm/lodash@4.17.21"]))
 
 
 # --- applying triage ------------------------------------------------------------------
@@ -419,10 +411,15 @@ def test_each_state_suppresses_or_not():
         ("resolved_with_pedigree", False),
     ]:
         entry = {"finding": "dsf1:" + "a" * 64, "state": state, "author": "alice"}
-        application = apply_triage([dict(f) for f in findings], _document([entry]).triage)
+        if state == "not_affected":
+            entry["justification"] = "code_not_present"
+        applied = [dict(f) for f in findings]
+        application = apply_triage(applied, _document([entry]).triage)
         assert (application.suppressed == 1) is expected, state
-        # Nothing is deleted either way.
-        assert len(application.proposals) == 0
+        # Nothing is deleted either way, and the gate skips a suppressed one.
+        assert len(applied) == 1 and applied[0]["triage"]["state"] == state
+        gate = _decisions_with(expect=[{"id": "any", "severity": "high", "action": "fail"}])
+        assert evaluate_gate(applied, [], gate).exit_code == (0 if expected else 3), state
 
 
 def test_an_expired_entry_warns_and_does_not_suppress():
@@ -525,9 +522,7 @@ def test_read_baseline_resolves_against_the_decisions_dir(tmp_path):
     )
     decisions_dir = tmp_path / "project" / ".depscan"
     decisions_dir.mkdir(parents=True)
-    ids = read_baseline(
-        BaselineSpec(scan="../../baseline/first"), base_dir=str(decisions_dir)
-    )
+    ids = read_baseline(BaselineSpec(scan="../../baseline/first"), base_dir=str(decisions_dir))
     assert ids == {"dsf1:" + "a" * 64}
 
 
@@ -627,9 +622,24 @@ def test_a_new_selector_evaluates_against_the_baseline_flags():
 
 def test_a_require_entry_passes_fails_and_is_not_evaluated():
     stages = [
-        {"name": "enrichment", "status": "completed", "capabilities": ["reachability"], "projectType": "npm"},
-        {"name": "risk", "status": "not-assessed", "capabilities": ["supply-chain"], "projectType": "npm"},
-        {"name": "enrichment", "status": "completed", "capabilities": ["reachability"], "projectType": "pypi"},
+        {
+            "name": "enrichment",
+            "status": "completed",
+            "capabilities": ["reachability"],
+            "projectType": "npm",
+        },
+        {
+            "name": "risk",
+            "status": "not-assessed",
+            "capabilities": ["supply-chain"],
+            "projectType": "npm",
+        },
+        {
+            "name": "enrichment",
+            "status": "completed",
+            "capabilities": ["reachability"],
+            "projectType": "pypi",
+        },
     ]
     decisions = _decisions_with(
         require=[
@@ -674,7 +684,9 @@ def test_the_summary_counts_suppressed_new_and_existing():
     )
     findings = [
         _graded_finding(id="dsf1:" + "a" * 64, baseline="new"),
-        _graded_finding(id="dsf1:" + "b" * 64, baseline="existing", triage={"state": "not_affected"}),
+        _graded_finding(
+            id="dsf1:" + "b" * 64, baseline="existing", triage={"state": "not_affected"}
+        ),
     ]
     evaluation = evaluate_gate(
         findings, [], decisions, has_baseline=True, suppressed=1, new=1, existing=1
@@ -701,9 +713,7 @@ def test_the_document_carries_the_schema_version_and_the_triage_report(tmp_path)
     evaluation = evaluate_gate(
         findings, [], decisions, application=application, suppressed=application.suppressed
     )
-    published = evaluation.to_document(
-        evaluated_utc="2026-11-27T12:00:00+00:00", source="scan"
-    )
+    published = evaluation.to_document(evaluated_utc="2026-11-27T12:00:00+00:00", source="scan")
     from analysis_lib.findings.schemas import validate
 
     validate("depscan-expectations", published)
@@ -723,7 +733,7 @@ def test_parse_fail_on_builds_the_same_grammar_as_the_file():
         "grade": "high",
         "reach": "reached",
     }
-    assert entry.id.startswith("cli-")
+    assert entry.id == "fail-on:1"
 
 
 def test_parse_fail_on_takes_lists_and_booleans():
@@ -738,7 +748,7 @@ def test_parse_fail_on_refuses_unknown_keys_and_values():
     assert "not a selector" in str(excinfo.value)
     with pytest.raises(DecisionsError) as excinfo:
         parse_fail_on("grade=extreme")
-    assert "takes one of" in str(excinfo.value)
+    assert "grade 'extreme' is not a valid value; valid values: critical" in str(excinfo.value)
     with pytest.raises(DecisionsError):
         parse_fail_on("grade")
     with pytest.raises(DecisionsError):
@@ -766,3 +776,299 @@ def test_a_suppressed_finding_is_out_of_the_gate():
     evaluation = evaluate_gate(findings, [], decisions)
     assert evaluation.results[0].status == "pass"
     assert evaluation.exit_code == 0
+
+
+# --- proposals and live entries -----------------------------------------------------
+
+
+DSF_A = "dsf1:" + "a" * 64
+
+
+def test_a_proposal_may_omit_the_author_and_a_live_entry_may_not(tmp_path):
+    proposal = (
+        f'[[triage]]\nfinding = "{DSF_A}"\nstate = "in_triage"\nproposed_by = "agent session 1"\n'
+    )
+    _write(tmp_path / "proposal.toml", proposal)
+    assert load_decisions(str(tmp_path / "proposal.toml")).triage[0].is_proposal
+    _write(
+        tmp_path / "live.toml", f'# team\n[[triage]]\nfinding = "{DSF_A}"\nstate = "in_triage"\n'
+    )
+    with pytest.raises(DecisionsError) as excinfo:
+        load_decisions(str(tmp_path / "live.toml"))
+    assert "line 2: triage/0: needs author" in str(excinfo.value)
+    approved = proposal + 'approver = "carol"\n'
+    _write(tmp_path / "approved.toml", approved)
+    entry = load_decisions(str(tmp_path / "approved.toml")).triage[0]
+    assert not entry.is_proposal
+
+
+# --- the selectors the file and --fail-on share ---------------------------------------
+
+
+FAIL_ON_SAMPLES = {
+    "category": ("vulnerability", "vulnerability"),
+    "severity": ("high", "high"),
+    "grade": ("high", "high"),
+    "reach": ("reached", "reached"),
+    "malware": ("false", False),
+    "rule": ("CVE-2021-23337|CVE-1", ["CVE-2021-23337", "CVE-1"]),
+    "purl": ("pkg:npm/lodash", "pkg:npm/lodash"),
+    "confidence": ("high", "high"),
+    "new": ("true", True),
+}
+
+
+def test_every_fail_on_selector_is_honoured_in_the_file(tmp_path):
+    from analysis_lib.findings.decisions import SELECTOR_KEYS
+
+    samples = dict(FAIL_ON_SAMPLES)
+    samples["version_range"] = ("vers:npm/<4.17.21", "vers:npm/<4.17.21")
+    assert set(samples) == set(SELECTOR_KEYS)
+    for key, (cli_value, toml_value) in samples.items():
+        expression = f"{key}={cli_value}"
+        if key == "version_range":
+            expression = f"purl=pkg:npm/lodash,{expression}"
+        from_cli = parse_fail_on(expression)
+        toml = (
+            json.dumps(toml_value) if not isinstance(toml_value, bool) else str(toml_value).lower()
+        )
+        text = f'[[expect]]\nid = "x"\naction = "fail"\n{key} = {toml}\n'
+        if key == "version_range":
+            text += 'purl = "pkg:npm/lodash"\n'
+        _write(tmp_path / "decisions.toml", text)
+        from_file = load_decisions(str(tmp_path / "decisions.toml")).expects[0]
+        assert from_file.selectors == from_cli.selectors, key
+
+
+def test_a_version_range_in_the_file_narrows_the_purl():
+    findings = [_finding(components=["pkg:npm/lodash@4.17.21"])]
+    decisions = decisions_from_document(
+        parse_decisions_document(
+            '[[expect]]\nid = "old-lodash"\naction = "fail"\n'
+            'purl = "pkg:npm/lodash"\nversion_range = "vers:npm/<4.17.21"\n'
+        )
+    )
+    from_file = evaluate_gate(findings, [], decisions)
+    from_cli = evaluate_gate(
+        findings,
+        [],
+        decisions_from_document({}),
+        cli_expects=[parse_fail_on("purl=pkg:npm/lodash,version_range=vers:npm/<4.17.21")],
+    )
+    assert from_file.exit_code == from_cli.exit_code == 0
+    findings[0]["components"] = ["pkg:npm/lodash@4.17.20"]
+    assert evaluate_gate(findings, [], decisions).exit_code == 3
+
+
+def test_a_version_range_needs_a_purl_and_its_scheme():
+    for text in (
+        '[[expect]]\nid = "x"\naction = "fail"\nseverity = "high"\nversion_range = "vers:npm/<1"\n',
+        '[[triage]]\nfinding = "%s"\nstate = "in_triage"\nauthor = "a"\n'
+        'version_range = "vers:npm/<1"\n' % DSF_A,
+    ):
+        with pytest.raises(DecisionsError) as excinfo:
+            parse_decisions_document(text)
+        assert "version_range narrows purl and needs purl" in str(excinfo.value)
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_fail_on("severity=high,version_range=vers:npm/<1")
+    assert "needs purl" in str(excinfo.value)
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_fail_on("purl=pkg:npm/lodash,version_range=vers:pypi/<5")
+    assert "uses the pypi scheme" in str(excinfo.value)
+    assert parse_fail_on("purl=pkg:golang/github.com/x/y,version_range=vers:golang/<v1.3.0")
+
+
+@pytest.mark.parametrize(
+    "version_range", ["vers:npm/garbage!!", "vers:npm/>=abc", "vers:npm/<1|>x"]
+)
+def test_a_range_naming_no_version_is_refused(version_range):
+    assert not vers_range_is_valid(version_range)
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_fail_on(f"purl=pkg:npm/lodash,version_range={version_range}")
+    assert "which is not a version" in str(excinfo.value)
+    assert vers_range_is_valid("vers:npm/*")
+
+
+# --- malware ----------------------------------------------------------------------------
+
+
+def test_a_malware_finding_matches_the_malware_selector_and_its_advisory():
+    from analysis_lib.findings.vdr_convert import findings_from_vdr
+
+    vuln = {"id": "MAL-2025-1234", "affects": [{"ref": "pkg:npm/evil-pkg@1.0.0"}]}
+    finding = findings_from_vdr([vuln], producer_version="7.0.0")[0].to_dict()
+    assert finding["category"] == "malware"
+    gate = _decisions_with(expect=[{"id": "no-malware", "malware": True, "action": "fail"}])
+    assert evaluate_gate([finding], [], gate).exit_code == 3
+    gate = _decisions_with(expect=[{"id": "no-malware", "category": "malware", "action": "fail"}])
+    assert evaluate_gate([finding], [], gate).exit_code == 3
+    entry = {
+        "advisory": "MAL-2025-1234",
+        "purl": "pkg:npm/evil-pkg",
+        "state": "false_positive",
+        "author": "alice",
+    }
+    assert apply_triage([finding], _document([entry]).triage, now=NOW).suppressed == 1
+
+
+# --- requirements and ids --------------------------------------------------------------
+
+
+def test_the_require_capabilities_are_the_ones_a_stage_records():
+    from analysis_lib.findings.decisions import REQUIRE_CAPABILITIES
+    from analysis_lib.findings.schemas import load_schema
+
+    schema = load_schema("depscan-decisions")
+    capability = schema["properties"]["require"]["items"]["properties"]["capability"]
+    assert tuple(capability["enum"]) == REQUIRE_CAPABILITIES
+    assert "supply-chain" in REQUIRE_CAPABILITIES and "binary" in REQUIRE_CAPABILITIES
+
+
+@pytest.mark.parametrize("capability", ["memory-safety", "mobile", "code", "crypto"])
+def test_a_requirement_no_stage_can_meet_is_refused(capability):
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(f'[[require]]\ncapability = "{capability}"\n')
+    message = str(excinfo.value)
+    assert f"line 2: require/0/capability: dep-scan does not assess {capability} yet" in message
+    assert message.count("require/0/capability") == 1
+
+
+def test_a_require_result_without_a_project_type_validates():
+    from analysis_lib.findings.schemas import validate
+
+    stages = [{"name": "database", "status": "completed", "capabilities": ["vulnerabilities"]}]
+    decisions = _decisions_with(require=[{"capability": "vulnerabilities"}])
+    evaluation = evaluate_gate([], stages, decisions)
+    assert evaluation.results[0].stages == [{"name": "database", "status": "completed"}]
+    validate(
+        "depscan-expectations",
+        evaluation.to_document(evaluated_utc="2026-11-27T12:00:00Z", source="scan"),
+    )
+
+
+def test_ids_are_unique_across_the_file():
+    text = (
+        '[[expect]]\nid = "same"\naction = "fail"\nseverity = "high"\n\n'
+        '[[expect]]\nid = "same"\naction = "warn"\nseverity = "low"\n\n'
+        '[[require]]\ncapability = "license"\n\n'
+        '[[require]]\ncapability = "license"\n'
+    )
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(text)
+    message = str(excinfo.value)
+    assert "line 7: expect/1/id: the id 'same' is already used by expect/0" in message
+    assert (
+        "line 14: require/1/id: the id 'require-license' is already used by require/0" in message
+    )
+    with pytest.raises(DecisionsError):
+        parse_decisions_document(
+            '[[expect]]\nid = "fail-on:1"\naction = "fail"\nseverity = "high"\n'
+        )
+
+
+# --- refusals -----------------------------------------------------------------------------
+
+
+def test_baseline_keys_report_their_own_line():
+    text = '# c\n[baseline]\nscan = "x"\ndigest = "nothex"\ndigst = "y"\n'
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(text)
+    message = str(excinfo.value)
+    assert "line 4: baseline/digest:" in message
+    assert "line 5: baseline: Additional properties are not allowed ('digst'" in message
+    assert "valid values: scan, digest" in message
+
+
+def test_headers_inside_multi_line_strings_and_spaced_headers_are_placed():
+    text = (
+        f'[[triage]]\nfinding = "{DSF_A}"\nstate = "in_triage"\nauthor = "a"\n'
+        'detail = """\nsee\n[[triage]]\n"""\n\n'
+        f'[[ triage ]]\nfinding = "{DSF_A}"\nauthor = "a"\nstate = 5\n'
+    )
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(text)
+    message = str(excinfo.value)
+    assert "line 13: triage/1/state: 5 is not of type 'string'; valid values: resolved" in message
+    # A type error on a key with an enum is reported once.
+    assert message.count("triage/1/state") == 1
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(
+            f'# top\ntriage = [{{finding = "{DSF_A}", state = 7, author = "a"}}]\n'
+        )
+    assert "line 2: triage/0/state" in str(excinfo.value)
+
+
+def test_composite_rules_name_what_is_missing():
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(
+            '[[triage]]\nadvisory = "CVE-1"\nstate = "in_triage"\nauthor = "a"\n'
+        )
+    assert "line 1: triage/0: an advisory selector needs purl" in str(excinfo.value)
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document('[[expect]]\nid = "x"\naction = "fail"\n')
+    assert "expect/0: needs at least one selector; valid values: category, severity" in str(
+        excinfo.value
+    )
+
+
+def test_problems_are_reported_in_line_order():
+    text = (
+        f'[[triage]]\nfinding = "{DSF_A}"\nstate = "bogus"\nauthor = "a"\n\n'
+        '[[expect]]\nid = "x"\naction = "maybe"\nseverity = "high"\n'
+    )
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(text)
+    lines = str(excinfo.value).splitlines()[1:]
+    assert [line.split(":")[0] for line in lines] == ["line 3", "line 8"]
+
+
+def test_a_file_that_is_not_utf8_is_refused_and_a_bom_is_accepted(tmp_path):
+    path = tmp_path / "decisions.toml"
+    path.write_bytes(b'[[require]]\ncapability = "\xff"\n')
+    with pytest.raises(DecisionsError) as excinfo:
+        load_decisions(str(path))
+    assert "is not UTF-8 text: the byte at offset 26" in str(excinfo.value)
+    raw = '\ufeff[[require]]\ncapability = "reachability"\n'.encode("utf-8")
+    path.write_bytes(raw)
+    decisions = load_decisions(str(path))
+    assert decisions.requires[0].capability == "reachability"
+    assert decisions.digest == hashlib.sha256(raw).hexdigest()
+
+
+def test_toml_date_times_are_read_and_local_dates_refused():
+    text = f'[[triage]]\nfinding = "{DSF_A}"\nstate = "in_triage"\nauthor = "a"\n'
+    document = parse_decisions_document(text + "expires = 2026-12-31T00:00:00Z\n")
+    entry = decisions_from_document(document).triage[0]
+    assert entry.expires == "2026-12-31T00:00:00Z"
+    with pytest.raises(DecisionsError) as excinfo:
+        parse_decisions_document(text + "expires = 2026-12-31\n")
+    message = str(excinfo.value)
+    assert "line 5: triage/0/expires: 2026-12-31 is a TOML date without an offset" in message
+    assert '"2026-12-31T00:00:00Z"' in message and message.count("triage/0/expires") == 1
+
+
+def test_a_windows_drive_baseline_is_absolute_everywhere(tmp_path):
+    with pytest.raises(BaselineError) as excinfo:
+        read_baseline(BaselineSpec(scan="C:/scans/main"), base_dir=str(tmp_path))
+    assert str(tmp_path) not in str(excinfo.value.__cause__)
+
+
+# --- the enums the code keeps -------------------------------------------------------------
+
+
+def test_the_floors_compare_most_severe_first():
+    from analysis_lib.findings.decisions import (
+        CONFIDENCE_ORDER,
+        GRADE_ORDER,
+        REACH_SELECTOR_VALUES,
+        SEVERITY_ORDER,
+    )
+    from analysis_lib.findings.fingerprint import CATEGORIES
+    from analysis_lib.findings.schemas import load_schema
+
+    assert SEVERITY_ORDER == ("critical", "high", "medium", "low", "info", "unknown")
+    assert GRADE_ORDER == ("critical", "high", "moderate", "low", "shielded", "unassessed")
+    assert CONFIDENCE_ORDER == ("high", "medium", "low")
+    expect = load_schema("depscan-decisions")["properties"]["expect"]["items"]["properties"]
+    assert tuple(expect["reach"]["enum"]) == tuple(REACH_SELECTOR_VALUES)
+    assert tuple(expect["category"]["enum"]) == CATEGORIES

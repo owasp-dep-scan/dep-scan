@@ -29,34 +29,30 @@ import os
 import re
 import tomllib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from analysis_lib.findings.fingerprint import normalise_purl, normalise_rule
-from analysis_lib.findings.schemas import validation_errors
+from analysis_lib.findings.schemas import load_schema, validation_errors
 from analysis_lib.findings.vdr_convert import comparable_purl
+from analysis_lib.helpers import vers_scheme_for_purl
 
 #: The published name of the decisions file schema.
 DECISIONS_SCHEMA = "depscan-decisions"
 
-#: The published name of the gate result schema.
-EXPECTATIONS_SCHEMA = "depscan-expectations"
-
 #: The findings document inside a scan directory.
 FINDINGS_FILE = "depscan.findings.json"
 
-#: The gate result file inside a scan directory.
-EXPECTATIONS_FILE = "depscan.expectations.json"
+# The enums come from the published schema, so the code and the contract
+# cannot drift apart. The schema lists the severities, grades and
+# confidences most severe (or most confident) first, the order the floors
+# compare in.
+_PROPERTIES = load_schema(DECISIONS_SCHEMA)["properties"]
+_TRIAGE_KEYS = _PROPERTIES["triage"]["items"]["properties"]
+_EXPECT_KEYS = _PROPERTIES["expect"]["items"]["properties"]
 
 #: The triage states of the CycloneDX 1.7 vocabulary.
-TRIAGE_STATES = (
-    "resolved",
-    "resolved_with_pedigree",
-    "exploitable",
-    "in_triage",
-    "false_positive",
-    "not_affected",
-)
+TRIAGE_STATES = tuple(_TRIAGE_KEYS["state"]["enum"])
 
 #: The states that suppress a finding from the gate. ``in_triage`` and
 #: ``exploitable`` never suppress; ``resolved_with_pedigree`` is kept out of
@@ -65,29 +61,23 @@ TRIAGE_STATES = (
 SUPPRESSING_STATES = ("not_affected", "false_positive", "resolved")
 
 #: The CycloneDX 1.7 impact analysis justifications.
-JUSTIFICATIONS = (
-    "code_not_present",
-    "code_not_reachable",
-    "requires_configuration",
-    "requires_dependency",
-    "requires_environment",
-    "protected_by_compiler",
-    "protected_at_runtime",
-    "protected_at_perimeter",
-    "protected_by_mitigating_control",
-)
+JUSTIFICATIONS = tuple(_TRIAGE_KEYS["justification"]["enum"])
 
 #: The CycloneDX 1.7 responses.
-RESPONSES = ("can_not_fix", "will_not_fix", "update", "rollback", "workaround_available")
+RESPONSES = tuple(_TRIAGE_KEYS["responses"]["items"]["enum"])
 
 #: CycloneDX severity names, most severe first, for the severity floor.
-SEVERITY_ORDER = ("critical", "high", "medium", "low", "info", "unknown")
+SEVERITY_ORDER = tuple(_EXPECT_KEYS["severity"]["enum"])
 
 #: The exploitability grades, most severe first, for the grade floor.
-GRADE_ORDER = ("critical", "high", "moderate", "low", "shielded", "unassessed")
+GRADE_ORDER = tuple(_EXPECT_KEYS["grade"]["enum"])
 
 #: The producer confidences, most confident first, for the confidence floor.
-CONFIDENCE_ORDER = ("high", "medium", "low")
+CONFIDENCE_ORDER = tuple(_EXPECT_KEYS["confidence"]["enum"])
+
+#: The capabilities a ``[[require]]`` entry can name: the ones a scan stage
+#: records in the manifest when it assessed them.
+REQUIRE_CAPABILITIES = tuple(_PROPERTIES["require"]["items"]["properties"]["capability"]["enum"])
 
 #: The reach axis values each reach selector matches. A reach assessed as
 #: ``unknown`` (analyzers ran, the package was not observed) matches none,
@@ -99,7 +89,8 @@ REACH_SELECTOR_VALUES = {
 }
 
 #: The selector keys of an expect entry and the --fail-on grammar, in the
-#: order the documentation lists them.
+#: order the documentation lists them. ``version_range`` narrows ``purl``
+#: and is not a selector on its own.
 SELECTOR_KEYS = (
     "category",
     "severity",
@@ -108,23 +99,18 @@ SELECTOR_KEYS = (
     "malware",
     "rule",
     "purl",
+    "version_range",
     "confidence",
     "new",
 )
 
-#: The finding categories, mirrored from the fingerprint module's table.
-CATEGORIES = (
-    "vulnerability",
-    "malware",
-    "memory-safety",
-    "supply-chain",
-    "binary-hardening",
-    "mobile",
-    "code",
-    "license",
-    "crypto",
-    "health",
-)
+#: The ``--checks`` names no stage assesses yet. A requirement on one of
+#: them could never pass, so the loader refuses it with that reason.
+UNASSESSED_CAPABILITIES = ("memory-safety", "mobile", "code", "crypto")
+
+#: The finding categories an advisory selects: a malware advisory is still
+#: an advisory id matched against a package.
+ADVISORY_CATEGORIES = ("vulnerability", "malware")
 
 
 class DecisionsError(ValueError):
@@ -232,8 +218,6 @@ class ExpectEntry:
     action: str
     selectors: Dict[str, Any] = field(default_factory=dict)
     description: Optional[str] = None
-    #: Whether the entry came from the decisions file or --fail-on.
-    from_command_line: bool = False
 
 
 @dataclass
@@ -248,10 +232,13 @@ class RequireEntry:
 
     def __post_init__(self):
         if not self.id:
-            derived = f"require-{self.capability}"
-            if self.project_type:
-                derived = f"{derived}-{self.project_type}"
-            self.id = derived
+            self.id = require_id(self.capability, self.project_type)
+
+
+def require_id(capability: str, project_type: Optional[str] = None) -> str:
+    """The id a require entry without one takes: ``require-<capability>``,
+    with ``-<project type>`` when it names one."""
+    return f"require-{capability}-{project_type}" if project_type else f"require-{capability}"
 
 
 @dataclass
@@ -320,162 +307,290 @@ def is_expired(expires: Optional[str], now: Optional[datetime] = None) -> bool:
 # --- loading ----------------------------------------------------------------------
 
 
-_HEADER = re.compile(r"^\s*\[\[?([A-Za-z0-9_.-]+)\]\]?")
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_PURL = re.compile(r"^pkg:", re.IGNORECASE)
-_DSF = re.compile(r"^dsf1:[0-9a-f]{64}$")
+_HEADER = re.compile(r"^\s*\[\[?\s*([A-Za-z0-9_-]+)\s*\]\]?")
+_MULTILINE_DELIMITERS = ('"""', "'''")
+_VERS_EXAMPLE = "for example vers:npm/>=4.17.0|<4.17.21"
+_DATE_HINT = (
+    'write it as a quoted RFC 3339 date-time with an offset, for example "2026-12-31T00:00:00Z"'
+)
+
+#: A problem found in the document: its path and the message without the
+#: line, which is added when the problems are reported.
+Problem = Tuple[Tuple[Any, ...], str]
 
 
-def _table_entry_spans(text: str) -> Dict[Tuple[str, int], int]:
-    """Map each top-level table occurrence to its 0-based line.
-
-    The key is the table name with its occurrence number among the tables of
-    that name, so ``("triage", 2)`` is the third ``[[triage]]`` header.
-    """
-    spans: Dict[Tuple[str, int], int] = {}
-    counts: Dict[str, int] = {}
-    for index, line in enumerate(text.splitlines()):
-        match = _HEADER.match(line)
-        if not match:
+def _code_lines(lines: Sequence[str]) -> List[bool]:
+    """For each line, whether it starts outside a multi-line string, so a
+    header or key written inside a string body is never read as one."""
+    flags = []
+    delimiter: Optional[str] = None
+    for line in lines:
+        flags.append(delimiter is None)
+        if delimiter is None and line.lstrip().startswith("#"):
             continue
-        name = match.group(1)
-        occurrence = counts.get(name, 0)
-        counts[name] = occurrence + 1
-        spans[(name, occurrence)] = index
-    return spans
+        position = 0
+        while True:
+            if delimiter is None:
+                found = [(line.find(d, position), d) for d in _MULTILINE_DELIMITERS]
+                found = [item for item in found if item[0] != -1]
+                if not found:
+                    break
+                index, delimiter = min(found)
+            else:
+                index = line.find(delimiter, position)
+                if index == -1:
+                    break
+                delimiter = None
+            position = index + 3
+    return flags
 
 
 def _line_for_path(text: str, path: Sequence[Any]) -> Optional[int]:
     """The 1-based line a document path is written on.
 
     ``("triage", 2, "state")`` is the ``state`` key of the third
-    ``[[triage]]`` entry; a key that appears on no line of the entry, a
-    missing required key among them, reports the entry's header line.
+    ``[[triage]]`` entry and ``("baseline", "digest")`` the ``digest`` key of
+    the ``[baseline]`` table. A key that appears on no line of its table, a
+    missing required key among them, reports the table's header line. An
+    array written inline (``triage = [{...}]``) reports the line of its key.
     """
-    lines = text.splitlines()
     if not path:
         return 1
+    lines = text.splitlines()
+    code = _code_lines(lines)
     name = str(path[0])
-    spans = _table_entry_spans(text)
-    occurrences = sorted(index for (table, index) in spans if table == name)
-    if not occurrences:
-        return None
-    occurrence = path[1] if len(path) > 1 and isinstance(path[1], int) else 0
-    if occurrence >= len(occurrences):
-        return None
-    start = spans[(name, occurrence)]
-    ends = [line for line in spans.values() if line > start]
-    end = min(ends) if ends else len(lines)
-    if len(path) > 2 and isinstance(path[2], str):
-        key_line = re.compile(rf"^\s*{re.escape(path[2])}\s*=")
+    headers: List[int] = []
+    tables: List[int] = []
+    for index, line in enumerate(lines):
+        match = _HEADER.match(line) if code[index] else None
+        if match:
+            tables.append(index)
+            if match.group(1) == name:
+                headers.append(index)
+    rest = list(path[1:])
+    if headers:
+        occurrence = rest.pop(0) if rest and isinstance(rest[0], int) else 0
+        if occurrence >= len(headers):
+            return None
+        start = headers[occurrence]
+        end = min((line for line in tables if line > start), default=len(lines))
+    else:
+        start, end, rest = 0, min(tables, default=len(lines)), [name]
+    if rest and isinstance(rest[0], str):
+        key_line = re.compile(rf"^\s*{re.escape(rest[0])}\s*=")
         for index in range(start, end):
-            if key_line.match(lines[index]):
+            if code[index] and key_line.match(lines[index]):
                 return index + 1
+        if not headers:
+            return None
     return start + 1
 
 
-def _valid_values_at(schema: Dict[str, Any], path: Sequence[Any]) -> List[str]:
-    """The enum values of the subschema a document path points at, so an
-    invalid value can be refused with the values it could have been."""
-    node: Any = schema
-    for part in path:
-        if isinstance(part, int):
-            items = node.get("items") if isinstance(node, dict) else None
-            if isinstance(items, dict):
-                node = items
-                continue
-            return []
-        properties = node.get("properties") if isinstance(node, dict) else None
-        if not isinstance(properties, dict) or part not in properties:
-            return []
-        node = properties[part]
-    values = node.get("enum") if isinstance(node, dict) else None
-    return [str(value) for value in values] if values else []
+def _selector_problem(entry: Any) -> str:
+    """Why a triage entry's selector is refused: it needs ``finding``, or
+    ``advisory`` with ``purl``, and never both."""
+    keys = set(entry) if isinstance(entry, dict) else set()
+    if "finding" in keys and keys & {"advisory", "purl"}:
+        return "takes finding, or advisory with purl, not both"
+    if "advisory" in keys:
+        return "an advisory selector needs purl"
+    if "purl" in keys:
+        return "a purl selector needs advisory"
+    return "needs a selector: finding, or advisory with purl"
 
 
-def _schema_error_messages(text: str, schema: Dict[str, Any], errors: Sequence[Any]) -> List[str]:
-    """Every schema violation as a one-line message with its key, line and
-    valid values."""
-    messages = []
+def _schema_problems(document: Dict[str, Any]) -> List[Tuple[Tuple[Any, ...], str, List[Any]]]:
+    """Every schema violation as its path, its message with the valid values,
+    and the path whose line reports it."""
+    errors = validation_errors(DECISIONS_SCHEMA, document)
+    typed = {tuple(error.path) for error in errors if error.validator == "type"}
+    problems = []
     for error in errors:
-        path = list(error.path)
-        message = error.message
-        line = _line_for_path(text, path)
-        # An additional-properties violation names the unexpected key in its
-        # message instead of its path; the key's own line is the report.
-        if line is not None and "Additional properties are not allowed" in message:
-            for name in re.findall(r"'([^']+)'", message):
-                keyed = _line_for_path(text, [*path, name])
-                if keyed != line:
-                    line = keyed
-                    break
-        where = "/".join(str(part) for part in path) or "<file>"
-        prefix = f"line {line}: " if line else ""
-        valid = _valid_values_at(schema, path)
+        path = tuple(error.path)
+        line_path = list(path)
+        valid = [str(value) for value in (error.schema.get("enum") or [])]
+        if error.validator == "enum":
+            if path in typed:
+                continue
+            message = f"{error.instance!r} is not a valid value"
+        elif error.validator == "oneOf" and path[:1] == ("triage",):
+            message = _selector_problem(error.instance)
+        elif error.validator == "anyOf" and path[:1] == ("expect",):
+            message = "needs at least one selector"
+            valid = [key for key in SELECTOR_KEYS if key != "version_range"]
+        elif error.validator == "dependentRequired":
+            message = "version_range narrows purl and needs purl"
+        elif error.validator == "required" and "then" in error.schema_path:
+            message = (
+                "needs author: an entry without proposed_by is a person's decision and "
+                "names who made it"
+            )
+        else:
+            message = error.message
+            # An additional-properties violation names the unexpected key in
+            # its message instead of its path; the key's own line reports it.
+            if error.validator == "additionalProperties":
+                line_path.extend(re.findall(r"'([^']+)'", message)[:1])
+                valid = list(error.schema.get("properties") or [])
         if valid:
             message = f"{message}; valid values: {', '.join(valid)}"
-        messages.append(f"{prefix}{where}: {message}")
-    return messages
+        problems.append((path, message, line_path))
+    return problems
 
 
-def _decode_error_message(exc: tomllib.TOMLDecodeError) -> str:
-    """A TOML syntax error, passed through with its own line information."""
-    return f"the decisions file is not valid TOML: {exc}"
+def _strings_for_dates(value: Any, path: Tuple[Any, ...], problems: List[Problem]) -> Any:
+    """The document with every TOML offset date-time written as its RFC 3339
+    string, the form the schema validates. A TOML local date, local time or
+    local date-time has no offset and cannot be compared with the clock, so
+    it is refused with the quoted form to write instead."""
+    if isinstance(value, dict):
+        return {
+            key: _strings_for_dates(item, (*path, key), problems) for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [
+            _strings_for_dates(item, (*path, index), problems) for index, item in enumerate(value)
+        ]
+    if isinstance(value, datetime) and value.tzinfo is not None:
+        return value.isoformat().replace("+00:00", "Z")
+    if isinstance(value, (date, time)):
+        problems.append(
+            (path, f"{value.isoformat()} is a TOML date without an offset; {_DATE_HINT}")
+        )
+    return value
 
 
-def _check_semantics(document: Dict[str, Any], text: str) -> List[str]:
+def version_range_problem(version_range: str, purl: Optional[str] = None) -> Optional[str]:
+    """Why a vers range cannot be used, or None when it can.
+
+    The range must parse as a vers range with its scheme, every constraint
+    must name a version (one with a digit, or ``*``), and with a purl the
+    scheme must be the one that compares that package type's versions, so a
+    pypi range never compares npm versions.
+    """
+    from vdb.lib.vers import VersError, VersionRange
+
+    try:
+        parsed = VersionRange.from_string(version_range.strip())
+    except VersError:
+        return f"{version_range!r} is not a vers range, {_VERS_EXAMPLE}"
+    for constraint in parsed.constraints:
+        text = str(constraint.version)
+        if constraint.comparator != "*" and not any(char.isdigit() for char in text):
+            return f"{version_range!r} names {text!r}, which is not a version; {_VERS_EXAMPLE}"
+    if purl:
+        expected = vers_scheme_for_purl(purl)
+        purl_type = purl.split(":", 1)[-1].split("/", 1)[0].lower()
+        if parsed.scheme not in (expected, purl_type):
+            return (
+                f"{version_range!r} uses the {parsed.scheme} scheme, and {purl} is a "
+                f"{purl_type} package; write the range as vers:{expected}/..."
+            )
+    return None
+
+
+def vers_range_is_valid(version_range: str) -> bool:
+    """Whether a vers range can be used on its own; see
+    :func:`version_range_problem`."""
+    return version_range_problem(version_range) is None
+
+
+def _list_of_tables(document: Dict[str, Any], name: str) -> List[Tuple[int, Dict[str, Any]]]:
+    """The entries of an array of tables that are tables, with their index."""
+    entries = document.get(name)
+    if not isinstance(entries, list):
+        return []
+    return [(index, entry) for index, entry in enumerate(entries) if isinstance(entry, dict)]
+
+
+def _semantic_problems(document: Dict[str, Any]) -> List[Problem]:
     """The checks the schema cannot express: the CycloneDX rule that a
     not_affected state carries a justification, that the date-times the
-    runtime parses later are parseable, and that every version range is a
-    range the vers grammar reads."""
-    problems = []
-    for index, entry in enumerate(document.get("triage") or []):
-        if entry.get("state") == "not_affected" and not entry.get("justification"):
-            line = _line_for_path(text, ("triage", index, "state"))
-            problems.append(
-                f"line {line}: triage/{index}/justification: a not_affected state needs a "
-                f"justification; valid values: {', '.join(JUSTIFICATIONS)}"
-            )
-        for key in ("created", "expires"):
-            value = entry.get(key)
-            if isinstance(value, str) and _parse_rfc3339(value) is None:
-                line = _line_for_path(text, ("triage", index, key))
-                problems.append(
-                    f"line {line}: triage/{index}/{key}: {value!r} is not an RFC 3339 date-time"
+    runtime parses later are parseable, that every version range reads and
+    suits its purl, that a requirement names a capability a stage assesses,
+    and that expect and require ids are unique."""
+    problems: List[Problem] = []
+    seen: Dict[str, str] = {}
+    for kind in ("triage", "expect", "require"):
+        for index, entry in _list_of_tables(document, kind):
+            purl = entry.get("purl") if isinstance(entry.get("purl"), str) else None
+            if isinstance(entry.get("version_range"), str):
+                if problem := version_range_problem(entry["version_range"], purl):
+                    problems.append(((kind, index, "version_range"), problem))
+            if kind == "triage":
+                if entry.get("state") == "not_affected" and not entry.get("justification"):
+                    message = "a not_affected state needs a justification; valid values: "
+                    problems.append(
+                        (("triage", index, "justification"), message + ", ".join(JUSTIFICATIONS))
+                    )
+                for key in ("created", "expires"):
+                    if isinstance(entry.get(key), str) and _parse_rfc3339(entry[key]) is None:
+                        message = f"{entry[key]!r} is not an RFC 3339 date-time; {_DATE_HINT}"
+                        problems.append((("triage", index, key), message))
+                continue
+            if entry.get("capability") in UNASSESSED_CAPABILITIES:
+                message = (
+                    f"dep-scan does not assess {entry['capability']} yet, so no scan can meet "
+                    f"this requirement; valid values: {', '.join(REQUIRE_CAPABILITIES)}"
                 )
-        version_range = entry.get("version_range")
-        if isinstance(version_range, str) and not vers_range_is_valid(version_range):
-            line = _line_for_path(text, ("triage", index, "version_range"))
-            problems.append(
-                f"line {line}: triage/{index}/version_range: {version_range!r} is not a "
-                "vers range, for example vers:npm/>=4.17.0|<4.17.21"
+                problems.append(((kind, index, "capability"), message))
+            identifier = entry.get("id") or (
+                require_id(str(entry.get("capability")), entry.get("project_type"))
+                if kind == "require"
+                else None
             )
-    for index, entry in enumerate(document.get("expect") or []):
-        version_range = entry.get("version_range")
-        if isinstance(version_range, str) and not vers_range_is_valid(version_range):
-            line = _line_for_path(text, ("expect", index, "version_range"))
-            problems.append(
-                f"line {line}: expect/{index}/version_range: {version_range!r} is not a "
-                "vers range, for example vers:npm/>=4.17.0|<4.17.21"
-            )
+            if isinstance(identifier, str) and identifier in seen:
+                message = f"the id {identifier!r} is already used by {seen[identifier]}"
+                problems.append(((kind, index, "id"), message + "; every entry needs its own id"))
+            elif isinstance(identifier, str):
+                seen[identifier] = f"{kind}/{index}"
     return problems
+
+
+def _document_problems(document: Dict[str, Any]) -> List[Tuple[Tuple[Any, ...], str, List[Any]]]:
+    """Every problem of a parsed document: the checks of
+    :func:`_semantic_problems`, then the schema violations at paths those
+    checks did not already report, each as its path, its message and the
+    path whose line reports it."""
+    problems = [(path, message, list(path)) for path, message in _semantic_problems(document)]
+    covered = {path for path, _, _ in problems}
+    return problems + [
+        problem for problem in _schema_problems(document) if problem[0] not in covered
+    ]
 
 
 def parse_decisions_document(text: str) -> Dict[str, Any]:
     """Parse the TOML text and validate it against the published schema.
 
-    Raises :class:`DecisionsError` naming every problem, each with its key,
-    line and valid values, when the file is not usable.
+    A leading byte order mark is ignored. TOML offset date-times become
+    their RFC 3339 strings, the form the schema and the findings carry.
+
+    Raises :class:`DecisionsError` naming every problem, in line order, each
+    with its key, line and valid values, when the file is not usable.
     """
+    text = text.removeprefix("\ufeff")
     try:
-        document = tomllib.loads(text)
+        parsed = tomllib.loads(text)
     except tomllib.TOMLDecodeError as exc:
-        raise DecisionsError(_decode_error_message(exc)) from exc
-    schema = _load_schema_document(DECISIONS_SCHEMA)
-    problems = _schema_error_messages(text, schema, validation_errors(DECISIONS_SCHEMA, document))
-    problems.extend(_check_semantics(document, text))
+        raise DecisionsError(f"the decisions file is not valid TOML: {exc}") from exc
+    dates: List[Problem] = []
+    document = _strings_for_dates(parsed, (), dates)
+    covered = {path for path, _ in dates}
+    problems = [(path, message, list(path)) for path, message in dates] + [
+        problem for problem in _document_problems(document) if problem[0] not in covered
+    ]
     if problems:
-        raise DecisionsError("the decisions file was refused:\n" + "\n".join(problems))
+        lines = sorted(
+            ((_line_for_path(text, line_path) or 0), "/".join(map(str, path)) or "<file>", message)
+            for path, message, line_path in problems
+        )
+        raise DecisionsError(
+            "the decisions file was refused:\n"
+            + "\n".join(
+                f"line {line}: {where}: {message}" if line else f"{where}: {message}"
+                for line, where, message in lines
+            )
+        )
     return document
 
 
@@ -541,12 +656,14 @@ def decisions_from_document(document: Dict[str, Any], *, path: Optional[str] = N
 def load_decisions(path: str, *, selected_by: str = "default") -> Decisions:
     """Load and validate the decisions file at ``path``.
 
-    :param path: The file to read.
+    :param path: The file to read, UTF-8 with or without a byte order mark.
     :param selected_by: Recorded on the decisions, saying what picked the
         file: default, option, environment, project-config or user-config.
-    :returns: The loaded decisions, carrying the file's SHA-256 digest.
-    :raises DecisionsError: When the file cannot be read or breaks its
-        schema; the message names every problem with its key and line.
+    :returns: The loaded decisions, carrying the SHA-256 digest of the
+        file's bytes.
+    :raises DecisionsError: When the file cannot be read, is not UTF-8 text
+        or breaks its schema; the message names every problem with its key
+        and line.
     """
     try:
         with open(path, "rb") as handle:
@@ -555,51 +672,40 @@ def load_decisions(path: str, *, selected_by: str = "default") -> Decisions:
         raise DecisionsError(
             f"the decisions file '{path}' cannot be read: {exc.strerror or exc}"
         ) from exc
-    text = raw.decode("utf-8")
-    document = parse_decisions_document(text)
-    decisions = decisions_from_document(document, path=path)
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise DecisionsError(
+            f"the decisions file '{path}' is not UTF-8 text: the byte at offset {exc.start} "
+            "cannot be decoded; save the file as UTF-8"
+        ) from exc
+    decisions = decisions_from_document(parse_decisions_document(text), path=path)
     decisions.digest = hashlib.sha256(raw).hexdigest()
     decisions.selected_by = selected_by
     return decisions
 
 
-def _load_schema_document(name: str) -> Dict[str, Any]:
-    from analysis_lib.findings.schemas import load_schema
-
-    return load_schema(name)
-
-
 # --- selectors --------------------------------------------------------------------
 
 
-def purl_identity(purl: str) -> str:
-    """The type, namespace and name of a purl, folded the way finding
-    fingerprints fold them: percent-encoding, qualifiers, subpath and version
-    out, packageurl's per-type normalisation in."""
-    return normalise_purl(purl)
-
-
-def _purl_head(purl: str) -> str:
-    """A comparable purl without its version segment.
+def _split_purl(purl: str) -> Tuple[str, Optional[str]]:
+    """A comparable purl split into its head and its decoded version, None
+    when it names none.
 
     The version starts after the slash that ends the namespace and name, so
     an ``@`` inside a namespace (an npm scoped package) never reads as a
     version marker.
     """
     comparable = comparable_purl(purl)
-    slash = comparable.rfind("/")
-    at = comparable.find("@", slash + 1)
-    return comparable[:at] if at != -1 else comparable
+    at = comparable.find("@", comparable.rfind("/") + 1)
+    if at == -1:
+        return comparable, None
+    return comparable[:at], comparable[at + 1 :] or None
 
 
 def purl_version(purl: str) -> Optional[str]:
     """The decoded version of a purl, None when it names none."""
-    comparable = comparable_purl(purl)
-    slash = comparable.rfind("/")
-    at = comparable.find("@", slash + 1)
-    if at == -1:
-        return None
-    return comparable[at + 1 :] or None
+    return _split_purl(purl)[1]
 
 
 def vers_range_matches(version: Optional[str], version_range: str) -> bool:
@@ -615,22 +721,6 @@ def vers_range_matches(version: Optional[str], version_range: str) -> bool:
     return bool(vers_compare(version, version_range))
 
 
-def vers_range_is_valid(version_range: str) -> bool:
-    """Whether a vers range parses. Used to refuse a range at load time.
-
-    The file grammar requires the full vers form with its scheme, so a
-    range is unambiguous about which ecosystem's version rules compare it;
-    a bare constraint list is refused with the vers example in the message.
-    """
-    from vdb.lib.vers import VersionRange, VersError
-
-    try:
-        VersionRange.from_string(version_range.strip())
-    except VersError:
-        return False
-    return True
-
-
 def _identity_equal(component: str, selector_purl: str) -> bool:
     """Whether two purls name the same package.
 
@@ -640,12 +730,12 @@ def _identity_equal(component: str, selector_purl: str) -> bool:
     nuget pair compares in its comparable form.
     """
     try:
-        if purl_identity(component) == purl_identity(selector_purl):
+        if normalise_purl(component) == normalise_purl(selector_purl):
             return True
     except ValueError:
         pass
     if comparable_purl(component).lower().startswith("pkg:nuget/"):
-        return _purl_head(component) == _purl_head(selector_purl)
+        return _split_purl(component)[0] == _split_purl(selector_purl)[0]
     return False
 
 
@@ -692,14 +782,14 @@ def finding_matches_selectors(
     finding: Dict[str, Any],
     selectors: Dict[str, Any],
     *,
-    alias_ids: Optional[Set[str]] = None,
+    alias_map: Optional[Dict[str, Set[str]]] = None,
     has_baseline: bool = False,
 ) -> bool:
     """Whether one finding document matches every selector.
 
-    ``alias_ids`` are the advisory ids the finding answers to, its own rule
-    id included, lower-cased; without them only the rule id itself is
-    compared. ``has_baseline`` says the run compared with a baseline, which
+    ``alias_map`` (see :func:`alias_map_from_vulns`) lets the ``rule``
+    selector match an alias of the finding's advisory; without it only the
+    rule id itself is compared. ``has_baseline`` says the run compared with a baseline, which
     the ``new`` selector needs; without one the selector matches nothing and
     the gate reports the entry as not evaluated, so a selector the caller
     cannot satisfy never passes silently.
@@ -727,9 +817,7 @@ def finding_matches_selectors(
             if (finding.get("category") == "malware") is not bool(value):
                 return False
         elif key == "rule":
-            wanted = {normalise_rule(str(rule)).lower() for rule in value}
-            rule = normalise_rule(str(finding.get("rule") or "")).lower()
-            if rule not in wanted and not (alias_ids and (wanted & alias_ids)):
+            if not {alias_map_key(str(rule)) for rule in value} & _aliases_of(finding, alias_map):
                 return False
         elif key == "purl":
             components = finding.get("components") or []
@@ -783,6 +871,13 @@ def alias_map_from_vulns(vulns: Iterable[Dict[str, Any]]) -> Dict[str, Set[str]]
     return {alias_map_key(str(vuln.get("id") or "")): alias_ids_for_vuln(vuln) for vuln in vulns}
 
 
+def _aliases_of(finding: Dict[str, Any], alias_map: Optional[Dict[str, Set[str]]]) -> Set[str]:
+    """The advisory ids a finding answers to, lower-cased: its rule id and
+    the aliases the map holds for it."""
+    rule_key = alias_map_key(str(finding.get("rule") or ""))
+    return {rule_key} | (alias_map or {}).get(rule_key, set())
+
+
 def entry_matches_finding(
     entry: TriageEntry, finding: Dict[str, Any], *, alias_map: Optional[Dict[str, Set[str]]] = None
 ) -> bool:
@@ -790,16 +885,15 @@ def entry_matches_finding(
 
     A ``finding`` selector compares the dsf1 id exactly. An ``advisory``
     selector names the advisory id or an alias and needs ``purl``; it
-    matches vulnerability findings whose rule or an alias is the advisory
-    and whose components satisfy the purl and its optional version range.
+    matches vulnerability and malware findings whose rule or an alias is
+    the advisory and whose components satisfy the purl and its optional
+    version range.
     """
     if entry.finding:
         return finding.get("id") == entry.finding
-    if finding.get("category") != "vulnerability":
+    if finding.get("category") not in ADVISORY_CATEGORIES:
         return False
-    rule_key = alias_map_key(str(finding.get("rule") or ""))
-    aliases = (alias_map or {}).get(rule_key) or {rule_key}
-    if alias_map_key(entry.advisory or "") not in aliases:
+    if alias_map_key(entry.advisory or "") not in _aliases_of(finding, alias_map):
         return False
     components = finding.get("components") or []
     return any(
@@ -923,8 +1017,10 @@ def read_baseline(spec: BaselineSpec, *, base_dir: Optional[str] = None) -> Set[
 
     ``spec.scan`` is a scan directory, whose ``depscan.findings.json`` is
     read, or the findings file itself. A relative path resolves against
-    ``base_dir``, the decisions file's directory; an absolute path, a
-    Windows drive included, is used as given. The optional digest is checked
+    ``base_dir``, the decisions file's directory for a ``[baseline]`` table,
+    and against the working directory when ``base_dir`` is None, the case of
+    a ``--baseline`` value. An absolute path, a Windows drive path included
+    on every platform, is used as given. The optional digest is checked
     before the file is parsed, so a mismatch is refused as a digest problem
     and not as a parse failure.
 
@@ -933,7 +1029,7 @@ def read_baseline(spec: BaselineSpec, *, base_dir: Optional[str] = None) -> Set[
         this instead of marking every finding new.
     """
     scan = str(spec.scan).replace("\\", "/")
-    if os.path.isabs(scan):
+    if os.path.isabs(scan) or re.match(r"^[A-Za-z]:/", scan):
         path = scan
     elif base_dir:
         path = os.path.join(base_dir, *scan.split("/"))
@@ -1017,18 +1113,16 @@ class ExpectationResult:
             "findings": list(self.findings),
             "evidence": list(self.evidence),
         }
-        if self.action:
-            document["action"] = self.action
-        if self.description:
-            document["description"] = self.description
-        if self.reason:
-            document["reason"] = self.reason
-        if self.capability:
-            document["capability"] = self.capability
-        if self.project_type:
-            document["projectType"] = self.project_type
-        if self.stages:
-            document["stages"] = list(self.stages)
+        for key, value in (
+            ("action", self.action),
+            ("description", self.description),
+            ("reason", self.reason),
+            ("capability", self.capability),
+            ("projectType", self.project_type),
+            ("stages", self.stages),
+        ):
+            if value:
+                document[key] = value
         return document
 
 
@@ -1045,37 +1139,10 @@ class GateEvaluation:
     existing: int = 0
 
     @property
-    def failed(self) -> List[ExpectationResult]:
-        return [result for result in self.results if result.status == "fail"]
-
-    @property
-    def warned(self) -> List[ExpectationResult]:
-        return [result for result in self.results if result.status == "warn"]
-
-    @property
-    def require_not_assessed(self) -> int:
-        return sum(
-            1 for result in self.results if result.kind == "require" and result.status == "fail"
-        )
-
-    @property
-    def not_evaluated(self) -> int:
-        return sum(1 for result in self.results if result.status == "not_evaluated")
-
-    @property
     def exit_code(self) -> int:
-        """The gate's exit code: 4 when a required capability was not
-        assessed, because a gate over missing coverage cannot be trusted;
-        else 3 when a fail-action expectation matched; else 0. Warnings and
-        not-evaluated entries never change the code."""
-        if any(result.kind == "require" and result.status == "fail" for result in self.results):
-            return 4
-        if any(
-            result.kind == "expect" and result.action == "fail" and result.status == "fail"
-            for result in self.results
-        ):
-            return 3
-        return 0
+        """The gate's exit code, :func:`gate_exit_from_document` of the
+        summary. Warnings and not-evaluated entries never change it."""
+        return gate_exit_from_document({"summary": self.summary_document()})
 
     def summary_document(self) -> Dict[str, Any]:
         """The ``summary`` object the expectations document carries.
@@ -1084,17 +1151,19 @@ class GateEvaluation:
         requirements; a requirement that was not assessed is
         ``requireNotAssessed``, and the two never merge.
         """
+
+        def count(kind: Optional[str], status: str) -> int:
+            return sum(
+                1 for r in self.results if r.kind == (kind or r.kind) and r.status == status
+            )
+
         return {
             "expect": sum(1 for result in self.results if result.kind == "expect"),
             "require": sum(1 for result in self.results if result.kind == "require"),
-            "fail": sum(
-                1 for result in self.results if result.kind == "expect" and result.status == "fail"
-            ),
-            "warn": sum(
-                1 for result in self.results if result.kind == "expect" and result.status == "warn"
-            ),
-            "notEvaluated": self.not_evaluated,
-            "requireNotAssessed": self.require_not_assessed,
+            "fail": count("expect", "fail"),
+            "warn": count("expect", "warn"),
+            "notEvaluated": count(None, "not_evaluated"),
+            "requireNotAssessed": count("require", "fail"),
             "suppressed": self.suppressed,
             "new": self.new,
             "existing": self.existing,
@@ -1155,9 +1224,13 @@ def _require_result(entry: RequireEntry, stages: Sequence[Dict[str, Any]]) -> Ex
         return result
     result.stages = [
         {
-            "name": str(stage.get("name")),
-            "status": str(stage.get("status")),
-            "projectType": stage.get("projectType"),
+            key: str(stage[name])
+            for key, name in (
+                ("name", "name"),
+                ("status", "status"),
+                ("projectType", "projectType"),
+            )
+            if stage.get(name)
         }
         for stage in relevant
     ]
@@ -1187,21 +1260,6 @@ def _require_result(entry: RequireEntry, stages: Sequence[Dict[str, Any]]) -> Ex
     return result
 
 
-def _matches_with_aliases(
-    finding: Dict[str, Any],
-    selectors: Dict[str, Any],
-    alias_map: Optional[Dict[str, Set[str]]],
-    has_baseline: bool,
-) -> bool:
-    """Selector matching for a finding, using the alias map when it names
-    the finding's rule."""
-    ids = None
-    rule_key = alias_map_key(str(finding.get("rule") or ""))
-    if alias_map and rule_key in alias_map:
-        ids = alias_map[rule_key]
-    return finding_matches_selectors(finding, selectors, alias_ids=ids, has_baseline=has_baseline)
-
-
 def evaluate_gate(
     findings: List[Dict[str, Any]],
     stages: Sequence[Dict[str, Any]],
@@ -1212,7 +1270,7 @@ def evaluate_gate(
     baseline_document: Optional[Dict[str, Any]] = None,
     decisions_document: Optional[Dict[str, Any]] = None,
     application: Optional[TriageApplication] = None,
-    suppressed: int = 0,
+    suppressed: Optional[int] = None,
     new: int = 0,
     existing: int = 0,
     alias_map: Optional[Dict[str, Set[str]]] = None,
@@ -1237,7 +1295,7 @@ def evaluate_gate(
         triage=application,
         baseline_document=baseline_document,
         decisions_document=decisions_document,
-        suppressed=suppressed,
+        suppressed=application.suppressed if suppressed is None else suppressed,
         new=new,
         existing=existing,
     )
@@ -1262,7 +1320,9 @@ def evaluate_gate(
             str(finding.get("id"))
             for finding in findings
             if not _finding_is_suppressed(finding)
-            and _matches_with_aliases(finding, entry.selectors, alias_map, has_baseline)
+            and finding_matches_selectors(
+                finding, entry.selectors, alias_map=alias_map, has_baseline=has_baseline
+            )
         ]
         if not result.findings:
             result.status = "pass"
@@ -1278,9 +1338,9 @@ def evaluate_gate(
 
 def _finding_is_suppressed(finding: Dict[str, Any]) -> bool:
     """Whether a live decision suppresses the finding from the gate: its
-    triage state is one of the suppressing states. The triage object lands
-    on a finding only through a live decision, so its state alone is the
-    verdict."""
+    triage state is one of the suppressing states. :func:`apply_triage`
+    removes every triage object before it writes the winners, so on applied
+    findings the object is always the current file's decision."""
     triage = finding.get("triage")
     return isinstance(triage, dict) and triage.get("state") in SUPPRESSING_STATES
 
@@ -1366,10 +1426,9 @@ def annotate_vdr_analysis(
 
 
 def gate_exit_from_document(document: Dict[str, Any]) -> int:
-    """The exit code a written expectations document stands for: 4 when a
-    required capability was not assessed, 3 when a fail-action expectation
-    matched, else 0. The same rule :attr:`GateEvaluation.exit_code` applies,
-    read back from the file."""
+    """The exit code an expectations document stands for: 4 when a required
+    capability was not assessed, because a gate over missing coverage cannot
+    be trusted; else 3 when a fail-action expectation matched; else 0."""
     summary = document.get("summary") or {}
     if summary.get("requireNotAssessed"):
         return 4
@@ -1386,65 +1445,43 @@ def parse_fail_on(expression: str, *, index: int = 0) -> ExpectEntry:
 
     The expression is the file's selector grammar as ``key=value`` pairs
     joined by commas, for example ``category=vulnerability,grade=high``. The
-    list-valued ``rule`` selector takes ids joined by ``|``. The action is
-    always ``fail``: ``--fail-on`` exists to stop a build.
+    list-valued ``rule`` selector takes ids joined by ``|``, and ``malware``
+    and ``new`` take true or false. The entry is checked by the same schema
+    and checks as an ``[[expect]]`` entry of the file. The action is always
+    ``fail``: ``--fail-on`` exists to stop a build. The entry's id is
+    ``fail-on:<n>``, a form the file's id pattern cannot produce, so it never
+    collides with an id in the file.
 
     :raises DecisionsError: With the key and the valid values when a pair is
         not a selector, or a value is not one the selector takes.
     """
-    pairs = [pair for pair in expression.split(",") if pair.strip()]
-    if not pairs:
-        raise DecisionsError(
-            "--fail-on is empty; the grammar is key=value pairs joined by commas, "
-            "for example grade=high,reach=reached"
-        )
-    expect_schema = _load_schema_document(DECISIONS_SCHEMA)["properties"]["expect"]["items"][
-        "properties"
-    ]
-    selectors: Dict[str, Any] = {}
-    for pair in pairs:
-        key, sep, value = pair.partition("=")
-        key = key.strip()
-        value = value.strip()
+    grammar = (
+        "the grammar is key=value pairs joined by commas, for example grade=high,reach=reached"
+    )
+    entry: Dict[str, Any] = {"id": "fail-on", "action": "fail"}
+    for pair in [pair for pair in expression.split(",") if pair.strip()] or [""]:
+        key, sep, value = (part.strip() for part in pair.partition("="))
         if not sep or not key or not value:
-            raise DecisionsError(
-                f"--fail-on: {pair!r} is not a key=value pair; the grammar is key=value "
-                "pairs joined by commas, for example grade=high,reach=reached"
-            )
-        if key == "version_range":
-            if not vers_range_is_valid(value):
-                raise DecisionsError(
-                    f"--fail-on: version_range {value!r} is not a vers range, for example "
-                    "vers:npm/>=4.17.0|<4.17.21"
-                )
-            selectors[key] = value
-            continue
+            raise DecisionsError(f"--fail-on: {pair!r} is not a key=value pair; {grammar}")
         if key not in SELECTOR_KEYS:
             raise DecisionsError(
                 f"--fail-on: {key!r} is not a selector; valid values: {', '.join(SELECTOR_KEYS)}"
             )
         if key == "rule":
-            selectors[key] = [item.strip() for item in value.split("|") if item.strip()]
-            if not selectors[key]:
-                raise DecisionsError("--fail-on: rule needs at least one id")
-            continue
-        if key in ("malware", "new"):
-            lowered = value.lower()
-            if lowered not in ("true", "false"):
-                raise DecisionsError(f"--fail-on: {key} takes true or false, got {value!r}")
-            selectors[key] = lowered == "true"
-            continue
-        valid = expect_schema.get(key, {}).get("enum")
-        if valid and value not in valid:
-            raise DecisionsError(
-                f"--fail-on: {key} takes one of {', '.join(str(item) for item in valid)}, "
-                f"got {value!r}"
+            entry[key] = [item.strip() for item in value.split("|") if item.strip()]
+        elif key in ("malware", "new") and value.lower() in ("true", "false"):
+            entry[key] = value.lower() == "true"
+        else:
+            entry[key] = value
+    problems = _document_problems({"expect": [entry]})
+    if problems:
+        raise DecisionsError(
+            "--fail-on: "
+            + "; ".join(
+                f"{path[2]} {message}" if len(path) > 2 else message
+                for path, message, _ in problems
             )
-        selectors[key] = value
-    return ExpectEntry(
-        id=f"cli-{index + 1}",
-        action="fail",
-        selectors=selectors,
-        description=f"the --fail-on expression: {expression}",
-        from_command_line=True,
-    )
+        )
+    entry["id"] = f"fail-on:{index + 1}"
+    entry["description"] = f"the --fail-on expression: {expression}"
+    return decisions_from_document({"expect": [entry]}).expects[0]
