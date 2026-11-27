@@ -1,0 +1,26 @@
+test/test_corpus_reachability_eval.py
+  s_7318da1b9edd46::t_2653cec581fec0 20-43
+contrib/README.md
+  s_7318da1b9edd46::t_84cdf00792594b 12
+contrib/reachability_eval.py
+  s_7318da1b9edd46::t_913b374f4b18ee 12-17,26-27,29-31,343-344
+  s_7318da1b9edd46::t_1eca059e801b5b 209-211,216-218,363-391,425-427,437-438,446-450
+documentation/docs/Develop/measuring.mdx
+  s_7318da1b9edd46::t_84cdf00792594b 113-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3992cd5d77e29ed0c6772527c53e2e77813990a0",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
