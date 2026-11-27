@@ -1,0 +1,21 @@
+contrib/corpus/derive_labels.py
+  s_7318da1b9edd46::t_3fdaa28e72a8f1 78,109,112-113
+test/test_corpus_labels.py
+  s_7318da1b9edd46::t_228e05a5ebba54 409-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19b6a5f239b9e89ac545ce6e999a20b8a5bf8b80",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
