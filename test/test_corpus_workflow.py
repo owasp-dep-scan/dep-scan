@@ -89,3 +89,20 @@ def test_recorded_scores_validate_against_the_score_schema():
     schema = _json("depscan-score.schema.json")
     for name in ("score-ci.json", "score-full.json"):
         jsonschema.validate(_json("results", name), schema)
+
+
+def test_docs_and_scripts_name_no_machine_paths_and_a_runnable_subset_command():
+    page = os.path.join(REPO_ROOT, "documentation", "docs", "Develop", "measuring.mdx")
+    with open(page, encoding="utf-8") as fp:
+        text = fp.read()
+    subset = text[text.index("score.py --subset ci") :].split("```", 1)[0]
+    assert "--scans-root" in subset and "--floors contrib/corpus/floors.json" in subset
+    for path in (
+        page,
+        os.path.join(CORPUS, "score.py"),
+        os.path.join(CORPUS, "inputs.py"),
+        os.path.join(REPO_ROOT, "contrib", "reachability_eval.py"),
+        WORKFLOW,
+    ):
+        with open(path, encoding="utf-8") as fp:
+            assert "sandbox/p23" not in fp.read(), path

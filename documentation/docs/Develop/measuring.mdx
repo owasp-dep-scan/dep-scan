@@ -9,9 +9,10 @@ dep-scan's central claim is that it joins facts single-purpose tools hold
 apart: an advisory to the code that uses the package, a route to the packages
 its handlers reach, a lifecycle phase to the next, a component to the image
 layer, a component to what ran. Every one of those joins is measured against
-labelled inputs, and the scores are the baseline the release notes publish.
-The measurement lives in `contrib/corpus/`: a manifest of items, a label file
-per item, and the scorer that runs dep-scan on each item and compares.
+labelled inputs, and the scores are the baseline later changes are measured
+against. The measurement lives in `contrib/corpus/`: a manifest of items, a
+label file per item, the scorer that runs dep-scan on each item and compares
+(`score.py`), and the input resolution it uses (`inputs.py`).
 
 ## What the corpus holds
 
@@ -26,10 +27,13 @@ file beside it. Three kinds of item make up the corpus:
   output, reduced to package level.
 - **Fixture items** are small projects committed under
   `contrib/corpus/fixtures/`: supply-chain controls, a malicious-version
-  manifest, two builds of one C source, a lifecycle project, a two-version
-  monorepo, a minimal ASP.NET API, and a traced program. Their labels are
-  hand-written against the source, with a `file:line` citation for each
-  expectation, or built into the fixture itself.
+  manifest, one C source that `build.sh` builds twice (with and without
+  hardening) in the scorer's copy of the fixture, a lifecycle project, a
+  two-version monorepo, a minimal ASP.NET API, and a program for the runtime
+  join. Their labels are hand-written against the source, with a `file:line`
+  citation for each expectation, or built into the fixture itself. A fixture
+  is checked by a digest over its committed files, and `.gitattributes` keeps
+  every fixture file free of line-ending conversion.
 - **Data and image items**: the pre-generated repo-test data of
   `contrib/repotests/`, pulled by digest from GHCR, and one public image
   pinned by digest.
@@ -47,37 +51,48 @@ find and what it must not. Every section names its source, and the schema
 - `oracle` labels are derived from the callsites ground truth by
   `contrib/corpus/derive_labels.py`, which reduces the oracle output to
   package level: a package is `used` when the truth holds a certain use of it
-  in the project's own files, and `unused` when the project's BOM declares it
-  as a direct dependency and the truth holds no use of it at all. Python
-  import names are mapped to the distribution names the BOM declares, and
-  every name that maps to nothing is reported in the label file's `unmapped`
-  object with its count. No truth row (no file, line or member) is carried.
+  in the project's own files, and `unused` when the project's BOM (or, for
+  JavaScript, its package.json) declares it as a direct dependency and the
+  truth holds no use of it at all. A used package's purl comes from the
+  truth's name, never from a scan: npm, Maven, Composer and gem names give
+  the purl directly, and a Python import name maps through an import table,
+  the installed distributions' `top_level.txt` when an environment is
+  available, and the distributions the project's requirements, pyproject,
+  setup and lock files declare. A name that is a module of the project
+  itself is counted under `local`; a name that still maps to nothing is
+  counted under `unmapped`, and the scorer counts every unmapped name as a
+  used package no analyser matched, a recall miss shown as `unmappedUsed`.
+  No truth row (no file, line or member) is carried.
 - `hand` labels are written by reading the code, with a `file:line` citation
   for each expected finding or used package, and a sentence for each unused
   package or forbidden one.
 - `fixture` labels belong to fixtures built for the expectation: the build
   script in the fixture is the citation.
 
-No label is ever derived from dep-scan's or atom's own output; a label that
-only restates the product cannot catch it. When the scorer looks wrong, fix
-the scorer, never the label.
+No used package, expected finding or join record is derived from dep-scan's
+or atom's own output; a label that only restates the product cannot catch
+it. The oracle derivation reads a scan's BOM for one thing only, which
+declared dependencies are direct, to name the unused packages. A label that
+names a version matches only that version; one without a version matches
+any. When the scorer looks wrong, fix the scorer, never the label.
 
 ## Running the scorer
 
 ```bash
-# Everything whose inputs are present, into one directory of scan results
-python contrib/corpus/score.py --scans-root ~/sandbox/p23-corpus/scans
+# Everything whose inputs are present, cloning missing repository items;
+# clones, scans and pulled repo-test data default to
+# ${XDG_CACHE_HOME:-~/.cache}/depscan/corpus/
+python contrib/corpus/score.py --fetch
 
-# Score scan results that already exist
-python contrib/corpus/score.py --scan-dir ~/sandbox/p23-corpus/scans
+# Score scan directories that already exist, one per item under the root
+python contrib/corpus/score.py --scan-dir /path/to/scans \
+  --corpus-root /path/to/clones
 
 # The subset a pull request runs, failing on a dropped floor or a fired
-# negative control
+# negative control; the scans root must lie outside the dep-scan checkout
 python contrib/corpus/score.py --subset ci \
-  --floors contrib/corpus/floors.json --testdata-root repotests-data
-
-# Clone repository items at their pinned commits first
-python contrib/corpus/score.py --fetch --scans-root corpus-scans
+  --floors contrib/corpus/floors.json \
+  --testdata-root repotests-data --scans-root /tmp/corpus-scans
 ```
 
 The scorer runs each item's scan through the dep-scan Python API, reads the
@@ -85,14 +100,20 @@ scan directory the scan wrote, and compares against the labels with the same
 `comparable_purl` rule the product itself uses. It writes `score.json`
 (schema: `contrib/corpus/depscan-score.schema.json`) and a Markdown table. A
 scan whose analysis did not run is recorded as not assessed with its reason;
-it is never a miss and never a clean result.
+it is never a miss and never a clean result. A category is not assessed only
+when no project type of the scan completed the stage that produces it. The
+exit code is 0 when the run held, 1 when a floor dropped or a negative
+control fired, and 2 on a usage error such as an unknown item or an
+unreadable floors file.
 
 The reachability numbers per project and per analyser come from the same
-corpus: `python contrib/reachability_eval.py` scores `direct_purls` and the
-reached purls of both analysers against the `used` and `unused` labels for
-every item that carries them. Its `--check-snapshot` mode keeps the older
-behaviour, comparing reached sets against the recorded baseline, for a
-refactor that must not change output.
+corpus: `python contrib/reachability_eval.py --scan-dir <scans>` scores
+`direct_purls` and the reached purls of both analysers against the `used`
+and `unused` labels for every item that carries them, through the scorer's
+own functions, and exits 1 when no item could be scored. Its
+`--check-snapshot` mode (also chosen by `--snapshot`, `--check` or a
+repository argument) keeps the older behaviour, comparing reached sets
+against the recorded baseline, for a refactor that must not change output.
 
 ## The join scores
 
@@ -104,23 +125,32 @@ to record what). The current table lives in the score artifact the scheduled
 `Join eval` workflow uploads; the floor file records what each subset item
 scored when the floors were written, each with the commit it was recorded at.
 
-The table below is the state at the time this page was written, measured at
-dep-scan commit a8bbec8f with cdxgen 13.9.0 and atom 4.0.3 over the corpus's
-31 oracle projects. The per-item numbers come from the same run's artifact.
+The table below is the state recorded in `contrib/corpus/results/`. The
+repository items and the image were scored with `--scan-dir` over scans made
+with cdxgen 13.9.0 (built from master) and atom 4.0.3, against labels
+derived at dep-scan commit 9916570f; the pull-request subset
+(`score-ci.json`) was scanned afresh at commit 37e58fb1 with the tools the
+workflow installs, cdxgen 13.8.0 and atom 4.0.2.
 
 | Join | Outcome at this measurement |
 | --- | --- |
-| Advisory to usage and reach | measured: reached findings bind to used packages on Juice Shop (24 of 99 vulnerability findings reached, none on an unused package); recall 0.43 mean over the 30 scored projects on the reached set, precision 0.95 |
-| Route to package | measured through dosai on the .NET fixture (both labelled routes match); partial on the JavaScript fixture: cdxgen's JavaScript OpenAPI document carries no handler usage maps, so the routes cannot bind (producer gap) |
-| Lifecycle phase to phase | partial: the pre-build and build BOMs hold the labelled packages, and the post-build BOM of a source scan holds none, so shipped-state labels are not assessed (producer gap) |
-| Component to image layer | gap: no component of the image BOM carries layer attribution (producer gap) |
-| Component to runtime | partial: tracebom on macOS captures no components, so the adapter refuses the trace as a trace BOM (producer gap) |
+| Advisory to usage and reach | measured on Juice Shop: 99 advisory findings, 24 reached on used packages, none reached on an unused or unlabelled package, 14 on used packages not reached (CVE-2020-15084 on express-jwt among them, the known middleware indirection). Juice Shop ships no lockfile, so these counts follow the registry on the day of the scan |
+| Route to package | measured through dosai on the .NET fixture (both labelled routes match); partial on Juice Shop, a repository item: cdxgen's JavaScript OpenAPI document carries no handler usage maps, so no route binds (producer gap) |
+| Lifecycle phase to phase | measured on the lifecycle fixture in the subset run: the shipped, build-only and dev-only packages (5 of 5) agree with the build BOM's development markers; a source scan's post-build BOM is empty, so the join reads the build scope |
+| Component to image layer | gap: no labelled component of the image BOM carries a layer property (producer gap) |
+| Component to runtime | gap: no trace of the fixture program names a component yet (the macOS capture held none, and no Linux capture exists), so the manifest records the join as not produced |
 | Same package, two producers | measured: one component identity for the same Go module from the source scan and the built binary, with both producers' records kept |
-| Same package, two manifests | measured: two components for the two declared versions; neither records which manifest declared it (producer gap) |
+| Same package, two manifests | measured: two components for the two declared versions; both carry cdxgen's `internal:SrcFile`, which names the lock file (`package-lock.json`, `packages/b/package-lock.json`) rather than the declaring package.json |
 
-Reachability against the oracle labels, `SemanticReachability`, means over
-the 30 scored repository projects: `direct_purls` recall 0.96 and precision
-0.57, reached-purls recall 0.43 and precision 0.95. The categories dep-scan
+Reachability against the oracle labels, `SemanticReachability` (the
+`FrameworkReachability` numbers are the same), means over the 30 repository
+projects with reachability evidence: `direct_purls` recall 0.929 and
+precision 0.558, reached-purls recall 0.378 and precision 0.948. The
+subset's categories score 1.0 recall and precision for malware and for the
+java-sec-code advisories, and 6 of 7 expected binary-hardening findings with
+precision 1.0 (blint reports no `CHECK_RELRO` on the build linked with
+`-z norelro`); the supply-chain fixture is not assessed under cdxgen 13.8.0,
+whose cdx-audit predates the options dep-scan passes. The categories dep-scan
 does not produce yet (memory safety, mobile, crypto, code) appear in the
 manifest as `notProduced` with their tracking issues, and the score table
 shows them as gaps.
@@ -142,4 +172,5 @@ shows them as gaps.
 3. Add the item to the CI subset (`"subset": "ci"`) only when the pull-request
    job can run it: committed fixtures and repo-test data that is already
    published. Record its floors in `contrib/corpus/floors.json` from a real
-   run, with the commit.
+   run of the subset with the tools the workflow installs, with the commit
+   and the tool versions.

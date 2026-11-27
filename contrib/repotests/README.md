@@ -125,11 +125,15 @@ is left untouched but no longer used.
 
 ## Corpus items over this data
 
-The join-eval corpus (`contrib/corpus/depscan.corpus.json`) serves some items
-from this store: a corpus item with a `testdata` object names the artifact and
-the manifest digest it consumes, and the scorer verifies a pulled directory
-against that digest with this folder's `validate.py` before it scores anything.
-The CI subset of the `Join eval` workflow pulls `java-sec-code` through the
-same composite action the repo tests use. A corpus item whose data needs a new
-artifact waits until the artifact is published; the floors file holds entries
-only for the items the pull-request job can run today.
+The join-eval corpus (`contrib/corpus/depscan.corpus.json`) names the
+artifacts of this store its items correspond to: a corpus item with a
+`testdata` object names the artifact and the manifest digest the lock file
+pins. A BOM item (`java-sec-code-repotests`) is scanned from that data, and the
+scorer verifies the pulled directory against the digest with this folder's
+`validate.py` before it scores anything; `forgejo-two-producers` names its
+artifact for reference and is scanned from a clone at the same commit, since
+the binary BOM it needs is not in the artifact. Both `Join eval` jobs pull
+`java-sec-code` through the same composite action the repo tests use, into the
+runner's temporary directory. A corpus item whose data needs a new artifact
+waits until the artifact is published; the floors file holds entries only for
+the items the pull-request job can run today.
