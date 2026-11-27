@@ -1,0 +1,38 @@
+contrib/corpus/fixtures/tracebom-fixture/trace-fixture.sh
+  s_7318da1b9edd46::t_16395325fb317e 2-6,9-13
+contrib/corpus/fixtures/.gitignore
+  s_7318da1b9edd46::t_e9cf57fb5a96b4 5-8
+contrib/corpus/score.py
+  s_7318da1b9edd46::t_70de0e2260954a 230
+  s_7318da1b9edd46::t_3d950d2fe0c90f 206-222,227-229,231-243,337-338,359-372,1234-1240
+contrib/corpus/depscan.corpus.json
+  s_7318da1b9edd46::t_38531cdfd70a6f 781,783,801-802,878,880,897-901
+contrib/corpus/labels/tracebom-fixture.json
+  s_7318da1b9edd46::t_70de0e2260954a 9,12
+test/test_corpus_scorer.py
+  s_7318da1b9edd46::t_70de0e2260954a 727-821
+contrib/corpus/fixtures/binary-hardening-fixture/build.sh
+  s_7318da1b9edd46::t_16395325fb317e 2-8,11-27
+contrib/corpus/depscan-corpus.schema.json
+  s_7318da1b9edd46::t_70de0e2260954a 138-156
+.gitattributes
+  s_7318da1b9edd46::t_70de0e2260954a 14-16
+contrib/corpus/labels/binary-hardening-fixture.json
+  s_7318da1b9edd46::t_8aaa8f6af3b7c8 9-46,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79cb49d2ab25565a2d9eb27efedf25be6432f756",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
