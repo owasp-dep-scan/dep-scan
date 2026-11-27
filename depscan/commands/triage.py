@@ -7,20 +7,27 @@ its logs to stderr and never prompts. The author and the approver are never
 guessed from git or the environment: when a required name is missing, the
 command refuses with exit 2.
 
-The entry handle is the 1-based position ``depscan triage list`` prints;
-the decisions file gives triage entries no id of their own.
+The file is the one a scan of the working directory reads: ``--decisions``,
+then ``DEPSCAN_DECISIONS``, then the ``[scan] decisions`` key of the
+configuration files (``--config``), then ``.depscan/decisions.toml``.
+Entries are named by the handle ``depscan triage list`` prints (``tr-`` and
+ten hex digits of the selector's digest), which does not move when other
+entries are added or removed.
 
 Exit codes: 0 the command ran, 2 a usage error (a missing author or
-approver, an entry that does not exist, a file that cannot be read), 3 the
-``check`` subcommand found errors in the file a gate would hit.
+approver, a handle no single entry has, a file that cannot be read or does
+not parse, or one that changed while the command ran), 3 the ``check``
+subcommand found errors in the file a gate would hit.
 """
 
 import argparse
+import os
 import sys
 
 from analysis_lib.findings.decisions import TRIAGE_STATES
 
 from depscan import api
+from depscan.lib import decisions as decisions_lib
 from depscan.commands.output import (
     EXIT_FAILURE,
     EXIT_SUCCESS,
@@ -30,10 +37,6 @@ from depscan.commands.output import (
 )
 from depscan.lib.logger import LOG
 
-#: The decisions file a command edits when none is named: the working
-#: directory's own, beside the history folder the vision reserves there.
-DEFAULT_DECISIONS_FILE = ".depscan/decisions.toml"
-
 #: The exit code the check subcommand exits with when the file has errors a
 #: gate would hit.
 EXIT_CHECK_FAILED = 3
@@ -42,7 +45,15 @@ EXIT_CHECK_FAILED = 3
 def _add_common_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--decisions",
-        help=f"Path to the decisions file (default: {DEFAULT_DECISIONS_FILE}).",
+        help="Path to the decisions file. Default: DEPSCAN_DECISIONS, then the "
+        "[scan] decisions key of the configuration files, then "
+        ".depscan/decisions.toml in the working directory.",
+    )
+    parser.add_argument(
+        "--config",
+        help="Path to the configuration file whose [scan] decisions key names "
+        "the decisions file. Default: DEPSCAN_CONFIG, then "
+        "$PWD/.config/depscan.toml.",
     )
     parser.add_argument(
         "--format",
@@ -53,7 +64,12 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _decisions_file(args: argparse.Namespace) -> str:
-    return str(getattr(args, "decisions", None) or DEFAULT_DECISIONS_FILE)
+    """The decisions file the command reads or edits, resolved as a scan of
+    the working directory resolves it."""
+    path, _selected_by = decisions_lib.resolve_decisions_path(
+        getattr(args, "decisions", None), os.getcwd(), config=getattr(args, "config", None)
+    )
+    return path or decisions_lib.DEFAULT_DECISIONS_FILE
 
 
 def register(subparsers) -> None:
@@ -62,9 +78,11 @@ def register(subparsers) -> None:
         help="Record, review and check triage decisions and the gate.",
     )
     sub = parser.add_subparsers(dest="subcommand", required=True)
-    _register_set(sub.add_parser("set", help="Add or update a triage decision."))
+    _register_set(sub.add_parser("set", help="Record a triage decision or a proposal."))
     _register_list(sub.add_parser("list", help="List the entries, with what each matches."))
-    _register_review(sub.add_parser("review", help="Approve or reject a proposal."))
+    _register_review(
+        sub.add_parser("review", help="List the proposals, or approve or reject one.")
+    )
     _register_remove(sub.add_parser("remove", help="Remove one entry."))
     _register_check(sub.add_parser("check", help="Validate the file a gate would read."))
 
@@ -78,8 +96,7 @@ def _register_set(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--advisory",
-        help="The advisory id, or one of its aliases, the decision selects; "
-        "needs --purl.",
+        help="The advisory id, or one of its aliases, the decision selects; needs --purl.",
     )
     parser.add_argument(
         "--purl",
@@ -90,10 +107,14 @@ def _register_set(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--version-range",
         dest="version_range",
-        help="A vers range narrowing the purl selection, for example "
-        "vers:npm/>=4.17.0|<4.17.21.",
+        help="A vers range narrowing the purl selection, for example vers:npm/>=4.17.0|<4.17.21.",
     )
-    parser.add_argument("--state", required=True, choices=TRIAGE_STATES, help="The CycloneDX impact analysis state.")
+    parser.add_argument(
+        "--state",
+        required=True,
+        choices=TRIAGE_STATES,
+        help="The CycloneDX impact analysis state.",
+    )
     parser.add_argument(
         "--justification",
         choices=(
@@ -119,14 +140,18 @@ def _register_set(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--detail", help="Free-form detail about the decision.")
     parser.add_argument(
         "--author",
-        required=True,
-        help="Who made the decision. Never guessed from git or the environment.",
+        help="Who made the decision; required unless --proposed-by writes a "
+        "proposal. Never guessed from git or the environment. A decision "
+        "replaces the person's earlier decision with the same selector as a "
+        "whole.",
     )
     parser.add_argument(
         "--proposed-by",
         dest="proposed_by",
-        help="Who or what proposed the decision: a person, or an agent with "
-        "its session. An entry with proposed_by and no approver is a proposal.",
+        help="Write a proposal instead of a decision, naming who or what "
+        "proposes it: a person, or an agent with its session. A proposal "
+        "changes nothing until someone approves it with depscan triage "
+        "review, and it never replaces a decision.",
     )
     parser.add_argument("--created", help="When the decision was recorded; default: now.")
     parser.add_argument(
@@ -148,19 +173,29 @@ def _register_list(parser: argparse.ArgumentParser) -> None:
 
 def _register_review(parser: argparse.ArgumentParser) -> None:
     _add_common_options(parser)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--approve", type=int, help="The entry number to approve.")
-    group.add_argument("--reject", type=int, help="The proposal number to reject and remove.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--approve", metavar="HANDLE", help="The handle of the proposal to approve."
+    )
+    group.add_argument(
+        "--reject",
+        metavar="HANDLE",
+        help="The handle of the proposal to reject and remove; a person's "
+        "decision is removed with depscan triage remove instead.",
+    )
     parser.add_argument(
         "--approver",
-        required=True,
-        help="Who approved the proposal. Never guessed from git or the environment.",
+        help="Who reviewed the proposal; required with --approve and --reject. "
+        "Never guessed from git or the environment. Without --approve or "
+        "--reject the command lists the proposals awaiting review.",
     )
 
 
 def _register_remove(parser: argparse.ArgumentParser) -> None:
     _add_common_options(parser)
-    parser.add_argument("entry", type=int, help="The entry number to remove.")
+    parser.add_argument(
+        "handle", help="The handle of the entry to remove, as depscan triage list prints it."
+    )
 
 
 def _register_check(parser: argparse.ArgumentParser) -> None:
@@ -168,8 +203,7 @@ def _register_check(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "scan_dir",
         nargs="?",
-        help="A scan directory to also report the stale and expired entries "
-        "against.",
+        help="A scan directory to also report the stale and expired entries against.",
     )
 
 
@@ -188,7 +222,7 @@ def _print_listing(document, json_output: bool) -> None:
             if key in ("finding", "advisory", "purl", "version_range")
         )
         line = (
-            f"{entry['index']}: {escape(selector)} state {entry['state']} "
+            f"{entry['handle']}: {escape(selector)} state {entry['state']} "
             f"status {entry['status']}"
         )
         if entry.get("author"):
@@ -205,9 +239,10 @@ def _print_listing(document, json_output: bool) -> None:
                 console.print(f"    matches {len(entry['matches'])} finding(s)")
             elif entry["status"] == "live":
                 console.print("    matches no finding in this scan (stale)")
+    count = len(document["entries"])
     summary = (
-        f"{len(document['entries'])} entries, {len(document['stale'])} stale, "
-        f"{len(document['expired'])} expired, {len(document['proposals'])} proposals"
+        f"{count} {'entry' if count == 1 else 'entries'}, {len(document['stale'])} stale, "
+        f"{len(document['expired'])} expired, {len(document['proposals'])} pending"
     )
     console.print(summary)
 
@@ -227,7 +262,7 @@ def _print_result(document, json_output: bool) -> None:
         if key in ("finding", "advisory", "purl", "version_range")
     )
     console.print(
-        f"{document['result']}: entry {entry['index']} ({escape(selector)}) "
+        f"{document['result']}: entry {entry['handle']} ({escape(selector)}) "
         f"in {document['decisionsFile']}"
     )
 
@@ -270,10 +305,13 @@ def run(args: argparse.Namespace) -> int:
                 reject=args.reject,
             )
             document["subcommand"] = "review"
-            _print_result(document, json_output)
+            if "result" in document:
+                _print_result(document, json_output)
+            else:
+                _print_listing(document, json_output)
             return EXIT_SUCCESS
         if args.subcommand == "remove":
-            document = api.triage_remove(file=file, entry=args.entry)
+            document = api.triage_remove(file=file, handle=args.handle)
             document["subcommand"] = "remove"
             _print_result(document, json_output)
             return EXIT_SUCCESS
