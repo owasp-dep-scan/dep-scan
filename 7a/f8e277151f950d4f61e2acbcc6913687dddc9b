@@ -1,0 +1,25 @@
+contrib/corpus/labels/java-shiro.json
+  s_9afc8e07c509cc::t_941442687dd357 1-45
+contrib/corpus/labels/java-webgoat.json
+  s_9afc8e07c509cc::t_82af46735ce754 1-313
+contrib/corpus/labels/java-mall.json
+  s_9afc8e07c509cc::t_96b90404a8dfdc 1-122
+contrib/corpus/labels/rb-maybe.json
+  s_9afc8e07c509cc::t_8d9000626408b1 1-494
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7af8e277151f950d4f61e2acbcc6913687dddc9b",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
