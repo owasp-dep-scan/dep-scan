@@ -323,7 +323,7 @@ def test_binary_hardening_section_escapes_cells_and_keeps_a_separator_in_the_tit
     from rich import box
     from rich.terminal_theme import DEFAULT_TERMINAL_THEME
 
-        # rich 15 honours a width override only when the height is set beside
+    # rich 15 honours a width override only when the height is set beside
     # it, and the cells must render whole for the escaping to be asserted.
     console = Console(record=True, width=220, height=50, force_terminal=True)
     table = Table(
