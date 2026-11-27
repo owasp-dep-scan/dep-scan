@@ -1,0 +1,81 @@
+test/test_v7_output_core.py
+  s_7318da1b9edd46::t_52805967e75766 52-54
+  s_7318da1b9edd46::t_ef31615c21634a 57
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-propose_triage-input.schema.json
+  s_7318da1b9edd46::t_a2d867bff21266 78
+  s_7318da1b9edd46::t_177f7250a25f06 8
+test/test_decisions_cli.py
+  s_7318da1b9edd46::t_9b00d5e6317647 637-640,658
+  s_7318da1b9edd46::t_d235b40b5849c7 573-576,579-581,583-584,586-593,595-597,612-636,641-657,659-706,726-748
+  s_7318da1b9edd46::t_003154a3d7038f 749-750
+documentation/docs/integrate/agents.mdx
+  s_7318da1b9edd46::t_52805967e75766 99
+depscan/commands/output.py
+  s_7318da1b9edd46::t_52805967e75766 48-50
+  s_7318da1b9edd46::t_ef31615c21634a 53-54,58
+  s_7318da1b9edd46::t_9752f602db8232 51-52
+documentation/docs/results/triage-and-gating.mdx
+  s_7318da1b9edd46::t_11480dcbe02d02 240-265
+documentation/docs/reference/configuration.mdx
+  s_7318da1b9edd46::t_11480dcbe02d02 44-48
+documentation/docs/integrate/ci.mdx
+  s_7318da1b9edd46::t_52805967e75766 39
+test/test_agent_plugin_plugin.py
+  s_7318da1b9edd46::t_52805967e75766 75-83
+depscan/lib/report.py
+  s_7318da1b9edd46::t_c0fc681daa0576 335-339,344-345,360-363,370,377,409-412,435
+  s_7318da1b9edd46::t_b39613fbffe413 77-78,109-110
+  s_7318da1b9edd46::t_fa98d18bd8f2fd 99-101
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-expectations.schema.json
+  s_7318da1b9edd46::t_14e2c89cea3554 30-36,40,50-79,83-85,87
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_decisions-output.schema.json
+  s_7318da1b9edd46::t_14e2c89cea3554 19-25,29,34,38-68,72-73
+  s_7318da1b9edd46::t_08fe3833caad22 74,76,152
+depscan/lib/decisions.py
+  s_7318da1b9edd46::t_fd550944f7885c 896,898,902,907,909,913,915
+  s_7318da1b9edd46::t_b1880f0613e6df 857-860,875-882
+  s_7318da1b9edd46::t_ef31615c21634a 219,429-435,904
+  s_7318da1b9edd46::t_4b3912fcd5b215 34
+  s_7318da1b9edd46::t_5d00748cd58972 17,130-151,154,156-157,161-201,204-216,218,221-230,232-290,296-300,306-309,315,317,327-334,339-340,356-376,396,398-400,419-421,423-428,436,447,450,471,481-516,529-534,538-540,542-547,549-569,571-572,574-575,577-578,580-589,591
+  s_7318da1b9edd46::t_a0e205172633a9 35,570
+  s_7318da1b9edd46::t_d77cfc6b3b0c87 599-603,615,619-621,638,642,779,788-789,815
+documentation/docs/results/scan-directory.mdx
+  s_7318da1b9edd46::t_bc6798aa6d677f 77-78,86,113
+  s_7318da1b9edd46::t_11480dcbe02d02 149,166
+agent-plugin/reference/safety.md
+  s_7318da1b9edd46::t_52805967e75766 52
+depscan/mcp_server/tools.py
+  s_7318da1b9edd46::t_77342ed504312a 802-808,815,818,825-828,831-832,849-856,861-862,864-865
+  s_7318da1b9edd46::t_975340da249587 867,871,1029-1031
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_7318da1b9edd46::t_368ef4e3b65851 5,47-51,108-114,118,128-157,165,287
+test/test_mcp_tools.py
+  s_7318da1b9edd46::t_655a12cc7c871b 2153,2191-2270
+  s_7318da1b9edd46::t_90828d916acd6b 2271-2272
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_2c66ed78732977 948,1045
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_7318da1b9edd46::t_81e19be929bf54 31-38
+  s_7318da1b9edd46::t_27b1bce77ecb8f 101
+  s_7318da1b9edd46::t_5ad14add2bd8ee 102-103
+depscan/lib/scan_directory.py
+  s_7318da1b9edd46::t_4b3912fcd5b215 524-549,634-636
+documentation/docs/reference/cli.mdx
+  s_7318da1b9edd46::t_f04e7204b95f7f 201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17c23b22e0027b5a1552fff1e68a7368d0d21f98",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
