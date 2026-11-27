@@ -61,8 +61,9 @@ over `depscan mcp`: `scan_summary`, `list_findings` (filters: category,
 severity, purl, cwe, rule, reachable), `get_finding`, `explain_finding`,
 `coverage`, `list_components`, `diff_scans`, `doctor`, `vdb_status`,
 `run_scan` (a dry run by default), `get_decisions` (the triage entries of a
-scan with their handles and status, the last gate result, and warnings
-when the recorded file is missing or changed) and `propose_triage` (writes
+scan with their handles and status, `shadowed` for an entry another one
+overrides, the last gate result, and warnings when the recorded file is
+missing, changed or overridden) and `propose_triage` (writes
 a proposal; the server must have been started with `--allow-propose`). List results are paged: when a result
 carries `nextCursor`, pass it back as `cursor` until it is absent before
 counting or ranking, and a result too large for the reply is written to a
@@ -108,7 +109,10 @@ When the user asks you to record a decision about a finding:
    name>` approves it, and `depscan triage review --reject <handle>
    --approver <their name>` removes it; `depscan triage review` alone lists
    the pending proposals. Until a person approves it the proposal changes
-   no gate, no report and no exit code.
+   no gate, no report and no exit code. When the finding already has a
+   person's decision, approving the proposal replaces that decision, and
+   the review output names the one it replaced; say so before the user
+   approves.
 4. Never write an author or an approver name other than through the
    review step, and never claim a decision is recorded when the tool was
    refused or the write failed.

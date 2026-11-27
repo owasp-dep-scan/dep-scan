@@ -40,36 +40,48 @@
       "$ref": "#/$defs/entry",
       "description": "The entry the command wrote, approved, rejected or removed, as it now stands."
     },
+    "replaced": {
+      "$ref": "#/$defs/entry",
+      "description": "The decision an approval replaced: the review subcommand's approval of a proposal removes the decision with the same selector, because the approver has decided the finding. Absent when the approval replaced none."
+    },
     "entries": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/entry"
       },
-      "description": "The entries the list and check subcommands printed, in file order."
+      "description": "The entries the list and check subcommands printed, in file order; the review subcommand lists the proposals only, and its handle lists count those."
     },
     "stale": {
       "type": "array",
       "items": {
-        "type": "integer",
-        "minimum": 1
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
       },
-      "description": "The entry numbers that matched no finding in the scan directory."
+      "description": "The handles of the entries that matched no finding in the scan directory."
+    },
+    "shadowed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
+      },
+      "description": "The handles of the entries that match findings in the scan directory, every one of which another entry decides, so they change nothing."
     },
     "expired": {
       "type": "array",
       "items": {
-        "type": "integer",
-        "minimum": 1
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
       },
-      "description": "The entry numbers past their expiry."
+      "description": "The handles of the entries past their expiry."
     },
     "proposals": {
       "type": "array",
       "items": {
-        "type": "integer",
-        "minimum": 1
+        "type": "string",
+        "pattern": "^tr-[0-9a-f]{10}$"
       },
-      "description": "The entry numbers waiting for a person to approve them."
+      "description": "The handles of the entries waiting for a person to approve them."
     },
     "scanDir": {
       "type": [
@@ -123,7 +135,7 @@
           "type": "string",
           "description": "The package the entry selects."
         },
-        "version_range": {
+        "versionRange": {
           "type": "string",
           "description": "The vers range narrowing the purl selection."
         },
@@ -180,9 +192,10 @@
             "live",
             "proposal",
             "expired",
-            "stale"
+            "stale",
+            "shadowed"
           ],
-          "description": "The computed state of the entry: live applies, a proposal waits for a person, an expired entry suppresses nothing, a stale entry matched no finding in the scan."
+          "description": "The computed state of the entry: live applies, a proposal waits for a person, an expired entry suppresses nothing, a stale entry matched no finding in the scan, and a shadowed entry matches findings another entry decides, so it changes nothing."
         },
         "source": {
           "type": "string",

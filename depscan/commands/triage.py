@@ -219,7 +219,7 @@ def _print_listing(document, json_output: bool) -> None:
         selector = ", ".join(
             f"{key} {value}"
             for key, value in entry.items()
-            if key in ("finding", "advisory", "purl", "version_range")
+            if key in ("finding", "advisory", "purl", "versionRange")
         )
         line = (
             f"{entry['handle']}: {escape(selector)} state {entry['state']} "
@@ -235,13 +235,19 @@ def _print_listing(document, json_output: bool) -> None:
             line += f" expires {entry['expires']}"
         console.print(line)
         if document.get("scanDir") and "matches" in entry:
-            if entry["matches"]:
+            if entry["status"] == "shadowed":
+                console.print(
+                    f"    matches {len(entry['matches'])} finding(s), each decided by another "
+                    "entry, so this one changes nothing"
+                )
+            elif entry["matches"]:
                 console.print(f"    matches {len(entry['matches'])} finding(s)")
-            elif entry["status"] == "live":
-                console.print("    matches no finding in this scan (stale)")
+            elif entry["status"] == "stale":
+                console.print("    matches no finding in this scan")
     count = len(document["entries"])
     summary = (
         f"{count} {'entry' if count == 1 else 'entries'}, {len(document['stale'])} stale, "
+        f"{len(document.get('shadowed') or [])} shadowed, "
         f"{len(document['expired'])} expired, {len(document['proposals'])} pending"
     )
     console.print(summary)
@@ -259,12 +265,19 @@ def _print_result(document, json_output: bool) -> None:
     selector = ", ".join(
         f"{key} {value}"
         for key, value in entry.items()
-        if key in ("finding", "advisory", "purl", "version_range")
+        if key in ("finding", "advisory", "purl", "versionRange")
     )
     console.print(
         f"{document['result']}: entry {entry['handle']} ({escape(selector)}) "
         f"in {document['decisionsFile']}"
     )
+    replaced = document.get("replaced")
+    if replaced:
+        by = replaced.get("author") or replaced.get("approver") or "no author"
+        console.print(
+            f"replaced: the earlier decision {replaced['handle']} ({replaced['state']}, "
+            f"by {escape(str(by))}) with the same selector"
+        )
 
 
 def run(args: argparse.Namespace) -> int:

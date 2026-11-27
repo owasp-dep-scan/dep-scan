@@ -5,7 +5,7 @@
   "description": "The document the get_decisions tool returns: the decisions record the scan's manifest carries, every triage entry with its computed status and what it matches, and the last gate result the scan directory holds.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["scanDir", "decisions", "entries", "stale", "expired", "proposals", "gate"],
+  "required": ["scanDir", "decisions", "entries", "stale", "shadowed", "expired", "proposals", "gate"],
   "properties": {
     "scanDir": {
       "type": "string",
@@ -98,8 +98,8 @@
           },
           "status": {
             "type": "string",
-            "enum": ["live", "proposal", "expired", "stale"],
-            "description": "live applies, a proposal waits for a person to approve it, an expired entry suppresses nothing, a stale entry matched no finding."
+            "enum": ["live", "proposal", "expired", "stale", "shadowed"],
+            "description": "live applies, a proposal waits for a person to approve it, an expired entry suppresses nothing, a stale entry matched no finding, and a shadowed entry matches findings another entry decides, so it changes nothing."
           },
           "author": {"type": "string", "description": "Who entered the decision."},
           "approver": {"type": "string", "description": "Who approved the proposal."},
@@ -126,18 +126,23 @@
     },
     "stale": {
       "type": "array",
-      "items": {"type": "integer", "minimum": 1},
-      "description": "The entry numbers that matched no finding in the scan."
+      "items": {"type": "string", "pattern": "^tr-[0-9a-f]{10}$"},
+      "description": "The handles of the entries that matched no finding in the scan."
+    },
+    "shadowed": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^tr-[0-9a-f]{10}$"},
+      "description": "The handles of the entries that match findings in the scan, every one of which another entry decides."
     },
     "expired": {
       "type": "array",
-      "items": {"type": "integer", "minimum": 1},
-      "description": "The entry numbers past their expiry."
+      "items": {"type": "string", "pattern": "^tr-[0-9a-f]{10}$"},
+      "description": "The handles of the entries past their expiry."
     },
     "proposals": {
       "type": "array",
-      "items": {"type": "integer", "minimum": 1},
-      "description": "The entry numbers waiting for a person to approve them."
+      "items": {"type": "string", "pattern": "^tr-[0-9a-f]{10}$"},
+      "description": "The handles of the entries waiting for a person to approve them."
     },
     "gate": {
       "oneOf": [

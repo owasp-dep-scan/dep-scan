@@ -8,6 +8,8 @@ committed scan directory fixture, whose one finding is CVE-2024-1111.
 """
 
 import json
+import os
+import stat
 import sys
 from pathlib import Path
 
@@ -204,7 +206,7 @@ def test_list_flags_a_stale_entry_in_json(tmp_path, monkeypatch, capsys):
     validator = Draft202012Validator(load_schema("depscan-triage-output"))
     validator.validate(document)
     assert document["entries"][0]["status"] == "stale"
-    assert document["stale"] == [1]
+    assert document["stale"] == [document["entries"][0]["handle"]]
 
 
 def test_list_names_what_the_advisory_matches(tmp_path, monkeypatch, capsys):
@@ -501,6 +503,7 @@ def test_set_reports_the_entry_it_wrote(tmp_path, monkeypatch, capsys):
     assert document["entry"]["index"] == 2
     assert document["entry"]["state"] == "exploitable"
     assert "version_range" not in document["entry"]
+    assert "versionRange" not in document["entry"]
 
 
 def test_set_with_proposed_by_writes_a_proposal_beside_a_decision(tmp_path, monkeypatch, capsys):
@@ -580,3 +583,194 @@ def test_a_handle_that_names_two_entries_is_refused(tmp_path, monkeypatch):
     assert handle == _handle(file, 1)
     assert run_main(monkeypatch, ["triage", "remove", handle, "--decisions", file]) == 2
     assert len(_tables(file)) == 2
+
+
+# --- one handle, one entry ----------------------------------------------------------------
+
+
+def test_set_with_a_case_variant_replaces_the_entry_it_would_shadow(tmp_path):
+    file = str(tmp_path / "decisions.toml")
+    common = {"file": file, "state": "exploitable", "author": "alice"}
+    api.triage_set(advisory="CVE-2021-23337", purl="pkg:npm/lodash", **common)
+    written = api.triage_set(
+        file=file,
+        state="not_affected",
+        justification="code_not_reachable",
+        author="bob",
+        advisory="cve-2021-23337",
+        purl="pkg:npm/lodash",
+    )
+    assert written["result"] == "updated"
+    listing = api.triage_entries(file=file)
+    assert [(e["state"], e["author"]) for e in listing["entries"]] == [("not_affected", "bob")]
+    api.triage_set(advisory="CVE-1", purl="pkg:npm/lodash@4.17.20", **common)
+    written = api.triage_set(
+        file=file,
+        state="in_triage",
+        author="carol",
+        advisory="CVE-1",
+        purl="pkg:npm/Lodash@4.17.20",
+    )
+    assert written["result"] == "updated"
+    handles = [entry["handle"] for entry in api.triage_entries(file=file)["entries"]]
+    assert len(handles) == len(set(handles)) == 2
+
+
+def test_approving_a_proposal_replaces_the_decision_it_contradicts(tmp_path, monkeypatch, capsys):
+    from analysis_lib.findings import decisions as decision_lib
+
+    file = _write(tmp_path / "decisions.toml", AUTHORED_FILE)
+    proposal = api.triage_set(
+        file=file,
+        state="not_affected",
+        justification="code_not_reachable",
+        proposed_by="agent",
+        finding=FID,
+    )
+    live_handle = _handle(file)
+    argv = ["triage", "review", "--approve", proposal["entry"]["handle"], "--approver", "carol"]
+    assert run_main(monkeypatch, argv + ["--decisions", file]) == 0
+    out = " ".join(capsys.readouterr().out.split())
+    assert f"replaced: the earlier decision {live_handle} (exploitable, by alice)" in out
+    entries = decision_lib.load_decisions(file).triage
+    assert [(entry.state, entry.approver) for entry in entries] == [("not_affected", "carol")]
+    finding = {"id": FID, "category": "vulnerability", "rule": "CVE-1", "components": []}
+    decision_lib.apply_triage([finding], entries)
+    assert finding["triage"]["state"] == "not_affected"
+
+
+def test_the_approval_result_names_the_replaced_entry(tmp_path, monkeypatch, capsys):
+    file = _write(tmp_path / "decisions.toml", AUTHORED_FILE)
+    proposal = api.triage_set(file=file, state="in_triage", proposed_by="agent", finding=FID)
+    argv = ["triage", "review", "--approve", proposal["entry"]["handle"], "--approver", "carol"]
+    assert run_main(monkeypatch, argv + ["--decisions", file, "--format", "json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    Draft202012Validator(load_schema("depscan-triage-output")).validate(document)
+    assert document["replaced"]["author"] == "alice"
+    assert document["entry"]["handle"] == document["replaced"]["handle"]
+
+
+def test_an_edit_that_leaves_two_entries_with_one_handle_is_refused(tmp_path, monkeypatch):
+    file = _write(tmp_path / "decisions.toml", AUTHORED_FILE + "\n" + AUTHORED_FILE)
+    before = Path(file).read_bytes()
+    argv = ["triage", "set", "dsf1:" + "b" * 64, "--state", "in_triage", "--author", "bob"]
+    assert run_main(monkeypatch, argv + ["--decisions", file]) == 2
+    assert Path(file).read_bytes() == before
+
+
+# --- how the file is written --------------------------------------------------------------
+
+
+def test_an_edit_keeps_crlf_line_endings(tmp_path):
+    path = tmp_path / "decisions.toml"
+    path.write_bytes(COMMENTED_FILE.replace("\n", "\r\n").encode("utf-8"))
+    api.triage_set(file=str(path), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
+    data = path.read_bytes()
+    assert b"\r\r\n" not in data
+    assert data.count(b"\n") == data.count(b"\r\n")
+    assert len(api.triage_entries(file=str(path))["entries"]) == 2
+
+
+def test_an_edit_keeps_lf_line_endings(tmp_path):
+    path = tmp_path / "decisions.toml"
+    path.write_bytes(COMMENTED_FILE.encode("utf-8"))
+    api.triage_set(file=str(path), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
+    assert b"\r" not in path.read_bytes()
+
+
+def test_an_edit_keeps_the_file_mode(tmp_path):
+    path = tmp_path / "decisions.toml"
+    path.write_text(AUTHORED_FILE, encoding="utf-8")
+    os.chmod(path, 0o644)
+    api.triage_set(file=str(path), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o644
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symbolic links need a privilege on Windows")
+def test_an_edit_through_a_symlink_writes_the_target_and_keeps_the_link(tmp_path):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    target = shared / "policy.toml"
+    target.write_text(AUTHORED_FILE, encoding="utf-8")
+    os.chmod(target, 0o644)
+    link = tmp_path / "decisions.toml"
+    link.symlink_to(target)
+    api.triage_set(file=str(link), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
+    assert link.is_symlink()
+    assert "bbbb" in target.read_text(encoding="utf-8")
+    assert stat.S_IMODE(os.stat(target).st_mode) == 0o644
+    assert [p.name for p in shared.iterdir()] == ["policy.toml"]
+
+
+def test_an_appended_entry_has_a_blank_line_on_each_side(tmp_path):
+    path = tmp_path / "decisions.toml"
+    path.write_text(COMMENTED_FILE, encoding="utf-8")
+    api.triage_set(file=str(path), state="in_triage", author="bob", finding="dsf1:" + "b" * 64)
+    text = path.read_text(encoding="utf-8")
+    assert 'author = "alice"\n\n[[triage]]\n' in text
+    assert '"\n\n[[expect]]\n' in text and "bob" in text.split("[[expect]]")[0]
+    only_expect = tmp_path / "expect.toml"
+    only_expect.write_text(
+        '[[expect]]\nid = "e"\nseverity = "high"\naction = "warn"\n', encoding="utf-8"
+    )
+    api.triage_set(
+        file=str(only_expect), state="in_triage", author="bob", finding="dsf1:" + "b" * 64
+    )
+    assert 'action = "warn"\n\n[[triage]]\n' in only_expect.read_text(encoding="utf-8")
+
+
+def test_an_entry_document_names_the_version_range_in_camel_case(tmp_path):
+    file = str(tmp_path / "decisions.toml")
+    written = api.triage_set(
+        file=file,
+        state="in_triage",
+        author="bob",
+        advisory="CVE-1",
+        purl="pkg:npm/lodash",
+        version_range="vers:npm/<4.17.21",
+    )
+    assert written["entry"]["versionRange"] == "vers:npm/<4.17.21"
+    assert "version_range" not in written["entry"]
+
+
+# --- the listing ---------------------------------------------------------------------------
+
+
+def test_list_calls_a_shadowed_entry_shadowed(tmp_path, monkeypatch, capsys):
+    finding = json.loads((Path(SCAN_DIR) / "depscan.findings.json").read_text())["findings"][0]
+    by_advisory = "\n".join(
+        [
+            "[[triage]]",
+            'advisory = "CVE-2024-1111"',
+            'purl = "pkg:pypi/requests"',
+            'state = "in_triage"',
+            'author = "carol"',
+            "",
+        ]
+    )
+    by_finding = AUTHORED_FILE.replace(FID, finding["id"])
+    file = _write(tmp_path / "decisions.toml", by_advisory + "\n" + by_finding)
+    argv = ["triage", "list", SCAN_DIR, "--decisions", file, "--format", "json"]
+    assert run_main(monkeypatch, argv) == 0
+    document = json.loads(capsys.readouterr().out)
+    Draft202012Validator(load_schema("depscan-triage-output")).validate(document)
+    assert [entry["status"] for entry in document["entries"]] == ["shadowed", "live"]
+    assert document["shadowed"] == [document["entries"][0]["handle"]]
+    assert run_main(monkeypatch, ["triage", "list", SCAN_DIR, "--decisions", file]) == 0
+    out = " ".join(capsys.readouterr().out.split())
+    assert "status shadowed" in out and "1 shadowed" in out
+
+
+def test_review_counts_only_the_proposals(tmp_path, monkeypatch, capsys):
+    expired = AUTHORED_FILE.replace(
+        'author = "alice"', 'author = "alice"\nexpires = "2001-01-01T00:00:00Z"'
+    )
+    file = _write(tmp_path / "decisions.toml", expired + "\n" + PROPOSAL_FILE)
+    argv = ["triage", "review", "--decisions", file, "--format", "json"]
+    assert run_main(monkeypatch, argv) == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["expired"] == []
+    assert document["proposals"] == [document["entries"][0]["handle"]]
+    assert run_main(monkeypatch, ["triage", "review", "--decisions", file]) == 0
+    out = " ".join(capsys.readouterr().out.split())
+    assert "1 entry, 0 stale, 0 shadowed, 0 expired, 1 pending" in out

@@ -96,32 +96,43 @@ def triage_entries(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, An
     """The decisions file's triage entries, with what each matches.
 
     Every entry carries its handle and its computed status: a proposal,
-    expired, stale against the given scan directory, or live. A live entry
-    names the findings it matched. This is the listing the ``depscan triage
-    list`` verb renders and the ``get_decisions`` server tool returns.
+    expired, stale or shadowed against the given scan directory, or live.
+    A shadowed entry matches findings, but another decision wins every one
+    of them (see :func:`analysis_lib.findings.decisions.apply_triage`), so
+    it changes nothing. A live entry names the findings it matched. This is
+    the listing the ``depscan triage list`` verb renders and the
+    ``get_decisions`` server tool returns.
 
     :param file: The decisions file to read.
     :param scan_dir: A scan directory to match the entries against, its
-        stale and expired entries included in the result.
-    :returns: The document with ``entries``, ``stale``, ``expired`` and
-        ``proposals`` index lists.
+        stale, shadowed and expired entries included in the result.
+    :returns: The document with ``entries`` and the ``stale``, ``shadowed``,
+        ``expired`` and ``proposals`` handle lists.
     :raises TriageApiError: When the file cannot be read or breaks its
         schema, or the scan directory cannot be read.
     """
-    from analysis_lib.findings.decisions import entry_matches_finding, is_expired
+    import copy
+
+    from analysis_lib.findings.decisions import apply_triage, entry_matches_finding, is_expired
     from depscan.lib.decisions_edit import entry_document
 
     loaded = _load_for_edit(file)
     findings: List[Dict[str, Any]] = []
     aliases: Dict[str, set] = {}
+    winners: set = set()
     if scan_dir:
         if not os.path.isdir(str(scan_dir)):
             raise TriageApiError(f"the scan directory '{scan_dir}' does not exist")
         findings, aliases = _scan_findings_for_triage(str(scan_dir))
+        application = apply_triage(
+            copy.deepcopy(findings), loaded.entries, alias_map=aliases or None
+        )
+        winners = {id(entry) for _finding, entry in application.winners}
     document: Dict[str, Any] = {
         "decisionsFile": str(file),
         "entries": [],
         "stale": [],
+        "shadowed": [],
         "expired": [],
         "proposals": [],
         "scanDir": scan_dir,
@@ -139,16 +150,29 @@ def triage_entries(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, An
             status = "expired"
         elif scan_dir and not matches:
             status = "stale"
+        elif scan_dir and id(entry) not in winners:
+            status = "shadowed"
         else:
             status = "live"
-        if status != "live":
-            document[{"proposal": "proposals"}.get(status, status)].append(entry.index)
         listed["status"] = status
         listed["source"] = entry.source
         if scan_dir:
             listed["matches"] = matches
         document["entries"].append(listed)
+    _count_statuses(document)
     return document
+
+
+def _count_statuses(document: Dict[str, Any]) -> None:
+    """Fill a listing's stale, shadowed, expired and proposals arrays with
+    the handles of its entries that have that status."""
+    keys = {"stale": "stale", "shadowed": "shadowed", "expired": "expired"}
+    keys["proposal"] = "proposals"
+    for key in keys.values():
+        document[key] = []
+    for listed in document["entries"]:
+        if listed["status"] in keys:
+            document[keys[listed["status"]]].append(listed["handle"])
 
 
 def triage_set(
@@ -246,9 +270,11 @@ def triage_review(
     """List the proposals, or approve or reject one by its handle.
 
     With neither ``approve`` nor ``reject`` the result is the listing of the
-    proposals awaiting review. Approval writes the approver's name into the
-    entry, and the author's when it names none, and the entry applies from
-    then on. Rejection removes the proposal and records nothing else; a
+    proposals awaiting review, with the counts of that listing. Approval
+    writes the approver's name into the entry, and the author's when it
+    names none, and the entry applies from then on: a decision with the same
+    selector is replaced by it, and the result names that decision under
+    ``replaced``. Rejection removes the proposal and records nothing else; a
     person's decision cannot be rejected, only removed with
     :func:`triage_remove`. The approver is never guessed: an approval or
     rejection without one is refused.
@@ -261,6 +287,7 @@ def triage_review(
     if approve is None and reject is None:
         listing = triage_entries(file=file)
         listing["entries"] = [e for e in listing["entries"] if e["status"] == "proposal"]
+        _count_statuses(listing)
         return listing
     if approve is not None and reject is not None:
         raise TriageApiError("review approves or rejects one entry, not both")
@@ -270,12 +297,17 @@ def triage_review(
     try:
         position = decisions_edit.find_handle(loaded, str(approve or reject))
         if approve is not None:
-            entries = decisions_edit.approve_entry(loaded, position, str(approver).strip())
-            return {
+            entries, position, replaced = decisions_edit.approve_entry(
+                loaded, position, str(approver).strip()
+            )
+            document = {
                 "decisionsFile": str(file),
                 "result": "approved",
                 "entry": decisions_edit.entry_document(entries[position]),
             }
+            if replaced is not None:
+                document["replaced"] = decisions_edit.entry_document(replaced)
+            return document
         entry = loaded.entries[position]
         if not entry.is_proposal:
             raise TriageApiError(
@@ -334,6 +366,7 @@ def triage_check(*, file: str, scan_dir: Optional[str] = None) -> Dict[str, Any]
             "decisionsFile": str(file),
             "entries": [],
             "stale": [],
+            "shadowed": [],
             "expired": [],
             "proposals": [],
             "scanDir": scan_dir,

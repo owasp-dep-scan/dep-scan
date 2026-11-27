@@ -284,16 +284,24 @@ not move when other entries are added or removed.
   carry over. With `--proposed-by` it writes a proposal instead, needs no
   `--author`, never replaces a person's decision, and replaces only the
   same proposer's earlier proposal for that selector.
+- `triage set` finds the entry to replace by its handle, so a selector
+  that differs only in the case of the advisory or the spelling of the purl
+  replaces the entry instead of adding a second one beside it.
 - `triage list <scan-dir>` prints the entries with their handles and what
-  each matches, and flags the stale, expired and pending ones.
-- `triage review` with no option lists the proposals awaiting review.
-  `--approve <handle> --approver <name>` approves one and sets its author
-  to the approver when it has none; `--reject <handle> --approver <name>`
-  removes a proposal and refuses a live decision. An approved proposal is
-  a live decision, so its handle drops the `proposed_by` part; when a live
-  decision with the same selector already exists, the two share a handle,
-  the first in file order wins, and a command naming that handle exits 2
-  until the file is edited to keep one of them.
+  each matches, and flags the stale, expired, pending and shadowed ones. A
+  shadowed entry matches findings that another entry decides (a finding
+  selector beats an advisory selector, then the first in file order wins),
+  so it changes nothing. The JSON document lists the handles of each kind in
+  its `stale`, `shadowed`, `expired` and `proposals` arrays.
+- `triage review` with no option lists the proposals awaiting review, and
+  its counts are those of the proposals. `--approve <handle> --approver
+  <name>` approves one and sets its author to the approver when it has
+  none; `--reject <handle> --approver <name>` removes a proposal and
+  refuses a live decision. An approved proposal is a live decision, so its
+  handle drops the `proposed_by` part. When a live decision with the same
+  selector already exists, the approved one replaces it, because the
+  approver has just decided the finding, and the output names the decision
+  it replaced (`replaced` in the JSON document).
 - `triage remove <handle>` removes any entry.
 - `triage check` validates the file the way a gate would.
 
@@ -302,9 +310,14 @@ subcommand takes `--decisions`, `--config` and `--format json`. The author
 and the approver are required options, never guessed from git or the
 environment. A missing name, a handle that matches no entry or more than one,
 or a file that does not parse exits 2; `triage check` exits 3 when the file
-does not parse or carries errors a gate would hit. Every edit is written
-through a temporary file and refused when the file changed since it was
-read. An agent proposes with the `propose_triage` MCP tool; a person
+does not parse or carries errors a gate would hit. An edit that would leave
+two entries with one handle is refused with exit 2, and the file is left
+as it was. Every edit is written through a temporary file and refused when
+the file changed since it was read. The written file keeps its line
+endings (CRLF stays CRLF), its byte order mark and its permissions, and an
+appended entry gets a blank line on each side. When the decisions file is
+a symbolic link, the edit replaces the file the link points to, in that
+file's directory, and the link stays. An agent proposes with the `propose_triage` MCP tool; a person
 approves with `triage review`.
 
 ## What the gate proves and what it does not

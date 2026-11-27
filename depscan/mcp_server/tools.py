@@ -797,7 +797,7 @@ def run_scan_tool(args, roots, allow_scans=False, allow_propose=False):
 
 def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
     """The decisions of one scan directory: the entries with their status,
-    the stale and expired ones, and the last gate result.
+    the stale, shadowed and expired ones, and the last gate result.
 
     The decisions file is the one ``depscan report`` would read for the
     scan (:func:`depscan.lib.decisions.resolve_for_saved_scan`): a file the
@@ -818,6 +818,7 @@ def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
         "decisions": resolution.record,
         "entries": [],
         "stale": [],
+        "shadowed": [],
         "expired": [],
         "proposals": [],
         "gate": _read_gate(scan_dir),
@@ -826,7 +827,7 @@ def get_decisions_tool(args, roots, allow_scans=False, allow_propose=False):
         listing = api.triage_entries(
             file=confinement.confine(resolution.path, roots), scan_dir=scan_dir
         )
-        for key in ("entries", "stale", "expired", "proposals"):
+        for key in ("entries", "stale", "shadowed", "expired", "proposals"):
             document[key] = listing[key]
     if resolution.warnings:
         document["warnings"] = list(resolution.warnings)
@@ -1018,8 +1019,8 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
     _spec(
         "get_decisions",
         "Read the triage decisions of a dep-scan scan directory: every "
-        "entry with its status (live, proposal, expired, stale), what it "
-        "matches, and the last gate result the scan recorded.",
+        "entry with its status (live, proposal, expired, stale, shadowed), "
+        "what it matches, and the last gate result the scan recorded.",
         get_decisions_tool,
     ),
     _spec(
