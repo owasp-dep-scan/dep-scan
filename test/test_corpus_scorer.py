@@ -724,3 +724,98 @@ def test_fixture_copies_never_land_inside_the_checkout():
     payload, reason = corpus_score.resolve_fixture(item, os.path.join(REPO_ROOT, "corpus-scans"))
     assert payload is None
     assert "inside the dep-scan checkout" in reason
+
+
+FIXTURES = os.path.join(REPO_ROOT, "contrib", "corpus", "fixtures")
+
+
+def test_every_committed_fixture_matches_its_manifest_digest():
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "depscan.corpus.json"), encoding="utf-8"
+    ) as fp:
+        items = [i for i in json.load(fp)["items"] if i["source"].startswith("fixture:")]
+    assert items
+    for item in items:
+        directory = os.path.join(FIXTURES, item["source"].split(":", 1)[1])
+        assert corpus_score.fixture_digest(directory) == item["sha256"], item["name"]
+
+
+def test_every_fixture_is_checked_out_without_line_ending_conversion():
+    import subprocess
+
+    files = subprocess.run(
+        ["git", "-C", REPO_ROOT, "ls-files", "contrib/corpus/fixtures"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    attrs = subprocess.run(
+        ["git", "-C", REPO_ROOT, "check-attr", "text", "--", *files],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    assert attrs and all(line.endswith(": text: unset") for line in attrs)
+
+
+def test_ignored_and_generated_files_do_not_change_a_fixture_digest(tmp_path):
+    import shutil
+
+    copy = tmp_path / "binary-hardening-fixture"
+    shutil.copytree(os.path.join(FIXTURES, "binary-hardening-fixture"), copy)
+    before = corpus_score.fixture_digest(str(copy))
+    (copy / "binary-protected").write_bytes(b"\x7fELF")
+    (copy / ".DS_Store").write_bytes(b"x")
+    (copy / "node_modules").mkdir()
+    (copy / "node_modules" / "x.js").write_text("x", encoding="utf-8")
+    assert corpus_score.fixture_digest(str(copy)) == before
+    (copy / "src" / "vulnerable.c").write_text("int main(void){return 0;}", encoding="utf-8")
+    assert corpus_score.fixture_digest(str(copy)) != before
+
+
+def _fixture_item(name, **extra):
+    return {
+        "name": name,
+        "source": f"fixture:{name}",
+        "sha256": corpus_score.fixture_digest(os.path.join(FIXTURES, name)),
+        **extra,
+    }
+
+
+def test_a_failed_fixture_build_is_not_assessed_with_its_reason(tmp_path, monkeypatch):
+    monkeypatch.setenv("CC", "no-such-compiler-on-path")
+    item = _fixture_item("binary-hardening-fixture", build="build.sh")
+    payload, reason = corpus_score.resolve_fixture(item, str(tmp_path))
+    assert payload is None
+    assert "build.sh" in reason
+    assert ("no C compiler" in reason) or ("Linux C compiler" in reason)
+
+
+@pytest.mark.skipif(
+    not sys.platform.startswith("linux") or not __import__("shutil").which("cc"),
+    reason="the fixture builds ELF binaries with a Linux C compiler",
+)
+def test_the_binary_fixture_builds_in_the_copy_only(tmp_path):
+    item = _fixture_item("binary-hardening-fixture", build="build.sh")
+    payload, reason = corpus_score.resolve_fixture(item, str(tmp_path))
+    assert reason is None
+    for name in ("binary-protected", "binary-unprotected"):
+        with open(os.path.join(payload, name), "rb") as fp:
+            assert fp.read(4) == b"\x7fELF"
+        assert not os.path.exists(os.path.join(FIXTURES, "binary-hardening-fixture", name))
+
+
+def test_a_join_no_producer_feeds_is_a_gap_without_a_scan(tmp_path):
+    item = {
+        "name": "tracebom-fixture",
+        "kind": "fixture",
+        "notProduced": {"join": "component-runtime", "reason": "no capture names a component"},
+    }
+    entry = corpus_score.score_one(
+        item,
+        {"item": "tracebom-fixture"},
+        corpus_score.parse_args(["--scans-root", str(tmp_path)]),
+    )
+    assert entry["state"] == "not-assessed"
+    assert entry["joins"]["component-runtime"]["outcome"] == "gap"
+    assert not os.listdir(tmp_path)

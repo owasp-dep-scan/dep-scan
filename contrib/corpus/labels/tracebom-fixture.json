@@ -6,10 +6,10 @@
       "packages": [
         {
           "purl": "pkg:pypi/pyyaml",
-          "citation": "trace_target.py imports yaml and the tracing venv (trace-fixture.sh) installs pyyaml; a trace that captures the run names the distribution the run loaded"
+          "citation": "trace_target.py:1 imports yaml, which trace-fixture.sh installs as the pyyaml distribution; a trace of the run must name it"
         }
       ],
-      "notes": "The committed trace was recorded on macOS, where tracebom captures no component records; the scorer reports the join against this label with whatever the trace carries."
+      "notes": "No trace of this fixture names a component yet (the manifest item records the gap); the label states what a capture of the run must name."
     }
   }
 }

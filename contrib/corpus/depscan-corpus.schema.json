@@ -135,6 +135,25 @@
         },
         "notes": {
           "type": "string"
+        },
+        "build": {
+          "type": "string",
+          "description": "A script inside a fixture that the scorer runs in its copy of the fixture before the scan, for artifacts that are built rather than committed. A failed build makes the item not assessed with the script's last message."
+        },
+        "notProduced": {
+          "type": "object",
+          "description": "A join this item labels but no producer can feed yet. The scorer runs nothing and reports the join as a gap with the reason.",
+          "required": ["join", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "join": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       }
     },

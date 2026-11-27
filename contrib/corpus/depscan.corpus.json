@@ -778,9 +778,9 @@
     },
     {
       "name": "binary-hardening-fixture",
-      "description": "Two small ELF binaries built from one C source (build.sh), without hardening and with the full set: stack protector, PIE, full RELRO and NX.",
+      "description": "Two small ELF binaries built from one C source by build.sh, without hardening and with the full set: stack protector, PIE, full RELRO, NX and fortification.",
       "source": "fixture:binary-hardening-fixture",
-      "sha256": "e1b3eecffd0254684afba1f3707093e78ac6763add963d81cb3a443be8deeefd",
+      "sha256": "fa3859d5e9897bcb3f83c0a4ddbc8be83c36213664681414d8cc222d71fd2ca8",
       "license": "Apache-2.0",
       "storage": {
         "kind": "fixture",
@@ -798,7 +798,8 @@
       },
       "labels": "labels/binary-hardening-fixture.json",
       "subset": "ci",
-      "notes": "Both binaries were built for linux/arm64 in a gcc:13-bookworm container and stripped; blint reads them statically on every runner. CHECK_ABI_FLOOR fires on both builds and is environmental, so no label names it."
+      "notes": "The scorer runs build.sh in its copy of the fixture with the system C compiler, so no binary is committed and the digest covers the sources. The build needs Linux (ELF output); elsewhere the item is not assessed with the build's reason.",
+      "build": "build.sh"
     },
     {
       "name": "lifecycle-fixture",
@@ -874,9 +875,9 @@
     },
     {
       "name": "tracebom-fixture",
-      "description": "A short Python run traced with tracebom; the committed trace BOM is what a BOM-directory scan reads through the tracebom adapter.",
+      "description": "A short Python program for the component-to-runtime join; trace-fixture.sh records the tracebom command that would trace one run of it.",
       "source": "fixture:tracebom-fixture",
-      "sha256": "47bc044e653adc30ea66d57c085a3bbda80346f67c4c8ae907b3aa900bd72626",
+      "sha256": "60f668573b121aae1488746e84a348d7d1a9e843e4668095fd9ac62b25a61c15",
       "license": "Apache-2.0",
       "storage": {
         "kind": "fixture",
@@ -893,7 +894,11 @@
         ]
       },
       "labels": "labels/tracebom-fixture.json",
-      "notes": "The committed trace was recorded with tracebom on macOS; it holds no component records, which is the measured state the join reports and the draft upstream issue's evidence."
+      "notes": "No trace BOM is committed. The labels state what a trace of the run must name once a capture that records components exists.",
+      "notProduced": {
+        "join": "component-runtime",
+        "reason": "no trace of this fixture names a component: the macOS tracebom capture held none, and no Linux capture has been recorded, so the join has no input and is reported as a gap"
+      }
     },
     {
       "name": "forgejo-two-producers",

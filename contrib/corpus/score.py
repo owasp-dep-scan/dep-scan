@@ -203,16 +203,44 @@ def select_items(manifest: dict, args) -> list:
     return items
 
 
-def fixture_digest(directory: str) -> str:
-    """The digest of a fixture directory: SHA-256 over every file's relative
-    path with forward slashes and its bytes, in sorted path order."""
-    digest = hashlib.sha256()
+def _ignored_patterns() -> list:
+    """The patterns of contrib/corpus/fixtures/.gitignore: files a fixture's
+    own scripts or a local build write, which the digest and the copy skip."""
+    try:
+        with open(os.path.join(_HERE, "fixtures", ".gitignore"), encoding="utf-8") as fp:
+            return [line.strip().rstrip("/") for line in fp if line.strip() and line[0] != "#"]
+    except OSError:
+        return []
+
+
+def fixture_files(directory: str) -> list:
+    """The (relative path, path) pairs of a fixture's committed files, in
+    sorted order: everything under the directory except what the fixtures'
+    .gitignore names, by file or directory name, or by a path relative to
+    contrib/corpus/fixtures when the pattern holds a slash."""
+    patterns = _ignored_patterns()
+    prefix = os.path.basename(os.path.normpath(directory)) + "/"
     entries = []
     for base, _dirs, files in os.walk(directory):
         for name in files:
             path = os.path.join(base, name)
-            entries.append((os.path.relpath(path, directory).replace(os.sep, "/"), path))
-    for rel, path in sorted(entries):
+            rel = os.path.relpath(path, directory).replace(os.sep, "/")
+            parts = rel.split("/")
+            if any(
+                (prefix + rel).startswith(p + "/") or prefix + rel == p if "/" in p else p in parts
+                for p in patterns
+            ):
+                continue
+            entries.append((rel, path))
+    return sorted(entries)
+
+
+def fixture_digest(directory: str) -> str:
+    """The digest of a fixture directory: SHA-256 over every committed
+    file's relative path with forward slashes and its bytes, in sorted path
+    order."""
+    digest = hashlib.sha256()
+    for rel, path in fixture_files(directory):
         digest.update(rel.encode("utf-8") + b"\x00")
         with open(path, "rb") as fp:
             digest.update(fp.read())
@@ -306,7 +334,8 @@ def resolve_testdata(item: dict, testdata_root: str):
 def resolve_fixture(item: dict, scans_root: str):
     """The committed fixture of a fixture item, digest-checked and copied.
 
-    The fixture is scanned from a copy under ``scans_root``, never from the
+    The fixture is scanned from a copy under ``scans_root``, after the
+    item's ``build`` script (when it names one) ran in that copy, never from the
     repository tree: the corpus sits inside dep-scan's own uv workspace, and
     a scan of the committed directory would pick the workspace's environment
     up. The copy lands beside the scan directory, never inside it: a BOM
@@ -327,10 +356,20 @@ def resolve_fixture(item: dict, scans_root: str):
             "workspace a fixture scan would pick up; pass a --scans-root outside it"
         )
     shutil.rmtree(copy_dir, ignore_errors=True)
-    os.makedirs(os.path.dirname(copy_dir), exist_ok=True)
-    shutil.copytree(
-        directory, copy_dir, ignore=shutil.ignore_patterns(".venv-trace", "node_modules")
-    )
+    for rel, path in fixture_files(directory):
+        os.makedirs(os.path.dirname(os.path.join(copy_dir, rel)), exist_ok=True)
+        shutil.copy2(path, os.path.join(copy_dir, rel))
+    if item.get("build"):
+        # The fixture's own build script runs in the copy, so a built
+        # artifact never reaches the committed tree or its digest.
+        built = subprocess.run(
+            ["bash", item["build"]], cwd=copy_dir, capture_output=True, text=True
+        )
+        if built.returncode != 0:
+            detail = (built.stderr or built.stdout).strip().splitlines()
+            return None, f"the fixture build ({item['build']}) failed: " + (
+                detail[-1] if detail else f"exit {built.returncode}"
+            )
     return copy_dir, None
 
 
@@ -1192,6 +1231,13 @@ def score_one(item: dict, labels, args) -> dict:
 
     if labels is None:
         return not_assessed(f"no label file {item.get('labels')}")
+    if item.get("notProduced"):
+        # A join no producer can feed yet: the item states the gap and why,
+        # and nothing is scanned.
+        gap = item["notProduced"]
+        entry = not_assessed(gap["reason"])
+        entry["joins"] = {gap["join"]: {"outcome": "gap", "reason": gap["reason"]}}
+        return entry
     if args.scan_dir:
         reports_dir = os.path.abspath(os.path.join(args.scan_dir, item["name"]))
         if not os.path.isdir(reports_dir):
