@@ -1,0 +1,31 @@
+contrib/corpus/depscan.corpus.json
+  s_7318da1b9edd46::t_8b4e31ad7e0d98 806,808,829-830
+contrib/corpus/fixtures/lifecycle-fixture/package.json
+  s_7318da1b9edd46::t_4d4de0097fb3ee 4,7-10,12-13,16-17
+test/test_corpus_joins.py
+  s_7318da1b9edd46::t_65288988e73f7f 217-246,248-252,255-272,277-278,282-285
+contrib/corpus/score.py
+  s_7318da1b9edd46::t_8b4e31ad7e0d98 1010
+  s_7318da1b9edd46::t_e154be23143788 959-971,973-982,987-990,995-1006,1013,1015-1016
+  s_7318da1b9edd46::t_825a16df33af21 1007-1009
+contrib/corpus/labels/lifecycle-fixture.json
+  s_7318da1b9edd46::t_8b4e31ad7e0d98 13-14,31,36,39,41-46,51-56
+contrib/corpus/fixtures/lifecycle-fixture/package-lock.json
+  s_7318da1b9edd46::t_12cc2eb4f05078 16-17,1903-1915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06b83a65a99fb3f31db348fee44f669c53d67deb",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
