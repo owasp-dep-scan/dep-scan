@@ -1,0 +1,34 @@
+contrib/corpus/labels/php-symfony-demo.json
+  s_9afc8e07c509cc::t_bc7e17195db72e 1-264
+contrib/corpus/labels/php-koel.json
+  s_9afc8e07c509cc::t_bc7e17195db72e 1-265
+contrib/corpus/labels/php-dvwa.json
+  s_9afc8e07c509cc::t_bc7e17195db72e 1-21
+contrib/corpus/labels/rb-mastodon.json
+  s_9afc8e07c509cc::t_d2d80ba44edfba 1-838
+contrib/corpus/score.py
+  s_9afc8e07c509cc::t_7115871a21a2fc 321-324
+  s_9afc8e07c509cc::t_d231bfd496bb34 1030-1037
+contrib/corpus/depscan-labels.schema.json
+  s_9afc8e07c509cc::t_91f90a352661ad 44,62
+contrib/corpus/labels/rb-railsgoat.json
+  s_9afc8e07c509cc::t_bc7e17195db72e 1-337
+contrib/corpus/labels/php-bookstack.json
+  s_9afc8e07c509cc::t_bc7e17195db72e 1-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8bbec8f06af09eefa5eafe6cddac790fcd3fefd",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+test/test_corpus_joins.py
+  s_9afc8e07c509cc::t_dc1eb4b1c0a140 1-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bbd53f56aa3d52c4f03d6f3a6f3f3ea80077f17b",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

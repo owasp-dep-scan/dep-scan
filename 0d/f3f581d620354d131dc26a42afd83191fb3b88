@@ -1,0 +1,19 @@
+contrib/reachability_eval.py
+  s_9afc8e07c509cc::t_a204d1a9600add 57-65,252-253,279,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0df3f581d620354d131dc26a42afd83191fb3b88",
+  "prompts": {},
+  "sessions": {
+    "s_9afc8e07c509cc": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_3795b0a8-7166-47aa-b79e-417110f26146",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
