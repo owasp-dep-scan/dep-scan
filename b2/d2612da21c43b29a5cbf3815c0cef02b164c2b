@@ -1,0 +1,23 @@
+documentation/docs/Develop/measuring.mdx
+  s_7318da1b9edd46::t_c139f3c9febf05 54-72,85-86,153-161,167,170,175-183
+  s_7318da1b9edd46::t_c881a216683520 98-101
+  s_7318da1b9edd46::t_6ed87c10dfe776 119-127
+contrib/README.md
+  s_7318da1b9edd46::t_c881a216683520 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2d2612da21c43b29a5cbf3815c0cef02b164c2b",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
