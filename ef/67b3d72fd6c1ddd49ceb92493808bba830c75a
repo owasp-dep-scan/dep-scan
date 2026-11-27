@@ -1,0 +1,31 @@
+contrib/corpus/derive_labels.py
+  s_7318da1b9edd46::t_4b38512c3578f3 725-726,749-764,773,781-805,814-815,831-832
+  s_7318da1b9edd46::t_8ab7672de0c8af 128-148,509-517,525-534,536-539,556-559,563-568,570-572,577
+  s_7318da1b9edd46::t_b8dc1bc98e8d3b 237-260,263-269,274-277,291-292,300,307-321,323-326,338,345,351,353-355,358-395
+  s_7318da1b9edd46::t_bd6ef7419d4d8d 7-11,16-17,28-40,43-53,521,573-576,727
+  s_7318da1b9edd46::t_988a7ab160f512 421-449,453-459,464-470,474
+  s_7318da1b9edd46::t_8792a1c0c1babc 623-624,627-632,639,641,645,652-654,660-667,677-680,684-685,690-714,716-718
+  s_7318da1b9edd46::t_0c677283b6e313 561-562
+test/test_corpus_labels.py
+  s_7318da1b9edd46::t_38951b25781754 443-605
+  s_7318da1b9edd46::t_f538f3c716e58f 141,143,186-195,309
+contrib/corpus/depscan-labels.schema.json
+  s_7318da1b9edd46::t_bd6ef7419d4d8d 95-113,135
+  s_7318da1b9edd46::t_f70deb1eecad20 136-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef67b3d72fd6c1ddd49ceb92493808bba830c75a",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
