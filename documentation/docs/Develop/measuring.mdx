@@ -110,10 +110,14 @@ The reachability numbers per project and per analyser come from the same
 corpus: `python contrib/reachability_eval.py --scan-dir <scans>` scores
 `direct_purls` and the reached purls of both analysers against the `used`
 and `unused` labels for every item that carries them, through the scorer's
-own functions, and exits 1 when no item could be scored. Its
-`--check-snapshot` mode (also chosen by `--snapshot`, `--check` or a
-repository argument) keeps the older behaviour, comparing reached sets
-against the recorded baseline, for a refactor that must not change output.
+own functions, exits 1 when no item could be scored and 2 when `--items`
+names an item the manifest does not hold. Its snapshot mode keeps the older
+behaviour for a refactor that must not change output:
+`python contrib/reachability_eval.py --check-snapshot /path/to/repo` (or
+`--check`, or just the repository argument) compares the reached sets of the
+repository's reports with `contrib/reachability_eval.baseline.json` and exits
+1 when they differ, and `--snapshot /path/to/repo` records the baseline
+instead.
 
 ## The join scores
 

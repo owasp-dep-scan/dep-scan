@@ -9,11 +9,12 @@ against the ``used`` and ``unused`` labels. The numbers are recall and
 precision per project and per analyser, reproducible from the corpus
 manifest, the pinned commits, the repo-test data and the scorer.
 
-The old snapshot mode stays as ``--check-snapshot`` for a refactor that must
-not change output: it compares the reached sets of one or more reports
-directories with the baseline recorded in ``reachability_eval.baseline.json``
-(``--snapshot`` rewrites it), so a change that moves a reached purl without
-a documented fix fails.
+The old snapshot mode stays for a refactor that must not change output: it
+compares the reached sets of one or more reports directories with the
+baseline recorded in ``reachability_eval.baseline.json`` and exits 1 when
+they differ (``--snapshot`` rewrites the baseline instead), so a change that
+moves a reached purl without a documented fix fails. A repository argument,
+``--check-snapshot`` or ``--check`` selects it.
 
 Usage:
     # Score the corpus items with reachability labels
@@ -22,9 +23,12 @@ Usage:
     # Score two items only
     python contrib/reachability_eval.py --items py-vulpy,js-express-realworld
 
-    # Snapshot mode: diff a reports directory against the baseline
+    # Snapshot mode: compare a reports directory with the baseline, exit 1
+    # on a difference
     python contrib/reachability_eval.py --check-snapshot /path/to/repo
-    python contrib/reachability_eval.py --check-snapshot --snapshot /path/to/repo
+
+    # Snapshot mode: record the baseline
+    python contrib/reachability_eval.py --snapshot /path/to/repo
 """
 
 from __future__ import annotations
@@ -202,11 +206,16 @@ def evaluate_repo(repo: str) -> Dict:
 
 
 def corpus_items(manifest_path: str, wanted: List[str]):
-    """The manifest items with reachability labels, optionally filtered."""
+    """The manifest items with reachability labels, optionally filtered.
+    Raises ValueError, as the scorer refuses them, when a wanted name is no
+    item of the manifest."""
     manifest = corpus_score.load_json(manifest_path)
     if not isinstance(manifest, dict):
         print(f"Cannot read the corpus manifest '{manifest_path}'.", file=sys.stderr)
         return []
+    unknown = sorted(set(wanted) - {item.get("name") for item in manifest.get("items") or []})
+    if unknown:
+        raise ValueError("The manifest holds no item named: " + ", ".join(unknown))
     items = []
     for item in manifest.get("items") or []:
         if wanted and item.get("name") not in set(wanted):
@@ -331,7 +340,8 @@ def _diff_set(repo: str, analyzer: str, key: str, baseline_list, current_list) -
 
 
 def _run_snapshot(args) -> int:
-    """The old behaviour: diff reached sets against the recorded baseline."""
+    """The old behaviour: compare reached sets with the recorded baseline and
+    exit 1 on a difference, or record the baseline with ``--snapshot``."""
     repos = args.repos or []
     if not repos:
         print(
@@ -350,37 +360,35 @@ def _run_snapshot(args) -> int:
             json.dump(_sets_only(report), fp, indent=2, sort_keys=True)
         print(f"\nBaseline written to {BASELINE_FILE}")
         return 0
-    if args.check:
-        if not os.path.exists(BASELINE_FILE):
-            print("\nNo baseline; run with --snapshot first.", file=sys.stderr)
-            return 2
-        with open(BASELINE_FILE, encoding="utf-8") as fp:
-            baseline = json.load(fp)
-        current = _sets_only(report)
-        if current == baseline:
-            print("\n[check] reached sets + vuln_cross_ref match baseline. OK")
-            return 0
-        print("\n[check] sets DIFFER from baseline:", file=sys.stderr)
-        for repo in sorted(set(baseline) | set(current)):
-            for analyzer in ANALYZERS:
-                b = baseline.get(repo, {}).get(analyzer, {})
-                c = current.get(repo, {}).get(analyzer, {})
-                b_sets = b.get("sets", {})
-                c_sets = c.get("sets", {})
-                for key in ("reached_purls", "reached_services", "endpoint_reached_purls"):
-                    _diff_set(repo, analyzer, key, b_sets.get(key, []), c_sets.get(key, []))
-                b_xref = b.get("vuln_cross_ref", {})
-                c_xref = c.get("vuln_cross_ref", {})
-                for key in ("reached_set", "endpoint_reached_set", "not_reached_set"):
-                    _diff_set(
-                        f"{repo} [vuln_cross_ref]",
-                        analyzer,
-                        key,
-                        b_xref.get(key, []),
-                        c_xref.get(key, []),
-                    )
-        return 1
-    return 0
+    if not os.path.exists(BASELINE_FILE):
+        print("\nNo baseline; run with --snapshot first.", file=sys.stderr)
+        return 2
+    with open(BASELINE_FILE, encoding="utf-8") as fp:
+        baseline = json.load(fp)
+    current = _sets_only(report)
+    if current == baseline:
+        print("\n[check] reached sets + vuln_cross_ref match baseline. OK")
+        return 0
+    print("\n[check] sets DIFFER from baseline:", file=sys.stderr)
+    for repo in sorted(set(baseline) | set(current)):
+        for analyzer in ANALYZERS:
+            b = baseline.get(repo, {}).get(analyzer, {})
+            c = current.get(repo, {}).get(analyzer, {})
+            b_sets = b.get("sets", {})
+            c_sets = c.get("sets", {})
+            for key in ("reached_purls", "reached_services", "endpoint_reached_purls"):
+                _diff_set(repo, analyzer, key, b_sets.get(key, []), c_sets.get(key, []))
+            b_xref = b.get("vuln_cross_ref", {})
+            c_xref = c.get("vuln_cross_ref", {})
+            for key in ("reached_set", "endpoint_reached_set", "not_reached_set"):
+                _diff_set(
+                    f"{repo} [vuln_cross_ref]",
+                    analyzer,
+                    key,
+                    b_xref.get(key, []),
+                    c_xref.get(key, []),
+                )
+    return 1
 
 
 def main(argv=None) -> int:
@@ -414,8 +422,9 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--check-snapshot",
         action="store_true",
-        help="run the snapshot mode instead of the labelled score; --snapshot, "
-        "--check or a repository argument select it too",
+        help="run the snapshot mode instead of the labelled score: compare the reached "
+        "sets of the repositories given with the baseline, exit 1 on a change; "
+        "--snapshot, --check or a repository argument select it too",
     )
     ap.add_argument(
         "--snapshot",
@@ -425,7 +434,8 @@ def main(argv=None) -> int:
     ap.add_argument(
         "--check",
         action="store_true",
-        help="snapshot mode: diff reached sets vs baseline; exit 1 on change",
+        help="select the snapshot mode, which compares reached sets with the baseline "
+        "and exits 1 on a change",
     )
     ap.add_argument("--json", action="store_true", help="print the full JSON report")
     args = ap.parse_args(argv)
@@ -433,7 +443,11 @@ def main(argv=None) -> int:
     if args.check_snapshot or args.snapshot or args.check or args.repos:
         return _run_snapshot(args)
     wanted = [n.strip() for n in (args.items or "").split(",") if n.strip()]
-    items = corpus_items(args.manifest, wanted)
+    try:
+        items = corpus_items(args.manifest, wanted)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if not items:
         print(
             "No corpus item with reachability labels to score; pass --items or "
