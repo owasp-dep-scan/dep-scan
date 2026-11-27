@@ -396,3 +396,111 @@ def test_pinned_control_does_not_fire_on_the_unpinned_expectation():
     scored = corpus_score.score_findings([on_sha], expected, forbidden)
     assert scored["hits"] == 0
     assert len(scored["forbiddenFired"]) == 1
+
+
+def _scan(stages, findings=None, types=("js",)):
+    return corpus_score.ItemScan(
+        {"name": "t", "kind": "fixture", "scan": {"types": list(types), "args": []}},
+        _result_with_stages(stages, findings=findings, reports_dir=REPO_ROOT),
+    )
+
+
+def test_one_skipped_type_does_not_blank_a_category_another_type_assessed():
+    scan = _scan(
+        [
+            {"name": "risk", "projectType": "github", "status": "skipped", "reason": "no audit"},
+            {"name": "risk", "projectType": "python", "status": "completed"},
+        ],
+        findings=[_finding("supply-chain", "PKG-011", ["pkg:pypi/requests-git-fixture@1.0"])],
+        types=("github", "python"),
+    )
+    labels = {
+        "findings": {
+            "source": "hand",
+            "expected": [
+                {
+                    "category": "supply-chain",
+                    "purl": "pkg:pypi/requests-git-fixture",
+                    "rules": ["PKG-011"],
+                }
+            ],
+        }
+    }
+    supply = corpus_score.score_categories(scan, labels)["supply-chain"]
+    assert supply["status"] == "assessed"
+    assert supply["recall"] == 1.0
+    assert supply["notAssessedTypes"] == [
+        {"projectType": "github", "stage": "risk", "status": "skipped", "reason": "no audit"}
+    ]
+
+
+def test_category_is_not_assessed_when_every_type_skipped_it():
+    scan = _scan(
+        [
+            {"name": "risk", "projectType": "github", "status": "skipped", "reason": "a"},
+            {"name": "risk", "projectType": "python", "status": "failed", "reason": "b"},
+        ],
+        types=("github", "python"),
+    )
+    supply = corpus_score.score_categories(scan, {})["supply-chain"]
+    assert supply["status"] == "not-assessed"
+    assert supply["reason"] == "github: a; python: b"
+
+
+def test_one_failed_inventory_does_not_blank_the_item():
+    stages = [
+        {"name": "inventory", "projectType": "go", "status": "completed"},
+        {"name": "inventory", "projectType": "binary", "status": "failed", "reason": "blint"},
+    ]
+    assert corpus_score.inventory_failed(_scan(stages, types=("go", "binary"))) is None
+    stages[0]["status"] = "failed"
+    assert corpus_score.inventory_failed(_scan(stages, types=("go", "binary")))
+
+
+def test_failed_binary_review_is_not_assessed_not_a_miss():
+    scan = _scan(
+        [{"name": "binary-review", "status": "failed", "reason": "blint crashed"}],
+        types=("binary",),
+    )
+    labels = {
+        "findings": {
+            "source": "fixture",
+            "expected": [
+                {
+                    "category": "binary-hardening",
+                    "purl": "pkg:generic/binary-unprotected",
+                    "rules": ["CHECK_CANARY"],
+                }
+            ],
+        }
+    }
+    entry = corpus_score.score_categories(scan, labels)["binary-hardening"]
+    assert entry["status"] == "not-assessed"
+    assert entry["recall"] is None
+
+
+def test_failed_matching_leaves_malware_not_assessed():
+    scan = _scan([{"name": "matching", "status": "failed", "reason": "no database"}])
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "labels", "malware-fixture.json"),
+        encoding="utf-8",
+    ) as fp:
+        labels = json.load(fp)
+    categories = corpus_score.score_categories(scan, labels)
+    assert categories["malware"]["status"] == "not-assessed"
+    assert categories["vulnerability"]["status"] == "not-assessed"
+
+
+def test_malware_fixture_control_fires_on_a_malware_finding():
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "labels", "malware-fixture.json"),
+        encoding="utf-8",
+    ) as fp:
+        section = json.load(fp)["findings"]
+    findings = [
+        _finding("malware", "MAL-2024-1000", ["pkg:npm/custom-solutions@20.8.9"]),
+        _finding("malware", "MAL-2099-1", ["pkg:npm/left-pad@1.3.0"]),
+    ]
+    scored = corpus_score.score_findings(findings, section["expected"], section["forbidden"])
+    assert scored["recall"] == 1.0
+    assert [f["rule"] for f in scored["forbiddenFired"]] == ["MAL-2099-1"]

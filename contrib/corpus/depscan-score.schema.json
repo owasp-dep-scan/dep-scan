@@ -186,6 +186,21 @@
           "items": {
             "type": "object"
           }
+        },
+        "notAssessedTypes": {
+          "type": "array",
+          "description": "The project types whose stage for this category did not complete, beside a score another type's completed stage produced.",
+          "items": {
+            "type": "object",
+            "required": ["projectType", "stage", "status", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "projectType": {"type": "string"},
+              "stage": {"type": "string"},
+              "status": {"type": "string"},
+              "reason": {"type": "string"}
+            }
+          }
         }
       }
     },

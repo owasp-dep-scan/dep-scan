@@ -66,7 +66,8 @@ ANALYZERS = ("FrameworkReachability", "SemanticReachability")
 STAGE_CATEGORIES = {
     "risk": ("supply-chain",),
     "licenses": ("license",),
-    "matching": ("vulnerability",),
+    "matching": ("vulnerability", "malware"),
+    "binary-review": ("binary-hardening",),
 }
 
 #: The lifecycle phase each BOM file-name prefix stands for.
@@ -569,14 +570,33 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     }
 
 
-def stage_not_assessed(scan: ItemScan, category: str):
-    """The reason a category was not assessed, from the manifest's stages."""
+def stage_outcome(scan: ItemScan, category: str):
+    """Whether the stages behind a category ran, as (reason, skipped types).
+
+    Stages are recorded per project type. A category is not assessed (a
+    reason comes back) only when no stage that produces it completed for any
+    project type; otherwise the reason is None and the types whose stage did
+    not complete are listed beside the score.
+    """
     names = [name for name, cats in STAGE_CATEGORIES.items() if category in cats]
-    for stage in scan.stages:
-        status = stage.get("status")
-        if stage.get("name") in names and status in ("not-assessed", "failed", "skipped"):
-            return stage.get("reason") or f"the {stage.get('name')} stage {status}"
-    return None
+    stages = [stage for stage in scan.stages if stage.get("name") in names]
+    skipped = [
+        {
+            "projectType": stage.get("projectType") or "",
+            "stage": stage.get("name"),
+            "status": stage.get("status"),
+            "reason": stage.get("reason")
+            or f"the {stage.get('name')} stage {stage.get('status')}",
+        }
+        for stage in stages
+        if stage.get("status") != "completed"
+    ]
+    if not stages or len(skipped) < len(stages):
+        return None, skipped
+    return "; ".join(
+        f"{entry['projectType']}: {entry['reason']}" if entry["projectType"] else entry["reason"]
+        for entry in skipped
+    ), skipped
 
 
 def score_categories(scan: ItemScan, labels: dict) -> dict:
@@ -593,11 +613,11 @@ def score_categories(scan: ItemScan, labels: dict) -> dict:
         category
         for cats in STAGE_CATEGORIES.values()
         for category in cats
-        if stage_not_assessed(scan, category)
+        if stage_outcome(scan, category)[0]
     }
     categories = {}
     for category in sorted(names):
-        reason = stage_not_assessed(scan, category)
+        reason, skipped = stage_outcome(scan, category)
         if reason:
             categories[category] = {
                 "status": "not-assessed",
@@ -614,6 +634,8 @@ def score_categories(scan: ItemScan, labels: dict) -> dict:
         else:
             scored["status"] = "unlabelled"
             scored["reason"] = "the item labels no expected or forbidden findings of this category"
+        if skipped:
+            scored["notAssessedTypes"] = skipped
         categories[category] = scored
     return categories
 
@@ -1060,12 +1082,14 @@ JOIN_EVALUATORS = {
 
 
 def inventory_failed(scan: ItemScan):
-    """The reason the inventory stage failed, when it did. A scan whose BOM
-    generation failed assessed nothing, so the item reads as not assessed
-    rather than as one with no findings."""
-    for stage in scan.stages:
-        if stage.get("name") == "inventory" and stage.get("status") == "failed":
-            return stage.get("reason") or "the inventory stage failed"
+    """The reason no inventory completed, when every one failed. A scan
+    whose BOM generation failed for every project type assessed nothing, so
+    the item reads as not assessed rather than as one with no findings; one
+    failed type beside a completed one leaves the item scored."""
+    inventories = [stage for stage in scan.stages if stage.get("name") == "inventory"]
+    failed = [stage for stage in inventories if stage.get("status") == "failed"]
+    if failed and not any(stage.get("status") == "completed" for stage in inventories):
+        return "; ".join(stage.get("reason") or "the inventory stage failed" for stage in failed)
     return None
 
 
