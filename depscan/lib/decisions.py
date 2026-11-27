@@ -271,7 +271,7 @@ def resolve_for_saved_scan(
                 "with the file as it is now"
             )
         return resolved
-    if recorded is None:
+    if recorded is None or record is None:
         return resolved
     resolved.selected_by = str(record.get("selectedBy") or "default")
     if not recorded.exists:

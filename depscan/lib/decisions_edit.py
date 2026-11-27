@@ -226,7 +226,7 @@ def _append_table(loaded: LoadedFile, table: Table) -> None:
 
 
 def write_entry(
-    loaded: LoadedFile, *, selector: Dict[str, str], fields: Dict[str, Any]
+    loaded: LoadedFile, *, selector: Dict[str, Any], fields: Dict[str, Any]
 ) -> Tuple[str, int, List[TriageEntry]]:
     """Add the entry, or replace the one it supersedes, and save.
 

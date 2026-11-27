@@ -10,6 +10,7 @@ control: the assertions read the files the run wrote.
 
 import json
 import sys
+from typing import Any, Dict
 from pathlib import Path
 
 import pytest
@@ -541,7 +542,7 @@ def test_a_finding_selector_reaches_the_vdr_analysis(scan_stubs, tmp_path, monke
 
 
 def test_fail_on_an_alias_gates_the_scan_and_the_report_alike(scan_stubs, tmp_path, monkeypatch):
-    vuln = dict(VULN_REQUESTS)
+    vuln: Dict[str, Any] = dict(VULN_REQUESTS)
     vuln["references"] = [{"id": "GHSA-aaaa-bbbb-cccc", "source": {"name": "GitHub"}}]
     monkeypatch.setattr(sys.modules[__name__], "VULN_REQUESTS", vuln)
     bom = _write_bom(tmp_path / "app.cdx.json")

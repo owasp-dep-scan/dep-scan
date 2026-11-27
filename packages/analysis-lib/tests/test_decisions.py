@@ -885,7 +885,7 @@ def _two_entries(advisory_state: str, finding_state: str, finding_first: bool):
 def _vdr_pair():
     from analysis_lib.findings.vdr_convert import findings_from_vdr
 
-    vuln = {"id": "CVE-2021-23337", "affects": [{"ref": "pkg:npm/lodash@4.17.20"}]}
+    vuln: Dict[str, Any] = {"id": "CVE-2021-23337", "affects": [{"ref": "pkg:npm/lodash@4.17.20"}]}
     finding = findings_from_vdr([vuln], producer_version="7.0.0")[0].to_dict()
     return vuln, finding
 

@@ -11,6 +11,7 @@ import json
 import os
 import stat
 import sys
+from typing import Any, Dict
 from pathlib import Path
 
 import pytest
@@ -634,7 +635,12 @@ def test_approving_a_proposal_replaces_the_decision_it_contradicts(tmp_path, mon
     assert f"replaced: the earlier decision {live_handle} (exploitable, by alice)" in out
     entries = decision_lib.load_decisions(file).triage
     assert [(entry.state, entry.approver) for entry in entries] == [("not_affected", "carol")]
-    finding = {"id": FID, "category": "vulnerability", "rule": "CVE-1", "components": []}
+    finding: Dict[str, Any] = {
+        "id": FID,
+        "category": "vulnerability",
+        "rule": "CVE-1",
+        "components": [],
+    }
     decision_lib.apply_triage([finding], entries)
     assert finding["triage"]["state"] == "not_affected"
 

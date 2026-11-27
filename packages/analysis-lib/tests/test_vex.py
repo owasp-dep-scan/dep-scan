@@ -8,6 +8,7 @@ fixtures.
 
 import json
 import os
+from typing import Any, Dict
 from pathlib import Path
 
 import pytest
@@ -1261,7 +1262,7 @@ def _two_component_entry():
         decisions_from_document,
     )
 
-    vuln = {
+    vuln: Dict[str, Any] = {
         "id": "CVE-2024-10001",
         "bom-ref": "CVE-2024-10001/pkg:npm/express@4.22.2",
         "affects": [{"ref": "pkg:npm/express@4.22.2"}, {"ref": "pkg:npm/left-pad@1.3.0"}],
@@ -1311,7 +1312,7 @@ def test_csaf_states_a_decision_only_for_the_component_it_covers():
 def test_one_decision_about_every_component_writes_the_entry_analysis():
     from analysis_lib.findings.decisions import annotate_vdr_analysis, decisions_from_document
 
-    vuln = {
+    vuln: Dict[str, Any] = {
         "id": "CVE-2024-10001",
         "affects": [{"ref": "pkg:npm/express@4.22.2"}, {"ref": "pkg:npm/express@4.22.3"}],
         "ratings": [{"severity": "high", "score": 8.1, "method": "CVSSv31"}],
