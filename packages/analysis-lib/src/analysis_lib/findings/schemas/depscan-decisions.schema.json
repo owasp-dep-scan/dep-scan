@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:decisions:1",
+  "title": "dep-scan decisions file",
+  "description": "The parsed shape of a dep-scan decisions file (.depscan/decisions.toml). The TOML file holds three kinds of statement people make about findings: triage decisions, the baseline that marks findings new or existing, and the expectations the gate evaluates. This schema validates the document after the TOML is parsed, so a TOML table becomes a JSON object and an array of tables becomes an array. A decision with proposed_by and neither approver nor author is a proposal that changes nothing until a person approves it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "triage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state"],
+        "oneOf": [
+          {"required": ["finding"]},
+          {"required": ["advisory", "purl"]}
+        ],
+        "properties": {
+          "finding": {
+            "type": "string",
+            "pattern": "^dsf1:[0-9a-f]{64}$",
+            "description": "Selects one finding by its dsf1 fingerprint."
+          },
+          "advisory": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Selects findings hit by this advisory id or one of its aliases, for example CVE-2021-23337 or a GHSA id. Requires purl."
+          },
+          "purl": {
+            "type": "string",
+            "pattern": "^pkg:",
+            "description": "Selects findings whose affected component is this package, compared with comparable_purl. A version in the purl pins the component version. Requires advisory."
+          },
+          "version_range": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Narrows the purl selection to versions inside this range, in vers syntax, for example vers:npm/>=4.17.0|<4.17.21."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "resolved",
+              "resolved_with_pedigree",
+              "exploitable",
+              "in_triage",
+              "false_positive",
+              "not_affected"
+            ],
+            "description": "The impact analysis state, from the CycloneDX 1.7 impactAnalysisState enum."
+          },
+          "justification": {
+            "type": "string",
+            "enum": [
+              "code_not_present",
+              "code_not_reachable",
+              "requires_configuration",
+              "requires_dependency",
+              "requires_environment",
+              "protected_by_compiler",
+              "protected_at_runtime",
+              "protected_at_perimeter",
+              "protected_by_mitigating_control"
+            ],
+            "description": "The impact analysis justification, from the CycloneDX 1.7 impactAnalysisJustification enum. Required when the state is not_affected."
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["can_not_fix", "will_not_fix", "update", "rollback", "workaround_available"],
+              "description": "One response to the finding, from the CycloneDX 1.7 response enum."
+            },
+            "description": "The responses chosen for this decision."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Free-form detail about the decision, including why the component is not affected."
+          },
+          "author": {
+            "type": "string",
+            "description": "The person who entered the decision. A decision with an author applies without a separate approval step."
+          },
+          "approver": {
+            "type": "string",
+            "description": "The person who approved a proposed decision. depscan triage review writes it."
+          },
+          "proposed_by": {
+            "type": "string",
+            "description": "Who or what proposed the decision: a person, or an agent with its session. A decision with proposed_by and neither approver nor author is a proposal."
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the decision was recorded, as an RFC 3339 date-time."
+          },
+          "expires": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the decision expires and the finding returns to triage, as an RFC 3339 date-time. An expired decision does not suppress and the scan warns about it."
+          }
+        }
+      },
+      "description": "The triage decisions. not_affected, false_positive and resolved suppress the finding from the gate; in_triage and exploitable never do."
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scan"],
+      "properties": {
+        "scan": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The reference scan: a scan directory (its depscan.findings.json is read) or a depscan.findings.json path, relative to the decisions file."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The SHA-256 hex digest of the baseline findings file. A mismatch stops the run."
+        }
+      },
+      "description": "The baseline findings that mark every finding new or existing by fingerprint."
+    },
+    "expect": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "action"],
+        "anyOf": [
+          {"required": ["category"]},
+          {"required": ["severity"]},
+          {"required": ["grade"]},
+          {"required": ["reach"]},
+          {"required": ["malware"]},
+          {"required": ["rule"]},
+          {"required": ["purl"]},
+          {"required": ["confidence"]},
+          {"required": ["new"]}
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The expectation's id, named by the gate result."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the expectation asks for, in one sentence."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["fail", "warn"],
+            "description": "fail exits 3 when the expectation matches a finding; warn reports the match and keeps the exit code."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "vulnerability",
+              "malware",
+              "memory-safety",
+              "supply-chain",
+              "binary-hardening",
+              "mobile",
+              "code",
+              "license",
+              "crypto",
+              "health"
+            ],
+            "description": "Matches findings of this category."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "info", "unknown"],
+            "description": "A floor: matches findings at this severity or more severe."
+          },
+          "grade": {
+            "type": "string",
+            "enum": ["critical", "high", "moderate", "low", "shielded", "unassessed"],
+            "description": "A floor on the exploitability grade: matches findings graded at this grade or more severe."
+          },
+          "reach": {
+            "type": "string",
+            "enum": ["reached", "not_reached", "not_assessed"],
+            "description": "Matches findings by the reachability axis: reached means proven or likely, not_reached means unlikely or refuted, not_assessed means the axis was not assessed. A reach assessed as unknown matches none of the three."
+          },
+          "malware": {
+            "type": "boolean",
+            "description": "true matches findings of the malware category."
+          },
+          "rule": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "minItems": 1,
+            "description": "Matches findings whose rule id, advisory id or an advisory alias is named here."
+          },
+          "purl": {
+            "type": "string",
+            "pattern": "^pkg:",
+            "description": "Matches findings whose affected component is this package, compared with comparable_purl. A version in the purl pins the component version."
+          },
+          "version_range": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Narrows the purl selection to versions inside this range, in vers syntax."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "A floor on the producer confidence. A finding without confidence matches no floor."
+          },
+          "new": {
+            "type": "boolean",
+            "description": "true selects only findings the baseline does not contain; false selects only findings it does. The run needs a baseline, or the expectation is reported as not evaluated."
+          }
+        }
+      },
+      "description": "The expectations the gate evaluates. The selectors combine with AND."
+    },
+    "require": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The requirement's id; a default is derived from the capability when absent."
+          },
+          "description": {
+            "type": "string",
+            "description": "What the requirement asks for, in one sentence."
+          },
+          "capability": {
+            "type": "string",
+            "enum": [
+              "vulnerabilities",
+              "reachability",
+              "license",
+              "supply-chain",
+              "binary",
+              "memory-safety",
+              "mobile",
+              "code",
+              "crypto"
+            ],
+            "description": "A check that must have been assessed by the scan the gate reads. The names are the depscan --checks names."
+          },
+          "project_type": {
+            "type": "string",
+            "description": "Restricts the requirement to one project type. A type the scan did not run leaves the requirement not evaluated."
+          }
+        }
+      },
+      "description": "The capabilities that must be assessed. A requirement that was not assessed exits 4."
+    }
+  }
+}

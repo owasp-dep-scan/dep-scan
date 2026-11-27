@@ -58,6 +58,8 @@ def test_schema_names():
         "depscan-manifest",
         "depscan-evidence",
         "depscan-exploitability-rules",
+        "depscan-decisions",
+        "depscan-expectations",
         "depscan-scan-output",
         "depscan-report-output",
         "depscan-vdb-download-output",

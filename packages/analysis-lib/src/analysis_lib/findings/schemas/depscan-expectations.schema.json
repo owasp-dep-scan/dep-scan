@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:expectations:1",
+  "title": "dep-scan expectations result",
+  "description": "The result of evaluating a decisions file against one scan directory, written as depscan.expectations.json into the scan directory and produced by the same evaluator for depscan report and the get_decisions tool. Every expect and require entry carries its status, the findings it matched and the files that back the result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "evaluatedUtc", "source", "summary", "results", "triage"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1",
+      "description": "The version of this document's shape."
+    },
+    "evaluatedUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the evaluation ran, as an RFC 3339 date-time."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["scan", "report", "tool"],
+      "description": "What evaluated the gate: the scan that produced the directory, a depscan report re-evaluation, or the get_decisions tool."
+    },
+    "decisions": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file", "sha256", "selectedBy"],
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "The decisions file as its path was given."
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "The SHA-256 hex digest of the decisions file."
+            },
+            "selectedBy": {
+              "type": "string",
+              "description": "What selected the file: default, option, environment, project-config or user-config."
+            }
+          }
+        },
+        {"type": "null"}
+      ],
+      "description": "The decisions file the evaluation read, or null when the run had none and worked from command-line expectations only."
+    },
+    "baseline": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scan", "findings"],
+          "properties": {
+            "scan": {
+              "type": "string",
+              "description": "The baseline reference as given, relative to the decisions file or as passed to --baseline."
+            },
+            "digest": {
+              "oneOf": [
+                {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                {"type": "null"}
+              ],
+              "description": "The SHA-256 hex digest of the baseline findings file, when the decisions file named one."
+            },
+            "findings": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many findings the baseline holds."
+            }
+          }
+        },
+        {"type": "null"}
+      ],
+      "description": "The baseline the evaluation compared with, or null when the run had none."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expect",
+        "require",
+        "fail",
+        "warn",
+        "notEvaluated",
+        "requireNotAssessed",
+        "suppressed",
+        "new",
+        "existing"
+      ],
+      "properties": {
+        "expect": {"type": "integer", "minimum": 0, "description": "How many expect entries were evaluated or carried from the command line."},
+        "require": {"type": "integer", "minimum": 0, "description": "How many require entries were evaluated."},
+        "fail": {"type": "integer", "minimum": 0, "description": "How many fail-action expectations matched findings."},
+        "warn": {"type": "integer", "minimum": 0, "description": "How many warn-action expectations matched findings."},
+        "notEvaluated": {"type": "integer", "minimum": 0, "description": "How many entries could not be evaluated, with the reason on the entry."},
+        "requireNotAssessed": {"type": "integer", "minimum": 0, "description": "How many require entries found the capability not assessed."},
+        "suppressed": {"type": "integer", "minimum": 0, "description": "How many findings a triage decision suppresses from the gate."},
+        "new": {"type": "integer", "minimum": 0, "description": "How many findings are new against the baseline; 0 without one."},
+        "existing": {"type": "integer", "minimum": 0, "description": "How many findings are existing against the baseline; 0 without one."}
+      },
+      "description": "The counts the one-line summary and the console block repeat."
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id", "status", "findings", "evidence"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["expect", "require"],
+            "description": "Which kind of decisions entry this result answers."
+          },
+          "id": {
+            "type": "string",
+            "description": "The entry's id; a require entry without one takes the derived default."
+          },
+          "description": {
+            "type": "string",
+            "description": "The entry's description, when it carried one."
+          },
+          "action": {
+            "type": "string",
+            "enum": ["fail", "warn"],
+            "description": "The expect entry's action; absent for require entries."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "fail", "warn", "not_evaluated"],
+            "description": "pass evaluated and matched nothing, fail matched with action fail, warn matched with action warn, not_evaluated with the reason."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the entry was not evaluated, or the summary of a require failure."
+          },
+          "capability": {
+            "type": "string",
+            "description": "The require entry's capability."
+          },
+          "projectType": {
+            "type": "string",
+            "description": "The require entry's project-type filter."
+          },
+          "findings": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^dsf1:[0-9a-f]{64}$"},
+            "description": "The ids of the findings the entry matched."
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "status"],
+              "properties": {
+                "name": {"type": "string", "description": "The manifest stage's name."},
+                "status": {
+                  "type": "string",
+                  "enum": ["completed", "failed", "skipped", "not-assessed"],
+                  "description": "The manifest stage's status."
+                },
+                "projectType": {"type": "string", "description": "The stage's project type, when it ran for one."}
+              },
+              "description": "One manifest stage the require entry evaluated."
+            },
+            "description": "The manifest stages a require entry evaluated, as its evidence."
+          },
+          "evidence": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "The files inside the scan directory that back this result: depscan.findings.json for expectations, depscan.manifest.json for requirements."
+          }
+        }
+      },
+      "description": "One result per expect and require entry, in file order with the command-line entries last."
+    },
+    "triage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["applied", "suppressed", "expired", "stale", "proposals"],
+      "properties": {
+        "applied": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many live triage decisions set at least one finding."
+        },
+        "suppressed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many findings a decision suppresses from the gate."
+        },
+        "expired": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/entryReport"},
+          "description": "The decisions past their expiry. They suppressed nothing, and each names the findings it would have matched."
+        },
+        "stale": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/entryReport"},
+          "description": "The decisions that matched no finding in the scan, with their selectors."
+        },
+        "proposals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/entryReport"},
+          "description": "The proposals waiting for a person to approve them."
+        }
+      },
+      "description": "What the triage decisions did, including the entries that need attention."
+    }
+  },
+  "$defs": {
+    "entryReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "selector", "state", "findings"],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The entry's 1-based position among the triage decisions, the handle depscan triage uses."
+        },
+        "selector": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "The entry's selector as the file carries it: finding, or advisory with purl and version_range."
+        },
+        "state": {
+          "type": "string",
+          "description": "The decision's state."
+        },
+        "author": {"type": "string", "description": "Who entered the decision, when named."},
+        "approver": {"type": "string", "description": "Who approved the decision, when named."},
+        "proposedBy": {"type": "string", "description": "Who or what proposed the decision, when named."},
+        "expires": {
+          "type": "string",
+          "description": "When the decision expires, as an RFC 3339 date-time."
+        },
+        "findings": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^dsf1:[0-9a-f]{64}$"},
+          "description": "The findings the entry matched or would have matched."
+        }
+      },
+      "description": "One triage entry the reader should look at, with what it matched."
+    }
+  }
+}
