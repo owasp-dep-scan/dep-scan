@@ -942,3 +942,53 @@ def test_a_run_profile_applies_to_items_that_name_none(tmp_path):
     _, resolution = corpus_score.build_scan_options(named, tmp_path, str(tmp_path), "offline")
     assert resolution.options["scan_profile"] == "ci"
     assert corpus_score.parse_args(["--profile", "offline"]).profile == "offline"
+
+
+def test_a_crlf_checkout_of_a_fixture_keeps_its_digest(tmp_path):
+    # A Windows checkout with core.autocrlf and a stale index can hold CRLF
+    # copies of the LF files the digest was taken over.
+    import shutil
+
+    copy = tmp_path / "supply-chain-fixture"
+    shutil.copytree(os.path.join(FIXTURES, "supply-chain-fixture"), copy)
+    before = corpus_score.fixture_digest(str(copy))
+    for path in copy.rglob("*"):
+        if path.is_file():
+            lf = path.read_bytes().replace(b"\r\n", b"\n")
+            path.write_bytes(lf.replace(b"\n", b"\r\n"))
+    assert corpus_score.fixture_digest(str(copy)) == before
+    payload, reason = corpus_inputs.resolve_fixture(
+        _fixture_item("supply-chain-fixture", sha256=before), str(tmp_path / "scans")
+    )
+    assert reason is None and payload is not None
+    with open(os.path.join(payload, "requirements.txt"), "rb") as fp:
+        assert b"\r\n" not in fp.read()
+
+
+@pytest.mark.parametrize(
+    "launcher",
+    [r"C:\Windows\System32\bash.exe", r"C:\Users\u\AppData\Local\Microsoft\WindowsApps\bash.exe"],
+)
+def test_the_wsl_launcher_is_not_a_bash_for_the_fixture_build(tmp_path, monkeypatch, launcher):
+    monkeypatch.setattr(corpus_inputs.shutil, "which", lambda name: launcher)
+    item = _fixture_item("binary-hardening-fixture", build="build.sh")
+    payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
+    assert payload is None and reason is not None
+    assert "Linux C compiler" in reason and "WSL" in reason
+
+
+def test_a_failed_build_never_puts_nul_bytes_in_its_reason(tmp_path, monkeypatch):
+    import subprocess
+
+    monkeypatch.setattr(corpus_inputs.shutil, "which", lambda name: "/usr/bin/bash")
+    for stderr in ("\x00".encode("utf-16-le"), "no WSL distribution\n".encode("utf-16-le")):
+        monkeypatch.setattr(
+            corpus_inputs.subprocess,
+            "run",
+            lambda *a, stderr=stderr, **k: subprocess.CompletedProcess(a, 1, b"", stderr),
+        )
+        item = _fixture_item("binary-hardening-fixture", build="build.sh")
+        payload, reason = corpus_inputs.resolve_fixture(item, str(tmp_path))
+        assert payload is None and reason is not None
+        assert "\x00" not in reason
+    assert reason.endswith("no WSL distribution")

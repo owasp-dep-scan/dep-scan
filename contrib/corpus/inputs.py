@@ -61,16 +61,52 @@ def fixture_files(directory: str) -> list:
     return sorted(entries)
 
 
+def fixture_bytes(path: str) -> bytes:
+    """A fixture file's committed bytes. The fixtures are committed with LF
+    line endings and ``-text``, but a checkout made before that attribute
+    (or with core.autocrlf and a stale index) can still hold CRLF, so a text
+    file, one without a NUL byte, reads with CRLF turned back into LF. A
+    binary file reads as it is."""
+    with open(path, "rb") as fp:
+        data = fp.read()
+    return data if b"\x00" in data else data.replace(b"\r\n", b"\n")
+
+
 def fixture_digest(directory: str) -> str:
     """The digest of a fixture directory: SHA-256 over every committed
-    file's relative path with forward slashes and its bytes, in sorted path
-    order."""
+    file's relative path with forward slashes and its bytes
+    (:func:`fixture_bytes`), in sorted path order."""
     digest = hashlib.sha256()
     for rel, path in fixture_files(directory):
         digest.update(rel.encode("utf-8") + b"\x00")
-        with open(path, "rb") as fp:
-            digest.update(fp.read())
+        digest.update(fixture_bytes(path))
     return digest.hexdigest()
+
+
+def usable_bash():
+    """The bash a fixture build script can run under, or None. On Windows
+    the bash.exe in System32 or WindowsApps is the WSL launcher, which runs
+    in another system (or answers with an error when none is installed), so
+    it does not count."""
+    path = shutil.which("bash")
+    if path is None:
+        return None
+    lowered = path.replace("/", "\\").lower()
+    if lowered.endswith("\\system32\\bash.exe") or "\\windowsapps\\" in lowered:
+        return None
+    return path
+
+
+def process_text(data) -> str:
+    """A tool's output as text: UTF-16 when it carries NUL bytes (as the
+    WSL launcher writes), UTF-8 otherwise, with any NUL left removed."""
+    if isinstance(data, str):
+        return data.replace("\x00", "")
+    data = data or b""
+    text = data.decode("utf-16-le", errors="replace") if b"\x00" in data else ""
+    if not text.strip("\x00").strip() or "\ufffd" in text:
+        text = data.decode("utf-8", errors="replace")
+    return text.replace("\x00", "")
 
 
 def git(clone: str, *args, text=True):
@@ -203,21 +239,27 @@ def resolve_fixture(item: dict, scans_root: str):
             f"the scans root {scans_root} is inside the dep-scan checkout, whose uv "
             "workspace a fixture scan would pick up; pass a --scans-root outside it"
         )
-    bash = shutil.which("bash") if item.get("build") else None
+    bash = usable_bash() if item.get("build") else None
     if item.get("build") and bash is None:
         return None, (
-            f"the fixture build ({item['build']}) is a bash script and bash is not on PATH"
+            f"the fixture build ({item['build']}) needs bash and a Linux C compiler, "
+            "and bash is not on PATH (a Windows WSL launcher does not count)"
         )
     shutil.rmtree(copy_dir, ignore_errors=True)
     for rel, path in fixture_files(directory):
-        os.makedirs(os.path.dirname(os.path.join(copy_dir, rel)), exist_ok=True)
-        shutil.copy2(path, os.path.join(copy_dir, rel))
+        target = os.path.join(copy_dir, rel)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "wb") as fp:
+            fp.write(fixture_bytes(path))
+        shutil.copymode(path, target)
     if bash:
         # The fixture's own build script runs in the copy, so a built
         # artifact never reaches the committed tree or its digest.
-        built = subprocess.run([bash, item["build"]], cwd=copy_dir, capture_output=True, text=True)
+        built = subprocess.run([bash, item["build"]], cwd=copy_dir, capture_output=True)
         if built.returncode != 0:
-            detail = (built.stderr or built.stdout).strip().splitlines()
+            detail = (
+                process_text(built.stderr).strip() or process_text(built.stdout).strip()
+            ).splitlines()
             return None, f"the fixture build ({item['build']}) failed: " + (
                 detail[-1] if detail else f"exit {built.returncode}"
             )
