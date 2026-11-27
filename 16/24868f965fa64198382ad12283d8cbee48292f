@@ -1,0 +1,29 @@
+depscan/lib/decisions.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 274
+depscan/lib/decisions_edit.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 229
+packages/analysis-lib/tests/test_decisions.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 888
+packages/analysis-lib/tests/test_vex.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 11,1265,1315
+test/test_decisions_cli.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 13,545
+test/test_triage_verb.py
+  s_7318da1b9edd46::t_cccd6f29cfab2e 14,638-643
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1624868f965fa64198382ad12283d8cbee48292f",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
