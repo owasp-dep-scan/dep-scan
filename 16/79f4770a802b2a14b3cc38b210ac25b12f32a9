@@ -1,0 +1,45 @@
+packages/analysis-lib/src/analysis_lib/findings/decisions.py
+  s_62a28a1c3d6dbf::t_d49f45ca09b19c 428-430,446-460
+  s_62a28a1c3d6dbf::t_c602255acd2dfc 1-21,23-25,28-34,37-352,354-395,397-398,401,403,412-416,419-420,422-427,431-438,461-472,476-477,479-517,519-556,560-562,564-581,595-599,603,605-620,627-629,631-635,654-658,662,665,668-678,691-715,717-719,721-722,727-743,745-748,750-770,776-787,789-801,805-893,895,897-898,902-903,907-911,916-926,932-937,939-954,956-963,967-971,977-978,980-1058,1062-1072,1074-1095,1097-1141,1143-1155,1160,1164,1182-1224,1226-1237,1239-1242,1244-1271,1274,1279-1284,1287-1288,1294-1307,1309-1324
+  s_62a28a1c3d6dbf::t_8ceaad8b5b9f6f 723-726
+  s_62a28a1c3d6dbf::t_a5acf549e080b8 1225
+  s_62a28a1c3d6dbf::t_bc8329ba37b11a 22,26-27,35-36,353,396,399-400,417-418,421,439-445,473-475,478,518,557-559,563,582-594,600-602,604,664,666-667,679-690,716,720,744,749,771-775,788,802-804,894,896,899-901,904-906,912-915,927-931,938,955,964-966,972-976,979,1059-1061,1073,1096,1142,1156-1159,1161-1163,1165-1181,1238,1243,1272-1273,1275-1278,1285-1286,1308
+  s_62a28a1c3d6dbf::t_1d2b6ab9171829 402,404-411
+  s_62a28a1c3d6dbf::t_5108115c0cbc20 636-653,659-661,663
+  s_62a28a1c3d6dbf::t_4e043f7c9afb40 1289-1293
+  s_62a28a1c3d6dbf::t_8e8b758e877f38 621-626,630
+packages/analysis-lib/tests/test_findings_schema.py
+  s_62a28a1c3d6dbf::t_a14bb019c1ce49 61-62
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-decisions.schema.json
+  s_62a28a1c3d6dbf::t_fdcdd0e89ad655 1-260
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-expectations.schema.json
+  s_62a28a1c3d6dbf::t_05eb6ccaf2f5fa 1-252
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_62a28a1c3d6dbf::t_7ae1e7c15abce3 227-239,247
+  s_62a28a1c3d6dbf::t_8d56da03f78488 57-62
+packages/analysis-lib/tests/test_decisions.py
+  s_62a28a1c3d6dbf::t_9df653fa273686 265-267
+  s_62a28a1c3d6dbf::t_63b7b20253af10 517
+  s_62a28a1c3d6dbf::t_7a05f66f0ffb00 252,254-255,257-258,274-275,277
+  s_62a28a1c3d6dbf::t_76afc7bacc812e 341-343
+  s_62a28a1c3d6dbf::t_2153fbc1be2b31 296,298
+  s_62a28a1c3d6dbf::t_f2c38093399dae 1-251,253,256,259-260,263-264,268-273,276,278-295,297,299-340,344-516,518-720,722-733
+  s_62a28a1c3d6dbf::t_5b195fe60685f5 721
+  s_62a28a1c3d6dbf::t_9c61a981b59b1b 261-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1679f4770a802b2a14b3cc38b210ac25b12f32a9",
+  "prompts": {},
+  "sessions": {
+    "s_62a28a1c3d6dbf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_f8e1b148-351f-4b73-8dae-994f63d96af6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
