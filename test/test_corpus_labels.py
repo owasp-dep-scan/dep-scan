@@ -299,6 +299,7 @@ def test_project_local_modules_are_counted_apart(tmp_path):
     (tmp_path / "good").mkdir()
     (tmp_path / "good" / "lib").mkdir()
     (tmp_path / "frontend" / "src" / "app").mkdir(parents=True)
+    (tmp_path / "frontend" / "tsconfig.json").write_text("{}", encoding="utf-8")
     truth = {"usages": [_row("lib", "good/mod_welcome1.py"), _row("lib", "good/x.py")]}
     reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
     assert reach["used"] == []
@@ -380,3 +381,28 @@ def test_hand_label_citations_name_a_file_and_line():
             if not cites.search(entry.get("citation", "")):
                 missing.append((os.path.basename(path), entry.get("purl") or entry.get("path")))
     assert missing == []
+
+
+def test_python_distributions_come_from_requirement_dirs_and_lock_files(tmp_path):
+    (tmp_path / "requirements" / "extras").mkdir(parents=True)
+    (tmp_path / "requirements" / "extras" / "redis.txt").write_text("redis>=5\n", encoding="utf-8")
+    (tmp_path / "uv.lock").write_text(
+        'version = 1\n[[package]]\nname = "SQLAlchemy"\nversion = "2.0.0"\n', encoding="utf-8"
+    )
+    truth = {"usages": [_row("redis"), _row("sqlalchemy"), _row("cPickle"), _row("urlparse")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/redis", "pkg:pypi/sqlalchemy"]
+    # Python 2 modules name no distribution: dropped, not counted unmapped.
+    assert reach["unmapped"] == {}
+
+
+def test_a_bare_javascript_import_is_not_local_beside_its_importer(tmp_path):
+    # outline imports the history package from app/utils/*.ts, beside its
+    # own app/utils/history.ts; a bare specifier never resolves there.
+    (tmp_path / "app" / "utils").mkdir(parents=True)
+    (tmp_path / "app" / "utils" / "history.ts").write_text("", encoding="utf-8")
+    (tmp_path / "package.json").write_text("{}", encoding="utf-8")
+    truth = {"usages": [_row("history", "app/utils/routing.ts")]}
+    reach = derive_labels.derive("js-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:npm/history"]
+    assert reach["local"] == {}

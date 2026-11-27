@@ -21,14 +21,18 @@ a package dep-scan fails to inventory still shows up as a recall miss:
 
 - npm, Maven, Composer and gem purls follow from the name (Maven's
   ``group:artifact``, Composer's ``vendor/name``). An npm name the project's
-  package.json files do not declare, and which is a directory or module in
-  the project tree (a path alias such as ``src``), is project-local.
+  package.json files do not declare, and which is a directory or module at
+  a base a path alias resolves from (a parent directory of the importing
+  file holding a package.json, tsconfig.json or jsconfig.json, such as
+  Juice Shop's ``src``), is project-local. Node builtins are dropped.
 - A Python import name maps through ``IMPORT_DISTRIBUTIONS``, then the
   ``top_level.txt`` of the distributions installed under ``--site-packages``
   (the pinned project's environment, when one is available), then the
-  distributions the project's own requirements, pyproject.toml, setup.cfg,
-  setup.py and Pipfile declare. A name none of those maps, and which is a
-  package or module in the project tree, is project-local.
+  distributions the project's own requirements files, pyproject.toml,
+  setup.cfg, setup.py, Pipfile and lock files (uv.lock, poetry.lock,
+  pdm.lock, Pipfile.lock) declare. A name none of those maps, and which is a
+  package or module in the project tree, is project-local. Python 2 modules
+  and interpreter internals the truth does not flag as builtin are dropped.
 
 Project-local names are listed under ``local`` with their counts and are not
 labels. Names still unmapped are listed under ``unmapped`` with their counts;
@@ -128,6 +132,27 @@ GEM_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 #: The start of a requirement line: the distribution name.
 REQUIREMENT_NAME = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 
+#: The project files whose declared or locked distributions name the
+#: Python packages a project installs, beside its requirements files.
+PYTHON_MANIFESTS = frozenset(
+    ("pyproject.toml", "setup.cfg", "setup.py", "Pipfile", "Pipfile.lock")
+    + ("uv.lock", "poetry.lock", "pdm.lock")
+)
+
+#: Python 2 standard modules and interpreter internals that the Python truth
+#: does not flag as builtin. Like a builtin row they name no distribution,
+#: so they are dropped rather than counted as unmapped.
+PYTHON_NOT_DISTRIBUTIONS = frozenset(
+    """
+    ConfigParser HTMLParser Queue StringIO __builtin__ __pypy__ _dummy_thread
+    cPickle cStringIO cookielib dummy_thread httplib thread urllib2 urlparse
+    """.split()
+)
+
+#: The files that make a directory the base an import alias resolves from:
+#: a bare JavaScript import such as ``src/app`` names a directory there.
+JS_PROJECT_BASES = ("package.json", "tsconfig.json", "jsconfig.json")
+
 #: Directories the declared-dependency and project-local lookups skip.
 SKIPPED_DIRS = frozenset({".git", "node_modules", ".venv", "venv", "site-packages", "__pycache__"})
 
@@ -186,18 +211,13 @@ def python_declared(project: str) -> set:
 
     def is_requirements(path):
         name = os.path.basename(path)
-        in_requirements_dir = os.path.basename(os.path.dirname(path)) == "requirements"
+        in_requirements_dir = "requirements" in os.path.relpath(path, project).split(os.sep)[:-1]
         return name.endswith((".txt", ".in")) and (
             name.startswith("requirements") or in_requirements_dir
         )
 
     def is_manifest(path):
-        return is_requirements(path) or os.path.basename(path) in (
-            "pyproject.toml",
-            "setup.cfg",
-            "setup.py",
-            "Pipfile",
-        )
+        return is_requirements(path) or os.path.basename(path) in PYTHON_MANIFESTS
 
     for path in _walk(project, is_manifest) if project else ():
         name = os.path.basename(path)
@@ -211,11 +231,23 @@ def python_declared(project: str) -> set:
                 line = line.split("#egg=", 1)[1] if "#egg=" in line else line.split("#", 1)[0]
                 if line.strip() and not line.lstrip().startswith(("-", "git+", "http")):
                     add(line)
-        elif name in ("pyproject.toml", "Pipfile"):
+        elif name == "Pipfile.lock":
+            try:
+                doc = json.loads(text)
+            except ValueError:
+                continue
+            for section in ("default", "develop"):
+                for spec in doc.get(section) or {}:
+                    add(spec)
+        elif name in ("pyproject.toml", "Pipfile", "uv.lock", "poetry.lock", "pdm.lock"):
             try:
                 doc = tomllib.loads(text)
             except tomllib.TOMLDecodeError:
                 continue
+            # A lock file lists every distribution the project installs.
+            for package in doc.get("package") or []:
+                if isinstance(package, dict) and package.get("name"):
+                    add(package["name"])
             project_table = doc.get("project") or {}
             specs = list(project_table.get("dependencies") or [])
             for group in (project_table.get("optional-dependencies") or {}).values():
@@ -272,28 +304,36 @@ def top_level_names(site_packages: list) -> dict:
     return names
 
 
-def is_project_local(project: str, name: str, files) -> bool:
-    """Whether ``name`` is a directory or module inside the project tree: at
-    the root, under ``src``, or beside any directory of a file that imports
-    it."""
+def is_project_local(project: str, name: str, files, javascript: bool = False) -> bool:
+    """Whether ``name`` is a directory or module inside the project tree.
+
+    A Python import resolves against the project root, ``src`` and the
+    directory of the importing script and its parents, so the name is local
+    when one of them holds it. A bare JavaScript import never resolves
+    against the importing file's own directory, only against a base a path
+    alias points at, so for JavaScript only the parents that hold a
+    package.json, tsconfig.json or jsconfig.json count.
+    """
     if not project:
         return False
     head = name.split("/", 1)[0].split(".", 1)[0]
-    candidates = {project, os.path.join(project, "src")}
+    candidates = {project} if javascript else {project, os.path.join(project, "src")}
     for file_name in files:
         directory = os.path.dirname(os.path.join(project, file_name))
         while directory.startswith(project):
-            candidates.add(directory)
+            if not javascript or any(
+                os.path.isfile(os.path.join(directory, base)) for base in JS_PROJECT_BASES
+            ):
+                candidates.add(directory)
             parent = os.path.dirname(directory)
             if parent == directory:
                 break
             directory = parent
-    for directory in candidates:
-        if os.path.isdir(os.path.join(directory, head)):
-            return True
-        if any(os.path.isfile(os.path.join(directory, head + s)) for s in SOURCE_SUFFIXES):
-            return True
-    return False
+    return any(
+        os.path.isdir(os.path.join(directory, head))
+        or any(os.path.isfile(os.path.join(directory, head + s)) for s in SOURCE_SUFFIXES)
+        for directory in candidates
+    )
 
 
 def npm_declared(project: str) -> set:
@@ -333,7 +373,7 @@ class Mapper:
         if self.ecosystem == "npm":
             if package in self.npm_declared:
                 return npm_purl(package)
-            if is_project_local(self.project, package, files):
+            if is_project_local(self.project, package, files, javascript=True):
                 return "local"
             return npm_purl(package) if NPM_NAME.match(package) else None
         if self.ecosystem in ("maven", "composer"):
@@ -411,6 +451,8 @@ def derive(
     local: dict = {}
     for package, (count, files) in sorted(packages.items()):
         if ecosystem == "npm" and (package in NODE_BUILTINS or package.startswith("node:")):
+            continue
+        if ecosystem == "pypi" and package in PYTHON_NOT_DISTRIBUTIONS:
             continue
         purl = mapper.purl(package, files)
         if purl is None:
