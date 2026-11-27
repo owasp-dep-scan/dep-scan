@@ -75,6 +75,7 @@ LANGUAGES = {
 #: Python import names that are not their distribution's name, lower-cased
 #: import name to the distribution name on the index.
 IMPORT_DISTRIBUTIONS = {
+    "argon2": "argon2-cffi",
     "bs4": "beautifulsoup4",
     "bson": "pymongo",
     "crispy_forms": "django-crispy-forms",
@@ -105,8 +106,11 @@ IMPORT_DISTRIBUTIONS = {
     "rest_framework": "djangorestframework",
     "sklearn": "scikit-learn",
     "sorl": "sorl-thumbnail",
+    "split_settings": "django-split-settings",
     "tagulous": "django-tagulous",
     "treebeard": "django-treebeard",
+    "vcr_unittest": "vcrpy-unittest",
+    "watson": "django-watson",
     "yaml": "pyyaml",
 }
 

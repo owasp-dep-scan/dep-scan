@@ -406,3 +406,13 @@ def test_a_bare_javascript_import_is_not_local_beside_its_importer(tmp_path):
     reach = derive_labels.derive("js-fixture", truth, {}, project=str(tmp_path))["reachability"]
     assert [e["purl"] for e in reach["used"]] == ["pkg:npm/history"]
     assert reach["local"] == {}
+
+
+def test_import_table_maps_names_that_differ_from_their_distribution():
+    truth = {"usages": [_row("watson"), _row("split_settings"), _row("argon2")]}
+    reach = derive_labels.derive("py-fixture", truth, {})["reachability"]
+    assert [e["purl"] for e in reach["used"]] == [
+        "pkg:pypi/argon2-cffi",
+        "pkg:pypi/django-split-settings",
+        "pkg:pypi/django-watson",
+    ]
