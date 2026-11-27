@@ -916,3 +916,18 @@ def test_a_version_holding_a_slash_splits_off_the_key():
         "pkg:pypi/flask-sqlalchemy",
         "3.1.1",
     )
+
+
+def test_the_table_prints_a_dash_for_a_rate_nothing_was_labelled_for():
+    entry = {
+        "item": "t",
+        "state": "scored",
+        "categories": {
+            "malware": {"status": "assessed", "recall": 0.0, "precision": None},
+            "vulnerability": {"status": "assessed", "recall": None, "precision": None},
+        },
+        "joins": {},
+    }
+    table = corpus_score.render_markdown({"items": [entry]})
+    assert "None" not in table
+    assert "malware: 0.0/-; vulnerability: -/-" in table

@@ -1166,13 +1166,22 @@ def check_floors(floors_doc: dict, score_doc: dict) -> list:
     return violations
 
 
+def rates(score: dict) -> str:
+    """A score's recall and precision as ``recall/precision``, with ``-``
+    for a rate nothing was labelled for."""
+    return "/".join(
+        "-" if score.get(k) is None else str(score[k]) for k in ("recall", "precision")
+    )
+
+
 def render_markdown(score_doc: dict) -> str:
     """The Markdown table of one run."""
     lines = [
         "# Corpus score",
         "",
-        f"Generated {score_doc.get('generatedAt')} at commit {score_doc.get('commit') or 'unknown'} "
-        f"with dep-scan {score_doc.get('depscanVersion')}.",
+        f"Generated {score_doc.get('generatedAt') or 'at an unknown time'} at commit "
+        f"{score_doc.get('commit') or 'unknown'} with dep-scan "
+        f"{score_doc.get('depscanVersion') or 'of an unknown version'}.",
         "",
         "| Item | State | Reachability recall/precision | Categories | Joins |",
         "| --- | --- | --- | --- | --- |",
@@ -1189,11 +1198,7 @@ def render_markdown(score_doc: dict) -> str:
             if scores.get("status") == "assessed"
         }
         reach_cells = [
-            f"{analyzer.replace('Reachability', '')} {bucket} "
-            + "/".join(
-                "-" if scores[bucket].get(k) is None else str(scores[bucket][k])
-                for k in ("recall", "precision")
-            )
+            f"{analyzer.replace('Reachability', '')} {bucket} {rates(scores[bucket])}"
             for analyzer, scores in assessed.items()
             for bucket in ("direct", "reached")
         ]
@@ -1203,7 +1208,7 @@ def render_markdown(score_doc: dict) -> str:
         category_cells = [
             f"{category}: not assessed"
             if score.get("status") == "not-assessed"
-            else f"{category}: {score.get('recall')}/{score.get('precision')}"
+            else f"{category}: {rates(score)}"
             for category, score in sorted((entry.get("categories") or {}).items())
             if score.get("status") != "unlabelled"
         ]
