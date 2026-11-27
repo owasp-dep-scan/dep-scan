@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:report-output:1",
+  "$id": "urn:owasp:depscan:schema:report-output:2",
   "title": "dep-scan report output",
   "description": "The document `depscan report --format json` writes on stdout: the saved scan directory's documents as one object. Paths in scanDir are absolute with / separators; inside the manifest and the findings, paths keep the scan-directory-relative form those schemas define, with scanDir as their root. A directory that cannot be loaded produces the error document instead of this one.",
   "type": "object",
@@ -28,6 +28,10 @@
         "$ref": "depscan-finding.schema.json"
       },
       "description": "The scan directory's findings, the array inside its depscan.findings.json."
+    },
+    "expectations": {
+      "$ref": "depscan-expectations.schema.json",
+      "description": "The gate result the report evaluated: the decisions file, --fail-on, --baseline and --vex applied to the saved findings. Absent when the report had no decisions to evaluate."
     }
   }
 }

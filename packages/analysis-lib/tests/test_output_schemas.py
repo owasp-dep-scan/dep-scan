@@ -32,8 +32,7 @@ MANIFEST = json.loads(
         / "data"
         / "scan-directory"
         / "depscan.manifest.json"
-    )
-    .read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8")
 )
 
 #: A finding-shaped document: the first finding of the same fixture.
@@ -44,8 +43,7 @@ FINDING = json.loads(
         / "data"
         / "scan-directory"
         / "depscan.findings.json"
-    )
-    .read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8")
 )["findings"][0]
 
 
@@ -80,24 +78,24 @@ def test_every_schema_carries_the_published_id_and_a_title(name):
     # object gained approver and proposed_by beside a per-finding baseline
     # state; the manifest schema moved to version 2 when analyzer entries
     # gained their caveats array and to version 3 when it gained the
-    # decisions record and the expectations file role; every other schema
-    # is at 1.
+    # decisions record and the expectations file role; the report output
+    # moved to version 2 when it gained the expectations document; every
+    # other schema is at 1.
     versions = {
         "depscan-finding": 3,
         "depscan-manifest": 3,
+        "depscan-report-output": 2,
         "depscan-scan-output": 2,
         "depscan-mcp-scan_summary-output": 2,
     }
     version = versions.get(name, 1)
-    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
+    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-') :]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]
     assert isinstance(schema.get("description"), str) and schema["description"]
 
 
 def test_every_file_in_the_directory_is_listed():
-    assert {schemas_module._STEM_TO_FILE[name] for name in SCHEMA_NAMES} == set(
-        published_files()
-    )
+    assert {schemas_module._STEM_TO_FILE[name] for name in SCHEMA_NAMES} == set(published_files())
 
 
 def test_the_listing_order_is_the_registration_order():
@@ -185,7 +183,11 @@ def test_scan_output_validates_with_a_scanned_entry():
 def test_scan_output_validates_with_a_refused_entry():
     _valid(
         "depscan-scan-output",
-        {"scans": [{"target": "./missing", "kind": None, "error": "The source target does not exist."}]},
+        {
+            "scans": [
+                {"target": "./missing", "kind": None, "error": "The source target does not exist."}
+            ]
+        },
     )
 
 
@@ -222,6 +224,25 @@ def test_report_output_validates():
         },
     )
     _invalid("depscan-report-output", {"scanDir": "/tmp/scan", "manifest": MANIFEST})
+
+
+def test_report_output_carries_the_expectations_document():
+    from analysis_lib.findings.decisions import decisions_from_document, evaluate_gate
+
+    decisions = decisions_from_document(
+        {"expect": [{"id": "no-high", "severity": "high", "action": "fail"}]}
+    )
+    expectations = evaluate_gate([FINDING], [], decisions).to_document(
+        evaluated_utc="2026-11-27T12:00:00Z", source="report"
+    )
+    document = {
+        "scanDir": "/tmp/scan/depscan-requests",
+        "manifest": MANIFEST,
+        "findings": [FINDING],
+        "expectations": expectations,
+    }
+    _valid("depscan-report-output", document)
+    _invalid("depscan-report-output", dict(document, expectations={"summary": {}}))
 
 
 # --- the manifest's analyzer caveats ----------------------------------------------
@@ -356,7 +377,9 @@ def test_vdb_download_output_validates_both_variants():
     )
     _valid("depscan-vdb-download-output", {"shards": ["npm", "pypi"], "marker": marker_path})
     _invalid("depscan-vdb-download-output", {"marker": marker_path})
-    _invalid("depscan-vdb-download-output", {"image": "x", "shards": ["npm"], "marker": marker_path})
+    _invalid(
+        "depscan-vdb-download-output", {"image": "x", "shards": ["npm"], "marker": marker_path}
+    )
 
 
 def test_vdb_path_output_validates():
@@ -444,7 +467,9 @@ def test_validate_output_validates():
         {
             "results": [
                 _validate_result("/tmp/doc.csaf.json", "csaf", True, []),
-                _validate_result("/tmp/doc.vdr.json", "cyclonedx", False, ["specVersion is missing"]),
+                _validate_result(
+                    "/tmp/doc.vdr.json", "cyclonedx", False, ["specVersion is missing"]
+                ),
                 _validate_result("/tmp/missing.json", None, False, ["could not read JSON"]),
                 _validate_result("/tmp/other.json", "unknown", False, ["format not detected"]),
             ]
@@ -457,7 +482,9 @@ def test_validate_output_validates():
 
 
 def test_version_output_validates():
-    _valid("depscan-version-output", {"version": "7.0.0", "tools": {"cdxgen": "11.1.0", "rusi": None}})
+    _valid(
+        "depscan-version-output", {"version": "7.0.0", "tools": {"cdxgen": "11.1.0", "rusi": None}}
+    )
     _invalid("depscan-version-output", {"version": "7.0.0"})
 
 
