@@ -931,3 +931,14 @@ def test_the_table_prints_a_dash_for_a_rate_nothing_was_labelled_for():
     table = corpus_score.render_markdown({"items": [entry]})
     assert "None" not in table
     assert "malware: 0.0/-; vulnerability: -/-" in table
+
+
+def test_a_run_profile_applies_to_items_that_name_none(tmp_path):
+    item = {"name": "x", "scan": {"types": ["js"], "args": []}}
+    options, resolution = corpus_score.build_scan_options(item, tmp_path, str(tmp_path), "offline")
+    assert resolution.options["scan_profile"] == "offline"
+    assert options.vdb_offline is True
+    named = {"name": "y", "scan": {"types": ["python"], "args": ["--profile", "ci"]}}
+    _, resolution = corpus_score.build_scan_options(named, tmp_path, str(tmp_path), "offline")
+    assert resolution.options["scan_profile"] == "ci"
+    assert corpus_score.parse_args(["--profile", "offline"]).profile == "offline"

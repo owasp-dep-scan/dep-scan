@@ -210,10 +210,11 @@ def select_items(manifest: dict, args) -> list:
 # scanning
 
 
-def build_scan_options(item: dict, payload, reports_dir: str):
+def build_scan_options(item: dict, payload, reports_dir: str, profile=None):
     """The internal options of the item's scan command line: the payload,
     one ``-t`` with every type (a repeated ``-t`` replaces), then the item's
-    arguments, converted the way the scan verb converts them."""
+    arguments, converted the way the scan verb converts them. ``profile``
+    names the scan profile of an item whose arguments name none."""
     from depscan.commands import build_parser
     from depscan.commands import checks as checks_table
     from depscan.commands.scan import _apply_target_options, detect_kind, scan_namespace
@@ -224,6 +225,8 @@ def build_scan_options(item: dict, payload, reports_dir: str):
     tokens += ["--reports-dir", reports_dir, *(item["scan"].get("args") or [])]
     if item["scan"].get("lifecycles"):
         tokens += ["--lifecycle", *item["scan"]["lifecycles"]]
+    if profile and "--profile" not in (item["scan"].get("args") or []):
+        tokens += ["--profile", profile]
     args = build_parser().parse_args(tokens)
     resolution = checks_table.resolve(args)
     options = argparse.Namespace(**vars(scan_namespace(args, resolution=resolution)))
@@ -234,13 +237,13 @@ def build_scan_options(item: dict, payload, reports_dir: str):
     return options, resolution
 
 
-def run_item_scan(item: dict, payload, reports_dir: str):
+def run_item_scan(item: dict, payload, reports_dir: str, profile=None):
     """Run the item's scan through :func:`depscan.api.scan` with rendering
     off, and return (result, None) or (None, reason). The scan runs to its
     end; the workflow's job timeout bounds a scan that hangs."""
     from depscan import api
 
-    options, resolution = build_scan_options(item, payload, reports_dir)
+    options, resolution = build_scan_options(item, payload, reports_dir, profile)
     try:
         result = api.scan(
             options, render=False, checks_not_assessed=resolution.not_assessed or None
@@ -1110,7 +1113,7 @@ def score_one(item: dict, labels, args) -> dict:
         if payload is None:
             return not_assessed(reason)
         reports_dir = os.path.abspath(os.path.join(args.scans_root, item["name"]))
-        result, reason = run_item_scan(item, payload, reports_dir)
+        result, reason = run_item_scan(item, payload, reports_dir, args.profile)
         if result is None:
             return not_assessed(reason)
     scan = ItemScan(item, result, payload)
@@ -1254,6 +1257,11 @@ def parse_args(argv=None):
         "--testdata-root",
         default=cache_dir("repotests-data"),
         help="Pulled repo-test data (default: %(default)s).",
+    )
+    add(
+        "--profile",
+        help="The dep-scan scan profile of every scan whose item names none; offline keeps "
+        "the scans off the network.",
     )
     add("--floors", help="Floors file; exit 1 when a floor drops or a negative control fires.")
     add("--output", default=".", help="Directory for score.json and score.md.")
