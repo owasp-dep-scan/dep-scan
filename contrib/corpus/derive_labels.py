@@ -86,11 +86,13 @@ LANGUAGES = {
 #: Python import names that are not their distribution's name, lower-cased
 #: import name to the distribution name on the index.
 IMPORT_DISTRIBUTIONS = {
+    "_billiard": "billiard",
     "argon2": "argon2-cffi",
     "bs4": "beautifulsoup4",
     "bson": "pymongo",
     "crispy_forms": "django-crispy-forms",
     "crum": "django-crum",
+    "couchbase_core": "couchbase",
     "cv2": "opencv-python",
     "dateutil": "python-dateutil",
     "debug_toolbar": "django-debug-toolbar",

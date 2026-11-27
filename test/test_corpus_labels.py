@@ -418,10 +418,20 @@ def test_a_bare_javascript_import_is_not_local_beside_its_importer(tmp_path):
 
 
 def test_import_table_maps_names_that_differ_from_their_distribution():
-    truth = {"usages": [_row("watson"), _row("split_settings"), _row("argon2")]}
+    truth = {
+        "usages": [
+            _row("watson"),
+            _row("split_settings"),
+            _row("argon2"),
+            _row("_billiard"),
+            _row("couchbase_core"),
+        ]
+    }
     reach = derive_labels.derive("py-fixture", truth, {})["reachability"]
     assert [e["purl"] for e in reach["used"]] == [
         "pkg:pypi/argon2-cffi",
+        "pkg:pypi/billiard",
+        "pkg:pypi/couchbase",
         "pkg:pypi/django-split-settings",
         "pkg:pypi/django-watson",
     ]
