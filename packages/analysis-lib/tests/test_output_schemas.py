@@ -79,8 +79,10 @@ def test_every_schema_carries_the_published_id_and_a_title(name):
     # dropped Pressure and gained sources, and to version 3 when its triage
     # object gained approver and proposed_by beside a per-finding baseline
     # state; the manifest schema moved to version 2 when analyzer entries
-    # gained their caveats array; every other schema is at 1.
-    versions = {"depscan-finding": 3, "depscan-manifest": 2}
+    # gained their caveats array and to version 3 when it gained the
+    # decisions record and the expectations file role; every other schema
+    # is at 1.
+    versions = {"depscan-finding": 3, "depscan-manifest": 3}
     version = versions.get(name, 1)
     assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]

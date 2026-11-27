@@ -89,6 +89,9 @@ class ScanResult:
     :func:`load_scan`, and carry the earlier values (None and []) when a
     directory without a manifest is loaded. ``findings_version`` is the
     findings document's ``schemaVersion`` as read, or None without one.
+    ``expectations`` is the gate result the scan's decisions evaluated to,
+    the ``depscan.expectations.json`` document, or None when the scan ran
+    no gate.
     """
 
     reports_dir: str
@@ -97,6 +100,7 @@ class ScanResult:
     manifest: Optional[Dict[str, Any]] = None
     findings: List[Dict[str, Any]] = field(default_factory=list)
     findings_version: Optional[str] = None
+    expectations: Optional[Dict[str, Any]] = None
 
     @property
     def vulnerabilities(self) -> List[Dict[str, Any]]:
@@ -182,6 +186,10 @@ def scan(
     render: bool = True,
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
+    decisions=None,
+    cli_expects: Optional[List[Any]] = None,
+    baseline_override=None,
+    decisions_base_dir: Optional[str] = None,
 ) -> ScanResult:
     """Run a scan with the given options and return its result.
 
@@ -190,7 +198,8 @@ def scan(
     the same files to ``options.reports_dir``: the BOM documents, the VDR
     files, the license reports and the cdx-audit reports and ``depscan.toml.sample``, plus
     the scan directory's own ``depscan.findings.json`` and
-    ``depscan.manifest.json``.
+    ``depscan.manifest.json``, and ``depscan.expectations.json`` when a
+    gate runs.
 
     With ``render=False`` the rendering is skipped (the console tables, the
     HTML and text reports, the template report, the explanation, the CSAF
@@ -204,10 +213,15 @@ def scan(
     it instead of probing the machine a second time. ``checks_not_assessed``
     lists checks, as ``{"name": ..., "reason": ...}`` dictionaries, that a
     caller decided cannot run; each is recorded in the manifest as a
-    ``check-<name>`` stage with status ``not-assessed``. Both travel only
-    through these keywords: every value of the options namespace is copied
-    into the manifest and the sample config, so a report object must never
-    land there.
+    ``check-<name>`` stage with status ``not-assessed``. ``decisions`` is a
+    loaded decisions document (:mod:`analysis_lib.findings.decisions`);
+    ``cli_expects`` are the expect entries a ``--fail-on`` expression built;
+    ``baseline_override`` is a baseline specification that replaces the
+    decisions file's for this run; ``decisions_base_dir`` is the directory
+    a relative baseline resolves against, the decisions file's own. All
+    four travel only through these keywords: every value of the options
+    namespace is copied into the manifest and the sample config, so a
+    report object must never land there.
 
     :param options: An ``argparse.Namespace`` from the CLI parser or from
         :func:`scan_options`.
@@ -215,8 +229,13 @@ def scan(
     :param doctor_report: Reuse this :class:`DoctorReport` instead of
         collecting one.
     :param checks_not_assessed: Check entries to record as not assessed.
-    :returns: The :class:`ScanResult` of the scan, carrying the manifest and
-        findings of the scan directory it wrote.
+    :param decisions: The loaded decisions document to apply.
+    :param cli_expects: Expect entries from the command line to gate with.
+    :param baseline_override: Baseline specification replacing the file's.
+    :param decisions_base_dir: Directory a relative baseline resolves
+        against.
+    :returns: The :class:`ScanResult` of the scan, carrying the manifest,
+        findings and expectations of the scan directory it wrote.
     :raises ScanError: When a stage stops the scan, with the message the
         stage logged. The function never calls ``sys.exit`` and never
         returns a result in place of a stopped scan. A scan that stopped
@@ -230,6 +249,10 @@ def scan(
         write_scan_dir=True,
         doctor_report=doctor_report,
         checks_not_assessed=checks_not_assessed,
+        decisions=decisions,
+        cli_expects=cli_expects,
+        baseline_override=baseline_override,
+        decisions_base_dir=decisions_base_dir,
     )
 
 
@@ -241,6 +264,10 @@ def _run_stages(
     write_scan_dir: bool = False,
     doctor_report: Optional[DoctorReport] = None,
     checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
+    decisions=None,
+    cli_expects: Optional[List[Any]] = None,
+    baseline_override=None,
+    decisions_base_dir: Optional[str] = None,
 ) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
@@ -248,8 +275,8 @@ def _run_stages(
     leaves the scan directory unwritten. Only the server uses these: it
     prepares the database once when it starts, so a request never downloads
     or replaces the database the server is reading, and a request's output is
-    the response rather than a directory. ``doctor_report`` and
-    ``checks_not_assessed`` see :func:`scan`.
+    the response rather than a directory. ``doctor_report``,
+    ``checks_not_assessed`` and the decisions keywords see :func:`scan`.
     """
     if not render:
         options.no_vuln_table = True
@@ -257,6 +284,13 @@ def _run_stages(
     ctx.write_scan_dir = write_scan_dir
     if doctor_report is not None:
         ctx.doctor_report = doctor_report
+    ctx.decisions = decisions
+    ctx.cli_expects = list(cli_expects or [])
+    ctx.baseline_override = baseline_override
+    ctx.decisions_base_dir = decisions_base_dir
+    ctx.decisions_active = bool(
+        (decisions is not None and decisions.has_decisions) or ctx.cli_expects or baseline_override
+    )
     pipeline.configure_output(ctx)
     written = None
     try:
@@ -359,6 +393,10 @@ def _run_stages(
                 capabilities=["vulnerabilities"],
                 record_extra=lambda: {"notAssessed": _matching_not_assessed(tscan)},
             )
+            # The triage decisions annotate the VDR entries before the VDR
+            # stage writes them, so the analysis objects reach the file, the
+            # CSAF export and the annotations.
+            pipeline.annotate_type_decisions(ctx, tscan)
             _stage(
                 ctx,
                 "vdr",
@@ -384,6 +422,17 @@ def _run_stages(
                         else []
                     },
                 )
+        # The decisions stage builds the findings, applies the triage
+        # decisions and the baseline, and evaluates the gate, before the
+        # reports render, so the saved reports carry its result.
+        if write_scan_dir and ctx.decisions_active:
+            _stage(
+                ctx,
+                "decisions",
+                pipeline.stage_decisions,
+                ctx,
+                capabilities=[],
+            )
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
     except BaseException as exc:
@@ -402,6 +451,7 @@ def _run_stages(
     if written is not None:
         result.manifest = written.get("manifest")
         result.findings = written.get("findings") or []
+        result.expectations = written.get("expectations")
     return result
 
 

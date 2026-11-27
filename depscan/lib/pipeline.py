@@ -54,6 +54,7 @@ from analysis_lib.output import (
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.evidence import store as evidence_store
 from analysis_lib.evidence.adapters import bom_tool_version
+from analysis_lib.findings import decisions as decision_lib
 from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
@@ -332,6 +333,33 @@ class ScanContext:
     atom_results: Dict[Tuple[str, ...], "AdapterResult"] = field(default_factory=dict)
     #: The rule table this scan grades with, loaded once before matching.
     grading_rules: Optional[Any] = None
+    #: The loaded decisions file this scan applies, the command-line
+    #: expectations beside it and the baseline override for one run; all
+    #: empty for a scan without decisions work. The objects come from
+    #: analysis_lib.findings.decisions; they travel on the context and never
+    #: through the options, whose every value the manifest copies.
+    decisions: Optional[Any] = None
+    cli_expects: List[Any] = field(default_factory=list)
+    baseline_override: Optional[Any] = None
+    #: The directory the decisions file's relative baseline resolves
+    #: against: the decisions file's own directory.
+    decisions_base_dir: Optional[str] = None
+    #: Whether decisions work is active: a decisions file with anything in
+    #: it, command-line expectations, or a baseline. An active scan runs the
+    #: decisions stage and records it.
+    decisions_active: bool = False
+    #: pending until the decisions stage ran, then done, or failed with the
+    #: reason on a baseline that could not be read; the manifest writer on a
+    #: stopped scan reads it to skip the work that already failed.
+    decisions_outcome: str = "pending"
+    #: The advisory aliases the selectors match through, folded per project
+    #: type from the VDR entries as the types complete.
+    alias_map: Dict = field(default_factory=dict)
+    #: The gate evaluation over the written findings, set by the decisions
+    #: stage and rendered by the reports stage.
+    gate: Optional[Any] = None
+    #: The findings this scan built, kept for the manifest writer.
+    findings_list: List = field(default_factory=list)
     all_pkg_group_rows: Dict = field(default_factory=dict)
     summary: Optional[Dict] = None
     vdr_file: Optional[str] = None
@@ -893,14 +921,22 @@ def _start_scan_directory(ctx):
 
 
 def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
-    """Write the findings file, the evidence index, and then the manifest, in
-    that order.
+    """Write the evidence index and then the manifest, in that order.
+
+    The findings file and, when a gate ran, ``depscan.expectations.json``
+    are written earlier, by :func:`stage_decisions`, so the render stage can
+    show the gate result; this function then indexes the findings and writes
+    the manifest listing them. A scan without decisions work keeps the old
+    order: its findings are built and written here. A scan that stopped
+    before the decisions stage also builds them here, from whatever the
+    stages produced on the way, and a stage whose baseline failed leaves the
+    findings alone.
 
     The index is built from the store the enrichment stage wrote and the
-    findings just written, so it lands after both exist. The manifest is
-    written last, through a temporary file and a rename, so it lists only
-    files that exist, the evidence files included. A scan that stopped
-    partway still gets one, carrying the failed stage and its reason.
+    findings, so it lands after both exist. The manifest is written last,
+    through a temporary file and a rename, so it lists only files that
+    exist, the evidence files included. A scan that stopped partway still
+    gets one, carrying the failed stage and its reason.
 
     A scan where no project type produced a result (every type's inventory
     failed or listed no packages) and no blint review ran writes no findings
@@ -910,14 +946,23 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     file, because its binary-hardening findings are findings even when the
     BOM it reviewed lists no components to scan. The
     manifest it still writes shows no matching stage completed, which is
-    what refuses the directory at load time. Returns the manifest and the
-    findings array, or None when this run writes no scan directory.
+    what refuses the directory at load time. Returns the manifest, the
+    findings array and the expectations document, or None when this run
+    writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
-    findings: List = []
-    if ctx.scans or ctx.blint_review_ran:
+    findings: List = getattr(ctx, "findings_list", [])
+    expectations: Optional[Dict[str, Any]] = None
+    if getattr(ctx, "decisions_outcome", "pending") == "done":
+        expectations_path = os.path.join(str(ctx.reports_dir), scan_directory.EXPECTATIONS_FILE)
+        if os.path.isfile(expectations_path):
+            with open(expectations_path, encoding="utf-8") as handle:
+                expectations = json.load(handle)
+    elif getattr(ctx, "decisions_outcome", "pending") == "pending" and (
+        ctx.scans or ctx.blint_review_ran
+    ):
         findings_document = scan_directory.write_findings(
             ctx.reports_dir,
             ctx.all_pkg_vulnerabilities,
@@ -941,7 +986,256 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         shards_used=ctx.shards_connected,
     )
     scan_directory.write_manifest(scan_dir, manifest)
-    return {"manifest": manifest, "findings": findings}
+    return {"manifest": manifest, "findings": findings, "expectations": expectations}
+
+
+def annotate_type_decisions(ctx, tscan) -> None:
+    """Write the live triage decisions into one project type's VDR entries.
+
+    This runs between the matching and VDR stages, so the VDR file, the
+    CSAF export and the annotated rendering all carry the analysis objects.
+    The type's advisory aliases fold into the context's alias map here,
+    which the findings application and the gate match through.
+    """
+    decisions = ctx.decisions
+    if not decisions or not decisions.triage:
+        return
+    vdr_result = tscan.vdr_result
+    if vdr_result is None or not vdr_result.pkg_vulnerabilities:
+        return
+    vulns = vdr_result.pkg_vulnerabilities
+    ctx.alias_map.update(decision_lib.alias_map_from_vulns(vulns))
+    annotated = decision_lib.annotate_vdr_analysis(
+        vulns, decisions.triage, alias_map=ctx.alias_map
+    )
+    if annotated:
+        LOG.info(
+            "Applied triage decisions to %d of the %s findings",
+            annotated,
+            tscan.project_type,
+        )
+
+
+def _decisions_record(ctx) -> Optional[Dict[str, Any]]:
+    """The manifest's decisions record: the file, its digest and what
+    selected it, or None when the scan read none."""
+    decisions = ctx.decisions
+    if decisions is None or not decisions.path:
+        return None
+    return {
+        "file": decisions.path,
+        "sha256": decisions.digest,
+        "selectedBy": decisions.selected_by,
+    }
+
+
+def stage_decisions(ctx) -> bool:
+    """Build the findings, apply the decisions and evaluate the gate.
+
+    The stage runs once, after every project type and before the reports
+    render, so the console block and the HTML report can show the triage
+    counts and the gate result. The findings file and the gate result are
+    written here; :func:`finish_scan_directory` then indexes the findings
+    and writes the manifest. A baseline that cannot be read, or whose digest
+    does not match, fails the stage and stops the scan: a run whose
+    baseline is missing never turns every finding into a new one.
+
+    Suppressed findings stay in the findings file with their triage state,
+    and a proposal changes nothing. The stage records itself only for an
+    active scan, one with a decisions file, command-line expectations or a
+    baseline; a scan without decisions work keeps its manifest unchanged.
+    """
+    scan_dir = ctx.scan_dir
+    if scan_dir is None:
+        return False
+    if ctx.decisions_outcome != "pending":
+        return True
+    decisions = ctx.decisions
+    baseline_spec = ctx.baseline_override or (decisions.baseline if decisions else None)
+    findings: List[Dict[str, Any]] = []
+    if ctx.scans or ctx.blint_review_ran:
+        findings = scan_directory.build_findings(
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            exploitability=ctx.exploitability,
+            blint_reviews=_scan_requested_blint_reviews(ctx),
+            supply_chain=ctx.perform_risk_audit,
+            evidence_records=ctx.evidence_records,
+            usage_not_assessed=ctx.usage_not_assessed,
+        )
+    baseline_document = None
+    has_baseline = False
+    new = existing = 0
+    suppressed = 0
+    application = None
+    try:
+        if baseline_spec is not None:
+            baseline_ids = decision_lib.read_baseline(
+                baseline_spec, base_dir=ctx.decisions_base_dir
+            )
+            has_baseline = True
+            new, existing = decision_lib.apply_baseline(findings, baseline_ids)
+            baseline_document = {
+                "scan": baseline_spec.scan,
+                "digest": baseline_spec.digest,
+                "findings": len(baseline_ids),
+            }
+        if decisions and decisions.triage:
+            application = decision_lib.apply_triage(
+                findings, decisions.triage, alias_map=ctx.alias_map or None
+            )
+            suppressed = application.suppressed
+    except decision_lib.BaselineError as exc:
+        ctx.decisions_outcome = "failed"
+        raise ScanStageError(str(exc)) from exc
+    wrote_findings = bool(ctx.scans or ctx.blint_review_ran)
+    if wrote_findings:
+        scan_directory.write_findings(
+            ctx.reports_dir,
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            findings=findings,
+        )
+    ctx.findings_list = findings
+    # The gate result is written for any decisions work, a triage-only or
+    # baseline-only file included, so the stale, expired and pending
+    # entries, and the new and existing counts, have one home on disk.
+    if (decisions is not None and decisions.has_decisions) or ctx.cli_expects:
+        evaluation = decision_lib.evaluate_gate(
+            findings,
+            scan_dir.stages,
+            decisions if decisions is not None else decision_lib.Decisions(),
+            cli_expects=ctx.cli_expects,
+            has_baseline=has_baseline,
+            baseline_document=baseline_document,
+            decisions_document=_decisions_record(ctx),
+            application=application,
+            suppressed=suppressed,
+            new=new,
+            existing=existing,
+            alias_map=ctx.alias_map or None,
+        )
+        document = evaluation.to_document(
+            evaluated_utc=scan_directory._utcnow(), source="scan"
+        )
+        scan_directory.atomic_write_json(
+            os.path.join(str(ctx.reports_dir), scan_directory.EXPECTATIONS_FILE), document
+        )
+        scan_dir.record_stage(
+            "expectations",
+            "completed",
+            capabilities=[],
+            outputs=[{"file": scan_directory.EXPECTATIONS_FILE, "status": "completed"}],
+        )
+        ctx.gate = evaluation
+    if ctx.decisions_active:
+        scan_dir.decisions_record = _decisions_record(ctx)
+        scan_dir.record_stage("decisions", "completed", capabilities=[])
+    ctx.decisions_outcome = "done"
+    return True
+
+
+def decisions_block(ctx) -> List[str]:
+    """The decisions and gate block the reports render, as plain lines.
+
+    The lines name the decisions file, the triage counts, the expired,
+    stale and pending entries with their selectors, and every gate result
+    with its rule id and the findings it matched, so the console, the text
+    report and the HTML report all carry the same block.
+    """
+
+    lines: List[str] = []
+    decisions = ctx.decisions
+    evaluation = ctx.gate
+    if decisions is not None and decisions.path:
+        lines.append(f"Decisions file: {decisions.path}")
+    if evaluation is not None:
+        summary = evaluation.summary_document()
+        findings_count = len(ctx.findings_list)
+        lines.append(
+            f"Findings: {findings_count}, suppressed by decisions: {summary['suppressed']}"
+        )
+        if summary["new"] or summary["existing"]:
+            lines.append(
+                f"New against the baseline: {summary['new']}, existing: {summary['existing']}"
+            )
+        triage = evaluation.triage
+        for report in triage.expired:
+            document = report.to_document()
+            lines.append(
+                f"Expired decision {document['index']} ({report.entry.describe()}) "
+                f"expired {document.get('expires')}: would match "
+                f"{len(document['findings'])} finding(s)"
+            )
+        for report in triage.stale:
+            document = report.to_document()
+            lines.append(
+                f"Stale decision {document['index']} ({report.entry.describe()}): "
+                "matches no finding in this scan"
+            )
+        for report in triage.proposals:
+            document = report.to_document()
+            lines.append(
+                f"Pending proposal {document['index']} ({report.entry.describe()}): "
+                f"{document['state']} proposed by {document.get('proposedBy')}, "
+                "approve with depscan triage review"
+            )
+        for result in evaluation.results:
+            status = {
+                "pass": "pass",
+                "fail": "FAIL",
+                "warn": "warn",
+                "not_evaluated": "not evaluated",
+            }[result.status]
+            line = f"Gate {status}: {result.id}"
+            if result.kind == "require":
+                line += f" (require {result.capability}"
+                if result.project_type:
+                    line += f" for {result.project_type}"
+                line += ")"
+            elif result.description:
+                line += f" ({result.description})"
+            if result.findings:
+                line += f", matched {len(result.findings)} finding(s)"
+            if result.reason:
+                line += f": {result.reason}"
+            lines.append(line)
+        exit_code = evaluation.exit_code
+        lines.append(
+            "Gate exit code: "
+            + (
+                str(exit_code)
+                if exit_code
+                else "0 (no fail-action expectation matched and no requirement failed)"
+            )
+        )
+    elif decisions is not None and decisions.triage:
+        lines.append(
+            "Decisions loaded: "
+            f"{len(decisions.triage)} triage entries, no expectations to evaluate"
+        )
+    return lines
+
+
+def _render_decisions_block(ctx) -> None:
+    """Print the decisions and gate block, ahead of the saved reports.
+
+    The block prints before the console is saved, so ``depscan.txt`` and
+    ``depscan.html`` carry it beside the tables. A scan without decisions
+    work prints nothing here. The lines are escaped, because selectors and
+    reasons are file content and never console markup.
+    """
+    if ctx.gate is None and not (ctx.decisions and ctx.decisions.triage):
+        return
+    lines = decisions_block(ctx)
+    if not lines:
+        return
+    from rich.markup import escape
+
+    console.print()
+    console.rule("Decisions and gate")
+    for line in lines:
+        console.print(escape(line))
 
 
 def stage_database(ctx):
@@ -3147,6 +3441,9 @@ def stage_render_reports(ctx):
     console.record = True
     _render_binary_review(ctx)
     _render_supply_chain(ctx)
+    # The decisions and gate block goes into the saved reports beside the
+    # tables; it needs the findings, which the decisions stage wrote.
+    _render_decisions_block(ctx)
     # Export the console output
     console.save_html(
         ctx.html_report_file,

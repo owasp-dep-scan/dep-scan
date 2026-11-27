@@ -1111,10 +1111,14 @@ def _require_result(entry: RequireEntry, stages: Sequence[Dict[str, Any]]) -> Ex
     """Evaluate one require entry against the manifest stages.
 
     A capability is assessed for a project type when the manifest shows a
-    stage carrying it that completed; a stage that failed, was skipped or
-    was recorded as not assessed fails the requirement, and a requirement
-    naming a project type no stage ran for is not evaluated rather than
-    failed, because nothing was scanned to assess.
+    stage carrying it that completed and, when the stage records the
+    analyzers that were to produce it, at least one of those analyzers
+    completed: an enrichment stage whose every reachability analyzer was
+    not assessed did not assess reachability, whatever its own status says.
+    A stage that failed, was skipped or was recorded as not assessed fails
+    the requirement, and a requirement naming a project type no stage ran
+    for is not evaluated rather than failed, because nothing was scanned to
+    assess.
     """
     result = ExpectationResult(
         kind="require",
@@ -1150,16 +1154,28 @@ def _require_result(entry: RequireEntry, stages: Sequence[Dict[str, Any]]) -> Ex
         }
         for stage in relevant
     ]
-    incomplete = [stage for stage in result.stages if stage["status"] != "completed"]
-    if incomplete:
+    unassessed: List[str] = []
+    for stage in relevant:
+        analyzers_for_capability = [
+            analyzer
+            for analyzer in stage.get("analyzers") or []
+            if isinstance(analyzer, dict) and analyzer.get("capability") == entry.capability
+        ]
+        if analyzers_for_capability:
+            completed = [a for a in analyzers_for_capability if a.get("status") == "completed"]
+            if not completed:
+                names = ", ".join(str(a.get("name")) for a in analyzers_for_capability)
+                unassessed.append(f"{stage.get('name')}: no analyzer assessed it ({names})")
+            continue
+        if stage.get("status") != "completed":
+            listed = f"{stage.get('name')} ({stage.get('status')}"
+            if stage.get("projectType"):
+                listed += f", {stage['projectType']}"
+            unassessed.append(listed + ")")
+    if unassessed:
         result.status = "fail"
-        listed = ", ".join(
-            f"{stage['name']} ({stage['status']}"
-            + (f", {stage['projectType']})" if stage.get("projectType") else ")")
-            for stage in incomplete
-        )
         result.reason = (
-            f"the {entry.capability} capability was not assessed: {listed}"
+            f"the {entry.capability} capability was not assessed: " + "; ".join(unassessed)
         )
     return result
 
@@ -1250,6 +1266,99 @@ def evaluate_gate(
     for entry in decisions.requires:
         evaluation.results.append(_require_result(entry, stages))
     return evaluation
+
+
+# --- the VDR rendering of decisions ---------------------------------------------------
+
+#: The VDR properties that carry the people and expiry of a decision, beside
+#: the CycloneDX analysis object the state and justification go into.
+TRIAGE_PROPERTY_PREFIX = "depscan:triage:"
+
+
+def annotate_vdr_analysis(
+    vulns: List[Dict[str, Any]],
+    entries: Sequence[TriageEntry],
+    *,
+    alias_map: Optional[Dict[str, Set[str]]] = None,
+    now: Optional[datetime] = None,
+) -> int:
+    """Write the live triage decisions into the VDR entries' analysis
+    objects, in place, and return how many entries carry one.
+
+    CycloneDX puts the analysis on the vulnerability entry, so an entry with
+    two affected components carries the first live decision matched on any
+    of its pairs; the per-pair truth, one triage object per finding, lives
+    in the findings document, which every renderer of decisions reads. The
+    author, approver, proposer and expiry travel as ``depscan:triage:*``
+    properties on the entry, because the CycloneDX analysis object has no
+    fields for them. Proposals and expired decisions annotate nothing.
+    """
+    annotated = 0
+    for vuln in vulns:
+        refs = [
+            affect.get("ref")
+            for affect in vuln.get("affects") or []
+            if isinstance(affect, dict) and affect.get("ref")
+        ]
+        if not refs:
+            continue
+        rule = str(vuln.get("id") or "")
+        matched: Optional[TriageEntry] = None
+        for ref in refs:
+            virtual = {
+                "id": "",
+                "category": "vulnerability",
+                "rule": rule,
+                "components": [str(ref)],
+            }
+            for entry in entries:
+                if entry.is_proposal or is_expired(entry.expires, now):
+                    continue
+                if entry_matches_finding(entry, virtual, alias_map=alias_map):
+                    matched = entry
+                    break
+            if matched is not None:
+                break
+        if matched is None:
+            continue
+        analysis: Dict[str, Any] = {"state": matched.state}
+        if matched.justification:
+            analysis["justification"] = matched.justification
+        if matched.responses:
+            analysis["response"] = list(matched.responses)
+        if matched.detail:
+            analysis["detail"] = matched.detail
+        vuln["analysis"] = analysis
+        properties = [
+            prop
+            for prop in vuln.get("properties") or []
+            if isinstance(prop, dict)
+            and not str(prop.get("name") or "").startswith(TRIAGE_PROPERTY_PREFIX)
+        ]
+        for key, value in (
+            ("author", matched.author),
+            ("approver", matched.approver),
+            ("proposed-by", matched.proposed_by),
+            ("expires", matched.expires),
+        ):
+            if value:
+                properties.append({"name": f"{TRIAGE_PROPERTY_PREFIX}{key}", "value": str(value)})
+        vuln["properties"] = properties
+        annotated += 1
+    return annotated
+
+
+def gate_exit_from_document(document: Dict[str, Any]) -> int:
+    """The exit code a written expectations document stands for: 4 when a
+    required capability was not assessed, 3 when a fail-action expectation
+    matched, else 0. The same rule :attr:`GateEvaluation.exit_code` applies,
+    read back from the file."""
+    summary = document.get("summary") or {}
+    if summary.get("requireNotAssessed"):
+        return 4
+    if summary.get("fail"):
+        return 3
+    return 0
 
 
 # --- the command-line expression ----------------------------------------------------

@@ -3,6 +3,7 @@
 import hashlib
 import json
 from datetime import datetime, timezone
+from typing import Any, Dict
 
 import pytest
 
@@ -26,7 +27,7 @@ from analysis_lib.findings.decisions import (
 NOW = datetime(2026, 11, 27, 12, 0, 0, tzinfo=timezone.utc)
 
 
-def _finding(**overrides):
+def _finding(**overrides) -> Dict[str, Any]:
     finding = {
         "id": "dsf1:" + "a" * 64,
         "category": "vulnerability",
@@ -125,6 +126,7 @@ def test_load_valid_file(tmp_path):
         "reach": "reached",
     }
     assert decisions.requires[0].id == "require-reachability-npm"
+    assert decisions.baseline is not None
     assert decisions.baseline.scan == "../baseline/first-scan"
     assert decisions.baseline.digest == digest
     assert decisions.digest == hashlib.sha256(
@@ -280,7 +282,11 @@ def test_selectors_combine_with_and():
 
 def test_the_reach_assessed_unknown_matches_none_of_the_three():
     finding = _graded_finding()
-    finding["exploitability"]["axes"]["reach"] = "unknown"
+    exploitability = finding["exploitability"]
+    assert isinstance(exploitability, dict)
+    axes = exploitability["axes"]
+    assert isinstance(axes, dict)
+    axes["reach"] = "unknown"
     for value in ("reached", "not_reached", "not_assessed"):
         assert not finding_matches_selectors(finding, {"reach": value})
 
@@ -447,8 +453,10 @@ def test_an_unexpired_entry_applies():
     }
     application = apply_triage([finding], _document([entry]).triage, now=NOW)
     assert application.suppressed == 1
-    assert finding["triage"]["state"] == "not_affected"
-    assert finding["triage"]["author"] == "alice"
+    triage = finding["triage"]
+    assert isinstance(triage, dict)
+    assert triage["state"] == "not_affected"
+    assert triage["author"] == "alice"
 
 
 def test_a_stale_entry_is_reported_with_its_selector():
@@ -479,7 +487,9 @@ def test_a_proposal_changes_nothing_until_approved():
     approved = dict(proposal, approver="alice")
     application = apply_triage([finding], _document([approved]).triage, now=NOW)
     assert application.suppressed == 1
-    assert finding["triage"]["approver"] == "alice"
+    triage = finding["triage"]
+    assert isinstance(triage, dict)
+    assert triage["approver"] == "alice"
 
 
 def test_an_entry_entered_by_a_person_applies_without_an_approver():
@@ -596,7 +606,8 @@ def test_a_new_selector_without_a_baseline_is_not_evaluated():
     decisions = _decisions_with(expect=[{"id": "only-new", "new": True, "action": "fail"}])
     evaluation = evaluate_gate([_finding()], [], decisions)
     assert evaluation.results[0].status == "not_evaluated"
-    assert "baseline" in evaluation.results[0].reason
+    reason = evaluation.results[0].reason
+    assert reason is not None and "baseline" in reason
     assert evaluation.exit_code == 0
 
 
@@ -627,16 +638,21 @@ def test_a_require_entry_passes_fails_and_is_not_evaluated():
     statuses = [result.status for result in evaluation.results]
     assert statuses == ["pass", "fail", "not_evaluated"]
     assert evaluation.exit_code == 4
-    assert evaluation.results[1].stages[0]["name"] == "risk"
-    assert "not assessed" in evaluation.results[1].reason
-    assert "golang" in evaluation.results[2].reason
+    stages_reported = evaluation.results[1].stages[0]
+    assert isinstance(stages_reported, dict)
+    assert stages_reported["name"] == "risk"
+    reason = evaluation.results[1].reason
+    assert reason is not None and "not assessed" in reason
+    other = evaluation.results[2].reason
+    assert other is not None and "golang" in other
 
 
 def test_a_require_without_any_stage_fails():
     decisions = _decisions_with(require=[{"capability": "reachability"}])
     evaluation = evaluate_gate([], [], decisions)
     assert evaluation.exit_code == 4
-    assert "no manifest stage recorded it" in evaluation.results[0].reason
+    reason = evaluation.results[0].reason
+    assert reason is not None and "no manifest stage recorded it" in reason
 
 
 def test_four_wins_over_three():
