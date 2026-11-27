@@ -1,0 +1,124 @@
+---
+sidebar_position: 4
+title: Measuring dep-scan
+---
+
+# Measuring dep-scan
+
+dep-scan's central claim is that it joins facts single-purpose tools hold
+apart: an advisory to the code that uses the package, a route to the packages
+its handlers reach, a lifecycle phase to the next, a component to the image
+layer, a component to what ran. Every one of those joins is measured against
+labelled inputs, and the scores are the baseline the release notes publish.
+The measurement lives in `contrib/corpus/`: a manifest of items, a label file
+per item, and the scorer that runs dep-scan on each item and compares.
+
+## What the corpus holds
+
+`contrib/corpus/depscan.corpus.json` lists every item with its source, the
+digest that pins it, its licence, the scan dep-scan runs on it, and the label
+file beside it. Three kinds of item make up the corpus:
+
+- **Repository items** are the callsites ground-truth projects (JavaScript
+  and TypeScript, Python, Java, PHP, Ruby) and Juice Shop, each pinned to a
+  commit and checked against the digest of `git archive --format=tar
+  <commit>`. Their usage labels are derived from the callsites oracle
+  output, reduced to package level.
+- **Fixture items** are small projects committed under
+  `contrib/corpus/fixtures/`: supply-chain controls, a malicious-version
+  manifest, two builds of one C source, a lifecycle project, a two-version
+  monorepo, a minimal ASP.NET API, and a traced program. Their labels are
+  hand-written against the source, with a `file:line` citation for each
+  expectation, or built into the fixture itself.
+- **Data and image items**: the pre-generated repo-test data of
+  `contrib/repotests/`, pulled by digest from GHCR, and one public image
+  pinned by digest.
+
+Categories dep-scan does not produce yet (memory safety, mobile, crypto,
+code) appear in the manifest's `notProduced` list with the issue that tracks
+each, so the score table shows them as gaps instead of leaving them out.
+
+## How labels are written
+
+A label file (`contrib/corpus/labels/<item>.json`) states what a scan must
+find and what it must not. Every section names its source, and the schema
+(`contrib/corpus/depscan-labels.schema.json`) refuses a section without one:
+
+- `oracle` labels are derived from the callsites ground truth by
+  `contrib/corpus/derive_labels.py`, which reduces the oracle output to
+  package level: a package is `used` when the truth holds a certain use of it
+  in the project's own files, and `unused` when the project's BOM declares it
+  as a direct dependency and the truth holds no use of it at all. Python
+  import names are mapped to the distribution names the BOM declares, and
+  every name that maps to nothing is reported in the label file's `unmapped`
+  object with its count. No truth row (no file, line or member) is carried.
+- `hand` labels are written by reading the code, with a `file:line` citation
+  for each expected finding or used package, and a sentence for each unused
+  package or forbidden one.
+- `fixture` labels belong to fixtures built for the expectation: the build
+  script in the fixture is the citation.
+
+No label is ever derived from dep-scan's or atom's own output; a label that
+only restates the product cannot catch it. When the scorer looks wrong, fix
+the scorer, never the label.
+
+## Running the scorer
+
+```bash
+# Everything whose inputs are present, into one directory of scan results
+python contrib/corpus/score.py --scans-root ~/sandbox/p23-corpus/scans
+
+# Score scan results that already exist
+python contrib/corpus/score.py --scan-dir ~/sandbox/p23-corpus/scans
+
+# The subset a pull request runs, failing on a dropped floor or a fired
+# negative control
+python contrib/corpus/score.py --subset ci \
+  --floors contrib/corpus/floors.json --testdata-root repotests-data
+
+# Clone repository items at their pinned commits first
+python contrib/corpus/score.py --fetch --scans-root corpus-scans
+```
+
+The scorer runs each item's scan through the dep-scan Python API, reads the
+scan directory the scan wrote, and compares against the labels with the same
+`comparable_purl` rule the product itself uses. It writes `score.json`
+(schema: `contrib/corpus/depscan-score.schema.json`) and a Markdown table. A
+scan whose analysis did not run is recorded as not assessed with its reason;
+it is never a miss and never a clean result.
+
+The reachability numbers per project and per analyser come from the same
+corpus: `python contrib/reachability_eval.py` scores `direct_purls` and the
+reached purls of both analysers against the `used` and `unused` labels for
+every item that carries them. Its `--check-snapshot` mode keeps the older
+behaviour, comparing reached sets against the recorded baseline, for a
+refactor that must not change output.
+
+## The join scores
+
+Each join of the vision's table has at least one labelled item, and the score
+carries one of three outcomes per join: **measured** (with the numbers),
+**partial** (what is measured and what is not), or **gap** (dep-scan cannot
+make the join today, and the draft issue names the producer that would have
+to record what). The current table lives in the score artifact the scheduled
+`Join eval` workflow uploads; the floor file records what each subset item
+scored when the floors were written, each with the commit it was recorded at.
+
+## Adding an item
+
+1. Add the item to `contrib/corpus/depscan.corpus.json`, following the schema
+   in `contrib/corpus/depscan-corpus.schema.json`: source, digest, licence,
+   storage, the scan to run, and the label file's path. A repository item
+   pins a full commit; its digest is the output of
+   `git archive --format=tar <commit> | sha256sum`. A fixture item lives
+   under `contrib/corpus/fixtures/`, and its digest is the output of
+   `python contrib/corpus/score.py --digest-fixture contrib/corpus/fixtures/<name>`.
+2. Write `contrib/corpus/labels/<item>.json`, naming a source for every
+   section, with citations for anything hand-written. For a repository item
+   whose language dep-scan's reachability supports, derive the usage labels
+   with `contrib/corpus/derive_labels.py` once the item's scan has produced
+   its BOM.
+3. Add the item to the CI subset (`"subset": "ci"`) only when the pull-request
+   job can run it: committed fixtures and repo-test data that is already
+   published. Record its floors in `contrib/corpus/floors.json` from a real
+   run, with the commit.

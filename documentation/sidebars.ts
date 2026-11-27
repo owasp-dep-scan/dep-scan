@@ -97,6 +97,7 @@ const sidebars: SidebarsConfig = {
         'Develop/contributing',
         'Develop/development-setup',
         'Develop/debugging',
+        'Develop/measuring',
       ],
     },
     {

@@ -7,8 +7,9 @@ This folder holds the scripts, fixtures and research material that support dep-s
 - `gen_agent_manifests.py` and `check_agent_plugin.py` generate and check the agent-plugin manifests; run as `python -m contrib.gen_agent_manifests` and `python -m contrib.check_agent_plugin`, and enforced in the test suite and CI.
 - `bench_scan.py` times the matching stage of a scan over the fixtures in `bench_fixtures/`, through `analysis_lib` directly.
 - `repotests/` holds the project manifest, fixtures and scripts behind the real-repository CI workflows, including the provenance and validation steps.
+- `corpus/` holds the labelled corpus the scorer measures dep-scan against: the manifest (`depscan.corpus.json`) with its published schemas, one label file per item, the derivation script for the oracle labels, and the committed fixtures. The `Join eval` workflow runs `corpus/score.py` on pull requests that change analysis paths and over the whole corpus weekly; the docs site's Measuring dep-scan page explains how to run it.
 - `report-templates/` holds example Jinja templates for `--report-template`.
-- `reachability_eval.py` compares the reached sets computed from a reports directory's atom `reachables` slices against its baseline snapshot (`reachability_eval.baseline.json`), and cross-references the VDR. It reads the files dep-scan 7 writes, and its notes about atom 2.5-era slices predate atom 4.
+- `reachability_eval.py` scores dep-scan's reachability against the corpus labels (recall and precision of `direct_purls` and the reached purls, per project and per analyser); `--check-snapshot` keeps the older comparison against `reachability_eval.baseline.json` for a refactor that must not change output.
 - `CSAF_README.md` points at the CSAF VEX documentation; `csaf.toml` is the commented example the CSAF guide references.
 - `dependency-track/` runs Dependency-Track beside dep-scan with docker compose; `lima/` starts an Ubuntu VM for scanning under Linux from a macOS host.
 - `schemas/` and the CycloneDX JSON Schema copies here back the offline validation.
