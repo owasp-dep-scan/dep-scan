@@ -747,3 +747,18 @@ def test_the_fail_on_entry_and_the_file_agree():
     from_cli = parse_fail_on("grade=high")
     assert finding_matches_selectors(graded, from_file.expects[0].selectors)
     assert finding_matches_selectors(graded, from_cli.selectors)
+
+
+def test_a_suppressed_finding_is_out_of_the_gate():
+    decisions = _decisions_with(expect=[{"id": "no-high", "severity": "high", "action": "fail"}])
+    findings = [
+        _graded_finding(id="dsf1:" + "a" * 64, triage={"state": "not_affected"}),
+        _graded_finding(id="dsf1:" + "b" * 64),
+    ]
+    evaluation = evaluate_gate(findings, [], decisions)
+    assert evaluation.results[0].status == "fail"
+    assert evaluation.results[0].findings == ["dsf1:" + "b" * 64]
+    findings = [_graded_finding(id="dsf1:" + "a" * 64, triage={"state": "not_affected"})]
+    evaluation = evaluate_gate(findings, [], decisions)
+    assert evaluation.results[0].status == "pass"
+    assert evaluation.exit_code == 0

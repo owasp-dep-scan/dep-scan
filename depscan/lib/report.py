@@ -341,8 +341,10 @@ def _load_decisions_for_report(
             raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
     named_path = getattr(args, "decisions", None)
     baseline_path = getattr(args, "baseline", None)
-    if not named_path and not vex_entries and not cli_expects and not baseline_path:
-        return None, None, []
+    # A run with none of the options still reads the decisions file the
+    # scan's manifest records, so a decision made after the scan applies to
+    # a plain report of it; a scan that read no file leaves the report with
+    # nothing to apply.
     decisions = None
     base_dir = None
     if named_path:
@@ -370,6 +372,8 @@ def _load_decisions_for_report(
             except DecisionsError as exc:
                 raise decisions_lib.DecisionsUsageError(f"depscan report: {exc}") from exc
             base_dir = os.path.dirname(os.path.abspath(recorded_path))
+    if decisions is None and not vex_entries and not cli_expects and not baseline_path:
+        return None, None, []
     if decisions is None:
         decisions = Decisions(selected_by="default")
     decisions.triage.extend(vex_entries)

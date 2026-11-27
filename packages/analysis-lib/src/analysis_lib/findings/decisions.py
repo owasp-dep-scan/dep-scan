@@ -1228,11 +1228,13 @@ def evaluate_gate(
     """Evaluate the gate over one scan's findings and manifest stages.
 
     ``findings`` is the scan's findings document array, with the triage and
-    baseline states already applied. ``stages`` is the manifest's stage
-    array. The expect entries come from the decisions file with the
-    ``--fail-on`` entries appended; the require entries come from the file.
-    An entry selecting on ``new`` without a baseline is not evaluated, with
-    the reason, rather than passed or failed.
+    baseline states already applied. A finding whose triage state suppresses
+    it is out of the gate: no expect entry matches it, whatever its other
+    fields. ``stages`` is the manifest's stage array. The expect entries
+    come from the decisions file with the ``--fail-on`` entries appended;
+    the require entries come from the file. An entry selecting on ``new``
+    without a baseline is not evaluated, with the reason, rather than
+    passed or failed.
 
     :returns: The :class:`GateEvaluation`, whose ``exit_code`` is the exit
         code the gate adds to the run.
@@ -1267,7 +1269,8 @@ def evaluate_gate(
         result.findings = [
             str(finding.get("id"))
             for finding in findings
-            if _matches_with_aliases(finding, entry.selectors, alias_map, has_baseline)
+            if not _finding_is_suppressed(finding)
+            and _matches_with_aliases(finding, entry.selectors, alias_map, has_baseline)
         ]
         if not result.findings:
             result.status = "pass"
@@ -1279,6 +1282,15 @@ def evaluate_gate(
     for entry in decisions.requires:
         evaluation.results.append(_require_result(entry, stages))
     return evaluation
+
+
+def _finding_is_suppressed(finding: Dict[str, Any]) -> bool:
+    """Whether a live decision suppresses the finding from the gate: its
+    triage state is one of the suppressing states. The triage object lands
+    on a finding only through a live decision, so its state alone is the
+    verdict."""
+    triage = finding.get("triage")
+    return isinstance(triage, dict) and triage.get("state") in SUPPRESSING_STATES
 
 
 # --- the VDR rendering of decisions ---------------------------------------------------
