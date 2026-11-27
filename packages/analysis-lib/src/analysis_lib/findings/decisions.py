@@ -1080,12 +1080,25 @@ class GateEvaluation:
         return 0
 
     def summary_document(self) -> Dict[str, Any]:
-        """The ``summary`` object the expectations document carries."""
+        """The ``summary`` object the expectations document carries.
+
+        ``fail`` counts the expect entries whose action failed, not the
+        requirements; a requirement that was not assessed is
+        ``requireNotAssessed``, and the two never merge.
+        """
         return {
             "expect": sum(1 for result in self.results if result.kind == "expect"),
             "require": sum(1 for result in self.results if result.kind == "require"),
-            "fail": len(self.failed),
-            "warn": len(self.warned),
+            "fail": sum(
+                1
+                for result in self.results
+                if result.kind == "expect" and result.status == "fail"
+            ),
+            "warn": sum(
+                1
+                for result in self.results
+                if result.kind == "expect" and result.status == "warn"
+            ),
             "notEvaluated": self.not_evaluated,
             "requireNotAssessed": self.require_not_assessed,
             "suppressed": self.suppressed,

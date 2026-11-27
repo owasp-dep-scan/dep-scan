@@ -36,9 +36,10 @@ The table is generated from the exit-code constant, and a test keeps this page i
 | Code | Meaning |
 | --- | --- |
 | 0 | Success. |
-| 1 | A scan or command that could not run, for example an unusable vulnerability database or a source target that does not exist. |
-| 2 | A usage error, including any dep-scan 6 command line. |
-| 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database, a source target that does not exist, or a baseline that cannot be read or does not match its digest. |
+| 2 | A usage error, including any dep-scan 6 command line and a decisions file the schema refuses. |
+| 3 | A decisions file expectation with action = "fail" matched a finding, so the gate the file (or --fail-on) describes is not met. |
+| 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
 A scan that reports vulnerabilities exits 0, and a clean scan exits 0: findings never change the exit code in this version, so exit code 0 means "the scan ran", never "everything is fine". A policy gate over findings, with its own exit code, is [planned work](https://github.com/owasp-dep-scan/dep-scan/issues/594).

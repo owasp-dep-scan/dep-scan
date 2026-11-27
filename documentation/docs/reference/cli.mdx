@@ -58,7 +58,8 @@ The scan verb carries every scan option:
 usage: depscan scan [-h] [--target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}] [--checks CHECKS] [--profile {quick,ci,deep,research,offline}]
                     [--bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}] [--exclude-type TYPE]
                     [--format {text,json}] [--config CONFIG] [--no-banner] [-o REPORTS_DIR] [--debug] [-q | --explain] [--csaf] [--csaf-version {2.0,2.1}] [--custom-data CUSTOM_DATA]
-                    [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
+                    [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--decisions DECISIONS] [--baseline BASELINE] [--fail-on SELECTORS] [--vex FILE]
+                    [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
                     [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
                     [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}]
                     [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS] [--cdxgen-server CDXGEN_SERVER]
@@ -104,6 +105,13 @@ options:
                         Jinja template file used for rendering a custom report
   --report-name REPORT_NAME
                         Filename of the custom report written to the --reports-dir
+  --decisions DECISIONS
+                        Path to the decisions file (.depscan/decisions.toml) holding triage decisions, the baseline and the gate expectations. Default: the scanned directory's own
+                        .depscan/decisions.toml, when the target is a directory.
+  --baseline BASELINE   Reference scan (a scan directory or a depscan.findings.json path) that marks every finding new or existing for this run, instead of the [baseline] the decisions file names.
+  --fail-on SELECTORS   Gate for one run, as key=value selector pairs joined by commas, for example "grade=high,reach=reached". Each occurrence is an expectation with action fail; list selectors
+                        take ids joined by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions file's [[expect]] entries.
+  --vex FILE            Load a CycloneDX VEX or OpenVEX document as triage decisions, proposed by the document. Repeatable.
   --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
                         Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
@@ -187,9 +195,10 @@ The table is generated from the exit-code constant in `depscan/commands/output.p
 | Code | Meaning |
 | --- | --- |
 | 0 | Success. |
-| 1 | A scan or command that could not run, for example an unusable vulnerability database or a source target that does not exist. |
-| 2 | A usage error, including any dep-scan 6 command line. |
-| 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
+| 1 | A scan or command that could not run, for example an unusable vulnerability database, a source target that does not exist, or a baseline that cannot be read or does not match its digest. |
+| 2 | A usage error, including any dep-scan 6 command line and a decisions file the schema refuses. |
+| 3 | A decisions file expectation with action = "fail" matched a finding, so the gate the file (or --fail-on) describes is not met. |
+| 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
 Findings never change the exit code in this version: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.

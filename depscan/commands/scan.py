@@ -29,10 +29,11 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclasses_field
 from typing import Any, Dict, List, Optional, Tuple
 
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
+from analysis_lib.findings.decisions import load_decisions as decisions_lib_load
 
 from depscan import api
 from depscan.cli_options import build_parser, validate_spec_version
@@ -46,6 +47,7 @@ from depscan.commands.output import (
     print_error_document,
 )
 from depscan.commands.targets import FORCE_TARGET_KINDS, detect_kind
+from depscan.lib import decisions as decisions_lib
 from depscan.lib import doctor as doctor_lib
 from depscan.lib.logger import LOG
 
@@ -64,6 +66,10 @@ _NOT_INTERNAL_DESTS = (
     "checks",
     "profile",
     "format",
+    "decisions",
+    "baseline",
+    "fail_on",
+    "vex",
 )
 
 #: The scan flag whose dest differs from the internal option it sets: v6's
@@ -82,6 +88,7 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     _add_target_options(parser)
     _add_output_options(parser)
     _add_document_options(parser)
+    _add_decisions_options(parser)
     _add_bom_generation_options(parser)
     _add_cdxgen_options(parser)
     _add_analyzer_options(parser)
@@ -89,6 +96,52 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     _add_filter_options(parser)
     add_vdb_options(parser)
     _add_render_options(parser)
+
+
+def _add_decisions_options(parser: argparse.ArgumentParser) -> None:
+    """The decisions file options: triage, baseline and gate for one run.
+
+    ``--decisions`` names the file the scan applies; without it the scanned
+    directory's own ``.depscan/decisions.toml`` applies to a directory
+    target, and a non-directory target reads a file only when one is named.
+    The grammar of ``--fail-on`` is the file's selector grammar, so a CI
+    line and the file are one language.
+    """
+    parser.add_argument(
+        "--decisions",
+        default=argparse.SUPPRESS,
+        help="Path to the decisions file (.depscan/decisions.toml) holding "
+        "triage decisions, the baseline and the gate expectations. Default: "
+        "the scanned directory's own .depscan/decisions.toml, when the "
+        "target is a directory.",
+    )
+    parser.add_argument(
+        "--baseline",
+        default=argparse.SUPPRESS,
+        help="Reference scan (a scan directory or a depscan.findings.json "
+        "path) that marks every finding new or existing for this run, "
+        "instead of the [baseline] the decisions file names.",
+    )
+    parser.add_argument(
+        "--fail-on",
+        action="append",
+        dest="fail_on",
+        default=argparse.SUPPRESS,
+        metavar="SELECTORS",
+        help="Gate for one run, as key=value selector pairs joined by "
+        'commas, for example "grade=high,reach=reached". Each occurrence is '
+        'an expectation with action fail; list selectors take ids joined '
+        'by "|", as in rule=CVE-1|CVE-2. Same grammar as the decisions '
+        "file's [[expect]] entries.",
+    )
+    parser.add_argument(
+        "--vex",
+        action="append",
+        default=argparse.SUPPRESS,
+        metavar="FILE",
+        help="Load a CycloneDX VEX or OpenVEX document as triage decisions, "
+        "proposed by the document. Repeatable.",
+    )
 
 
 def _add_target_options(parser: argparse.ArgumentParser) -> None:
@@ -880,12 +933,118 @@ def _capability_gate(args: argparse.Namespace, names, skip_requirements: Tuple[s
 # --- the scans -------------------------------------------------------------------
 
 
+@dataclass
+class _PreparedDecisions:
+    """The decisions options a whole run shares, validated up front.
+
+    ``named`` is the loaded decisions file ``--decisions`` named, applied to
+    every target. ``vex_entries`` are the triage entries the ``--vex``
+    documents loaded; every target's decisions carry them beside its own
+    file's.
+    """
+
+    cli_expects: Optional[List[Any]] = None
+    named: Optional[Any] = None
+    vex_entries: List[Any] = dataclasses_field(default_factory=list)
+    baseline: Optional[Any] = None
+
+
+def _prepare_decisions(args) -> Tuple[Optional[_PreparedDecisions], Optional[_Refusal]]:
+    """Parse and load the decisions options before any target resolves.
+
+    A --fail-on expression, a VEX document or a named decisions file that
+    cannot be used is a usage error whatever else is wrong, the same
+    treatment as a broken exploitability rule table.
+    """
+    from analysis_lib.findings.decisions import (
+        BaselineSpec,
+        DecisionsError,
+        parse_fail_on,
+    )
+
+    cli_expects: List[Any] = []
+    for index, expression in enumerate(getattr(args, "fail_on", None) or []):
+        try:
+            cli_expects.append(parse_fail_on(expression, index=index))
+        except DecisionsError as exc:
+            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
+    vex_entries: List[Any] = []
+    for vex_file in getattr(args, "vex", None) or []:
+        try:
+            vex_entries.extend(decisions_lib.load_vex_decisions(str(vex_file)))
+        except DecisionsError as exc:
+            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
+    named = None
+    named_path = getattr(args, "decisions", None)
+    if named_path:
+        try:
+            named = decisions_lib_load(str(named_path), selected_by="option")
+        except DecisionsError as exc:
+            return None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
+    baseline = BaselineSpec(scan=str(args.baseline)) if getattr(args, "baseline", None) else None
+    return (
+        _PreparedDecisions(
+            cli_expects=cli_expects, named=named, vex_entries=vex_entries, baseline=baseline
+        ),
+        None,
+    )
+
+
+def _decisions_for_target(
+    prepared: Optional[_PreparedDecisions], target: str, kind: str
+) -> Tuple[Optional[Any], Optional[str], Optional[_Refusal]]:
+    """The decisions one target's scan applies, and the directory its
+    relative baseline resolves against.
+
+    A named file applies to every target. Otherwise the target resolves its
+    own: the environment, the configuration files, and a directory target's
+    own .depscan/decisions.toml. A file that cannot be used refuses the
+    target, and the run exits 2, because it is a usage error.
+    """
+    from analysis_lib.findings.decisions import Decisions, DecisionsError
+
+    if prepared is None:
+        return None, None, None
+    named = prepared.named
+    if named is not None:
+        base_dir = os.path.dirname(os.path.abspath(str(named.path))) if named.path else None
+        decisions = Decisions(
+            triage=list(named.triage) + list(prepared.vex_entries),
+            expects=list(named.expects),
+            requires=list(named.requires),
+            baseline=named.baseline,
+            path=named.path,
+            digest=named.digest,
+            selected_by=named.selected_by,
+        )
+        return decisions, base_dir, None
+    target_dir = target if kind == "source" and os.path.isdir(target) else None
+    path, selected_by = decisions_lib.resolve_decisions_path(None, target_dir)
+    if not path and not prepared.vex_entries and prepared.baseline is None:
+        return None, None, None
+    base_dir = None
+    decisions = Decisions(selected_by=selected_by)
+    if path:
+        try:
+            decisions = decisions_lib_load(str(path), selected_by=selected_by)
+        except DecisionsError as exc:
+            return None, None, _Refusal(EXIT_USAGE, f"depscan scan: {exc}")
+        base_dir = os.path.dirname(os.path.abspath(str(path)))
+    decisions.triage.extend(prepared.vex_entries)
+    return decisions, base_dir, None
+
+
 def run(args: argparse.Namespace) -> int:
     """Run the scan verb; the process exit code.
 
-    Usage errors (an unknown check name) exit 2, a kind this version cannot
-    scan exits 4, and the exit code of the scans themselves is the highest of
-    them: a scan that stopped early counts 1. A refusal that stops the verb
+    Usage errors (an unknown check name, a broken decisions file, a
+    --fail-on expression or VEX document that does not parse) exit 2, a kind
+    this version cannot scan exits 4, and the exit code of the scans
+    themselves is: 1 or 2 of any scan win over the gate codes, and otherwise
+    the gate's code stands, 4 (a requirement that was not assessed) over 3
+    (an expectation with action fail that matched). A run without a
+    decisions file, --fail-on or --baseline never gates, so findings keep
+    the exit code they always had. A refusal that stops the verb
     as a whole writes the error document on stdout in json format, next to
     the message on stderr; a run whose targets partly fail still writes the
     ``{"scans": [...]}`` object, with each failed target's error inside its
@@ -919,6 +1078,16 @@ def run(args: argparse.Namespace) -> int:
         else:
             print(rules_error, file=sys.stderr)
         return EXIT_USAGE
+    # The decisions options are validated before any target resolves, for
+    # the same reason the rule table is; the default file of a directory
+    # target loads per target, because each target has its own.
+    prepared, refusal = _prepare_decisions(args)
+    if refusal is not None:
+        if json_output:
+            print_error_document(refusal.exit_code, "scan", refusal.message, refusal.details)
+        else:
+            LOG.error(refusal.message)
+        return refusal.exit_code
     entries, refusal = _resolve_targets(args)
     if entries is None:
         # The pair contract: a None entries always carries its refusal.
@@ -956,8 +1125,8 @@ def run(args: argparse.Namespace) -> int:
         if json_output:
             internal.no_banner = True
         with stdout_on_stderr(json_output) as saved_stdout:
-            outcomes = _run_all_scans(args, internal, resolution, entries, report)
-        exit_code = max(code for code, _ in outcomes)
+            outcomes = _run_all_scans(args, internal, resolution, entries, report, prepared)
+        exit_code = decisions_lib.combine_run_exit([code for code, _ in outcomes])
         if json_output:
             _print_json_outcomes(outcomes, saved_stdout)
         return exit_code
@@ -1011,14 +1180,15 @@ def _unexpected_error_message(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
 
 
-def _run_all_scans(args, internal, resolution, entries, doctor_report):
+def _run_all_scans(args, internal, resolution, entries, doctor_report, prepared=None):
     """One scan per given target; a single scan for zero or one target.
 
     Returns one ``(exit_code, entry)`` per given target, in the given order:
     a scanned entry is ``{"target", "kind", "scanDir", "manifest",
-    "findings"}``, and a refused entry is ``{"target", "kind": None,
-    "error": <refusal reason>}`` for a target the detection refused or whose
-    scan crashed with an unexpected error, so the json output never silently
+    "findings", "expectations"}``, and a refused entry is ``{"target",
+    "kind": None, "error": <refusal reason>}`` for a target the detection
+    refused, whose scan crashed with an unexpected error, or whose
+    decisions file cannot be used, so the json output never silently
     drops a target and the remaining targets still run. More than one target
     writes each scan into ``<reports-dir>/<n>-<name>/``, with ``n`` the
     target's 1-based index in the given list; zero or one target uses
@@ -1033,9 +1203,23 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
         # Zero targets means the current directory, with the internal
         # default and no per-target override.
         target = _zero_target_target(internal)
+        decisions, decisions_base_dir, refusal = _decisions_for_target(
+            prepared, str(internal.src_dir_image), "source"
+        )
+        if refusal is not None:
+            return [
+                (refusal.exit_code, {"target": target, "kind": None, "error": refusal.message})
+            ]
         options = argparse.Namespace(**vars(internal))
         try:
-            code, document = _scan_one(options, resolution, doctor_report)
+            code, document = _scan_one(
+                options,
+                resolution,
+                doctor_report,
+                decisions=decisions,
+                decisions_base_dir=decisions_base_dir,
+                prepared=prepared,
+            )
         except Exception as exc:
             return [(1, _crash_entry(target, exc))]
         return [(code, {"target": target, "kind": "source", **document})]
@@ -1061,7 +1245,30 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
                 # is never empty (the env variable or <cwd>/reports), so the
                 # pipeline's own rule cannot fire from this verb.
                 options.reports_dir = os.path.realpath(target)
-            code, document = _scan_one(options, resolution, doctor_report)
+            decisions, decisions_base_dir, decisions_refusal = _decisions_for_target(
+                prepared, target, kind
+            )
+            if decisions_refusal is not None:
+                LOG.error(decisions_refusal.message)
+                outcomes.append(
+                    (
+                        decisions_refusal.exit_code,
+                        {
+                            "target": _json_target(target),
+                            "kind": None,
+                            "error": decisions_refusal.message,
+                        },
+                    )
+                )
+                continue
+            code, document = _scan_one(
+                options,
+                resolution,
+                doctor_report,
+                decisions=decisions,
+                decisions_base_dir=decisions_base_dir,
+                prepared=prepared,
+            )
         except Exception as exc:
             outcomes.append((1, _crash_entry(target, exc)))
             continue
@@ -1149,21 +1356,30 @@ def _apply_target_options(options, target: str, kind: str, args, resolution) -> 
         options.project_type = [forced_type, *appended]
 
 
-def _scan_one(options, resolution, doctor_report):
+def _scan_one(options, resolution, doctor_report, *, decisions=None, decisions_base_dir=None, prepared=None):
     """Run one scan, reusing the gate's doctor report and recording the
     not-assessed checks; returns the exit code and the json document.
 
-    A scan that stopped early counts exit 1; its document reports the
-    manifest the pipeline still wrote on the way out and no findings.
-    ``scanDir`` carries the absolute, slash-separated form; the manifest and
-    the findings keep the scan-directory-relative paths their schemas
-    define, with ``scanDir`` as their root.
+    The exit code is the scan's own, 1 when it stopped early, with the
+    gate's code standing when the scan finished: 4 when a decision
+    requirement found the capability it names was not assessed, 3 when a
+    fail-action expectation matched, and 0 otherwise. A scan without
+    decisions work keeps the exit code it always had. A scan that stopped
+    early reports the manifest the pipeline still wrote on the way out and
+    no findings, and its code wins over the gate's. ``scanDir`` carries the
+    absolute, slash-separated form; the manifest and the findings keep the
+    scan-directory-relative paths their schemas define, with ``scanDir`` as
+    their root.
     """
     try:
         result = api.scan(
             options,
             doctor_report=doctor_report,
             checks_not_assessed=resolution.not_assessed or None,
+            decisions=decisions,
+            cli_expects=list(getattr(prepared, "cli_expects", None) or []),
+            baseline_override=getattr(prepared, "baseline", None),
+            decisions_base_dir=decisions_base_dir,
         )
     except api.ScanError:
         # The stage already logged why the scan stopped.
@@ -1173,16 +1389,16 @@ def _scan_one(options, resolution, doctor_report):
                 "scanDir": json_path(options.reports_dir),
                 "manifest": _read_manifest(options.reports_dir),
                 "findings": [],
+                "expectations": None,
             },
         )
-    return (
-        0,
-        {
-            "scanDir": json_path(result.reports_dir),
-            "manifest": result.manifest,
-            "findings": result.findings,
-        },
-    )
+    document = {
+        "scanDir": json_path(result.reports_dir),
+        "manifest": result.manifest,
+        "findings": result.findings,
+        "expectations": result.expectations,
+    }
+    return (decisions_lib.combine_exit(0, decisions_lib.gate_exit(result.expectations)), document)
 
 
 def _target_directory_name(target: str) -> str:
