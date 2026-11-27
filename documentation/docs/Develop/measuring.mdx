@@ -104,6 +104,27 @@ to record what). The current table lives in the score artifact the scheduled
 `Join eval` workflow uploads; the floor file records what each subset item
 scored when the floors were written, each with the commit it was recorded at.
 
+The table below is the state at the time this page was written, measured at
+dep-scan commit a8bbec8f with cdxgen 13.9.0 and atom 4.0.3 over the corpus's
+31 oracle projects. The per-item numbers come from the same run's artifact.
+
+| Join | Outcome at this measurement |
+| --- | --- |
+| Advisory to usage and reach | measured: reached findings bind to used packages on Juice Shop (24 of 99 vulnerability findings reached, none on an unused package); recall 0.43 mean over the 30 scored projects on the reached set, precision 0.95 |
+| Route to package | measured through dosai on the .NET fixture (both labelled routes match); partial on the JavaScript fixture: cdxgen's JavaScript OpenAPI document carries no handler usage maps, so the routes cannot bind (producer gap) |
+| Lifecycle phase to phase | partial: the pre-build and build BOMs hold the labelled packages, and the post-build BOM of a source scan holds none, so shipped-state labels are not assessed (producer gap) |
+| Component to image layer | gap: no component of the image BOM carries layer attribution (producer gap) |
+| Component to runtime | partial: tracebom on macOS captures no components, so the adapter refuses the trace as a trace BOM (producer gap) |
+| Same package, two producers | measured: one component identity for the same Go module from the source scan and the built binary, with both producers' records kept |
+| Same package, two manifests | measured: two components for the two declared versions; neither records which manifest declared it (producer gap) |
+
+Reachability against the oracle labels, `SemanticReachability`, means over
+the 30 scored repository projects: `direct_purls` recall 0.96 and precision
+0.57, reached-purls recall 0.43 and precision 0.95. The categories dep-scan
+does not produce yet (memory safety, mobile, crypto, code) appear in the
+manifest as `notProduced` with their tracking issues, and the score table
+shows them as gaps.
+
 ## Adding an item
 
 1. Add the item to `contrib/corpus/depscan.corpus.json`, following the schema
