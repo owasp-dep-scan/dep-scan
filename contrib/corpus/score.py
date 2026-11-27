@@ -86,16 +86,43 @@ def load_json(path: str):
         return None
 
 
-def purl_key(purl: str) -> str:
-    """The comparable key of a purl: comparable_purl without the version, so
-    a label without a version and a finding that names one compare equal."""
+def split_purl(purl: str):
+    """A purl's comparable_purl form split into (key, version). The version
+    separator is the last ``@`` that no ``/`` follows, so the ``@`` of an npm
+    scope never reads as one; the version is None when the purl has none."""
     comparable = comparable_purl(str(purl))
-    return comparable.rsplit("@", 1)[0] if "@" in comparable else comparable
+    head, sep, tail = comparable.rpartition("@")
+    if not sep or "/" in tail or not head.partition("/")[2]:
+        return comparable, None
+    return head, tail
+
+
+def purl_key(purl: str) -> str:
+    """The version-less comparable key of a purl."""
+    return split_purl(purl)[0]
+
+
+def label_key(purl: str) -> str:
+    """The key a label matches on: the whole comparable purl when the label
+    names a version, so it matches only that version, and the version-less
+    key otherwise, so it matches any version."""
+    key, version = split_purl(purl)
+    return f"{key}@{version}" if version is not None else key
+
+
+def label_keys(purls) -> set:
+    """The match keys of several label purls."""
+    return {label_key(p) for p in purls or []}
 
 
 def keys_of(purls) -> set:
-    """The comparable keys of several purls."""
-    return {purl_key(p) for p in purls or []}
+    """Every key a seen purl answers to: its version-less key, and its whole
+    comparable form when it carries a version. A label key is in this set
+    exactly when the label matches one of the purls."""
+    keys = set()
+    for purl in purls or []:
+        keys |= {purl_key(purl), label_key(purl)}
+    return keys
 
 
 def rate(hit_count: int, total: int):
@@ -475,7 +502,7 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     missed = []
     for entry in expected:
         rules = {str(rule).lower() for rule in entry.get("rules") or []}
-        key = purl_key(entry["purl"])
+        key = label_key(entry["purl"])
         index = next(
             (
                 i
@@ -499,7 +526,7 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
                 continue
             if rules and str(finding.get("rule") or "").lower() not in rules:
                 continue
-            if control.get("purl") and purl_key(control["purl"]) not in keys_of(
+            if control.get("purl") and label_key(control["purl"]) not in keys_of(
                 finding.get("components")
             ):
                 continue
@@ -516,11 +543,11 @@ def score_findings(findings: list, expected: list, forbidden: list) -> dict:
     # advisory, it does not bound it. Any other finding on a purl the same
     # category's controls name is unexpected; a forbidden purl is controlled
     # for its own category only.
-    expected_keys = keys_of(e["purl"] for e in expected)
+    expected_keys = label_keys(e["purl"] for e in expected)
     controlled = {}
     for control in forbidden:
         if control.get("purl"):
-            controlled.setdefault(control["category"], set()).add(purl_key(control["purl"]))
+            controlled.setdefault(control["category"], set()).add(label_key(control["purl"]))
     unexpected = []
     for index, finding in enumerate(findings):
         keys = keys_of(finding.get("components"))
@@ -607,7 +634,7 @@ def score_purl_set(keys: set, used: set, unused: set) -> dict:
         "missed": sorted(used - keys),
         "wrong": sorted(keys & unused),
         "labelledSeen": len(labelled),
-        "seen": len(keys),
+        "seen": len({purl_key(key) for key in keys}),
     }
 
 
@@ -615,8 +642,8 @@ def usage_labels(labels: dict):
     """The used and unused label keys of an item."""
     section = labels.get("reachability") or {}
     return (
-        keys_of(e["purl"] for e in section.get("used") or []),
-        keys_of(e["purl"] for e in section.get("unused") or []),
+        label_keys(e["purl"] for e in section.get("used") or []),
+        label_keys(e["purl"] for e in section.get("unused") or []),
     )
 
 
@@ -728,8 +755,8 @@ def score_join_route_package(scan: ItemScan, labels: dict) -> dict:
                 {"path": route["path"], "reason": "no route evidence from either producer"}
             )
             continue
-        missing = keys_of(route.get("packages")) - found
-        wrong = keys_of(route.get("controls")) & found
+        missing = label_keys(route.get("packages")) - found
+        wrong = label_keys(route.get("controls")) & found
         if missing or wrong:
             missed.append(
                 {
@@ -840,7 +867,7 @@ def score_join_lifecycle_phase(scan: ItemScan, labels: dict) -> dict:
     missed = []
     not_assessed = []
     for entry in entries:
-        key = purl_key(entry["purl"])
+        key = label_key(entry["purl"])
         present = sorted(name for name, components in phases.items() if key in components)
         if not shipped:
             not_assessed.append({**entry, "reason": "the post-build BOM holds no components"})
@@ -868,7 +895,7 @@ def score_join_component_layer(scan: ItemScan, labels: dict) -> dict:
     components = scan.components()
     if not components:
         return {"outcome": "partial", "reason": "the scan directory holds no component BOM"}
-    wanted = keys_of(e["purl"] for e in entries)
+    wanted = label_keys(e["purl"] for e in entries)
     layer_words = ("layer", "layerid", "diffid")
     layer_props = set()
     with_layer = 0
@@ -881,7 +908,7 @@ def score_join_component_layer(scan: ItemScan, labels: dict) -> dict:
         ]
         found = {p for p in props if any(word in p for word in layer_words)}
         layer_props |= found
-        if purl_key(component.get("purl") or "") in wanted:
+        if wanted & keys_of([component.get("purl") or ""]):
             labelled_seen += 1
             with_layer += bool(found)
     if layer_props or with_layer:
@@ -921,7 +948,7 @@ def score_join_component_runtime(scan: ItemScan, labels: dict) -> dict:
             ),
         }
     observed = keys_of(p for r in records for p in r.subject.purls)
-    wanted = keys_of(e["purl"] for e in entries)
+    wanted = label_keys(e["purl"] for e in entries)
     return {
         "outcome": "measured" if wanted <= observed else "partial",
         "observed": len(observed),
@@ -940,7 +967,7 @@ def score_join_two_producers(scan: ItemScan, labels: dict) -> dict:
     package = ((labels.get("joins") or {}).get("two-producers") or {}).get("package")
     if not package:
         return {"outcome": "partial", "reason": "the item names no package"}
-    key = purl_key(package)
+    key = label_key(package)
     by_type = {}
     for stem, bom in scan.boms.items():
         if stem.startswith(("prebuild-", "postbuild-")):
@@ -949,7 +976,7 @@ def score_join_two_producers(scan: ItemScan, labels: dict) -> dict:
             {
                 comparable_purl(c["purl"])
                 for c in bom.get("components") or []
-                if isinstance(c, dict) and c.get("purl") and purl_key(c["purl"]) == key
+                if isinstance(c, dict) and c.get("purl") and key in keys_of([c["purl"]])
             }
         )
         if purls:
@@ -980,14 +1007,13 @@ def score_join_two_manifests(scan: ItemScan, labels: dict) -> dict:
     section = (labels.get("joins") or {}).get("two-manifests") or {}
     if not section.get("package"):
         return {"outcome": "partial", "reason": "the item names no package"}
-    key = purl_key(section["package"])
+    key = label_key(section["package"])
     expected_versions = set(section.get("versions") or [])
     components = []
     for component in scan.components():
         purl = component.get("purl")
-        if not isinstance(purl, str) or purl_key(purl) != key:
+        if not isinstance(purl, str) or key not in keys_of([purl]):
             continue
-        comparable = comparable_purl(purl)
         declaring = [
             str(p.get("value") or "")
             for p in component.get("properties") or []
@@ -995,7 +1021,7 @@ def score_join_two_manifests(scan: ItemScan, labels: dict) -> dict:
         ]
         components.append(
             {
-                "version": comparable.rsplit("@", 1)[1] if "@" in comparable else "",
+                "version": split_purl(purl)[1] or "",
                 "declaringPath": declaring[-1] if declaring else "",
             }
         )

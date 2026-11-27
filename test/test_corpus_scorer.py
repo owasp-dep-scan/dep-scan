@@ -81,7 +81,7 @@ def test_expected_finding_scores_recall_and_precision():
     expected = [
         {
             "category": "vulnerability",
-            "purl": "pkg:npm/lodash@4.17.15",
+            "purl": "pkg:npm/lodash",
             "rules": ["CVE-1"],
         }
     ]
@@ -90,6 +90,9 @@ def test_expected_finding_scores_recall_and_precision():
     assert scored["recall"] == 1.0
     assert scored["precision"] == 1.0
     assert scored["missed"] == []
+    # A label that names a version matches that version only.
+    expected[0]["purl"] = "pkg:npm/lodash@4.17.15"
+    assert corpus_score.score_findings(findings, expected, [])["hits"] == 0
 
 
 def test_missed_expected_finding_is_a_miss():
@@ -348,3 +351,48 @@ def test_not_assessed_item_violates_its_floor():
     violations = corpus_score.check_floors(floors, score_doc)
     assert len(violations) == 1
     assert violations[0]["value"] is None
+
+
+def test_versionless_scoped_label_keeps_its_name():
+    # A version-less scoped label must not collapse to the bare type: the
+    # scope marker is not a version separator.
+    assert corpus_score.purl_key("pkg:npm/%40babel/core") == "pkg:npm/@babel/core"
+    assert corpus_score.purl_key("pkg:npm/%40angular/core") == "pkg:npm/@angular/core"
+    used = corpus_score.label_keys(["pkg:npm/%40babel/core", "pkg:npm/%40angular/core"])
+    scores = corpus_score.score_purl_set(
+        corpus_score.keys_of(["pkg:npm/@babel/core@7.24.0"]), used, set()
+    )
+    assert scores["recall"] == 0.5
+    assert scores["missed"] == ["pkg:npm/@angular/core"]
+    assert scores["seen"] == 1
+
+
+def test_versioned_label_matches_only_that_version():
+    label = corpus_score.label_keys(["pkg:npm/chalk@5.6.2"])
+    assert label & corpus_score.keys_of(["pkg:npm/chalk@5.6.2"])
+    assert not label & corpus_score.keys_of(["pkg:npm/chalk@4.1.2"])
+    # A version-less label matches any version.
+    assert corpus_score.label_keys(["pkg:npm/chalk"]) & corpus_score.keys_of(
+        ["pkg:npm/chalk@4.1.2"]
+    )
+
+
+def test_pinned_control_does_not_fire_on_the_unpinned_expectation():
+    # The supply-chain fixture expects CI-001 on the branch-pinned action
+    # and forbids it on the SHA-pinned twin; a true positive on @main must
+    # not fire the control, and a finding on the SHA must.
+    with open(
+        os.path.join(REPO_ROOT, "contrib", "corpus", "labels", "supply-chain-fixture.json"),
+        encoding="utf-8",
+    ) as fp:
+        section = json.load(fp)["findings"]
+    expected = [e for e in section["expected"] if e["rules"] == ["CI-001"]]
+    forbidden = [e for e in section["forbidden"] if e["rules"] == ["CI-001"]]
+    on_main = _finding("supply-chain", "CI-001", ["pkg:github/example-org/shared-workflows@main"])
+    scored = corpus_score.score_findings([on_main], expected, forbidden)
+    assert scored["hits"] == 1
+    assert scored["forbiddenFired"] == []
+    on_sha = _finding("supply-chain", "CI-001", [forbidden[0]["purl"]])
+    scored = corpus_score.score_findings([on_sha], expected, forbidden)
+    assert scored["hits"] == 0
+    assert len(scored["forbiddenFired"]) == 1
