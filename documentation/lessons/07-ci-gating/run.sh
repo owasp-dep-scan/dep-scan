@@ -2,8 +2,8 @@
 # Lesson 07: CI gating with a profile, the exit codes and a findings gate.
 #
 # Runs the CI profile over a pinned package URL, shows the exit code and the
-# JSON output contract, and gates on the findings file the way the CI page
-# does, reading the coverage block so an unassessed finding cannot pass as a
+# JSON output contract, and gates on the findings file with a short Python
+# step, reading the coverage block so an unassessed finding cannot pass as a
 # clean one.
 #
 # Needs: dep-scan and an app-only vulnerability database. The scan itself is

@@ -42,7 +42,7 @@ The table is generated from the exit-code constant, and a test keeps this page i
 | 4 | A requested capability cannot run, for example a named check whose analyzer is missing or an iOS or firmware target; or a decisions file [[require]] entry found the capability it names was not assessed, which wins over an expectation failure, because a gate over missing coverage cannot be trusted. |
 <!-- exit code table end -->
 
-Without a gate a scan that reports vulnerabilities exits 0, and a clean scan exits 0: findings never change the exit code when the run has no decisions file, no `--fail-on` and no `--baseline`, so exit code 0 means "the scan ran", never "everything is fine".
+Without a gate a scan that reports vulnerabilities exits 0, and a clean scan exits 0. Findings change the exit code only when the run has expectations, `[[expect]]` or `[[require]]` entries in the decisions file or `--fail-on`; triage entries, a baseline or a `--vex` document alone never do. Without expectations, exit code 0 means "the scan ran", never "everything is fine".
 
 ## Gating on findings
 
@@ -51,17 +51,17 @@ The gate is one options line or one file. A decisions file committed beside the 
 ```yaml
 - name: Scan and gate
   run: |
-    depscan scan /app --reports-dir /app/reports --profile ci \
-      --fail-on "severity=high,reach=reached"
+    depscan scan /app --reports-dir /app/reports --profile research \
+      --fail-on "category=vulnerability,reach=reached"
 ```
 
-The same policy lives in `.depscan/decisions.toml` when it needs review or a baseline beside it:
+`--fail-on` alone carries no coverage check: on a scan whose reachability did not run, `reach=reached` matches nothing and the step passes. The same policy lives in `.depscan/decisions.toml` when it needs review, together with the requirement that closes that gap:
 
 ```toml
 [[expect]]
-id = "no-reached-high"
-description = "No reached finding of grade high or above"
-grade = "high"
+id = "no-reached-vulnerability"
+description = "No vulnerability the project's code reaches"
+category = "vulnerability"
 reach = "reached"
 action = "fail"
 
@@ -69,18 +69,15 @@ action = "fail"
 capability = "reachability"
 ```
 
-The `[[require]]` entry is the part that keeps the gate honest: a `reach=reached` expectation over a scan whose reachability never ran matches nothing, so the requirement turns a silently skipped analyzer into exit 4. An expectation the run cannot evaluate, a `new` selector without a baseline among them, is reported as `not_evaluated` with the reason in `depscan.expectations.json`, never as a pass. The reach axis has a prerequisite worth restating: a scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby project answers reachability only when it runs cdxgen's research BOM profile (`--bom-profile research`, or `--profile research`). Go, Rust, Kotlin and .NET projects get reachability from a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) without the research profile, and Go, Rust and .NET also from `--profile deep` on a universal scan.
+The `[[require]]` entry is the part that keeps the gate honest: a `reach=reached` expectation over a scan whose reachability never ran matches nothing, so the requirement turns a silently skipped analyzer into exit 4. An expectation the run cannot evaluate, a `new` selector without a baseline among them, is reported as `not_evaluated` with the reason in `depscan.expectations.json`, never as a pass. The reach axis has a prerequisite worth restating: a scan of a Java or other JVM, JavaScript or TypeScript, Python, PHP or Ruby project answers reachability only when it runs cdxgen's research BOM profile (`--bom-profile research`, or `--profile research`). Go, Rust, Kotlin and .NET projects get reachability from a typed scan (`-t go`, `-t rust`, `-t kotlin` or `-t dotnet`) without the research profile, and Go, Rust and .NET also from `--profile deep` on a universal scan. That is why the examples on this page use `--profile research`; `--profile ci --bom-profile research` gives the same reachability without the license and supply-chain checks. Add `severity = "high"` to the expectation for a quieter gate. A `grade = "high"` floor matches only where the exposure axis is assessed, which today means .NET projects through dosai, because any axis that is not assessed caps the grade at moderate.
 
 A gate over a saved scan needs no rescan: `depscan report <scan-dir>` re-evaluates the current decisions file against it, which is how a job gates a scan an earlier job made, and how a decision recorded after the scan takes effect. The result document lands in the scan directory as `depscan.expectations.json` at scan time; a report writes it only where `--out` names.
 
 ## What changed since last time
 
-A baseline answers "is this pull request worse". The decisions file's `[baseline]` section names the reference scan, a scan directory or a findings file, and every finding the gate sees carries `new` or `existing` against it, so an expectation with `new = true` and `action = "fail"` fails exactly on what the pull request added:
+A baseline answers "is this pull request worse". `--baseline` names the reference scan for the run, a scan directory or a findings file relative to the working directory, and every finding the gate sees carries `new` or `existing` against it. The baseline on its own only marks the findings; an expectation with `new = true` and `action = "fail"` in the committed decisions file is what fails the build on exactly what the pull request added:
 
 ```toml
-[baseline]
-scan = "target-branch-scan"
-
 [[expect]]
 id = "no-new-findings"
 description = "Nothing new against the target branch"
@@ -88,7 +85,14 @@ new = true
 action = "fail"
 ```
 
-A wrong `digest` stops the run with exit 1 instead of marking everything new, so a stale baseline fails loudly. Two scans can also be compared without a gate, through the Python API (`api.diff`) or the MCP server's `diff_scans` tool, which key each vulnerability by the pair of its advisory id and the affected component ref; there is no `depscan diff` verb in this version. The API form, usable from a workflow step that already has Python:
+```yaml
+- name: Scan and gate against the target branch
+  run: |
+    depscan scan /app --reports-dir /app/reports --profile research \
+      --baseline /app/reports-base
+```
+
+Here `reports-base` is the target branch's scan directory, downloaded as an artifact or scanned in the same job. Pass the baseline on the command line rather than committing a `[baseline]` section to the decisions file: a committed `[baseline]` resolves against the decisions file's directory, and every scan on a checkout without that directory stops with exit 1. Without a baseline the `new` expectation is reported as `not_evaluated`, never as a pass. A baseline that cannot be read, or a `[baseline]` whose `digest` does not match, stops the run with exit 1 instead of marking everything new, so a stale baseline fails loudly. Two scans can also be compared without a gate, through the Python API (`api.diff`) or the MCP server's `diff_scans` tool, which key each vulnerability by the pair of its advisory id and the affected component ref; there is no `depscan diff` verb in this version. The API form, usable from a workflow step that already has Python:
 
 ```python
 from depscan import api
@@ -117,7 +121,7 @@ dep-scan writes no SARIF in this version. The VDR is the interchange document fo
 
 ## A pull request gate, end to end
 
-Putting it together: scan on the pull request with the CI profile, fail on a degraded scan, compare against the base branch's stored scan, and leave the scan directory for the reviewer:
+Putting it together: scan on the pull request with the research profile so reachability is answered, fail on a degraded scan, gate on the reached vulnerabilities, and leave the scan directory for the reviewer. A committed `.depscan/decisions.toml` in the checkout is applied as well, and `--baseline` from the section above adds the comparison with the target branch:
 
 ```yaml
 jobs:
@@ -140,9 +144,9 @@ jobs:
             -e VDB_HOME=/db -v "$PWD/vdb-home:/db" \
             -v "$PWD:/app" \
             ghcr.io/owasp-dep-scan/dep-scan:v7.0.0a4 \
-            depscan scan /app -t js --bom-profile research --profile ci \
+            depscan scan /app -t js --profile research \
               --vdb-flavor app-only --reports-dir /app/reports --fail-on-error \
-              --fail-on "severity=critical,reach=reached"
+              --fail-on "category=vulnerability,reach=reached"
       - name: Show what the gate matched
         if: failure()
         run: |
