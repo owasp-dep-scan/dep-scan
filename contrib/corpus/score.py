@@ -873,41 +873,66 @@ def score_join_component_runtime(scan: ItemScan, labels: dict) -> dict:
     }
 
 
+#: The BOM producers the two-producers join tells apart, by the tool name a
+#: BOM's metadata records. A toolchain listed beside them (cdxgen records
+#: the ``go`` it ran) is not a producer.
+BOM_PRODUCERS = ("cdxgen", "blint", "trivy", "syft", "dosai")
+
+
+def bom_producer(stem: str, bom: dict) -> str:
+    """The producer of one BOM: the first known producer among the tools of
+    its metadata, or the BOM's file-name stem when it records none."""
+    tools = (bom.get("metadata") or {}).get("tools") or {}
+    entries = tools.get("components") if isinstance(tools, dict) else tools
+    names = [str(t.get("name") or "") for t in entries or [] if isinstance(t, dict)]
+    return next((name for name in names if name in BOM_PRODUCERS), f"unknown ({stem})")
+
+
 def score_join_two_producers(scan: ItemScan, labels: dict) -> dict:
     """One component identity for the same package seen by two producers.
 
-    The scan ran one producer per project type; the join holds when the
-    labelled package appears in both types' BOMs under the same comparable
-    purl and the evidence store keeps each producer's own records.
+    Each BOM is attributed to the producer its metadata names (cdxgen for a
+    source scan, blint for a binary), so a source BOM and its build-phase
+    copy are one producer, not two. The join holds when the labelled
+    package appears under at least two producers with the same comparable
+    purl. A scan in which fewer than two producers wrote a BOM cannot
+    measure the join and reports it not assessed.
     """
     package = ((labels.get("joins") or {}).get("two-producers") or {}).get("package")
     if not package:
         return {"outcome": "partial", "reason": "the item names no package"}
     key = label_key(package)
-    by_type = {}
+    boms: dict = {}
+    by_producer: dict = {}
     for stem, bom in scan.boms.items():
-        if stem.startswith(("prebuild-", "postbuild-")):
-            continue
-        purls = sorted(
-            {
-                comparable_purl(c["purl"])
-                for c in bom.get("components") or []
-                if isinstance(c, dict) and c.get("purl") and key in keys_of([c["purl"]])
-            }
-        )
+        producer = bom_producer(stem, bom)
+        boms.setdefault(producer, []).append(stem)
+        purls = {
+            comparable_purl(c["purl"])
+            for c in bom.get("components") or []
+            if isinstance(c, dict) and c.get("purl") and key in keys_of([c["purl"]])
+        }
         if purls:
-            by_type[stem] = purls
-    if len(by_type) < 2:
+            by_producer[producer] = sorted(set(by_producer.get(producer, [])) | purls)
+    if len(boms) < 2:
+        return {
+            "outcome": "not-assessed",
+            "reason": f"{len(boms)} BOM producer ran ({', '.join(sorted(boms)) or 'none'}); "
+            "the join needs two",
+            "boms": boms,
+        }
+    if len(by_producer) < 2:
         return {
             "outcome": "partial",
-            "reason": f"the package was found in {len(by_type)} of the "
-            f"{len(scan.project_types)} scans",
-            "byType": by_type,
+            "reason": f"the package was found by {len(by_producer)} of the {len(boms)} producers",
+            "byProducer": by_producer,
+            "boms": boms,
         }
-    identical = len({p for purls in by_type.values() for p in purls}) == 1
+    identical = len({p for purls in by_producer.values() for p in purls}) == 1
     return {
         "outcome": "measured" if identical else "partial",
-        "byType": by_type,
+        "byProducer": by_producer,
+        "boms": boms,
         "identical": identical,
         "producers": sorted({r.producer.name for r in scan.evidence}),
     }

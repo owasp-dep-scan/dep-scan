@@ -17,10 +17,11 @@ from analysis_lib.evidence import (
 )
 
 
-def _write_bom(reports_dir, name, components):
+def _write_bom(reports_dir, name, components, tool=None):
     document = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",
+        "metadata": {"tools": {"components": [{"name": tool}] if tool else []}},
         "components": [
             {"purl": purl, "type": "library", "bom-ref": f"r{i}"}
             for i, purl in enumerate(components)
@@ -95,11 +96,13 @@ def test_two_producers_measures_one_identity_across_types(tmp_path):
         tmp_path,
         "sbom-build-go.cdx.json",
         ["pkg:golang/github.com/google/go-github/v81@v81.0.0", "pkg:golang/gin-gonic/gin@v1.9.1"],
+        tool="cdxgen",
     )
     _write_bom(
         tmp_path,
         "sbom-binary.cdx.json",
         ["pkg:golang/github.com/google/go-github/v81@v81.0.0", "pkg:golang/go-jwt/jwt/v4@v4.5.0"],
+        tool="blint",
     )
     _write_evidence(
         tmp_path,
@@ -122,7 +125,29 @@ def test_two_producers_measures_one_identity_across_types(tmp_path):
     )
     assert scored["outcome"] == "measured"
     assert scored["identical"] is True
+    assert sorted(scored["byProducer"]) == ["blint", "cdxgen"]
     assert scored["producers"] == ["blint", "cdxgen"]
+
+
+def test_two_producers_counts_producers_not_bom_files(tmp_path):
+    # A type BOM and its build-phase copy come from one producer.
+    package = "pkg:golang/github.com/google/go-github/v81@v81.0.0"
+    for name in ("sbom-go.cdx.json", "sbom-build-go.cdx.json"):
+        _write_bom(tmp_path, name, [package], tool="cdxgen")
+    labels = {"joins": {"two-producers": {"source": "hand", "package": package}}}
+    item = {"scan": {"types": ["go"], "args": []}}
+    scored = corpus_score.score_join_two_producers(
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
+    )
+    assert scored["outcome"] == "not-assessed"
+    assert "1 BOM producer ran (cdxgen)" in scored["reason"]
+    # A second producer that lacks the package leaves the join partial.
+    _write_bom(tmp_path, "sbom-binary.cdx.json", [], tool="blint")
+    scored = corpus_score.score_join_two_producers(
+        corpus_score.ItemScan(item, _result(tmp_path)), labels
+    )
+    assert scored["outcome"] == "partial"
+    assert list(scored["byProducer"]) == ["cdxgen"]
 
 
 def test_route_join_matches_dosai_handler_spans(tmp_path):

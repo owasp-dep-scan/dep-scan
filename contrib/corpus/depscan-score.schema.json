@@ -274,7 +274,7 @@
       "additionalProperties": true,
       "properties": {
         "outcome": {
-          "enum": ["measured", "partial", "gap"]
+          "enum": ["measured", "partial", "gap", "not-assessed"]
         },
         "reason": {
           "type": "string"
