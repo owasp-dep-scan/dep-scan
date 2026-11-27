@@ -613,3 +613,19 @@ def test_a_reviewed_missing_module_is_neither_a_label_nor_a_miss(tmp_path):
     ) as fp:
         jsonschema.validate(document, json.load(fp))
     assert derive_labels.main(argv + ["--missing-module", "lib"]) == 2
+
+
+def test_a_setup_py_name_constant_names_the_projects_own_distribution(tmp_path):
+    # celery's setup.py says NAME = 'celery' and setup(name=NAME); an example
+    # project in the tree declares celery as its dependency.
+    _write(
+        tmp_path / "setup.py", "NAME = 'celery'\nsetup(name=NAME, install_requires=['kombu'])\n"
+    )
+    _write(
+        tmp_path / "examples" / "app" / "setup.py",
+        "setup(name='example-tasks', install_requires=['celery>=5'])\n",
+    )
+    truth = {"usages": [_row("kombu")]}
+    reach = derive_labels.derive("py-fixture", truth, {}, project=str(tmp_path))["reachability"]
+    assert [e["purl"] for e in reach["used"]] == ["pkg:pypi/kombu"]
+    assert reach["unused"] == []

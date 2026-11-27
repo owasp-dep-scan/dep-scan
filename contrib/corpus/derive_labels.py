@@ -352,8 +352,9 @@ def python_manifests(project: str):
                 for line in value.splitlines():
                     add(direct, line)
         else:
-            match = re.search(r"\bname\s*=\s*['\"]([A-Za-z0-9._-]+)['\"]", text)
-            if match:
+            # setup(name="x"), or a NAME = "x" constant that setup(name=NAME)
+            # reads, as celery's setup.py has.
+            for match in re.finditer(r"\bname\s*=\s*['\"]([A-Za-z0-9._-]+)['\"]", text, re.I):
                 add(own, match.group(1))
             for block in re.findall(r"(?:install|tests)_requires\s*=\s*\[(.*?)\]", text, re.S):
                 for spec in re.findall(r"['\"]([^'\"]+)['\"]", block):
