@@ -2,8 +2,12 @@
   "item": "py-defectdojo",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
+      {
+        "purl": "pkg:pypi/amqp",
+        "occurrences": 2
+      },
       {
         "purl": "pkg:pypi/bleach",
         "occurrences": 21
@@ -109,6 +113,14 @@
         "occurrences": 51
       },
       {
+        "purl": "pkg:pypi/idna",
+        "occurrences": 5
+      },
+      {
+        "purl": "pkg:pypi/kombu",
+        "occurrences": 2
+      },
+      {
         "purl": "pkg:pypi/lxml",
         "occurrences": 31
       },
@@ -143,6 +155,10 @@
       {
         "purl": "pkg:pypi/requests",
         "occurrences": 57
+      },
+      {
+        "purl": "pkg:pypi/six",
+        "occurrences": 15
       },
       {
         "purl": "pkg:pypi/titlecase",
@@ -209,9 +225,6 @@
         "purl": "pkg:pypi/drf-spectacular-sidecar"
       },
       {
-        "purl": "pkg:pypi/filters-django"
-      },
-      {
         "purl": "pkg:pypi/fontawesomefree"
       },
       {
@@ -233,9 +246,6 @@
         "purl": "pkg:pypi/pillow"
       },
       {
-        "purl": "pkg:pypi/prettytable"
-      },
-      {
         "purl": "pkg:pypi/psycopg"
       },
       {
@@ -254,16 +264,13 @@
         "purl": "pkg:pypi/ruff"
       },
       {
-        "purl": "pkg:pypi/selenium"
+        "purl": "pkg:pypi/setuptools"
       },
       {
         "purl": "pkg:pypi/sqlalchemy"
       },
       {
         "purl": "pkg:pypi/uwsgi"
-      },
-      {
-        "purl": "pkg:pypi/vcr"
       },
       {
         "purl": "pkg:pypi/vcrpy"
@@ -273,22 +280,14 @@
       },
       {
         "purl": "pkg:pypi/whitenoise"
-      },
-      {
-        "purl": "pkg:pypi/zapv2"
       }
     ],
-    "unmapped": {
-      "amqp": 2,
-      "idna": 5,
-      "kombu": 2,
-      "six": 15
-    },
+    "unmapped": {},
     "local": {},
     "counts": {
-      "used": 40,
-      "unused": 37,
-      "unmapped": 4,
+      "used": 44,
+      "unused": 33,
+      "unmapped": 0,
       "local": 0,
       "certainUses": 19691
     }

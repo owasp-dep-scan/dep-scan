@@ -2,7 +2,7 @@
   "item": "py-vulpy",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/click",
@@ -43,16 +43,22 @@
     ],
     "unused": [],
     "unmapped": {
-      "lib": 4,
       "passlib": 4
     },
     "local": {},
+    "missingModules": {
+      "lib": {
+        "occurrences": 4,
+        "reason": "good/mod_welcome1.py:4 imports lib.posts1 (get_posts, post); the tree holds no lib package or module, and no distribution the project declares or resolves to provides one"
+      }
+    },
     "counts": {
       "used": 9,
       "unused": 0,
-      "unmapped": 2,
+      "unmapped": 1,
       "local": 0,
-      "certainUses": 700
+      "certainUses": 700,
+      "missingModule": 1
     }
   }
 }

@@ -2,7 +2,7 @@
   "item": "py-django-oscar",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/babel",
@@ -67,10 +67,64 @@
     ],
     "unused": [
       {
+        "purl": "pkg:pypi/black"
+      },
+      {
+        "purl": "pkg:pypi/coverage"
+      },
+      {
+        "purl": "pkg:pypi/django-webtest"
+      },
+      {
         "purl": "pkg:pypi/django-widget-tweaks"
       },
       {
         "purl": "pkg:pypi/factory-boy"
+      },
+      {
+        "purl": "pkg:pypi/freezegun"
+      },
+      {
+        "purl": "pkg:pypi/psycopg2-binary"
+      },
+      {
+        "purl": "pkg:pypi/pylint"
+      },
+      {
+        "purl": "pkg:pypi/pylint-django"
+      },
+      {
+        "purl": "pkg:pypi/pytest-django"
+      },
+      {
+        "purl": "pkg:pypi/pytest-xdist"
+      },
+      {
+        "purl": "pkg:pypi/pytz"
+      },
+      {
+        "purl": "pkg:pypi/sphinx"
+      },
+      {
+        "purl": "pkg:pypi/sphinx-issues"
+      },
+      {
+        "purl": "pkg:pypi/sphinxcontrib-spelling"
+      },
+      {
+        "purl": "pkg:pypi/tox"
+      },
+      {
+        "purl": "pkg:pypi/vdt-versionplugin-wheel"
+      },
+      {
+        "purl": "pkg:pypi/webtest"
+      },
+      {
+        "purl": "pkg:pypi/whitenoise"
+      },
+      {
+        "purl": "pkg:pypi/whoosh"
       }
     ],
     "unmapped": {
@@ -79,7 +133,7 @@
     "local": {},
     "counts": {
       "used": 15,
-      "unused": 2,
+      "unused": 20,
       "unmapped": 1,
       "local": 0,
       "certainUses": 6932

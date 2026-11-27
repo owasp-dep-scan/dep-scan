@@ -1,6 +1,6 @@
 # Corpus score
 
-Generated 2026-11-27T19:13:54+00:00 at commit 9916570f5083f998c71a01d2179ab9b1d51ca8a3 with dep-scan 7.0.0a4.
+Generated 2026-11-27T19:58:02+00:00 at commit dc2ce3c97c21026bc1cc81a9baac167e5d10aa3a with dep-scan 7.0.0a4.
 
 | Item | State | Reachability recall/precision | Categories | Joins |
 | --- | --- | --- | --- | --- |
@@ -23,23 +23,23 @@ Generated 2026-11-27T19:13:54+00:00 at commit 9916570f5083f998c71a01d2179ab9b1d5
 | php-dvwa | scored | Framework direct 1.0/1.0; Framework reached 0.0/-; Semantic direct 1.0/1.0; Semantic reached 0.0/- | license: not assessed; supply-chain: not assessed |  |
 | php-koel | scored | Framework direct 1.0/0.6324; Framework reached 0.2093/1.0; Semantic direct 1.0/0.6324; Semantic reached 0.2093/1.0 | license: not assessed; supply-chain: not assessed |  |
 | php-symfony-demo | scored | Framework direct 1.0/0.6716; Framework reached 0.1556/1.0; Semantic direct 1.0/0.6716; Semantic reached 0.1556/1.0 | license: not assessed; supply-chain: not assessed |  |
-| py-celery | scored | Framework direct 0.5227/0.1597; Framework reached 0.4318/0.6786; Semantic direct 0.5227/0.1597; Semantic reached 0.4318/0.6786; 18 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
-| py-defectdojo | scored | Framework direct 0.9091/0.5195; Framework reached 0.6818/0.7692; Semantic direct 0.9091/0.5195; Semantic reached 0.6818/0.7692; 4 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
-| py-django-oscar | scored | Framework direct 0.625/0.8333; Framework reached 0.1875/1.0; Semantic direct 0.625/0.8333; Semantic reached 0.1875/1.0; 1 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
-| py-dvpwa | scored | Framework direct 1.0/0.5; Framework reached 1.0/0.875; Semantic direct 1.0/0.5; Semantic reached 1.0/0.875 | license: not assessed; supply-chain: not assessed |  |
-| py-fastapi-template | scored | Framework direct 1.0/0.7857; Framework reached 0.8182/1.0; Semantic direct 1.0/0.7857; Semantic reached 0.8182/1.0 | license: not assessed; supply-chain: not assessed |  |
-| py-httpie | scored | Framework direct 0.8/0.1026; Framework reached 0.6/0.6923; Semantic direct 0.8/0.1026; Semantic reached 0.6/0.6923; 3 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
-| py-microblog | scored | Framework direct 1.0/0.525; Framework reached 0.9048/1.0; Semantic direct 1.0/0.525; Semantic reached 0.9048/1.0 | license: not assessed; supply-chain: not assessed |  |
-| py-pygoat | scored | Framework direct 0.7273/0.0702; Framework reached 0.4545/1.0; Semantic direct 0.7273/0.0702; Semantic reached 0.4545/1.0; 3 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
-| py-vulpy | scored | Framework direct 0.8182/1.0; Framework reached 0.8182/1.0; Semantic direct 0.8182/1.0; Semantic reached 0.8182/1.0; 2 unmapped used names counted as misses |  |  |
+| py-celery | scored | Framework direct 0.6905/0.537; Framework reached 0.5952/0.8621; Semantic direct 0.6905/0.537; Semantic reached 0.5952/0.8621; 8 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
+| py-defectdojo | scored | Framework direct 1.0/0.5714; Framework reached 0.75/0.8919; Semantic direct 1.0/0.5714; Semantic reached 0.75/0.8919 | license: not assessed; supply-chain: not assessed |  |
+| py-django-oscar | scored | Framework direct 0.625/0.7143; Framework reached 0.1875/1.0; Semantic direct 0.625/0.7143; Semantic reached 0.1875/1.0; 1 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
+| py-dvpwa | scored | Framework direct 1.0/0.3889; Framework reached 1.0/0.875; Semantic direct 1.0/0.3889; Semantic reached 1.0/0.875 | license: not assessed; supply-chain: not assessed |  |
+| py-fastapi-template | scored | Framework direct 1.0/0.44; Framework reached 0.8182/0.75; Semantic direct 1.0/0.44; Semantic reached 0.8182/0.75 | license: not assessed; supply-chain: not assessed |  |
+| py-httpie | scored | Framework direct 0.8667/0.6842; Framework reached 0.6667/0.7692; Semantic direct 0.8667/0.6842; Semantic reached 0.6667/0.7692; 2 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
+| py-microblog | scored | Framework direct 1.0/0.4038; Framework reached 0.9048/1.0; Semantic direct 1.0/0.4038; Semantic reached 0.9048/1.0 | license: not assessed; supply-chain: not assessed |  |
+| py-pygoat | scored | Framework direct 0.7273/0.2; Framework reached 0.4545/1.0; Semantic direct 0.7273/0.2; Semantic reached 0.4545/1.0; 3 unmapped used names counted as misses | license: not assessed; supply-chain: not assessed |  |
+| py-vulpy | scored | Framework direct 0.9/1.0; Framework reached 0.9/1.0; Semantic direct 0.9/1.0; Semantic reached 0.9/1.0; 1 unmapped used names counted as misses |  |  |
 | rb-mastodon | scored | Framework direct 0.8819/0.5628; Framework reached 0.315/0.9524; Semantic direct 0.8819/0.5628; Semantic reached 0.315/0.9524 | license: not assessed; supply-chain: not assessed |  |
 | rb-maybe | scored | Framework direct 0.9574/0.3629; Framework reached 0.3404/0.9412; Semantic direct 0.9574/0.3629; Semantic reached 0.3404/0.9412 | license: not assessed; supply-chain: not assessed |  |
 | rb-railsgoat | scored | Framework direct 0.9231/0.15; Framework reached 0.2308/0.75; Semantic direct 0.9231/0.15; Semantic reached 0.2308/0.75 | license: not assessed; supply-chain: not assessed |  |
 | supply-chain-fixture | scored |  | license: not assessed; supply-chain: 0.5/1.0 |  |
 | supply-chain-fixture-ci | scored |  | license: not assessed; supply-chain: 1.0/1.0 |  |
-| malware-fixture | scored |  | license: not assessed; malware: 0.0/None; supply-chain: not assessed |  |
+| malware-fixture | scored |  | license: not assessed; malware: 1.0/1.0; supply-chain: not assessed |  |
 | binary-hardening-fixture | scored |  | binary-hardening: 0.8571/1.0; license: not assessed; supply-chain: not assessed |  |
-| lifecycle-fixture | scored | Framework direct 1.0/0.5; Framework reached 1.0/1.0; Semantic direct 1.0/0.5; Semantic reached 1.0/1.0 | license: not assessed; supply-chain: not assessed; vulnerability: None/None | lifecycle-phase: partial |
+| lifecycle-fixture | scored | Framework direct 1.0/0.5; Framework reached 1.0/1.0; Semantic direct 1.0/0.5; Semantic reached 1.0/1.0 | license: not assessed; supply-chain: not assessed; vulnerability: -/- | lifecycle-phase: measured |
 | monorepo-fixture | scored | Framework direct 1.0/1.0; Framework reached 1.0/1.0; Semantic direct 1.0/1.0; Semantic reached 1.0/1.0 | license: not assessed; supply-chain: not assessed | two-manifests: measured |
 | dotnet-fixture | scored |  | license: not assessed; supply-chain: not assessed | route-package: measured |
 | tracebom-fixture | not assessed | | | no trace of this fixture names a component: the macOS tracebom capture held none, and no Linux capture has been recorded |
@@ -53,7 +53,7 @@ Generated 2026-11-27T19:13:54+00:00 at commit 9916570f5083f998c71a01d2179ab9b1d5
 | --- | --- |
 | advisory-usage-reach | measured |
 | route-package | measured, partial |
-| lifecycle-phase | partial |
+| lifecycle-phase | measured |
 | component-layer | gap |
 | component-runtime | gap |
 | two-producers | measured |

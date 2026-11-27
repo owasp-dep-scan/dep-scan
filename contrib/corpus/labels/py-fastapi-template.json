@@ -2,7 +2,7 @@
   "item": "py-fastapi-template",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/emails",
@@ -51,10 +51,43 @@
     ],
     "unused": [
       {
+        "purl": "pkg:pypi/alembic"
+      },
+      {
+        "purl": "pkg:pypi/coverage"
+      },
+      {
+        "purl": "pkg:pypi/email-validator"
+      },
+      {
+        "purl": "pkg:pypi/httpx"
+      },
+      {
+        "purl": "pkg:pypi/mypy"
+      },
+      {
         "purl": "pkg:pypi/prek"
       },
       {
+        "purl": "pkg:pypi/psycopg"
+      },
+      {
+        "purl": "pkg:pypi/pytest"
+      },
+      {
+        "purl": "pkg:pypi/python-multipart"
+      },
+      {
+        "purl": "pkg:pypi/ruff"
+      },
+      {
         "purl": "pkg:pypi/smokeshow"
+      },
+      {
+        "purl": "pkg:pypi/ty"
+      },
+      {
+        "purl": "pkg:pypi/typer"
       },
       {
         "purl": "pkg:pypi/zizmor"
@@ -64,7 +97,7 @@
     "local": {},
     "counts": {
       "used": 11,
-      "unused": 3,
+      "unused": 14,
       "unmapped": 0,
       "local": 0,
       "certainUses": 338

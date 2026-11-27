@@ -2,7 +2,7 @@
   "item": "py-microblog",
   "reachability": {
     "source": "oracle",
-    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the BOM or package.json declares it as a direct dependency and the truth holds no use of it. No truth row is carried.",
+    "derivedFrom": "Package-level reduction of the callsites oracle output for this project at its pinned commit: a package is used when the truth holds a certain use of it in the project's own files, with the purl taken from the package name and not from any scan, and unused when the project's manifests (for Python and JavaScript) or the BOM (for the other languages) declare it as a direct dependency and the truth holds no use of it. No truth row is carried.",
     "used": [
       {
         "purl": "pkg:pypi/alembic",
@@ -91,7 +91,16 @@
     ],
     "unused": [
       {
+        "purl": "pkg:pypi/aiosmtpd"
+      },
+      {
+        "purl": "pkg:pypi/atpublic"
+      },
+      {
         "purl": "pkg:pypi/attrs"
+      },
+      {
+        "purl": "pkg:pypi/babel"
       },
       {
         "purl": "pkg:pypi/blinker"
@@ -109,7 +118,16 @@
         "purl": "pkg:pypi/dnspython"
       },
       {
+        "purl": "pkg:pypi/elastic-transport"
+      },
+      {
         "purl": "pkg:pypi/email-validator"
+      },
+      {
+        "purl": "pkg:pypi/greenlet"
+      },
+      {
+        "purl": "pkg:pypi/gunicorn"
       },
       {
         "purl": "pkg:pypi/idna"
@@ -119,6 +137,9 @@
       },
       {
         "purl": "pkg:pypi/jinja2"
+      },
+      {
+        "purl": "pkg:pypi/mako"
       },
       {
         "purl": "pkg:pypi/markdown-it-py"
@@ -136,10 +157,28 @@
         "purl": "pkg:pypi/packaging"
       },
       {
+        "purl": "pkg:pypi/psycopg2-binary"
+      },
+      {
         "purl": "pkg:pypi/pygments"
       },
       {
+        "purl": "pkg:pypi/pysocks"
+      },
+      {
+        "purl": "pkg:pypi/pytz"
+      },
+      {
+        "purl": "pkg:pypi/requests-toolbelt"
+      },
+      {
         "purl": "pkg:pypi/rich"
+      },
+      {
+        "purl": "pkg:pypi/setuptools"
+      },
+      {
+        "purl": "pkg:pypi/six"
       },
       {
         "purl": "pkg:pypi/typing-extensions"
@@ -152,7 +191,7 @@
     "local": {},
     "counts": {
       "used": 21,
-      "unused": 19,
+      "unused": 32,
       "unmapped": 0,
       "local": 0,
       "certainUses": 779
