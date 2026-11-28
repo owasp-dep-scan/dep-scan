@@ -26,6 +26,13 @@ Five kinds of evidence become records:
    one such record. An entry identical to an earlier one of the same
    component carries its ordinal in the discriminator, so each entry stays
    one record in the store, the count of uses the BOM states.
+   A declaration occurrence is not a use and becomes no record: since
+   cdxgen 13.9 a component no analyzer saw in the sources gets the
+   manifests that declare it as occurrences, and names them in its
+   ``cdx:evidence:occurrences:declaration`` property. An entry whose
+   location is one of those manifests and that carries no line, offset or
+   symbol is such a declaration, cdxgen's own rule; it is counted in a
+   ``record-skipped`` caveat, never read as a use site.
    Occurrence and callstack records name the component's place in the
    BOM in the ``bomPosition`` attribute: ``top-level``, ``nested`` (one
    level below a top-level component) or ``root-nested`` (below the root
@@ -123,7 +130,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from analysis_lib.evidence import (
     EvidenceCaveat,
@@ -184,6 +191,9 @@ KOSI_PREFIX = "cdx:kosi:"
 KOSI_ENDPOINT_PREFIX = "cdx:kosi:endpoint:"
 KOSI_SERVICE_PREFIX = "cdx:kosi:service:"
 KOSI_DIAGNOSTIC_PREFIX = "cdx:kosi:diagnostic:"
+#: The component property cdxgen 13.9 and later writes on a component whose
+#: occurrences are only the manifests that declare it, naming those manifests.
+DECLARATION_OCCURRENCES_PROPERTY = "cdx:evidence:occurrences:declaration"
 
 #: The date the SaaSBOM provenance note writes into its text
 #: (``created on Sunday, November 22, 2026``), and any ISO timestamp.
@@ -693,6 +703,31 @@ def extract(
     )
 
 
+def _declaration_locations(component: dict) -> Set[str]:
+    """The manifest locations the component's
+    ``cdx:evidence:occurrences:declaration`` property names (a
+    comma-separated list), empty when it has none."""
+    locations: Set[str] = set()
+    for name, value in _properties(component):
+        if name == DECLARATION_OCCURRENCES_PROPERTY:
+            locations.update(
+                item.strip() for item in as_str(value).split(",") if item.strip()
+            )
+    return locations
+
+
+def _is_declaration(occurrence: Any, declarations: Set[str]) -> bool:
+    """Whether an occurrence entry is a declaration site: a bare location
+    the declaration property names. An entry with a line, an offset or a
+    symbol is a use site even inside a declaring manifest (a call in a
+    ``setup.py``), the same rule cdxgen applies."""
+    return (
+        isinstance(occurrence, dict)
+        and as_str(occurrence.get("location")).strip() in declarations
+        and all(occurrence.get(key) is None for key in ("line", "offset", "symbol"))
+    )
+
+
 def _component_records(
     component: dict,
     producer: EvidenceProducer,
@@ -752,6 +787,16 @@ def _component_records(
         if raw_occurrences is not None and raw_occurrences != []:
             skipped.add("evidence.occurrences values are empty and became no record")
         occurrences = []
+
+    declarations = _declaration_locations(component)
+    if declarations:
+        kept = [o for o in occurrences if not _is_declaration(o, declarations)]
+        skipped.add(
+            "evidence.occurrences entries name the manifest that declares the "
+            "component, not a use, and became no record",
+            len(occurrences) - len(kept),
+        )
+        occurrences = kept
 
     for occurrence in occurrences:
         if not isinstance(occurrence, dict):

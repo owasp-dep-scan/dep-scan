@@ -24,10 +24,10 @@ cdxgen_server_headers = {
 CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
 
 # Version of the cdxgen container images to use. cdxgen publishes exact
-# versions as bare tags ("13.8.0") and the rolling major and minor tags with
-# a "v" prefix ("v13", "v13.8"); a "v13.8.0" image tag does not exist. The
-# SEA release assets, in contrast, live under the "v13.8.0" git tag.
-CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "13.8.0")
+# versions as bare tags ("13.9.0") and the rolling major and minor tags with
+# a "v" prefix ("v13", "v13.9"); a "v13.9.0" image tag does not exist. The
+# SEA release assets, in contrast, live under the "v13.9.0" git tag.
+CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "13.9.0")
 CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v13")
 
 # Oldest cdxgen this version of dep-scan works with. cdxgen 13.8 introduced

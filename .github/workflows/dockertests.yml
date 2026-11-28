@@ -32,7 +32,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cdxgen/cdxgen@13.8.0
+        npm install -g @cdxgen/cdxgen@13.9.0
         mkdir -p repotests
         uv pip install -r contrib/requirements.txt
     - name: Test container images
@@ -76,7 +76,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cdxgen/cdxgen@13.8.0
+        npm install -g @cdxgen/cdxgen@13.9.0
         mkdir -p repotests
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -126,7 +126,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cdxgen/cdxgen@13.8.0
+        npm install -g @cdxgen/cdxgen@13.9.0
         mkdir -p repotests
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -190,7 +190,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
           uv pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
@@ -241,7 +241,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
       - name: Get boms generated earlier
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:

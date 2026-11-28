@@ -368,8 +368,18 @@ for (const name of Object.keys(dns.promises)) {
     dns.promises[name] = async (...args) => refuse(`dns.promises.${name}`, args[0]);
   }
 }
+// cdxgen reads `ldd --version` on Linux to pick its plugin binaries; that
+// local probe runs, and any other child process is refused.
+const localProbes = new Set(["ldd"]);
 for (const name of ["spawn", "spawnSync", "execFile", "execFileSync", "exec", "execSync", "fork"]) {
-  guard(childProcess, name, `child_process.${name}`);
+  const original = childProcess[name];
+  childProcess[name] = (...args) => {
+    const command = String(args[0] ?? "").trim().split(/\\s+/)[0];
+    if (name !== "fork" && localProbes.has(command)) {
+      return original(...args);
+    }
+    return refuse(`child_process.${name}`, JSON.stringify(args.slice(0, 2)));
+  };
 }
 workerThreads.Worker = class {
   constructor(file) {

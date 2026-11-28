@@ -59,7 +59,7 @@ jobs:
 
     env:
       # Keep in sync with CDXGEN_IMAGE_VERSION in packages/xbom-lib/src/xbom_lib/cdxgen.py.
-      CDXGEN_SEA_VERSION: 'v13.8.0'
+      CDXGEN_SEA_VERSION: 'v13.9.0'
 
     steps:
       - name: Checkout

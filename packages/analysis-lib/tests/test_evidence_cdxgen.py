@@ -31,6 +31,7 @@ ROOT = "/src/repos/recapp"
 SQLPARSE_PURL = "pkg:pypi/sqlparse@0.5.3"
 DEFUSEDXML_PURL = "pkg:pypi/defusedxml@0.7.1"
 RECAPP_PURL = "pkg:pypi/recapp@0.1.0"
+DECLARATION_PROPERTY = "cdx:evidence:occurrences:declaration"
 
 # The kinds and counts the recording yields: fourteen occurrence records
 # (4 + 4 + 3 + 3 over sqlparse 0.5.3, sqlparse 0.6.1, flask and defusedxml),
@@ -108,7 +109,25 @@ def _usage_evidence(component):
     evidence = component.get("evidence")
     if not isinstance(evidence, dict):
         return False
-    return bool(evidence.get("occurrences") or evidence.get("callstack"))
+    occurrences = evidence.get("occurrences")
+    declared = {
+        item.strip()
+        for prop in component.get("properties") or []
+        if isinstance(prop, dict) and prop.get("name") == DECLARATION_PROPERTY
+        for item in str(prop.get("value") or "").split(",")
+        if item.strip()
+    }
+    if declared and isinstance(occurrences, list):
+        occurrences = [
+            o
+            for o in occurrences
+            if not (
+                isinstance(o, dict)
+                and o.get("location") in declared
+                and all(o.get(key) is None for key in ("line", "offset", "symbol"))
+            )
+        ]
+    return bool(occurrences or evidence.get("callstack"))
 
 
 def _population(bom):
@@ -759,6 +778,54 @@ def test_occurrence_entries_without_a_location_still_prove_usage():
     assert _skipped_details(result) == []
 
 
+def test_declaration_occurrences_are_counted_not_read_as_use_sites():
+    """cdxgen 13.9 gives a component no analyzer saw the manifests that
+    declare it as occurrences and names them in the declaration property.
+    A bare declared location is no use: it makes no record and is counted.
+    A located entry in a declaring manifest, and any other location, stays
+    a use site."""
+    bom = _bom()
+    pip = _component(bom, "pip", "26.2.2")
+    pip["evidence"] = {
+        "occurrences": [
+            {"location": "requirements.txt"},
+            {"location": "poetry.lock"},
+            {"location": "setup.py", "line": 5},
+            {"location": "app.py"},
+        ]
+    }
+    pip["properties"] = [
+        {"name": DECLARATION_PROPERTY, "value": "requirements.txt,poetry.lock, setup.py"}
+    ]
+    result = _extract(bom)
+    assert result.status == STATUS_COMPLETED
+    files = sorted(
+        r.locations[0].file
+        for r in result.records
+        if r.kind == "occurrence" and r.subject.component_ref == pip["bom-ref"]
+    )
+    assert files == ["app.py", "setup.py"]
+    assert any(
+        "2 evidence.occurrences entries name the manifest that declares the component"
+        in detail
+        for detail in _skipped_details(result)
+    )
+
+
+def test_occurrences_are_kept_as_given_without_the_declaration_property():
+    """A BOM older than cdxgen 13.9, or a component with usage evidence,
+    carries no declaration property; its manifest occurrences stay records."""
+    bom = _bom()
+    pip = _component(bom, "pip", "26.2.2")
+    pip["evidence"] = {"occurrences": [{"location": "requirements.txt"}]}
+    result = _extract(bom)
+    assert [
+        r.locations[0].file
+        for r in result.records
+        if r.kind == "occurrence" and r.subject.component_ref == pip["bom-ref"]
+    ] == ["requirements.txt"]
+
+
 def test_records_name_the_position_of_their_component_in_the_bom():
     """Each occurrence and callstack record names where its component sits:
     a top-level component, one nested below it, or one nested in the root
@@ -949,6 +1016,25 @@ def test_absolute_locations_outside_the_root_are_left_out_with_a_caveat():
         lambda bom: _component(bom, "pip", "26.2.2").update(
             {"evidence": {"callstack": [], "occurrences": ""}}
         ),
+        lambda bom: _component(bom, "pip", "26.2.2").update(
+            {
+                "evidence": {"occurrences": [{"location": "requirements.txt"}]},
+                "properties": [{"name": DECLARATION_PROPERTY, "value": "requirements.txt"}],
+            }
+        ),
+        lambda bom: _component(bom, "pip", "26.2.2").update(
+            {
+                "evidence": {
+                    "occurrences": [
+                        {"location": "requirements.txt"},
+                        {"location": "setup.py", "line": 5},
+                    ]
+                },
+                "properties": [
+                    {"name": DECLARATION_PROPERTY, "value": "requirements.txt, setup.py"}
+                ],
+            }
+        ),
     ],
     ids=[
         "as-recorded",
@@ -961,6 +1047,8 @@ def test_absolute_locations_outside_the_root_are_left_out_with_a_caveat():
         "occurrences-an-object",
         "callstack-a-list",
         "falsy-values-of-the-wrong-type",
+        "declaration-only",
+        "declaration-and-use-site-in-a-manifest",
     ],
 )
 def test_records_agree_with_the_component_evidence_verdict(mutate):

@@ -104,7 +104,7 @@ jobs:
       - name: Install the sibling tools at pinned versions
         run: |
           npm install --no-save --no-fund --prefix "$RUNNER_TEMP/tools" \
-            @cdxgen/cdxgen@13.8.0 \
+            @cdxgen/cdxgen@13.9.0 \
             @cdxgen/cdxgen-plugins-bin-linux-amd64@4.3.1 \
             @appthreat/atom@4.0.2
           echo "$RUNNER_TEMP/tools/node_modules/.bin" >> "$GITHUB_PATH"

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-27T20:01:39+00:00",
-  "commit": "b3b7f85aee1a42c68be7d6248e188a049ddac482",
+  "generatedAt": "2026-11-28T00:59:35+00:00",
+  "commit": "f14878da1c5571cfd10797c4932b3b68a0d937f9",
   "depscanVersion": "7.0.0a4",
   "subset": "ci",
   "items": [
@@ -10,7 +10,7 @@
       "kind": "fixture",
       "state": "scored",
       "components": 102,
-      "findings": 2,
+      "findings": 3,
       "categories": {
         "license": {
           "status": "not-assessed",
@@ -19,10 +19,15 @@
           "precision": null
         },
         "supply-chain": {
-          "status": "not-assessed",
-          "reason": "python: cdx-audit 13.8.0 predates the options this scan needs; cdxgen 13.9.0 or newer is required",
-          "recall": null,
-          "precision": null
+          "expected": 1,
+          "hits": 1,
+          "recall": 1.0,
+          "unexpected": 0,
+          "precision": 1.0,
+          "missed": [],
+          "unexpectedFindings": [],
+          "forbiddenFired": [],
+          "status": "assessed"
         },
         "vulnerability": {
           "expected": 0,
@@ -428,8 +433,8 @@
     "errors": 0,
     "forbiddenFired": [],
     "floors": {
-      "commit": "37e58fb10e79fadc9c8902f9f2f6fa8e5444d1fe",
-      "checked": 13,
+      "commit": "f14878da1c5571cfd10797c4932b3b68a0d937f9",
+      "checked": 16,
       "skipped": 0,
       "violations": []
     }

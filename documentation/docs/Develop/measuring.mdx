@@ -150,15 +150,17 @@ to record what). The current table lives in the score artifact the scheduled
 scored when the floors were written, each with the commit it was recorded at.
 
 The table below is the state recorded in `contrib/corpus/results/`. The
-full run (`score-full.json`) comes from one machine: the repository items,
-the image and the binary fixture were scored with `--scan-dir` over scans
-made with cdxgen 13.9.0 (built from master) and atom 4.0.3, the other fixture
-items and the java-sec-code repo-test data were scanned again at commit
-c759eaf7 with `--profile offline`, and the labels were derived at commit
-dc2ce3c9. The pull-request subset (`score-ci.json`) was scanned afresh at
-commit b3b7f85a with the tools the workflow installs, cdxgen 13.8.0 and atom
-4.0.2, against the app-2y vulnerability database the job pulls. Checked
-against `floors.json`, both runs have no violation.
+full run (`score-full.json`) comes from one machine: the repository items
+were scored with `--scan-dir` over scans made with a cdxgen 13.9.0 build from
+master and atom 4.0.3, from whose evidence stores the declaration
+occurrences described below were removed by the adapter's rule; the image,
+the other fixture items and the java-sec-code repo-test data were scanned
+again with the released cdxgen 13.9.0 and `--profile offline`; the binary
+fixture row comes from the Linux run of the pull-request subset; and the
+labels were derived at commit dc2ce3c9. The pull-request subset
+(`score-ci.json`) was scanned afresh with the tools the workflow installs,
+cdxgen 13.9.0 and atom 4.0.2, against the app-2y vulnerability database the
+job pulls. Checked against `floors.json`, the subset has no violation.
 
 | Join | Outcome at this measurement |
 | --- | --- |
@@ -172,20 +174,25 @@ against `floors.json`, both runs have no violation.
 
 Reachability against the oracle labels, `SemanticReachability` (the
 `FrameworkReachability` numbers are the same), means over the 30 repository
-projects with reachability evidence: `direct_purls` recall 0.943 and
-precision 0.573, reached-purls recall 0.391 and precision 0.953 (27
-projects reach a labelled package). The Python items moved when their
+projects with reachability evidence: `direct_purls` recall 0.715 and
+precision 0.907 (28 projects have a direct use; java-shiro and
+django-oscar have none), reached-purls recall 0.391 and precision 0.953 (27
+projects reach a labelled package). Direct uses come from cdxgen's
+occurrence evidence, which is thin for Java and Ruby projects (rb-mastodon
+0.079, java-sec-code 0.241). Since 13.9.0, cdxgen also lists the manifests
+that declare an unused component as its occurrences and marks them with
+`cdx:evidence:occurrences:declaration`; dep-scan does not read those as
+uses. The Python items moved when their
 directness came from their own manifests: the unused labels of celery,
 httpie and pygoat no longer list dep-scan's own environment, and undeclared
 imports their resolved environment knows (six, urllib3, kombu) became used
 labels. In the full run the supply-chain fixture scores 0.5 recall and 1.0
 precision (the CI-001 control is the known gap), the malware fixture 1.0 and
-1.0. The subset's categories score 1.0 recall and precision for malware and for the
-java-sec-code advisories, and 6 of 7 expected binary-hardening findings with
-precision 1.0 (blint reports no `CHECK_RELRO` on the build linked with
-`-z norelro`); the supply-chain fixture is not assessed under cdxgen 13.8.0,
-whose cdx-audit predates the options dep-scan passes. The categories dep-scan
-does not produce yet (memory safety, mobile, crypto, code) appear in the
+1.0. The subset's categories score 1.0 recall and precision for malware, for the
+java-sec-code advisories and for the supply-chain fixture's audit finding,
+and 6 of 7 expected binary-hardening findings with precision 1.0 (blint
+reports no `CHECK_RELRO` on the build linked with `-z norelro`). The
+categories dep-scan does not produce yet (memory safety, mobile, crypto, code) appear in the
 manifest as `notProduced` with their tracking issues, and the score table
 shows them as gaps.
 

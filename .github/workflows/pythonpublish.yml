@@ -71,7 +71,7 @@ jobs:
       # leave the release without bom.json.
       - name: Generate SBOM with cdxgen
         run: |
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
           cdxgen -t python -o bom.json . --profile research
       - name: Name the release kind
         id: release
@@ -264,7 +264,7 @@ jobs:
           fi
       - name: Generate the image SBOM with cdxgen
         run: |
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
           cdxgen -t docker -o depscan-oci-image.cdx.json "${IMAGE_REF}"
         env:
           IMAGE_REF: ${{ steps.image.outputs.ref }}

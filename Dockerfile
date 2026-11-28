@@ -69,7 +69,7 @@ RUN set -e; \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
     && rm go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
-    && npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom-parsetools@2.0.0 \
+    && npm install -g @cdxgen/cdxgen@13.9.0 @appthreat/atom-parsetools@2.0.0 \
     && cdxgen --version \
     && useradd -ms /bin/bash owasp \
     && pecl channel-update pecl.php.net \
