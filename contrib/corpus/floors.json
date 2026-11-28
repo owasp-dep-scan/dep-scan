@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "description": "The floors the pull-request subset enforces, recorded from one real run of score.py --subset ci (contrib/corpus/results/score-ci.json) against the app-2y vulnerability database the job pulls. Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs and only for numbers the labels can judge. supply-chain-fixture-ci carries no floor: cdx-audit 13.8.0, the version the job installs, predates the options dep-scan's audit passes, so the category is not assessed until the job installs cdxgen 13.9.0 or later. The binary-hardening recall floor is 6 of 7 because blint does not report CHECK_RELRO on the unprotected build, which build.sh links with -z norelro.",
-  "commit": "b3b7f85aee1a42c68be7d6248e188a049ddac482",
-  "recordedAt": "2026-11-27T20:01:39Z",
+  "description": "The floors the pull-request subset enforces, recorded from one real run of score.py --subset ci (contrib/corpus/results/score-ci.json) against the app-2y vulnerability database the job pulls. Each entry names the item, the dotted path into its score entry, and the smallest value the run accepts; a path that no longer resolves counts as a drop. Floors exist only for the items the subset runs and only for numbers the labels can judge. The binary-hardening recall floor is 6 of 7 because blint does not report CHECK_RELRO on the unprotected build, which build.sh links with -z norelro.",
+  "commit": "f14878da1c5571cfd10797c4932b3b68a0d937f9",
+  "recordedAt": "2026-11-28T00:59:35Z",
   "tools": {
     "platform": "linux/amd64, an ubuntu:24.04 container with the runner's gcc 13.3",
-    "cdxgen": "13.8.0",
+    "cdxgen": "13.9.0",
     "atom": "4.0.2",
     "blint": "4.1.1",
     "python": "3.14",
@@ -49,6 +49,11 @@
       "minimum": 5
     },
     {
+      "item": "lifecycle-fixture",
+      "path": "reachability.SemanticReachability.direct.precision",
+      "minimum": 1.0
+    },
+    {
       "item": "monorepo-fixture",
       "path": "reachability.SemanticReachability.reached.recall",
       "minimum": 1.0
@@ -76,6 +81,16 @@
     {
       "item": "java-sec-code-repotests",
       "path": "categories.vulnerability.precision",
+      "minimum": 1.0
+    },
+    {
+      "item": "supply-chain-fixture-ci",
+      "path": "categories.supply-chain.recall",
+      "minimum": 1.0
+    },
+    {
+      "item": "supply-chain-fixture-ci",
+      "path": "categories.supply-chain.precision",
       "minimum": 1.0
     }
   ]

@@ -1,10 +1,10 @@
 # Corpus score
 
-Generated 2026-11-27T20:01:39+00:00 at commit b3b7f85aee1a42c68be7d6248e188a049ddac482 with dep-scan 7.0.0a4.
+Generated 2026-11-28T00:59:35+00:00 at commit f14878da1c5571cfd10797c4932b3b68a0d937f9 with dep-scan 7.0.0a4.
 
 | Item | State | Reachability recall/precision | Categories | Joins |
 | --- | --- | --- | --- | --- |
-| supply-chain-fixture-ci | scored |  | license: not assessed; supply-chain: not assessed |  |
+| supply-chain-fixture-ci | scored |  | license: not assessed; supply-chain: 1.0/1.0 |  |
 | malware-fixture | scored |  | license: not assessed; malware: 1.0/1.0; supply-chain: not assessed |  |
 | binary-hardening-fixture | scored |  | binary-hardening: 0.8571/1.0; license: not assessed; supply-chain: not assessed |  |
 | lifecycle-fixture | scored | Framework direct 1.0/1.0; Framework reached 1.0/1.0; Semantic direct 1.0/1.0; Semantic reached 1.0/1.0 | license: not assessed; supply-chain: not assessed; vulnerability: -/- | lifecycle-phase: measured |
