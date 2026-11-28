@@ -55,6 +55,10 @@ jobs:
         run: |
           uv sync --all-extras --all-packages --dev
           npm install -g @cdxgen/cdxgen@13.9.0
+      # The offline profile never downloads the database, and the scorer
+      # may run an offline item first, so the database is fetched here.
+      - name: Download the vulnerability database
+        run: uv run --no-sync depscan vdb download --image "$VDB_DATABASE_URL"
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
@@ -106,6 +110,10 @@ jobs:
         run: |
           uv sync --all-extras --all-packages --dev
           npm install -g @cdxgen/cdxgen@13.9.0
+      # The offline profile never downloads the database, and the scorer
+      # may run an offline item first, so the database is fetched here.
+      - name: Download the vulnerability database
+        run: uv run --no-sync depscan vdb download --image "$VDB_DATABASE_URL"
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
