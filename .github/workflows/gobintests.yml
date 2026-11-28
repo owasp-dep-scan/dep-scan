@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cdxgen/cdxgen@13.8.0
+        npm install -g @cdxgen/cdxgen@13.9.0
     - name: Test binaries
       run: |
         mkdir -p ${RUNNER_TEMP}/bintests ${RUNNER_TEMP}/blintdb

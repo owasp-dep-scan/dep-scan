@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
       - name: Build
         run: |
           uv build --all-packages

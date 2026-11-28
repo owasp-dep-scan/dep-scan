@@ -48,7 +48,7 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cdxgen/cdxgen@13.8.0
+          npm install -g @cdxgen/cdxgen@13.9.0
       # LifeCycleAnalyzer tests
       - name: lifecycle-test damn-vulnerable-golang
         run: |
